@@ -52,11 +52,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar flex flex-col shrink-0 border-r border-sidebar-border shadow-xl">
         {/* Logo */}
-        <div className="px-4 py-4 border-b border-sidebar-border/50 flex items-center justify-center">
+        <div className="px-3 py-3 border-b border-sidebar-border/50">
           <img
-            src="/logo-transparent.png"
+            src="/logo.png"
             alt="LealCert"
-            className="h-12 w-auto object-contain"
+            className="w-full h-auto object-contain"
           />
         </div>
 
