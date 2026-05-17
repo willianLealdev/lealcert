@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Search, MapPin } from "lucide-react";
 import { Link } from "wouter";
 
 function formatBRL(v: number) {
@@ -47,6 +47,7 @@ export default function NewOrder() {
   });
 
   const [cepLoading, setCepLoading] = useState(false);
+  const [cepFilled, setCepFilled] = useState(false);
 
   const createOrder = useCreateOrder({
     mutation: {
@@ -68,9 +69,15 @@ export default function NewOrder() {
     setForm(prev => ({ ...prev, [field]: value }));
   }
 
-  async function fetchCep(cep: string) {
-    const digits = cep.replace(/\D/g, "");
-    if (digits.length !== 8) return;
+  function maskCep(v: string) {
+    const d = v.replace(/\D/g, "").slice(0, 8);
+    if (d.length > 5) return d.slice(0, 5) + "-" + d.slice(5);
+    return d;
+  }
+
+  async function fetchCep(raw: string) {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length !== 8) { if (cepFilled) setCepFilled(false); return; }
     setCepLoading(true);
     try {
       const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
@@ -78,13 +85,21 @@ export default function NewOrder() {
       if (!data.erro) {
         setForm(prev => ({
           ...prev,
-          addressStreet: data.logradouro ?? prev.addressStreet,
-          addressNeighborhood: data.bairro ?? prev.addressNeighborhood,
-          addressCity: data.localidade ?? prev.addressCity,
-          addressState: data.uf ?? prev.addressState,
+          addressStreet: data.logradouro || prev.addressStreet,
+          addressNeighborhood: data.bairro || prev.addressNeighborhood,
+          addressCity: data.localidade || prev.addressCity,
+          addressState: data.uf || prev.addressState,
         }));
+        setCepFilled(true);
+        toast({ title: "CEP encontrado!", description: `${data.localidade} — ${data.uf}` });
+      } else {
+        setCepFilled(false);
+        toast({ title: "CEP não encontrado", description: "Verifique o CEP e preencha o endereço manualmente.", variant: "destructive" });
       }
-    } catch (_) {}
+    } catch (_) {
+      setCepFilled(false);
+      toast({ title: "Erro ao buscar CEP", description: "Verifique sua conexão.", variant: "destructive" });
+    }
     setCepLoading(false);
   }
 
@@ -215,40 +230,112 @@ export default function NewOrder() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Endereço</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  Endereço
+                </CardTitle>
+              </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-3">
+                  {/* CEP — busca automática */}
                   <div className="space-y-2">
                     <Label>CEP</Label>
-                    <Input
-                      value={form.addressZipcode}
-                      onChange={e => { set("addressZipcode", e.target.value); fetchCep(e.target.value); }}
-                      placeholder="00000-000"
-                      maxLength={9}
-                    />
-                    {cepLoading && <p className="text-xs text-muted-foreground">Buscando...</p>}
+                    <div className="relative">
+                      <Input
+                        value={form.addressZipcode}
+                        onChange={e => {
+                          const masked = maskCep(e.target.value);
+                          set("addressZipcode", masked);
+                          fetchCep(masked);
+                        }}
+                        placeholder="00000-000"
+                        maxLength={9}
+                        className="pr-9"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                        {cepLoading
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <Search className="h-4 w-4" />}
+                      </div>
+                    </div>
+                    {cepLoading && (
+                      <p className="text-xs text-primary animate-pulse">Buscando endereço...</p>
+                    )}
                   </div>
+
+                  {/* Rua / Logradouro */}
                   <div className="space-y-2 sm:col-span-2">
-                    <Label>Rua / Logradouro</Label>
-                    <Input value={form.addressStreet} onChange={e => set("addressStreet", e.target.value)} />
+                    <Label className="flex items-center gap-1">
+                      Rua / Logradouro
+                      {cepFilled && form.addressStreet && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                    </Label>
+                    <Input
+                      value={form.addressStreet}
+                      onChange={e => set("addressStreet", e.target.value)}
+                      className={cepFilled && form.addressStreet ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                    />
                   </div>
+
+                  {/* Número — sempre manual */}
                   <div className="space-y-2">
-                    <Label>Número</Label>
-                    <Input value={form.addressNumber} onChange={e => set("addressNumber", e.target.value)} />
+                    <Label>Número <span className="text-xs text-muted-foreground">(preencha manualmente)</span></Label>
+                    <Input
+                      value={form.addressNumber}
+                      onChange={e => set("addressNumber", e.target.value)}
+                      placeholder="Ex: 123"
+                      autoFocus={cepFilled}
+                    />
                   </div>
+
+                  {/* Bairro */}
                   <div className="space-y-2">
-                    <Label>Bairro</Label>
-                    <Input value={form.addressNeighborhood} onChange={e => set("addressNeighborhood", e.target.value)} />
+                    <Label className="flex items-center gap-1">
+                      Bairro
+                      {cepFilled && form.addressNeighborhood && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                    </Label>
+                    <Input
+                      value={form.addressNeighborhood}
+                      onChange={e => set("addressNeighborhood", e.target.value)}
+                      className={cepFilled && form.addressNeighborhood ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                    />
                   </div>
+
+                  {/* Cidade */}
                   <div className="space-y-2">
-                    <Label>Cidade</Label>
-                    <Input value={form.addressCity} onChange={e => set("addressCity", e.target.value)} />
+                    <Label className="flex items-center gap-1">
+                      Cidade
+                      {cepFilled && form.addressCity && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                    </Label>
+                    <Input
+                      value={form.addressCity}
+                      onChange={e => set("addressCity", e.target.value)}
+                      className={cepFilled && form.addressCity ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                    />
                   </div>
+
+                  {/* UF */}
                   <div className="space-y-2">
-                    <Label>UF</Label>
-                    <Input value={form.addressState} onChange={e => set("addressState", e.target.value)} maxLength={2} placeholder="SP" />
+                    <Label className="flex items-center gap-1">
+                      UF
+                      {cepFilled && form.addressState && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                    </Label>
+                    <Input
+                      value={form.addressState}
+                      onChange={e => set("addressState", e.target.value)}
+                      maxLength={2}
+                      placeholder="SP"
+                      className={cepFilled && form.addressState ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                    />
                   </div>
                 </div>
+
+                {cepFilled && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Endereço preenchido automaticamente pelo CEP. Confira e ajuste se necessário.
+                  </p>
+                )}
               </CardContent>
             </Card>
 
