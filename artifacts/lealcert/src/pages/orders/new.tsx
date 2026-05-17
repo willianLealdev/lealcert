@@ -58,6 +58,9 @@ export default function NewOrder() {
     addressNeighborhood: "",
     addressCity: "",
     addressState: "",
+    repName: "",
+    repBirthDate: "",
+    repCpf: "",
   });
 
   const [cepLoading, setCepLoading] = useState(false);
@@ -224,23 +227,43 @@ export default function NewOrder() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <Card>
-              <CardHeader><CardTitle>Tipo de Certificado</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Modelo de Certificado *</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Modelo de Certificado *</Label>
-                  <Select value={form.certificateId} onValueChange={(v) => set("certificateId", v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um modelo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {certificates?.map(c => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                          {c.name} — {formatBRL(c.price)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {!certificates?.length ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhum modelo disponível.</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {certificates.map(c => {
+                      const selected = form.certificateId === String(c.id);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => set("certificateId", String(c.id))}
+                          className={[
+                            "text-left rounded-xl border-2 p-4 transition-all cursor-pointer w-full",
+                            selected
+                              ? "border-primary bg-primary/5 shadow-md"
+                              : "border-border hover:border-primary/40 hover:bg-muted/40",
+                          ].join(" ")}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={["font-semibold text-sm leading-tight", selected ? "text-primary" : ""].join(" ")}>{c.name}</p>
+                            {selected && (
+                              <span className="shrink-0 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                                <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                              </span>
+                            )}
+                          </div>
+                          {c.description && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.description}</p>
+                          )}
+                          <p className={["text-lg font-bold mt-3", selected ? "text-primary" : "text-foreground"].join(" ")}>{formatBRL(c.price)}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="flex items-center gap-3 p-3 border rounded-lg">
                   <Checkbox
                     id="warranty"
@@ -298,6 +321,47 @@ export default function NewOrder() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Dados do Representante Legal — apenas CNPJ */}
+            {form.clientType === "cnpj" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Dados do Representante Legal</CardTitle>
+                  <p className="text-sm text-muted-foreground">Pessoa física responsável pela empresa para emissão do certificado.</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label>Nome Completo do Representante *</Label>
+                      <Input
+                        value={form.repName}
+                        onChange={e => set("repName", e.target.value)}
+                        placeholder="Nome como consta no documento"
+                        required={form.clientType === "cnpj"}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>CPF do Representante *</Label>
+                      <Input
+                        value={form.repCpf}
+                        onChange={e => set("repCpf", e.target.value)}
+                        placeholder="000.000.000-00"
+                        required={form.clientType === "cnpj"}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data de Nascimento *</Label>
+                      <Input
+                        type="date"
+                        value={form.repBirthDate}
+                        onChange={e => set("repBirthDate", e.target.value)}
+                        required={form.clientType === "cnpj"}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* CNH Upload */}
             <Card>
