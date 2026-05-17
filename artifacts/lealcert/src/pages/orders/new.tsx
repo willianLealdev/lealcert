@@ -8,8 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Search, MapPin } from "lucide-react";
+import { ArrowLeft, Loader2, Search, MapPin, Clock, CalendarDays } from "lucide-react";
 import { Link } from "wouter";
+import { Calendar } from "@/components/ui/calendar";
+
+const BRT = "America/Sao_Paulo";
+
+function slotBRTDateKey(slotDatetime: string) {
+  return new Date(slotDatetime).toLocaleDateString("sv-SE", { timeZone: BRT });
+}
+function slotBRTTime(slotDatetime: string) {
+  return new Date(slotDatetime).toLocaleTimeString("pt-BR", { timeZone: BRT, hour: "2-digit", minute: "2-digit" });
+}
+function dateToBRTKey(d: Date) {
+  return d.toLocaleDateString("sv-SE", { timeZone: BRT });
+}
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
@@ -48,6 +61,7 @@ export default function NewOrder() {
 
   const [cepLoading, setCepLoading] = useState(false);
   const [cepFilled, setCepFilled] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   const createOrder = useCreateOrder({
     mutation: {
@@ -64,6 +78,19 @@ export default function NewOrder() {
 
   const selectedCert = certificates?.find(c => String(c.id) === form.certificateId);
   const total = (selectedCert?.price ?? 0) + (form.extendedWarranty ? 15 : 0);
+
+  // Build slot map keyed by BRT date (YYYY-MM-DD)
+  const slotsByBRTDate = new Map<string, typeof slots>();
+  for (const s of slots ?? []) {
+    const key = slotBRTDateKey(s.slotDatetime);
+    if (!slotsByBRTDate.has(key)) slotsByBRTDate.set(key, []);
+    slotsByBRTDate.get(key)!.push(s);
+  }
+  const datesWithSlots = Array.from(slotsByBRTDate.keys()).map(k => new Date(k + "T12:00:00"));
+  const slotsForSelectedDate = selectedDate
+    ? (slotsByBRTDate.get(dateToBRTKey(selectedDate)) ?? [])
+    : [];
+  const selectedSlot = slotsForSelectedDate.find(s => s.slotDatetime === form.scheduledAt);
 
   function set(field: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -340,28 +367,106 @@ export default function NewOrder() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Agendamento *</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-primary" />
+                  Agendamento *
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Selecione uma data e depois escolha o horário disponível.</p>
+              </CardHeader>
               <CardContent>
                 {!slots?.length ? (
-                  <p className="text-sm text-muted-foreground">Nenhum horário disponível no momento.</p>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CalendarDays className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                    <p className="font-medium">Nenhum horário disponível no momento.</p>
+                    <p className="text-sm">Entre em contato com o administrador.</p>
+                  </div>
                 ) : (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {slots.map(slot => (
-                      <label
-                        key={slot.id}
-                        className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${form.scheduledAt === slot.slotDatetime ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
-                      >
-                        <input
-                          type="radio"
-                          name="slot"
-                          value={slot.slotDatetime}
-                          checked={form.scheduledAt === slot.slotDatetime}
-                          onChange={() => set("scheduledAt", slot.slotDatetime)}
-                          className="accent-primary"
-                        />
-                        <span className="text-sm capitalize">{formatSlotDateTime(slot.slotDatetime)}</span>
-                      </label>
-                    ))}
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    {/* Calendário */}
+                    <div className="flex flex-col items-center">
+                      <Calendar
+                        mode="single"
+                        locale={{ localize: undefined as never, formatLong: undefined as never, match: undefined as never, options: { weekStartsOn: 0, firstWeekContainsDate: 1 }, code: "pt-BR" } as never}
+                        selected={selectedDate}
+                        onSelect={(d) => {
+                          setSelectedDate(d);
+                          set("scheduledAt", "");
+                        }}
+                        disabled={[
+                          { before: new Date() },
+                          (day: Date) => !slotsByBRTDate.has(dateToBRTKey(day)),
+                        ]}
+                        modifiers={{ hasSlot: datesWithSlots }}
+                        modifiersClassNames={{
+                          hasSlot: "font-bold underline decoration-primary decoration-2",
+                        }}
+                        captionLayout="label"
+                        formatters={{
+                          formatCaption: (month) =>
+                            month.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+                          formatWeekdayName: (day) =>
+                            day.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""),
+                          formatMonthDropdown: (month) =>
+                            month.toLocaleString("pt-BR", { month: "short" }),
+                        }}
+                        className="rounded-xl border shadow-sm bg-card"
+                      />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Datas <span className="font-bold underline decoration-primary decoration-2">sublinhadas</span> têm horários disponíveis
+                      </p>
+                    </div>
+
+                    {/* Horários do dia selecionado */}
+                    <div className="flex-1 min-w-0">
+                      {!selectedDate ? (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground py-10 border-2 border-dashed rounded-xl">
+                          <CalendarDays className="h-10 w-10 mb-2 opacity-30" />
+                          <p className="font-medium">Clique em uma data no calendário</p>
+                          <p className="text-sm">para ver os horários disponíveis</p>
+                        </div>
+                      ) : slotsForSelectedDate.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground py-10 border-2 border-dashed rounded-xl">
+                          <Clock className="h-10 w-10 mb-2 opacity-30" />
+                          <p className="font-medium">Nenhum horário disponível nesta data</p>
+                          <p className="text-sm">Escolha outra data no calendário</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-sm font-semibold mb-3 capitalize">
+                            {selectedDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: BRT })}
+                          </p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {slotsForSelectedDate.map(slot => {
+                              const isSelected = form.scheduledAt === slot.slotDatetime;
+                              return (
+                                <button
+                                  key={slot.id}
+                                  type="button"
+                                  onClick={() => set("scheduledAt", slot.slotDatetime)}
+                                  className={[
+                                    "flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 text-sm font-medium transition-all cursor-pointer",
+                                    isSelected
+                                      ? "border-primary bg-primary text-primary-foreground shadow-md scale-105"
+                                      : "border-border hover:border-primary/50 hover:bg-primary/5",
+                                  ].join(" ")}
+                                >
+                                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                                  {slotBRTTime(slot.slotDatetime)}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {form.scheduledAt && selectedSlot && (
+                            <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm text-primary font-medium flex items-center gap-2">
+                              <CalendarDays className="h-4 w-4 shrink-0" />
+                              Agendado para {selectedDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: BRT })} às {slotBRTTime(selectedSlot.slotDatetime)} (horário de Brasília)
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </CardContent>
