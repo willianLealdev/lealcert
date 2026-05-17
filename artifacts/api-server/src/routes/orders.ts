@@ -39,7 +39,7 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
 }
 
 router.get("/orders", requireAuth, async (req, res): Promise<void> => {
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
   const role = session.role as string;
   const { status, search } = req.query as Record<string, string>;
@@ -75,7 +75,7 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.post("/orders", requireAuth, async (req, res): Promise<void> => {
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
   const {
     certificateId, clientType, customerName, customerCpfCnpj, customerEmail,
@@ -133,7 +133,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
 
 router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
   const role = session.role as string;
 

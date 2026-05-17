@@ -13,4 +13,9 @@ export interface AppSettingsUpdate {
   webhookSecret?: string;
   mailFrom?: string;
   siteUrl?: string;
+  scheduleOpenDays?: string;
+  scheduleOpenHour?: string;
+  scheduleCloseHour?: string;
+  scheduleStepMin?: string;
+  scheduleClosedDates?: string;
 }

@@ -10,6 +10,11 @@ export const settingsTable = pgTable("settings", {
   webhookSecret: text("webhook_secret"),
   mailFrom: text("mail_from"),
   siteUrl: text("site_url"),
+  scheduleOpenDays: text("schedule_open_days").default("1,2,3,4,5"),
+  scheduleOpenHour: text("schedule_open_hour").default("9"),
+  scheduleCloseHour: text("schedule_close_hour").default("18"),
+  scheduleStepMin: text("schedule_step_min").default("60"),
+  scheduleClosedDates: text("schedule_closed_dates").default(""),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

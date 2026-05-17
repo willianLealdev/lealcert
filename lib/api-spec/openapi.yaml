@@ -426,6 +426,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/Slot"
 
+  /slots/generate:
+    post:
+      operationId: generateSlots
+      tags: [slots]
+      summary: Generate slots from schedule config (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateSlotsInput"
+      responses:
+        "200":
+          description: Generation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateSlotsResult"
+
   /slots/{id}:
     delete:
       operationId: deleteSlot
@@ -1064,6 +1083,16 @@ components:
           type: ["string", "null"]
         siteUrl:
           type: ["string", "null"]
+        scheduleOpenDays:
+          type: string
+        scheduleOpenHour:
+          type: string
+        scheduleCloseHour:
+          type: string
+        scheduleStepMin:
+          type: string
+        scheduleClosedDates:
+          type: string
         updatedAt:
           type: string
 
@@ -1081,6 +1110,43 @@ components:
         mailFrom:
           type: string
         siteUrl:
+          type: string
+        scheduleOpenDays:
+          type: string
+        scheduleOpenHour:
+          type: string
+        scheduleCloseHour:
+          type: string
+        scheduleStepMin:
+          type: string
+        scheduleClosedDates:
+          type: string
+
+    GenerateSlotsInput:
+      type: object
+      required: [dateFrom, dateTo]
+      properties:
+        dateFrom:
+          type: string
+        dateTo:
+          type: string
+
+    GenerateSlotsResult:
+      type: object
+      required: [created, skipped]
+      properties:
+        created:
+          type: integer
+        skipped:
+          type: integer
+
+    UploadResult:
+      type: object
+      required: [key, url]
+      properties:
+        key:
+          type: string
+        url:
           type: string
 
     DashboardStats:

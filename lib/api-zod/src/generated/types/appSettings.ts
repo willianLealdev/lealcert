@@ -19,5 +19,10 @@ export interface AppSettings {
   mailFrom?: string | null;
   /** @nullable */
   siteUrl?: string | null;
+  scheduleOpenDays?: string;
+  scheduleOpenHour?: string;
+  scheduleCloseHour?: string;
+  scheduleStepMin?: string;
+  scheduleClosedDates?: string;
   updatedAt?: string;
 }

@@ -29,6 +29,8 @@ import type {
   CertificateUpdate,
   DashboardStats,
   ErrorResponse,
+  GenerateSlotsInput,
+  GenerateSlotsResult,
   GetAdminStatsParams,
   GetMeStatsParams,
   HealthStatus,
@@ -1624,6 +1626,77 @@ export const useCreateSlot = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateSlotMutationOptions(options));
+    }
+
+export const getGenerateSlotsUrl = () => {
+
+
+
+
+  return `/api/slots/generate`
+}
+
+/**
+ * @summary Generate slots from schedule config (admin only)
+ */
+export const generateSlots = async (generateSlotsInput: GenerateSlotsInput, options?: RequestInit): Promise<GenerateSlotsResult> => {
+
+  return customFetch<GenerateSlotsResult>(getGenerateSlotsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      generateSlotsInput,)
+  }
+);}
+
+
+
+
+export const getGenerateSlotsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSlots>>, TError,{data: BodyType<GenerateSlotsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateSlots>>, TError,{data: BodyType<GenerateSlotsInput>}, TContext> => {
+
+const mutationKey = ['generateSlots'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateSlots>>, {data: BodyType<GenerateSlotsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateSlots(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateSlotsMutationResult = NonNullable<Awaited<ReturnType<typeof generateSlots>>>
+    export type GenerateSlotsMutationBody = BodyType<GenerateSlotsInput>
+    export type GenerateSlotsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Generate slots from schedule config (admin only)
+ */
+export const useGenerateSlots = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSlots>>, TError,{data: BodyType<GenerateSlotsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateSlots>>,
+        TError,
+        {data: BodyType<GenerateSlotsInput>},
+        TContext
+      > => {
+      return useMutation(getGenerateSlotsMutationOptions(options));
     }
 
 export const getDeleteSlotUrl = (id: number,) => {

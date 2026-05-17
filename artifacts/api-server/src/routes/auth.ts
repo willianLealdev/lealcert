@@ -32,8 +32,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     res.status(401).json({ error: "CPF/CNPJ ou senha inválidos." });
     return;
   }
-  (req.session as Record<string, unknown>).userId = user.id;
-  (req.session as Record<string, unknown>).role = user.role;
+  req.session.userId = user.id;
+  req.session.role = user.role;
   res.json({
     id: user.id,
     name: user.name,
@@ -51,7 +51,7 @@ router.post("/auth/logout", (req, res): void => {
 });
 
 router.get("/auth/me", async (req, res): Promise<void> => {
-  const userId = (req.session as Record<string, unknown>).userId as number | undefined;
+  const userId = req.session.userId;
   if (!userId) {
     res.status(401).json({ error: "Não autenticado." });
     return;
@@ -73,7 +73,7 @@ router.get("/auth/me", async (req, res): Promise<void> => {
 });
 
 router.patch("/auth/profile", async (req, res): Promise<void> => {
-  const userId = (req.session as Record<string, unknown>).userId as number | undefined;
+  const userId = req.session.userId;
   if (!userId) {
     res.status(401).json({ error: "Não autenticado." });
     return;

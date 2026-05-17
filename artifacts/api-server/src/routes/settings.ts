@@ -12,9 +12,8 @@ async function getOrCreateSettings() {
   return s;
 }
 
-router.get("/settings", requireAdmin, async (_req, res): Promise<void> => {
-  const s = await getOrCreateSettings();
-  res.json({
+function serializeSettings(s: typeof settingsTable.$inferSelect) {
+  return {
     id: s.id,
     appName: s.appName,
     mpAccessToken: s.mpAccessToken,
@@ -22,13 +21,27 @@ router.get("/settings", requireAdmin, async (_req, res): Promise<void> => {
     webhookSecret: s.webhookSecret,
     mailFrom: s.mailFrom,
     siteUrl: s.siteUrl,
+    scheduleOpenDays: s.scheduleOpenDays ?? "1,2,3,4,5",
+    scheduleOpenHour: s.scheduleOpenHour ?? "9",
+    scheduleCloseHour: s.scheduleCloseHour ?? "18",
+    scheduleStepMin: s.scheduleStepMin ?? "60",
+    scheduleClosedDates: s.scheduleClosedDates ?? "",
     updatedAt: s.updatedAt,
-  });
+  };
+}
+
+router.get("/settings", requireAdmin, async (_req, res): Promise<void> => {
+  const s = await getOrCreateSettings();
+  res.json(serializeSettings(s));
 });
 
 router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   const s = await getOrCreateSettings();
-  const { appName, mpAccessToken, mpPublicKey, webhookSecret, mailFrom, siteUrl } = req.body ?? {};
+  const {
+    appName, mpAccessToken, mpPublicKey, webhookSecret, mailFrom, siteUrl,
+    scheduleOpenDays, scheduleOpenHour, scheduleCloseHour, scheduleStepMin, scheduleClosedDates,
+  } = req.body ?? {};
+
   const updates: Record<string, unknown> = {};
   if (appName !== undefined) updates.appName = appName;
   if (mpAccessToken !== undefined) updates.mpAccessToken = mpAccessToken;
@@ -36,22 +49,19 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (webhookSecret !== undefined) updates.webhookSecret = webhookSecret;
   if (mailFrom !== undefined) updates.mailFrom = mailFrom;
   if (siteUrl !== undefined) updates.siteUrl = siteUrl;
+  if (scheduleOpenDays !== undefined) updates.scheduleOpenDays = scheduleOpenDays;
+  if (scheduleOpenHour !== undefined) updates.scheduleOpenHour = scheduleOpenHour;
+  if (scheduleCloseHour !== undefined) updates.scheduleCloseHour = scheduleCloseHour;
+  if (scheduleStepMin !== undefined) updates.scheduleStepMin = scheduleStepMin;
+  if (scheduleClosedDates !== undefined) updates.scheduleClosedDates = scheduleClosedDates;
 
   const [updated] = await db
     .update(settingsTable)
     .set(updates as Parameters<typeof db.update>[0] extends infer T ? Record<string, unknown> : never)
     .where(eq(settingsTable.id, s.id))
     .returning();
-  res.json({
-    id: updated.id,
-    appName: updated.appName,
-    mpAccessToken: updated.mpAccessToken,
-    mpPublicKey: updated.mpPublicKey,
-    webhookSecret: updated.webhookSecret,
-    mailFrom: updated.mailFrom,
-    siteUrl: updated.siteUrl,
-    updatedAt: updated.updatedAt,
-  });
+
+  res.json(serializeSettings(updated));
 });
 
 export default router;

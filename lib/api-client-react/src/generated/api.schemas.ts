@@ -323,6 +323,11 @@ export interface AppSettings {
   mailFrom?: string | null;
   /** @nullable */
   siteUrl?: string | null;
+  scheduleOpenDays?: string;
+  scheduleOpenHour?: string;
+  scheduleCloseHour?: string;
+  scheduleStepMin?: string;
+  scheduleClosedDates?: string;
   updatedAt?: string;
 }
 
@@ -333,6 +338,26 @@ export interface AppSettingsUpdate {
   webhookSecret?: string;
   mailFrom?: string;
   siteUrl?: string;
+  scheduleOpenDays?: string;
+  scheduleOpenHour?: string;
+  scheduleCloseHour?: string;
+  scheduleStepMin?: string;
+  scheduleClosedDates?: string;
+}
+
+export interface GenerateSlotsInput {
+  dateFrom: string;
+  dateTo: string;
+}
+
+export interface GenerateSlotsResult {
+  created: number;
+  skipped: number;
+}
+
+export interface UploadResult {
+  key: string;
+  url: string;
 }
 
 export interface DashboardStats {

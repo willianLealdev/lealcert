@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useListCertificates, useListSlots, useCreateOrder } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Search, MapPin, Clock, CalendarDays } from "lucide-react";
+import { ArrowLeft, Loader2, Search, MapPin, Clock, CalendarDays, Upload, FileText, X } from "lucide-react";
 import { Link } from "wouter";
 import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
@@ -63,6 +63,10 @@ export default function NewOrder() {
   const [cepLoading, setCepLoading] = useState(false);
   const [cepFilled, setCepFilled] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [cnhFile, setCnhFile] = useState<File | null>(null);
+  const [cnhUploading, setCnhUploading] = useState(false);
+  const [cnhKey, setCnhKey] = useState<string | null>(null);
+  const cnhInputRef = useRef<HTMLInputElement>(null);
 
   const createOrder = useCreateOrder({
     mutation: {
@@ -131,24 +135,62 @@ export default function NewOrder() {
     setCepLoading(false);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function uploadCnh(file: File): Promise<string | null> {
+    setCnhUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload/cnh", { method: "POST", body: fd });
+      if (!res.ok) throw new Error("Upload falhou");
+      const json = await res.json() as { key: string; url: string };
+      setCnhKey(json.key);
+      toast({ title: "CNH enviada com sucesso!" });
+      return json.key;
+    } catch {
+      toast({ title: "Erro ao enviar CNH", description: "Tente novamente.", variant: "destructive" });
+      return null;
+    } finally {
+      setCnhUploading(false);
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.certificateId) {
       toast({ title: "Atenção", description: "Selecione um modelo de certificado.", variant: "destructive" });
+      return;
+    }
+    if (!form.customerEmail) {
+      toast({ title: "Atenção", description: "E-mail é obrigatório.", variant: "destructive" });
+      return;
+    }
+    if (!form.customerPhone) {
+      toast({ title: "Atenção", description: "Telefone é obrigatório.", variant: "destructive" });
+      return;
+    }
+    if (!cnhFile && !cnhKey) {
+      toast({ title: "Atenção", description: "Envie uma foto ou cópia da CNH.", variant: "destructive" });
       return;
     }
     if (!form.scheduledAt) {
       toast({ title: "Atenção", description: "Selecione um horário para o atendimento.", variant: "destructive" });
       return;
     }
+
+    let uploadedKey = cnhKey;
+    if (cnhFile && !cnhKey) {
+      uploadedKey = await uploadCnh(cnhFile);
+      if (!uploadedKey) return;
+    }
+
     createOrder.mutate({
       data: {
         certificateId: Number(form.certificateId),
         clientType: form.clientType as "cpf" | "cnpj",
         customerName: form.customerName,
         customerCpfCnpj: form.customerCpfCnpj,
-        customerEmail: form.customerEmail || undefined,
-        customerPhone: form.customerPhone || undefined,
+        customerEmail: form.customerEmail,
+        customerPhone: form.customerPhone,
         companyName: form.companyName || undefined,
         inssNumber: form.inssNumber || undefined,
         scheduledAt: form.scheduledAt,
@@ -246,14 +288,87 @@ export default function NewOrder() {
                     <Input value={form.inssNumber} onChange={e => set("inssNumber", e.target.value)} placeholder="Opcional" />
                   </div>
                   <div className="space-y-2">
-                    <Label>E-mail</Label>
-                    <Input type="email" value={form.customerEmail} onChange={e => set("customerEmail", e.target.value)} />
+                    <Label>E-mail *</Label>
+                    <Input type="email" value={form.customerEmail} onChange={e => set("customerEmail", e.target.value)} required placeholder="cliente@email.com" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Telefone</Label>
-                    <Input value={form.customerPhone} onChange={e => set("customerPhone", e.target.value)} placeholder="(11) 99999-0000" />
+                    <Label>Telefone / WhatsApp *</Label>
+                    <Input value={form.customerPhone} onChange={e => set("customerPhone", e.target.value)} required placeholder="(11) 99999-0000" />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* CNH Upload */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Documento de Identidade — CNH *
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Envie uma foto ou cópia da CNH (PDF, JPG ou PNG, máx. 5 MB).</p>
+              </CardHeader>
+              <CardContent>
+                <input
+                  ref={cnhInputRef}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0] ?? null;
+                    if (f && f.size > 5 * 1024 * 1024) {
+                      toast({ title: "Arquivo muito grande", description: "O arquivo deve ter no máximo 5 MB.", variant: "destructive" });
+                      return;
+                    }
+                    setCnhFile(f);
+                    setCnhKey(null);
+                  }}
+                />
+                {!cnhFile ? (
+                  <button
+                    type="button"
+                    onClick={() => cnhInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-xl py-10 flex flex-col items-center gap-3 text-muted-foreground transition-colors hover:bg-primary/5 cursor-pointer"
+                  >
+                    <Upload className="h-8 w-8 opacity-40" />
+                    <div className="text-center">
+                      <p className="font-medium text-sm">Clique para selecionar arquivo</p>
+                      <p className="text-xs">PDF, JPG, JPEG ou PNG — máx. 5 MB</p>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-muted/30">
+                    <FileText className="h-8 w-8 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{cnhFile.name}</p>
+                      <p className="text-xs text-muted-foreground">{(cnhFile.size / 1024).toFixed(0)} KB</p>
+                      {cnhKey && (
+                        <p className="text-xs text-emerald-600 font-medium mt-0.5">✓ Enviado com sucesso</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!cnhKey && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => uploadCnh(cnhFile)}
+                          disabled={cnhUploading}
+                        >
+                          {cnhUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                          {cnhUploading ? "Enviando..." : "Enviar"}
+                        </Button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setCnhFile(null); setCnhKey(null); if (cnhInputRef.current) cnhInputRef.current.value = ""; }}
+                        className="text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

@@ -8,6 +8,7 @@ import slotsRouter from "./slots";
 import supportRouter from "./support";
 import settingsRouter from "./settings";
 import dashboardRouter from "./dashboard";
+import uploadRouter from "./upload";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(slotsRouter);
 router.use(supportRouter);
 router.use(settingsRouter);
 router.use(dashboardRouter);
+router.use(uploadRouter);
 
 export default router;

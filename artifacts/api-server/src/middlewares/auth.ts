@@ -1,8 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const userId = (req.session as Record<string, unknown>).userId;
-  if (!userId) {
+  if (!req.session.userId) {
     res.status(401).json({ error: "Não autenticado." });
     return;
   }
@@ -10,13 +9,11 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  const userId = (req.session as Record<string, unknown>).userId;
-  const role = (req.session as Record<string, unknown>).role;
-  if (!userId) {
+  if (!req.session.userId) {
     res.status(401).json({ error: "Não autenticado." });
     return;
   }
-  if (role !== "admin") {
+  if (req.session.role !== "admin") {
     res.status(403).json({ error: "Acesso negado." });
     return;
   }

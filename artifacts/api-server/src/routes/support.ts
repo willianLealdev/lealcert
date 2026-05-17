@@ -6,7 +6,7 @@ import { requireAuth } from "../middlewares/auth";
 const router = Router();
 
 router.get("/support", requireAuth, async (req, res): Promise<void> => {
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
   const role = session.role as string;
 
@@ -32,7 +32,7 @@ router.get("/support", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.post("/support", requireAuth, async (req, res): Promise<void> => {
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
   const { subject, message } = req.body ?? {};
   if (!subject || !message) {
@@ -56,7 +56,7 @@ router.post("/support", requireAuth, async (req, res): Promise<void> => {
 
 router.get("/support/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
   const role = session.role as string;
 
@@ -111,7 +111,7 @@ router.get("/support/:id", requireAuth, async (req, res): Promise<void> => {
 
 router.post("/support/:id/messages", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
   const role = session.role as string;
   const { content } = req.body ?? {};

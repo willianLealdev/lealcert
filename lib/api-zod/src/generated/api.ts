@@ -403,6 +403,20 @@ export const CreateSlotBody = zod.object({
 
 
 /**
+ * @summary Generate slots from schedule config (admin only)
+ */
+export const GenerateSlotsBody = zod.object({
+  "dateFrom": zod.string(),
+  "dateTo": zod.string()
+})
+
+export const GenerateSlotsResponse = zod.object({
+  "created": zod.number(),
+  "skipped": zod.number()
+})
+
+
+/**
  * @summary Delete scheduling slot (admin only)
  */
 export const DeleteSlotParams = zod.object({
@@ -505,6 +519,11 @@ export const GetSettingsResponse = zod.object({
   "webhookSecret": zod.string().nullish(),
   "mailFrom": zod.string().nullish(),
   "siteUrl": zod.string().nullish(),
+  "scheduleOpenDays": zod.string().optional(),
+  "scheduleOpenHour": zod.string().optional(),
+  "scheduleCloseHour": zod.string().optional(),
+  "scheduleStepMin": zod.string().optional(),
+  "scheduleClosedDates": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
 
@@ -518,7 +537,12 @@ export const UpdateSettingsBody = zod.object({
   "mpPublicKey": zod.string().optional(),
   "webhookSecret": zod.string().optional(),
   "mailFrom": zod.string().optional(),
-  "siteUrl": zod.string().optional()
+  "siteUrl": zod.string().optional(),
+  "scheduleOpenDays": zod.string().optional(),
+  "scheduleOpenHour": zod.string().optional(),
+  "scheduleCloseHour": zod.string().optional(),
+  "scheduleStepMin": zod.string().optional(),
+  "scheduleClosedDates": zod.string().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -529,6 +553,11 @@ export const UpdateSettingsResponse = zod.object({
   "webhookSecret": zod.string().nullish(),
   "mailFrom": zod.string().nullish(),
   "siteUrl": zod.string().nullish(),
+  "scheduleOpenDays": zod.string().optional(),
+  "scheduleOpenHour": zod.string().optional(),
+  "scheduleCloseHour": zod.string().optional(),
+  "scheduleStepMin": zod.string().optional(),
+  "scheduleClosedDates": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
 

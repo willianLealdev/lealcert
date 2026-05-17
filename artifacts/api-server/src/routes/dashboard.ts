@@ -43,7 +43,7 @@ function fmtBRDate(d: Date | string | null): string {
 // ─── Legacy endpoints (kept for backward compat) ─────────────────────────────
 
 router.get("/dashboard/stats", requireAuth, async (req, res): Promise<void> => {
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
   const role = session.role as string;
 
@@ -74,7 +74,7 @@ router.get("/dashboard/stats", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.get("/dashboard/recent-orders", requireAuth, async (req, res): Promise<void> => {
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
   const role = session.role as string;
 
@@ -105,7 +105,7 @@ router.get("/dashboard/recent-orders", requireAuth, async (req, res): Promise<vo
 });
 
 router.get("/dashboard/orders-by-day", requireAuth, async (req, res): Promise<void> => {
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
   const role = session.role as string;
 
@@ -130,7 +130,7 @@ router.get("/dashboard/orders-by-day", requireAuth, async (req, res): Promise<vo
 // ─── NEW: Full admin dashboard stats ─────────────────────────────────────────
 
 router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void> => {
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   if (session.role !== "admin") { res.status(403).json({ error: "Acesso negado." }); return; }
 
   const range = (req.query.range as string) || "30d";
@@ -319,7 +319,7 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
 // ─── NEW: Contador "me" stats ─────────────────────────────────────────────────
 
 router.get("/dashboard/me-stats", requireAuth, async (req, res): Promise<void> => {
-  const session = req.session as Record<string, unknown>;
+  const session = req.session;
   const userId = session.userId as number;
 
   const range = (req.query.range as string) || "30d";
