@@ -24,12 +24,14 @@ export default function Login() {
         await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         setLocation("/dashboard");
       },
-      onError: () => {
-        toast({
-          title: "Acesso negado",
-          description: "CPF/CNPJ ou senha inválidos. Verifique seus dados e tente novamente.",
-          variant: "destructive",
-        });
+      onError: (err: unknown) => {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        if (!status) {
+          toast({ title: "Servidor indisponível", description: "Não foi possível conectar ao servidor. Tente novamente em instantes.", variant: "destructive" });
+        } else {
+          toast({ title: "Acesso negado", description: msg ?? "CPF/CNPJ ou senha inválidos.", variant: "destructive" });
+        }
       },
     },
   });
