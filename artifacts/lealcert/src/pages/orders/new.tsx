@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Search, MapPin, Clock, CalendarDays } from "lucide-react";
 import { Link } from "wouter";
 import { Calendar } from "@/components/ui/calendar";
+import { ptBR } from "date-fns/locale";
 
 const BRT = "America/Sao_Paulo";
 
@@ -387,7 +388,7 @@ export default function NewOrder() {
                     <div className="flex flex-col items-center">
                       <Calendar
                         mode="single"
-                        locale={{ localize: undefined as never, formatLong: undefined as never, match: undefined as never, options: { weekStartsOn: 0, firstWeekContainsDate: 1 }, code: "pt-BR" } as never}
+                        locale={ptBR}
                         selected={selectedDate}
                         onSelect={(d) => {
                           setSelectedDate(d);
@@ -402,14 +403,6 @@ export default function NewOrder() {
                           hasSlot: "font-bold underline decoration-primary decoration-2",
                         }}
                         captionLayout="label"
-                        formatters={{
-                          formatCaption: (month) =>
-                            month.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
-                          formatWeekdayName: (day) =>
-                            day.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""),
-                          formatMonthDropdown: (month) =>
-                            month.toLocaleString("pt-BR", { month: "short" }),
-                        }}
                         className="rounded-xl border shadow-sm bg-card"
                       />
                       <p className="text-xs text-muted-foreground mt-2">
