@@ -60,21 +60,12 @@ export default function Login() {
           <div className="absolute h-[200px] w-[200px] rounded-full border border-white/5" />
         </div>
 
-        <div className="relative z-10 flex flex-col items-center text-center space-y-8">
+        <div className="relative z-10 flex flex-col items-center text-center space-y-10">
           <img
-            src="/logo-new.png"
+            src="/logo-new-nobg.png"
             alt="LealCert"
-            className="w-full max-w-sm h-auto object-contain"
-            style={{ mixBlendMode: "screen" }}
+            className="w-full h-auto object-contain"
           />
-          <div className="space-y-3">
-            <h2 className="text-3xl font-bold text-white tracking-tight">
-              Certificados Digitais
-            </h2>
-            <p className="text-blue-200/80 text-lg max-w-sm leading-relaxed">
-              Plataforma completa para emissão e gerenciamento de certificados digitais com segurança e agilidade.
-            </p>
-          </div>
           <div className="flex items-center gap-6 text-blue-200/60 text-sm">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-yellow-400/80" />

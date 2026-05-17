@@ -54,10 +54,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="px-3 py-3 border-b border-sidebar-border/50 flex items-center justify-center">
           <img
-            src="/logo-new.png"
+            src="/logo-new-nobg.png"
             alt="LealCert"
             className="w-full h-auto object-contain max-h-20"
-            style={{ mixBlendMode: "screen" }}
           />
         </div>
 
