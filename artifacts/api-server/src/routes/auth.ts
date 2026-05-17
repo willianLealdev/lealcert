@@ -34,14 +34,21 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   req.session.userId = user.id;
   req.session.role = user.role;
-  res.json({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    cpfCnpj: user.cpfCnpj,
-    role: user.role,
-    phone: user.phone,
-    createdAt: user.createdAt,
+  req.session.save((err) => {
+    if (err) {
+      logger.error({ err }, "session.save failed");
+      res.status(500).json({ error: "Erro ao iniciar sessão. Tente novamente." });
+      return;
+    }
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      cpfCnpj: user.cpfCnpj,
+      role: user.role,
+      phone: user.phone,
+      createdAt: user.createdAt,
+    });
   });
 });
 
