@@ -33,7 +33,7 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
     return (
       <div className="h-screen w-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <img src="/logo.png" alt="LealCert" className="h-20 w-auto opacity-80" />
+          <div className="text-2xl font-extrabold tracking-tight text-foreground">LEAL<span className="text-blue-500">CERT</span></div>
           <div className="h-1 w-32 bg-primary/20 rounded-full overflow-hidden">
             <div className="h-full w-1/2 bg-primary rounded-full animate-pulse" />
           </div>

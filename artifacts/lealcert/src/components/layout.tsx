@@ -51,13 +51,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar flex flex-col shrink-0 border-r border-sidebar-border shadow-xl">
-        {/* Logo */}
+        {/* Brand */}
         <div className="px-5 pt-6 pb-4 border-b border-sidebar-border/50">
-          <img
-            src="/logo.png"
-            alt="LealCert"
-            className="h-16 w-auto object-contain"
-          />
+          <div className="text-xl font-extrabold tracking-tight text-white">
+            LEAL<span className="text-blue-400">CERT</span>
+          </div>
+          <p className="text-xs text-sidebar-foreground/40 mt-0.5">Certificados Digitais</p>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
