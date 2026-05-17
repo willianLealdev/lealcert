@@ -350,6 +350,92 @@ export interface OrdersByDay {
   count: number;
 }
 
+export interface DaySeries {
+  d: string;
+  c: number;
+}
+
+export interface LabelSeries {
+  label: string;
+  c: number;
+}
+
+export interface TierEntry {
+  uid: number;
+  name: string;
+  doc: string;
+  c: number;
+  last?: string;
+  tier: string;
+}
+
+export interface Appointment {
+  dt: string;
+  orderNo: string;
+}
+
+export type AdminStatsCards = {
+  total_users: number;
+  new_users: number;
+  orders_period: number;
+  buyers_period: number;
+  pending_period: number;
+  paid_period: number;
+  protocol_period: number;
+};
+
+export type AdminStatsRevenue = {
+  today: number;
+  month: number;
+  all: number;
+  period: number;
+};
+
+export type AdminStatsRevenue12 = {
+  labels: string[];
+  values: number[];
+  counts: number[];
+};
+
+export type AdminStatsMetaTiers = {
+  top: number;
+  vip: number;
+  gold: number;
+};
+
+export type AdminStatsMeta = {
+  tiers: AdminStatsMetaTiers;
+};
+
+export interface AdminStats {
+  cards: AdminStatsCards;
+  revenue: AdminStatsRevenue;
+  users_per_day: DaySeries[];
+  orders_per_day: DaySeries[];
+  models_breakdown: LabelSeries[];
+  status_breakdown: LabelSeries[];
+  geo_states: LabelSeries[];
+  top_buyers_period: TierEntry[];
+  revenue12: AdminStatsRevenue12;
+  tiers_all_time: TierEntry[];
+  meta: AdminStatsMeta;
+}
+
+export type MeStatsCards = {
+  total: number;
+  pending: number;
+  paid: number;
+  protocol: number;
+};
+
+export interface MeStats {
+  cards: MeStatsCards;
+  orders_per_day: DaySeries[];
+  models_breakdown: LabelSeries[];
+  status_breakdown: LabelSeries[];
+  next_appointments: Appointment[];
+}
+
 export type ListCertificatesParams = {
 activeOnly?: boolean;
 };
@@ -362,4 +448,40 @@ search?: string;
 export type ListSlotsParams = {
 date?: string;
 };
+
+export type GetAdminStatsParams = {
+range?: GetAdminStatsRange;
+from?: string;
+to?: string;
+};
+
+export type GetAdminStatsRange = typeof GetAdminStatsRange[keyof typeof GetAdminStatsRange];
+
+
+export const GetAdminStatsRange = {
+  today: 'today',
+  '7d': '7d',
+  '15d': '15d',
+  '30d': '30d',
+  '90d': '90d',
+  custom: 'custom',
+} as const;
+
+export type GetMeStatsParams = {
+range?: GetMeStatsRange;
+from?: string;
+to?: string;
+};
+
+export type GetMeStatsRange = typeof GetMeStatsRange[keyof typeof GetMeStatsRange];
+
+
+export const GetMeStatsRange = {
+  today: 'today',
+  '7d': '7d',
+  '15d': '15d',
+  '30d': '30d',
+  '90d': '90d',
+  custom: 'custom',
+} as const;
 

@@ -593,3 +593,118 @@ export const GetOrdersByDayResponseItem = zod.object({
 export const GetOrdersByDayResponse = zod.array(GetOrdersByDayResponseItem)
 
 
+/**
+ * @summary Full admin dashboard stats with range filter
+ */
+export const getAdminStatsQueryRangeDefault = `30d`;
+
+export const GetAdminStatsQueryParams = zod.object({
+  "range": zod.enum(['today', '7d', '15d', '30d', '90d', 'custom']).default(getAdminStatsQueryRangeDefault),
+  "from": zod.coerce.string().optional(),
+  "to": zod.coerce.string().optional()
+})
+
+export const GetAdminStatsResponse = zod.object({
+  "cards": zod.object({
+  "total_users": zod.number(),
+  "new_users": zod.number(),
+  "orders_period": zod.number(),
+  "buyers_period": zod.number(),
+  "pending_period": zod.number(),
+  "paid_period": zod.number(),
+  "protocol_period": zod.number()
+}),
+  "revenue": zod.object({
+  "today": zod.number(),
+  "month": zod.number(),
+  "all": zod.number(),
+  "period": zod.number()
+}),
+  "users_per_day": zod.array(zod.object({
+  "d": zod.string(),
+  "c": zod.number()
+})),
+  "orders_per_day": zod.array(zod.object({
+  "d": zod.string(),
+  "c": zod.number()
+})),
+  "models_breakdown": zod.array(zod.object({
+  "label": zod.string(),
+  "c": zod.number()
+})),
+  "status_breakdown": zod.array(zod.object({
+  "label": zod.string(),
+  "c": zod.number()
+})),
+  "geo_states": zod.array(zod.object({
+  "label": zod.string(),
+  "c": zod.number()
+})),
+  "top_buyers_period": zod.array(zod.object({
+  "uid": zod.number(),
+  "name": zod.string(),
+  "doc": zod.string(),
+  "c": zod.number(),
+  "last": zod.string().optional(),
+  "tier": zod.string()
+})),
+  "revenue12": zod.object({
+  "labels": zod.array(zod.string()),
+  "values": zod.array(zod.number()),
+  "counts": zod.array(zod.number())
+}),
+  "tiers_all_time": zod.array(zod.object({
+  "uid": zod.number(),
+  "name": zod.string(),
+  "doc": zod.string(),
+  "c": zod.number(),
+  "last": zod.string().optional(),
+  "tier": zod.string()
+})),
+  "meta": zod.object({
+  "tiers": zod.object({
+  "top": zod.number(),
+  "vip": zod.number(),
+  "gold": zod.number()
+})
+})
+})
+
+
+/**
+ * @summary Contador dashboard stats with range filter
+ */
+export const getMeStatsQueryRangeDefault = `30d`;
+
+export const GetMeStatsQueryParams = zod.object({
+  "range": zod.enum(['today', '7d', '15d', '30d', '90d', 'custom']).default(getMeStatsQueryRangeDefault),
+  "from": zod.coerce.string().optional(),
+  "to": zod.coerce.string().optional()
+})
+
+export const GetMeStatsResponse = zod.object({
+  "cards": zod.object({
+  "total": zod.number(),
+  "pending": zod.number(),
+  "paid": zod.number(),
+  "protocol": zod.number()
+}),
+  "orders_per_day": zod.array(zod.object({
+  "d": zod.string(),
+  "c": zod.number()
+})),
+  "models_breakdown": zod.array(zod.object({
+  "label": zod.string(),
+  "c": zod.number()
+})),
+  "status_breakdown": zod.array(zod.object({
+  "label": zod.string(),
+  "c": zod.number()
+})),
+  "next_appointments": zod.array(zod.object({
+  "dt": zod.string(),
+  "orderNo": zod.string()
+}))
+})
+
+

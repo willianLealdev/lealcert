@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminStats,
   AppSettings,
   AppSettingsUpdate,
   AuthUser,
@@ -28,11 +29,14 @@ import type {
   CertificateUpdate,
   DashboardStats,
   ErrorResponse,
+  GetAdminStatsParams,
+  GetMeStatsParams,
   HealthStatus,
   ListCertificatesParams,
   ListOrdersParams,
   ListSlotsParams,
   LoginInput,
+  MeStats,
   Message,
   MessageInput,
   Order,
@@ -2426,6 +2430,174 @@ export function useGetOrdersByDay<TData = Awaited<ReturnType<typeof getOrdersByD
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetOrdersByDayQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetAdminStatsUrl = (params?: GetAdminStatsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dashboard/admin-stats?${stringifiedParams}` : `/api/dashboard/admin-stats`
+}
+
+/**
+ * @summary Full admin dashboard stats with range filter
+ */
+export const getAdminStats = async (params?: GetAdminStatsParams, options?: RequestInit): Promise<AdminStats> => {
+
+  return customFetch<AdminStats>(getGetAdminStatsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminStatsQueryKey = (params?: GetAdminStatsParams,) => {
+    return [
+    `/api/dashboard/admin-stats`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminStatsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminStats>>, TError = ErrorType<unknown>>(params?: GetAdminStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminStatsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminStats>>> = ({ signal }) => getAdminStats(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminStats>>>
+export type GetAdminStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Full admin dashboard stats with range filter
+ */
+
+export function useGetAdminStats<TData = Awaited<ReturnType<typeof getAdminStats>>, TError = ErrorType<unknown>>(
+ params?: GetAdminStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminStatsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetMeStatsUrl = (params?: GetMeStatsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dashboard/me-stats?${stringifiedParams}` : `/api/dashboard/me-stats`
+}
+
+/**
+ * @summary Contador dashboard stats with range filter
+ */
+export const getMeStats = async (params?: GetMeStatsParams, options?: RequestInit): Promise<MeStats> => {
+
+  return customFetch<MeStats>(getGetMeStatsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMeStatsQueryKey = (params?: GetMeStatsParams,) => {
+    return [
+    `/api/dashboard/me-stats`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMeStatsQueryOptions = <TData = Awaited<ReturnType<typeof getMeStats>>, TError = ErrorType<unknown>>(params?: GetMeStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMeStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMeStatsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMeStats>>> = ({ signal }) => getMeStats(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMeStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMeStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getMeStats>>>
+export type GetMeStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Contador dashboard stats with range filter
+ */
+
+export function useGetMeStats<TData = Awaited<ReturnType<typeof getMeStats>>, TError = ErrorType<unknown>>(
+ params?: GetMeStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMeStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMeStatsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

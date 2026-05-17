@@ -609,6 +609,62 @@ paths:
                 items:
                   $ref: "#/components/schemas/OrdersByDay"
 
+  /dashboard/admin-stats:
+    get:
+      operationId: getAdminStats
+      tags: [dashboard]
+      summary: Full admin dashboard stats with range filter
+      parameters:
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [today, 7d, 15d, 30d, 90d, custom]
+            default: 30d
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Admin stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /dashboard/me-stats:
+    get:
+      operationId: getMeStats
+      tags: [dashboard]
+      summary: Contador dashboard stats with range filter
+      parameters:
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [today, 7d, 15d, 30d, 90d, custom]
+            default: 30d
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Contador stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeStats"
+
 components:
   schemas:
     HealthStatus:
@@ -1054,3 +1110,146 @@ components:
           type: string
         count:
           type: integer
+
+    DaySeries:
+      type: object
+      required: [d, c]
+      properties:
+        d:
+          type: string
+        c:
+          type: integer
+
+    LabelSeries:
+      type: object
+      required: [label, c]
+      properties:
+        label:
+          type: string
+        c:
+          type: integer
+
+    TierEntry:
+      type: object
+      required: [uid, name, doc, c, tier]
+      properties:
+        uid:
+          type: integer
+        name:
+          type: string
+        doc:
+          type: string
+        c:
+          type: integer
+        last:
+          type: string
+        tier:
+          type: string
+
+    Appointment:
+      type: object
+      required: [dt, orderNo]
+      properties:
+        dt:
+          type: string
+        orderNo:
+          type: string
+
+    AdminStats:
+      type: object
+      required: [cards, revenue, users_per_day, orders_per_day, models_breakdown, status_breakdown, geo_states, top_buyers_period, revenue12, tiers_all_time, meta]
+      properties:
+        cards:
+          type: object
+          required: [total_users, new_users, orders_period, buyers_period, pending_period, paid_period, protocol_period]
+          properties:
+            total_users: { type: integer }
+            new_users: { type: integer }
+            orders_period: { type: integer }
+            buyers_period: { type: integer }
+            pending_period: { type: integer }
+            paid_period: { type: integer }
+            protocol_period: { type: integer }
+        revenue:
+          type: object
+          required: [today, month, all, period]
+          properties:
+            today: { type: number }
+            month: { type: number }
+            all: { type: number }
+            period: { type: number }
+        users_per_day:
+          type: array
+          items:
+            $ref: "#/components/schemas/DaySeries"
+        orders_per_day:
+          type: array
+          items:
+            $ref: "#/components/schemas/DaySeries"
+        models_breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelSeries"
+        status_breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelSeries"
+        geo_states:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelSeries"
+        top_buyers_period:
+          type: array
+          items:
+            $ref: "#/components/schemas/TierEntry"
+        revenue12:
+          type: object
+          required: [labels, values, counts]
+          properties:
+            labels: { type: array, items: { type: string } }
+            values: { type: array, items: { type: number } }
+            counts: { type: array, items: { type: integer } }
+        tiers_all_time:
+          type: array
+          items:
+            $ref: "#/components/schemas/TierEntry"
+        meta:
+          type: object
+          required: [tiers]
+          properties:
+            tiers:
+              type: object
+              required: [top, vip, gold]
+              properties:
+                top: { type: integer }
+                vip: { type: integer }
+                gold: { type: integer }
+
+    MeStats:
+      type: object
+      required: [cards, orders_per_day, models_breakdown, status_breakdown, next_appointments]
+      properties:
+        cards:
+          type: object
+          required: [total, pending, paid, protocol]
+          properties:
+            total: { type: integer }
+            pending: { type: integer }
+            paid: { type: integer }
+            protocol: { type: integer }
+        orders_per_day:
+          type: array
+          items:
+            $ref: "#/components/schemas/DaySeries"
+        models_breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelSeries"
+        status_breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/LabelSeries"
+        next_appointments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Appointment"
