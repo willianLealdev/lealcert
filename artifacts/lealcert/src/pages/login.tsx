@@ -55,12 +55,31 @@ export default function Login() {
     >
       {/* Left panel — branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col items-center text-center">
+        <div className="relative z-10 flex flex-col items-center text-center space-y-8">
           <img
             src="/logo.png"
             alt="LealCert"
             className="h-56 w-auto object-contain drop-shadow-2xl"
           />
+          <p className="text-blue-200/80 text-lg max-w-sm leading-relaxed">
+            Plataforma completa para emissão e gerenciamento de certificados digitais com segurança e agilidade.
+          </p>
+          <div className="flex items-center gap-6 text-blue-200/60 text-sm">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-yellow-400/80" />
+              <span>e-CPF &amp; e-CNPJ</span>
+            </div>
+            <div className="w-px h-4 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-yellow-400/80" />
+              <span>A1 &amp; A3</span>
+            </div>
+            <div className="w-px h-4 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-yellow-400/80" />
+              <span>ICP-Brasil</span>
+            </div>
+          </div>
         </div>
       </div>
 
