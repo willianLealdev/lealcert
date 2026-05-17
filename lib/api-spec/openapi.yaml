@@ -3,20 +3,36 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: LealCert - Sistema de Venda de Certificados Digitais
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User management
+  - name: certificates
+    description: Certificate models
+  - name: orders
+    description: Orders
+  - name: slots
+    description: Scheduling slots
+  - name: support
+    description: Support tickets
+  - name: settings
+    description: App settings
+  - name: dashboard
+    description: Dashboard stats
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +40,1017 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with CPF/CNPJ and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/profile:
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /certificates:
+    get:
+      operationId: listCertificates
+      tags: [certificates]
+      summary: List certificate models
+      parameters:
+        - name: activeOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Certificate models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Certificate"
+    post:
+      operationId: createCertificate
+      tags: [certificates]
+      summary: Create certificate model (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CertificateInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Certificate"
+
+  /certificates/{id}:
+    patch:
+      operationId: updateCertificate
+      tags: [certificates]
+      summary: Update certificate model (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CertificateUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Certificate"
+    delete:
+      operationId: deleteCertificate
+      tags: [certificates]
+      summary: Delete certificate model (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders (admin sees all, contador sees own)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create a new order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateOrder
+      tags: [orders]
+      summary: Update order status (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderUpdate"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}/payment:
+    post:
+      operationId: createPayment
+      tags: [orders]
+      summary: Create MercadoPago payment preference for order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payment preference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentPreference"
+
+  /slots:
+    get:
+      operationId: listSlots
+      tags: [slots]
+      summary: List available scheduling slots
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Available slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Slot"
+    post:
+      operationId: createSlot
+      tags: [slots]
+      summary: Create scheduling slot (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlotInput"
+      responses:
+        "201":
+          description: Created slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slot"
+
+  /slots/{id}:
+    delete:
+      operationId: deleteSlot
+      tags: [slots]
+      summary: Delete scheduling slot (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /support:
+    get:
+      operationId: listTickets
+      tags: [support]
+      summary: List support tickets
+      responses:
+        "200":
+          description: Tickets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ticket"
+    post:
+      operationId: createTicket
+      tags: [support]
+      summary: Create a support ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketInput"
+      responses:
+        "201":
+          description: Created ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+
+  /support/{id}:
+    get:
+      operationId: getTicket
+      tags: [support]
+      summary: Get ticket with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ticket detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketDetail"
+
+  /support/{id}/messages:
+    post:
+      operationId: replyTicket
+      tags: [support]
+      summary: Reply to a ticket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /support/{id}/close:
+    patch:
+      operationId: closeTicket
+      tags: [support]
+      summary: Close a ticket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Closed ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get app settings (admin only)
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update app settings (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppSettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettings"
+
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/recent-orders:
+    get:
+      operationId: getRecentOrders
+      tags: [dashboard]
+      summary: Get recent orders for dashboard
+      responses:
+        "200":
+          description: Recent orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /dashboard/orders-by-day:
+    get:
+      operationId: getOrdersByDay
+      tags: [dashboard]
+      summary: Orders per day (last 14 days)
+      responses:
+        "200":
+          description: Orders by day
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrdersByDay"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    LoginInput:
+      type: object
+      required: [cpfCnpj, password]
+      properties:
+        cpfCnpj:
+          type: string
+        password:
+          type: string
+
+    AuthUser:
+      type: object
+      required: [id, name, email, cpfCnpj, role]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        cpfCnpj:
+          type: string
+        role:
+          type: string
+          enum: [admin, contador]
+        phone:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+
+    User:
+      type: object
+      required: [id, name, cpfCnpj, role, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: ["string", "null"]
+        cpfCnpj:
+          type: string
+        role:
+          type: string
+          enum: [admin, contador]
+        phone:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+
+    UserInput:
+      type: object
+      required: [name, cpfCnpj, password, role]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        cpfCnpj:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [admin, contador]
+        phone:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [admin, contador]
+        isActive:
+          type: boolean
+        password:
+          type: string
+
+    Certificate:
+      type: object
+      required: [id, name, price, active, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+        active:
+          type: boolean
+        createdAt:
+          type: string
+
+    CertificateInput:
+      type: object
+      required: [name, price]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        active:
+          type: boolean
+
+    CertificateUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        active:
+          type: boolean
+
+    Order:
+      type: object
+      required: [id, orderNumber, userId, certificateId, status, total, customerName, customerCpfCnpj, createdAt]
+      properties:
+        id:
+          type: integer
+        orderNumber:
+          type: string
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        certificateId:
+          type: integer
+        certificateName:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [created, pending_payment, paid, protocol_assigned, completed, cancelled]
+        total:
+          type: number
+        customerName:
+          type: string
+        customerCpfCnpj:
+          type: string
+        customerEmail:
+          type: ["string", "null"]
+        customerPhone:
+          type: ["string", "null"]
+        clientType:
+          type: ["string", "null"]
+        companyName:
+          type: ["string", "null"]
+        inssNumber:
+          type: ["string", "null"]
+        cnhPath:
+          type: ["string", "null"]
+        scheduledAt:
+          type: ["string", "null"]
+        protocolNumber:
+          type: ["string", "null"]
+        extendedWarranty:
+          type: boolean
+        addressZipcode:
+          type: ["string", "null"]
+        addressStreet:
+          type: ["string", "null"]
+        addressNumber:
+          type: ["string", "null"]
+        addressNeighborhood:
+          type: ["string", "null"]
+        addressCity:
+          type: ["string", "null"]
+        addressState:
+          type: ["string", "null"]
+        mpPaymentId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    OrderInput:
+      type: object
+      required: [certificateId, customerName, customerCpfCnpj, clientType, scheduledAt]
+      properties:
+        certificateId:
+          type: integer
+        clientType:
+          type: string
+          enum: [cpf, cnpj]
+        customerName:
+          type: string
+        customerCpfCnpj:
+          type: string
+        customerEmail:
+          type: string
+        customerPhone:
+          type: string
+        companyName:
+          type: string
+        inssNumber:
+          type: string
+        scheduledAt:
+          type: string
+        extendedWarranty:
+          type: boolean
+        addressZipcode:
+          type: string
+        addressStreet:
+          type: string
+        addressNumber:
+          type: string
+        addressNeighborhood:
+          type: string
+        addressCity:
+          type: string
+        addressState:
+          type: string
+
+    OrderUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [created, pending_payment, paid, protocol_assigned, completed, cancelled]
+        protocolNumber:
+          type: string
+        scheduledAt:
+          type: string
+
+    PaymentPreference:
+      type: object
+      required: [preferenceId, initPoint]
+      properties:
+        preferenceId:
+          type: string
+        initPoint:
+          type: string
+        sandboxInitPoint:
+          type: ["string", "null"]
+
+    Slot:
+      type: object
+      required: [id, slotDatetime, active]
+      properties:
+        id:
+          type: integer
+        slotDatetime:
+          type: string
+        active:
+          type: boolean
+
+    SlotInput:
+      type: object
+      required: [slotDatetime]
+      properties:
+        slotDatetime:
+          type: string
+        active:
+          type: boolean
+
+    Ticket:
+      type: object
+      required: [id, userId, subject, status, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        subject:
+          type: string
+        status:
+          type: string
+          enum: [open, in_progress, closed]
+        unreadAdmin:
+          type: boolean
+        unreadClient:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    TicketDetail:
+      type: object
+      required: [id, userId, subject, status, messages, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        subject:
+          type: string
+        status:
+          type: string
+          enum: [open, in_progress, closed]
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        createdAt:
+          type: string
+
+    TicketInput:
+      type: object
+      required: [subject, message]
+      properties:
+        subject:
+          type: string
+        message:
+          type: string
+
+    Message:
+      type: object
+      required: [id, ticketId, userId, content, createdAt]
+      properties:
+        id:
+          type: integer
+        ticketId:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        userRole:
+          type: ["string", "null"]
+        content:
+          type: string
+        createdAt:
+          type: string
+
+    MessageInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+
+    AppSettings:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: integer
+        appName:
+          type: string
+        mpAccessToken:
+          type: ["string", "null"]
+        mpPublicKey:
+          type: ["string", "null"]
+        webhookSecret:
+          type: ["string", "null"]
+        mailFrom:
+          type: ["string", "null"]
+        siteUrl:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+
+    AppSettingsUpdate:
+      type: object
+      properties:
+        appName:
+          type: string
+        mpAccessToken:
+          type: string
+        mpPublicKey:
+          type: string
+        webhookSecret:
+          type: string
+        mailFrom:
+          type: string
+        siteUrl:
+          type: string
+
+    DashboardStats:
+      type: object
+      required: [totalOrders, pendingOrders, paidOrders, completedOrders, totalRevenue, totalUsers, todayOrders]
+      properties:
+        totalOrders:
+          type: integer
+        pendingOrders:
+          type: integer
+        paidOrders:
+          type: integer
+        completedOrders:
+          type: integer
+        totalRevenue:
+          type: number
+        totalUsers:
+          type: integer
+        todayOrders:
+          type: integer
+
+    OrdersByDay:
+      type: object
+      required: [date, count]
+      properties:
+        date:
+          type: string
+        count:
+          type: integer
