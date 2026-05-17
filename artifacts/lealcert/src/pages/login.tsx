@@ -66,7 +66,7 @@ export default function Login() {
           <img
             src="/logo.png"
             alt="LealCert"
-            className="h-44 w-auto object-contain drop-shadow-2xl"
+            className="h-56 w-auto object-contain drop-shadow-2xl"
           />
           <div className="space-y-3">
             <h2 className="text-3xl font-bold text-white tracking-tight">
