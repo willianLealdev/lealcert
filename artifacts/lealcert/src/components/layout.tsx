@@ -53,7 +53,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <aside className="w-64 bg-sidebar flex flex-col shrink-0 border-r border-sidebar-border shadow-xl">
         {/* Brand */}
         <div className="px-4 pt-5 pb-4 border-b border-sidebar-border/50 flex items-center justify-center">
-          <img src="/logo.png" alt="LealCert" className="h-14 w-auto object-contain" />
+          <img src="/logo.png" alt="LealCert" className="h-20 w-auto object-contain" />
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
