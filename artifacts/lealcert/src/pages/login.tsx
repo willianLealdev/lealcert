@@ -63,9 +63,11 @@ export default function Login() {
         </div>
 
         <div className="relative z-10 flex flex-col items-center text-center space-y-8">
-          <div className="text-5xl font-extrabold tracking-tight text-white">
-            LEAL<span className="text-blue-400">CERT</span>
-          </div>
+          <img
+            src="/logo.png"
+            alt="LealCert"
+            className="h-44 w-auto object-contain drop-shadow-2xl"
+          />
           <div className="space-y-3">
             <h2 className="text-3xl font-bold text-white tracking-tight">
               Certificados Digitais
@@ -98,9 +100,7 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex justify-center mb-8">
-            <div className="text-3xl font-extrabold tracking-tight text-white">
-              LEAL<span className="text-blue-400">CERT</span>
-            </div>
+            <img src="/logo.png" alt="LealCert" className="h-24 w-auto object-contain" />
           </div>
 
           <div
