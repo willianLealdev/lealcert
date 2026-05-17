@@ -1,0 +1,40 @@
+{
+  "name": "LealCert — Certificados Digital",
+  "short_name": "LealCert",
+  "description": "Plataforma completa para emissão e gestão de certificados digitais e-CPF, e-CNPJ, A1 e A3.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/logo-login-dark.png",
+      "sizes": "1080x1080",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "LealCert — Login"
+    }
+  ]
+}
