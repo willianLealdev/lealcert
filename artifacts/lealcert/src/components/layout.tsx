@@ -52,11 +52,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar flex flex-col shrink-0 border-r border-sidebar-border shadow-xl">
         {/* Logo */}
-        <div className="px-3 py-3 border-b border-sidebar-border/50">
+        <div className="px-3 py-3 border-b border-sidebar-border/50 flex items-center justify-center">
           <img
-            src="/logo.png"
+            src="/logo-new.png"
             alt="LealCert"
-            className="w-full h-auto object-contain"
+            className="w-full h-auto object-contain max-h-20"
+            style={{ mixBlendMode: "screen" }}
           />
         </div>
 

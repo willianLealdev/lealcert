@@ -62,9 +62,10 @@ export default function Login() {
 
         <div className="relative z-10 flex flex-col items-center text-center space-y-8">
           <img
-            src="/logo.png"
+            src="/logo-new.png"
             alt="LealCert"
-            className="h-48 w-auto object-contain drop-shadow-2xl"
+            className="w-full max-w-sm h-auto object-contain"
+            style={{ mixBlendMode: "screen" }}
           />
           <div className="space-y-3">
             <h2 className="text-3xl font-bold text-white tracking-tight">
