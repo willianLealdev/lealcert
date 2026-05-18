@@ -6,44 +6,52 @@ import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
 
-const uploadDir = path.join(process.cwd(), "uploads", "cnh");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const TIPOS = ["cnh", "cartao-cnpj", "ficha-cadastral"] as const;
+type Tipo = (typeof TIPOS)[number];
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || ".pdf";
-    const name = `cnh_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`;
-    cb(null, name);
-  },
-});
+function makeUploadDir(tipo: Tipo) {
+  const dir = path.join(process.cwd(), "uploads", tipo);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowed = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
-    cb(null, allowed.includes(file.mimetype));
-  },
-});
+function makeStorage(tipo: Tipo) {
+  return multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, makeUploadDir(tipo)),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || ".pdf";
+      const name = `${tipo}_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`;
+      cb(null, name);
+    },
+  });
+}
 
-router.post("/upload/cnh", requireAuth, upload.single("file"), (req, res): void => {
-  if (!req.file) {
-    res.status(400).json({ error: "Arquivo inválido. Envie PDF, JPG ou PNG (máx 5MB)." });
-    return;
-  }
-  const key = `uploads/cnh/${req.file.filename}`;
-  res.json({ key, url: `/api/${key}` });
-});
+const fileFilter = (_req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowed = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+  cb(null, allowed.includes(file.mimetype));
+};
 
-router.get("/uploads/cnh/:filename", requireAuth, (req, res): void => {
-  const filename = Array.isArray(req.params.filename) ? req.params.filename[0] : req.params.filename;
-  const filePath = path.join(uploadDir, filename);
-  if (!fs.existsSync(filePath)) {
-    res.status(404).json({ error: "Arquivo não encontrado." });
-    return;
-  }
-  res.sendFile(filePath);
-});
+for (const tipo of TIPOS) {
+  const upload = multer({ storage: makeStorage(tipo), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter });
+
+  router.post(`/upload/${tipo}`, requireAuth, upload.single("file"), (req, res): void => {
+    if (!req.file) {
+      res.status(400).json({ error: "Arquivo inválido. Envie PDF, JPG ou PNG (máx 5MB)." });
+      return;
+    }
+    const key = `uploads/${tipo}/${req.file.filename}`;
+    res.json({ key, url: `/api/${key}` });
+  });
+
+  router.get(`/uploads/${tipo}/:filename`, requireAuth, (req, res): void => {
+    const filename = Array.isArray(req.params.filename) ? req.params.filename[0] : req.params.filename;
+    const filePath = path.join(makeUploadDir(tipo), filename);
+    if (!fs.existsSync(filePath)) {
+      res.status(404).json({ error: "Arquivo não encontrado." });
+      return;
+    }
+    res.sendFile(filePath);
+  });
+}
 
 export default router;

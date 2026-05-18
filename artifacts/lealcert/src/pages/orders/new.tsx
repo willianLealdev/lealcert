@@ -70,6 +70,14 @@ export default function NewOrder() {
   const [cnhUploading, setCnhUploading] = useState(false);
   const [cnhKey, setCnhKey] = useState<string | null>(null);
   const cnhInputRef = useRef<HTMLInputElement>(null);
+  const [cartaoFile, setCartaoFile] = useState<File | null>(null);
+  const [cartaoUploading, setCartaoUploading] = useState(false);
+  const [cartaoKey, setCartaoKey] = useState<string | null>(null);
+  const cartaoInputRef = useRef<HTMLInputElement>(null);
+  const [fichaFile, setFichaFile] = useState<File | null>(null);
+  const [fichaUploading, setFichaUploading] = useState(false);
+  const [fichaKey, setFichaKey] = useState<string | null>(null);
+  const fichaInputRef = useRef<HTMLInputElement>(null);
 
   const createOrder = useCreateOrder({
     mutation: {
@@ -138,22 +146,28 @@ export default function NewOrder() {
     setCepLoading(false);
   }
 
-  async function uploadCnh(file: File): Promise<string | null> {
-    setCnhUploading(true);
+  async function uploadDoc(
+    file: File,
+    tipo: "cnh" | "cartao-cnpj" | "ficha-cadastral",
+    setUploading: (v: boolean) => void,
+    setKey: (k: string) => void,
+    label: string,
+  ): Promise<string | null> {
+    setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/upload/cnh", { method: "POST", body: fd });
+      const res = await fetch(`/api/upload/${tipo}`, { method: "POST", body: fd });
       if (!res.ok) throw new Error("Upload falhou");
       const json = await res.json() as { key: string; url: string };
-      setCnhKey(json.key);
-      toast({ title: "CNH enviada com sucesso!" });
+      setKey(json.key);
+      toast({ title: `${label} enviado com sucesso!` });
       return json.key;
     } catch {
-      toast({ title: "Erro ao enviar CNH", description: "Tente novamente.", variant: "destructive" });
+      toast({ title: `Erro ao enviar ${label}`, description: "Tente novamente.", variant: "destructive" });
       return null;
     } finally {
-      setCnhUploading(false);
+      setUploading(false);
     }
   }
 
@@ -172,8 +186,18 @@ export default function NewOrder() {
       return;
     }
     if (!cnhFile && !cnhKey) {
-      toast({ title: "Atenção", description: "Envie uma foto ou cópia da CNH.", variant: "destructive" });
+      toast({ title: "Atenção", description: "Envie uma foto ou cópia da CNH / RG.", variant: "destructive" });
       return;
+    }
+    if (form.clientType === "cnpj") {
+      if (!cartaoFile && !cartaoKey) {
+        toast({ title: "Atenção", description: "Envie o Cartão CNPJ.", variant: "destructive" });
+        return;
+      }
+      if (!fichaFile && !fichaKey) {
+        toast({ title: "Atenção", description: "Envie a Ficha Cadastral.", variant: "destructive" });
+        return;
+      }
     }
     if (!form.scheduledAt) {
       toast({ title: "Atenção", description: "Selecione um horário para o atendimento.", variant: "destructive" });
@@ -182,8 +206,18 @@ export default function NewOrder() {
 
     let uploadedKey = cnhKey;
     if (cnhFile && !cnhKey) {
-      uploadedKey = await uploadCnh(cnhFile);
+      uploadedKey = await uploadDoc(cnhFile, "cnh", setCnhUploading, setCnhKey, "CNH/RG");
       if (!uploadedKey) return;
+    }
+    if (form.clientType === "cnpj") {
+      if (cartaoFile && !cartaoKey) {
+        const k = await uploadDoc(cartaoFile, "cartao-cnpj", setCartaoUploading, setCartaoKey, "Cartão CNPJ");
+        if (!k) return;
+      }
+      if (fichaFile && !fichaKey) {
+        const k = await uploadDoc(fichaFile, "ficha-cadastral", setFichaUploading, setFichaKey, "Ficha Cadastral");
+        if (!k) return;
+      }
     }
 
     createOrder.mutate({
@@ -363,78 +397,138 @@ export default function NewOrder() {
               </Card>
             )}
 
-            {/* CNH Upload */}
+            {/* CNH / RG Upload */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary" />
-                  Documento de Identidade — CNH *
+                  Documento de Identidade — CNH ou RG *
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">Envie uma foto ou cópia da CNH (PDF, JPG ou PNG, máx. 5 MB).</p>
+                <p className="text-sm text-muted-foreground">Envie uma foto ou cópia da CNH ou RG (PDF, JPG ou PNG, máx. 5 MB).</p>
               </CardHeader>
               <CardContent>
-                <input
-                  ref={cnhInputRef}
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0] ?? null;
-                    if (f && f.size > 5 * 1024 * 1024) {
-                      toast({ title: "Arquivo muito grande", description: "O arquivo deve ter no máximo 5 MB.", variant: "destructive" });
-                      return;
-                    }
-                    setCnhFile(f);
-                    setCnhKey(null);
-                  }}
-                />
+                <input ref={cnhInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setCnhFile(f); setCnhKey(null); }} />
                 {!cnhFile ? (
-                  <button
-                    type="button"
-                    onClick={() => cnhInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-xl py-10 flex flex-col items-center gap-3 text-muted-foreground transition-colors hover:bg-primary/5 cursor-pointer"
-                  >
+                  <button type="button" onClick={() => cnhInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-xl py-10 flex flex-col items-center gap-3 text-muted-foreground transition-colors hover:bg-primary/5 cursor-pointer">
                     <Upload className="h-8 w-8 opacity-40" />
-                    <div className="text-center">
-                      <p className="font-medium text-sm">Clique para selecionar arquivo</p>
-                      <p className="text-xs">PDF, JPG, JPEG ou PNG — máx. 5 MB</p>
-                    </div>
+                    <div className="text-center"><p className="font-medium text-sm">Clique para selecionar arquivo</p><p className="text-xs">PDF, JPG, JPEG ou PNG — máx. 5 MB</p></div>
                   </button>
                 ) : (
                   <div className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-muted/30">
                     <FileText className="h-8 w-8 text-primary shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{cnhFile.name}</p>
-                      <p className="text-xs text-muted-foreground">{(cnhFile.size / 1024).toFixed(0)} KB</p>
-                      {cnhKey && (
-                        <p className="text-xs text-emerald-600 font-medium mt-0.5">✓ Enviado com sucesso</p>
-                      )}
+                      <p className="text-xs text-muted-foreground">{(cnhFile.size/1024).toFixed(0)} KB</p>
+                      {cnhKey && <p className="text-xs text-emerald-600 font-medium mt-0.5">✓ Enviado com sucesso</p>}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {!cnhKey && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => uploadCnh(cnhFile)}
-                          disabled={cnhUploading}
-                        >
+                        <Button type="button" size="sm" variant="outline"
+                          onClick={() => uploadDoc(cnhFile, "cnh", setCnhUploading, setCnhKey, "CNH/RG")}
+                          disabled={cnhUploading}>
                           {cnhUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                           {cnhUploading ? "Enviando..." : "Enviar"}
                         </Button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => { setCnhFile(null); setCnhKey(null); if (cnhInputRef.current) cnhInputRef.current.value = ""; }}
-                        className="text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                      <button type="button" onClick={() => { setCnhFile(null); setCnhKey(null); if (cnhInputRef.current) cnhInputRef.current.value = ""; }}
+                        className="text-muted-foreground hover:text-destructive transition-colors"><X className="h-4 w-4" /></button>
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Cartão CNPJ — apenas pessoa jurídica */}
+            {form.clientType === "cnpj" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Cartão CNPJ *
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">Cartão CNPJ emitido pela Receita Federal (PDF, JPG ou PNG, máx. 5 MB).</p>
+                </CardHeader>
+                <CardContent>
+                  <input ref={cartaoInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setCartaoFile(f); setCartaoKey(null); }} />
+                  {!cartaoFile ? (
+                    <button type="button" onClick={() => cartaoInputRef.current?.click()}
+                      className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-xl py-10 flex flex-col items-center gap-3 text-muted-foreground transition-colors hover:bg-primary/5 cursor-pointer">
+                      <Upload className="h-8 w-8 opacity-40" />
+                      <div className="text-center"><p className="font-medium text-sm">Clique para selecionar arquivo</p><p className="text-xs">PDF, JPG, JPEG ou PNG — máx. 5 MB</p></div>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-muted/30">
+                      <FileText className="h-8 w-8 text-primary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{cartaoFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{(cartaoFile.size/1024).toFixed(0)} KB</p>
+                        {cartaoKey && <p className="text-xs text-emerald-600 font-medium mt-0.5">✓ Enviado com sucesso</p>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!cartaoKey && (
+                          <Button type="button" size="sm" variant="outline"
+                            onClick={() => uploadDoc(cartaoFile, "cartao-cnpj", setCartaoUploading, setCartaoKey, "Cartão CNPJ")}
+                            disabled={cartaoUploading}>
+                            {cartaoUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                            {cartaoUploading ? "Enviando..." : "Enviar"}
+                          </Button>
+                        )}
+                        <button type="button" onClick={() => { setCartaoFile(null); setCartaoKey(null); if (cartaoInputRef.current) cartaoInputRef.current.value = ""; }}
+                          className="text-muted-foreground hover:text-destructive transition-colors"><X className="h-4 w-4" /></button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Ficha Cadastral — apenas pessoa jurídica */}
+            {form.clientType === "cnpj" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Ficha Cadastral Completa *
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">Ficha cadastral completa da empresa (PDF, JPG ou PNG, máx. 5 MB).</p>
+                </CardHeader>
+                <CardContent>
+                  <input ref={fichaInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setFichaFile(f); setFichaKey(null); }} />
+                  {!fichaFile ? (
+                    <button type="button" onClick={() => fichaInputRef.current?.click()}
+                      className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-xl py-10 flex flex-col items-center gap-3 text-muted-foreground transition-colors hover:bg-primary/5 cursor-pointer">
+                      <Upload className="h-8 w-8 opacity-40" />
+                      <div className="text-center"><p className="font-medium text-sm">Clique para selecionar arquivo</p><p className="text-xs">PDF, JPG, JPEG ou PNG — máx. 5 MB</p></div>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-muted/30">
+                      <FileText className="h-8 w-8 text-primary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{fichaFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{(fichaFile.size/1024).toFixed(0)} KB</p>
+                        {fichaKey && <p className="text-xs text-emerald-600 font-medium mt-0.5">✓ Enviado com sucesso</p>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!fichaKey && (
+                          <Button type="button" size="sm" variant="outline"
+                            onClick={() => uploadDoc(fichaFile, "ficha-cadastral", setFichaUploading, setFichaKey, "Ficha Cadastral")}
+                            disabled={fichaUploading}>
+                            {fichaUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                            {fichaUploading ? "Enviando..." : "Enviar"}
+                          </Button>
+                        )}
+                        <button type="button" onClick={() => { setFichaFile(null); setFichaKey(null); if (fichaInputRef.current) fichaInputRef.current.value = ""; }}
+                          className="text-muted-foreground hover:text-destructive transition-colors"><X className="h-4 w-4" /></button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>
