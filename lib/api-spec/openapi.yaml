@@ -798,6 +798,11 @@ paths:
           in: query
           schema:
             type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [cliente, contador]
       responses:
         "200":
           description: Contacts list
@@ -1769,10 +1774,13 @@ components:
 
     MarketingContact:
       type: object
-      required: [id, name, email, status, bounced, createdAt]
+      required: [id, type, name, email, status, bounced, createdAt]
       properties:
         id:
           type: integer
+        type:
+          type: string
+          enum: [cliente, contador]
         name:
           type: string
         email:
@@ -1934,6 +1942,9 @@ components:
       type: object
       required: [name, email]
       properties:
+        type:
+          type: string
+          enum: [cliente, contador]
         name:
           type: string
         email:

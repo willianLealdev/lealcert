@@ -34,7 +34,7 @@ import {
   ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare,
 } from "lucide-react";
 
-type Tab = "overview" | "campanhas" | "contatos" | "respostas";
+type Tab = "overview" | "campanhas" | "clientes" | "contadores" | "respostas";
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number | string; icon: React.ElementType; color: string }) {
   return (
@@ -103,7 +103,8 @@ export default function AdminMarketing() {
         {([
           { id: "overview", label: "Visão Geral", icon: BarChart3 },
           { id: "campanhas", label: "Campanhas", icon: Send },
-          { id: "contatos", label: "Contatos", icon: Users },
+          { id: "clientes", label: "Clientes", icon: Users },
+          { id: "contadores", label: "Contadores", icon: Users },
           { id: "respostas", label: "Respostas", icon: MessageSquare },
         ] as { id: Tab; label: string; icon: React.ElementType }[]).map(t => (
           <button
@@ -126,7 +127,8 @@ export default function AdminMarketing() {
 
       {tab === "overview" && <OverviewTab stats={stats} />}
       {tab === "campanhas" && <CampanhasTab invalidate={invalidate} toast={toast} />}
-      {tab === "contatos" && <ContatosTab invalidate={invalidate} toast={toast} />}
+      {tab === "clientes" && <ContatosTab type="cliente" invalidate={invalidate} toast={toast} />}
+      {tab === "contadores" && <ContatosTab type="contador" invalidate={invalidate} toast={toast} />}
       {tab === "respostas" && <RespostasTab invalidate={invalidate} toast={toast} />}
     </div>
   );
@@ -426,15 +428,19 @@ function CampaignFormDialog({
   );
 }
 
-// ─── Contatos ────────────────────────────────────────────────────────────────
-function ContatosTab({ invalidate, toast }: { invalidate: () => void; toast: ReturnType<typeof useToast>["toast"] }) {
+// ─── Contatos (Clientes e Contadores) ────────────────────────────────────────
+function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"; invalidate: () => void; toast: ReturnType<typeof useToast>["toast"] }) {
   const [search, setSearch] = useState("");
   const [page] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { data, isLoading } = useListMarketingContacts({ page, search: search || undefined });
+  const isCliente = type === "cliente";
+  const label = isCliente ? "cliente" : "contador";
+  const labelPl = isCliente ? "clientes" : "contadores";
+
+  const { data, isLoading } = useListMarketingContacts({ page, search: search || undefined, type });
   const contacts = data?.data ?? [];
   const total = data?.total ?? 0;
 
@@ -453,9 +459,10 @@ function ContatosTab({ invalidate, toast }: { invalidate: () => void; toast: Ret
     try {
       const fd = new FormData();
       fd.append("file", file);
+      fd.append("type", type);
       const res = await fetch("/api/marketing/contacts/import", { method: "POST", body: fd, credentials: "include" });
       const result = await res.json() as { imported: number; skipped: number; total: number; errors?: string[] };
-      toast({ title: `Importação concluída!`, description: `${result.imported} importados, ${result.skipped} ignorados de ${result.total} linhas.` });
+      toast({ title: `Importação concluída!`, description: `${result.imported} importados, ${result.skipped} ignorados de ${result.total} registros.` });
       invalidate();
     } catch {
       toast({ title: "Erro na importação", variant: "destructive" });
@@ -465,17 +472,21 @@ function ContatosTab({ invalidate, toast }: { invalidate: () => void; toast: Ret
     }
   }
 
+  const csvHint = isCliente
+    ? <><strong>Planilha de Clientes:</strong> colunas <code>NOME</code> e <code>EMAIL</code> (obrigatórias). Aceita CSV ou XLSX.</>
+    : <><strong>Planilha de Contadores:</strong> colunas <code>CONTATO</code>, <code>E-MAIL</code> e <code>TELEFONE</code>. Aceita CSV ou XLSX. As colunas <em>COM QUEM FAZ</em> e <em>OBSERVAÇÃO</em> são ignoradas automaticamente.</>;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Buscar por nome ou e-mail…" value={search} onChange={e => setSearch(e.target.value)} />
+          <Input className="pl-9" placeholder={`Buscar por nome ou e-mail…`} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
+        <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImport} />
         <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={importing} className="gap-2 shrink-0">
           {importing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Importar CSV
+          Importar planilha
         </Button>
         <Button onClick={() => setShowAdd(true)} className="gap-2 shrink-0">
           <Plus className="h-4 w-4" /> Adicionar
@@ -483,27 +494,31 @@ function ContatosTab({ invalidate, toast }: { invalidate: () => void; toast: Ret
       </div>
 
       <div className="bg-muted/50 rounded-lg px-4 py-2 text-sm text-muted-foreground">
-        <strong>{total}</strong> contatos no total
+        <strong>{total}</strong> {labelPl} no total
       </div>
 
       <div className="bg-card border rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[2fr_2fr_1fr_1fr_auto] text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30">
-          <span>Nome</span><span>E-mail</span><span>Telefone</span><span>Status</span><span></span>
+        <div className={`grid ${isCliente ? "grid-cols-[2fr_2fr_1fr_auto]" : "grid-cols-[2fr_2fr_1.5fr_1fr_auto]"} text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30`}>
+          <span>Nome{!isCliente && " / Escritório"}</span>
+          <span>E-mail</span>
+          {!isCliente && <span>Telefone</span>}
+          <span>Status</span>
+          <span></span>
         </div>
         {isLoading ? (
           <div className="text-center py-10 text-muted-foreground">Carregando…</div>
         ) : contacts.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Nenhum contato encontrado.</p>
-            <p className="text-xs mt-1">Importe uma planilha CSV ou adicione manualmente.</p>
+            <p className="text-sm">Nenhum {label} encontrado.</p>
+            <p className="text-xs mt-1">Importe a planilha ou adicione manualmente.</p>
           </div>
         ) : (
           contacts.map(c => (
-            <div key={c.id} className="grid grid-cols-[2fr_2fr_1fr_1fr_auto] px-4 py-3 border-b last:border-0 items-center hover:bg-muted/20 transition-colors">
+            <div key={c.id} className={`grid ${isCliente ? "grid-cols-[2fr_2fr_1fr_auto]" : "grid-cols-[2fr_2fr_1.5fr_1fr_auto]"} px-4 py-3 border-b last:border-0 items-center hover:bg-muted/20 transition-colors`}>
               <span className="font-medium text-sm truncate">{c.name}</span>
               <span className="text-sm text-muted-foreground truncate">{c.email}</span>
-              <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>
+              {!isCliente && <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>}
               <span>{contactStatusBadge(c.status, c.bounced)}</span>
               <div className="flex items-center gap-1">
                 {c.status === "active" && (
@@ -523,15 +538,16 @@ function ContatosTab({ invalidate, toast }: { invalidate: () => void; toast: Ret
       </div>
 
       <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3">
-        <strong>Formato da planilha CSV:</strong> colunas <code>nome</code>, <code>email</code> (obrigatórias), <code>telefone</code> e <code>tags</code> (opcionais). A primeira linha deve ser o cabeçalho.
+        {csvHint}
       </div>
 
-      {showAdd && <AddContactDialog onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); invalidate(); }} toast={toast} />}
+      {showAdd && <AddContactDialog type={type} onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); invalidate(); }} toast={toast} />}
     </div>
   );
 }
 
-function AddContactDialog({ onClose, onSaved, toast }: { onClose: () => void; onSaved: () => void; toast: ReturnType<typeof useToast>["toast"] }) {
+function AddContactDialog({ type, onClose, onSaved, toast }: { type: "cliente" | "contador"; onClose: () => void; onSaved: () => void; toast: ReturnType<typeof useToast>["toast"] }) {
+  const isCliente = type === "cliente";
   const [form, setForm] = useState({ name: "", email: "", phone: "", tags: "" });
   const mutation = useCreateMarketingContact({ mutation: {
     onSuccess: onSaved,
@@ -543,19 +559,21 @@ function AddContactDialog({ onClose, onSaved, toast }: { onClose: () => void; on
 
   function set(k: keyof typeof form, v: string) { setForm(p => ({ ...p, [k]: v })); }
 
+  const handleSave = () => mutation.mutate({ data: { type, name: form.name, email: form.email, phone: form.phone || undefined, tags: form.tags || undefined } });
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Adicionar Contato</DialogTitle></DialogHeader>
-        <form className="space-y-3 py-2" onSubmit={e => { e.preventDefault(); mutation.mutate({ data: { name: form.name, email: form.email, phone: form.phone || undefined, tags: form.tags || undefined } }); }}>
-          <div className="space-y-1.5"><Label>Nome *</Label><Input required value={form.name} onChange={e => set("name", e.target.value)} /></div>
+        <DialogHeader><DialogTitle>Adicionar {isCliente ? "Cliente" : "Contador"}</DialogTitle></DialogHeader>
+        <form className="space-y-3 py-2" onSubmit={e => { e.preventDefault(); handleSave(); }}>
+          <div className="space-y-1.5"><Label>{isCliente ? "Nome *" : "Nome / Escritório *"}</Label><Input required value={form.name} onChange={e => set("name", e.target.value)} /></div>
           <div className="space-y-1.5"><Label>E-mail *</Label><Input required type="email" value={form.email} onChange={e => set("email", e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Telefone</Label><Input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="(11) 99999-0000" /></div>
-          <div className="space-y-1.5"><Label>Tags (separadas por vírgula)</Label><Input value={form.tags} onChange={e => set("tags", e.target.value)} placeholder="vip, empresa" /></div>
+          {isCliente && <div className="space-y-1.5"><Label>Tags (separadas por vírgula)</Label><Input value={form.tags} onChange={e => set("tags", e.target.value)} placeholder="vip, empresa" /></div>}
         </form>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button disabled={mutation.isPending} onClick={() => mutation.mutate({ data: { name: form.name, email: form.email, phone: form.phone || undefined, tags: form.tags || undefined } })}>
+          <Button disabled={mutation.isPending} onClick={handleSave}>
             {mutation.isPending ? "Adicionando…" : "Adicionar"}
           </Button>
         </DialogFooter>

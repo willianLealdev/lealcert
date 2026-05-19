@@ -483,8 +483,17 @@ export interface MeStats {
   next_appointments: Appointment[];
 }
 
+export type MarketingContactType = typeof MarketingContactType[keyof typeof MarketingContactType];
+
+
+export const MarketingContactType = {
+  cliente: 'cliente',
+  contador: 'contador',
+} as const;
+
 export interface MarketingContact {
   id: number;
+  type: MarketingContactType;
   name: string;
   email: string;
   /** @nullable */
@@ -584,7 +593,16 @@ export interface SendReplyInput {
   body: string;
 }
 
+export type CreateMarketingContactInputType = typeof CreateMarketingContactInputType[keyof typeof CreateMarketingContactInputType];
+
+
+export const CreateMarketingContactInputType = {
+  cliente: 'cliente',
+  contador: 'contador',
+} as const;
+
 export interface CreateMarketingContactInput {
+  type?: CreateMarketingContactInputType;
   name: string;
   email: string;
   phone?: string;
@@ -660,7 +678,16 @@ export type ListMarketingContactsParams = {
 page?: number;
 search?: string;
 status?: string;
+type?: ListMarketingContactsType;
 };
+
+export type ListMarketingContactsType = typeof ListMarketingContactsType[keyof typeof ListMarketingContactsType];
+
+
+export const ListMarketingContactsType = {
+  cliente: 'cliente',
+  contador: 'contador',
+} as const;
 
 export type ListMarketingContacts200 = {
   data: MarketingContact[];

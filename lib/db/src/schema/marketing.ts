@@ -4,15 +4,16 @@ import { z } from "zod/v4";
 
 export const marketingContactsTable = pgTable("marketing_contacts", {
   id: serial("id").primaryKey(),
+  type: text("type").notNull().default("cliente"),
   name: text("name").notNull(),
-  email: text("email").notNull().unique(),
+  email: text("email").notNull(),
   phone: text("phone"),
   tags: text("tags"),
   status: text("status").notNull().default("active"),
   unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
   bounced: boolean("bounced").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [unique().on(t.email, t.type)]);
 
 export const marketingCampaignsTable = pgTable("marketing_campaigns", {
   id: serial("id").primaryKey(),

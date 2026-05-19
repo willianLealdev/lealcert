@@ -5,8 +5,10 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateMarketingContactInputType } from './createMarketingContactInputType';
 
 export interface CreateMarketingContactInput {
+  type?: CreateMarketingContactInputType;
   name: string;
   email: string;
   phone?: string;

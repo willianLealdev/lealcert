@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { eq, desc, ilike, or, sql, and, isNull } from "drizzle-orm";
+import { eq, desc, ilike, or, sql, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import multer from "multer";
 import { parse } from "csv-parse/sync";
+import * as xlsx from "xlsx";
 import { db, marketingContactsTable, marketingCampaignsTable, marketingSendsTable, marketingRepliesTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
@@ -53,12 +54,14 @@ router.get("/marketing/contacts", async (req, res): Promise<void> => {
   const page = Math.max(1, parseInt(req.query.page as string ?? "1", 10));
   const search = req.query.search as string | undefined;
   const status = req.query.status as string | undefined;
+  const type = req.query.type as string | undefined;
   const limit = 50;
   const offset = (page - 1) * limit;
 
   const conditions = [];
   if (search) conditions.push(or(ilike(marketingContactsTable.name, `%${search}%`), ilike(marketingContactsTable.email, `%${search}%`)));
   if (status) conditions.push(eq(marketingContactsTable.status, status));
+  if (type) conditions.push(eq(marketingContactsTable.type, type));
 
   const where = conditions.length ? and(...conditions) : undefined;
 
@@ -71,20 +74,32 @@ router.get("/marketing/contacts", async (req, res): Promise<void> => {
 });
 
 router.post("/marketing/contacts", async (req, res): Promise<void> => {
-  const { name, email, phone, tags } = req.body ?? {};
+  const { name, email, phone, tags, type } = req.body ?? {};
   if (!name || !email) { res.status(400).json({ error: "Nome e e-mail são obrigatórios." }); return; }
-  const [contact] = await db.insert(marketingContactsTable).values({ name, email: email.toLowerCase().trim(), phone, tags }).returning();
+  const contactType = type === "contador" ? "contador" : "cliente";
+  const [contact] = await db.insert(marketingContactsTable).values({ name, email: email.toLowerCase().trim(), phone, tags, type: contactType }).returning();
   res.status(201).json(contact);
 });
 
 router.post("/marketing/contacts/import", upload.single("file"), async (req, res): Promise<void> => {
   if (!req.file) { res.status(400).json({ error: "Arquivo não enviado." }); return; }
-  const content = req.file.buffer.toString("utf-8");
+  const contactType = (req.body?.type === "contador") ? "contador" : "cliente";
+
+  const originalName = req.file.originalname.toLowerCase();
+  const isXlsx = originalName.endsWith(".xlsx") || originalName.endsWith(".xls") ||
+    req.file.mimetype.includes("spreadsheet") || req.file.mimetype.includes("excel");
+
   let records: Record<string, string>[];
   try {
-    records = parse(content, { columns: true, skip_empty_lines: true, trim: true, bom: true }) as Record<string, string>[];
-  } catch (e) {
-    res.status(400).json({ error: "Arquivo CSV inválido." }); return;
+    if (isXlsx) {
+      const wb = xlsx.read(req.file.buffer, { type: "buffer" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      records = xlsx.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
+    } else {
+      records = parse(req.file.buffer.toString("utf-8"), { columns: true, skip_empty_lines: true, trim: true, bom: true }) as Record<string, string>[];
+    }
+  } catch {
+    res.status(400).json({ error: "Arquivo inválido. Use CSV ou XLSX." }); return;
   }
 
   let imported = 0;
@@ -92,15 +107,15 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
   const errors: string[] = [];
 
   for (const row of records) {
-    const email = (row.email ?? row.Email ?? row.EMAIL ?? "").toLowerCase().trim();
-    const name = (row.nome ?? row.name ?? row.Nome ?? row.NAME ?? "").trim();
+    // Suporta colunas da planilha de Clientes (NOME/EMAIL) e de Contadores (CONTATO/E-MAIL/TELEFONE)
+    const email = String(row["E-MAIL"] ?? row["e-mail"] ?? row.email ?? row.Email ?? row.EMAIL ?? "").toLowerCase().trim();
+    const name = String(row.CONTATO ?? row.contato ?? row.NOME ?? row.nome ?? row.name ?? row.Nome ?? row.NAME ?? "").trim();
+    const rawPhone = String(row.TELEFONE ?? row.telefone ?? row.phone ?? row.Phone ?? "");
+    const phone = rawPhone.replace(/\D/g, "").slice(0, 20) || undefined;
+    const tags = row.tags ?? row.Tags ?? undefined;
     if (!email || !name) { skipped++; continue; }
     try {
-      await db.insert(marketingContactsTable).values({
-        name, email,
-        phone: row.telefone ?? row.phone ?? row.Phone ?? undefined,
-        tags: row.tags ?? row.Tags ?? undefined,
-      }).onConflictDoNothing();
+      await db.insert(marketingContactsTable).values({ name, email, phone, tags, type: contactType }).onConflictDoNothing();
       imported++;
     } catch {
       errors.push(email);

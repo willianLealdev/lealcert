@@ -805,12 +805,14 @@ export const GetMarketingStatsResponse = zod.object({
 export const ListMarketingContactsQueryParams = zod.object({
   "page": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional(),
-  "status": zod.coerce.string().optional()
+  "status": zod.coerce.string().optional(),
+  "type": zod.enum(['cliente', 'contador']).optional()
 })
 
 export const ListMarketingContactsResponse = zod.object({
   "data": zod.array(zod.object({
   "id": zod.number(),
+  "type": zod.enum(['cliente', 'contador']),
   "name": zod.string(),
   "email": zod.string(),
   "phone": zod.string().nullish(),
@@ -828,6 +830,7 @@ export const ListMarketingContactsResponse = zod.object({
  * @summary Create contact
  */
 export const CreateMarketingContactBody = zod.object({
+  "type": zod.enum(['cliente', 'contador']).optional(),
   "name": zod.string(),
   "email": zod.string(),
   "phone": zod.string().optional(),
@@ -861,6 +864,7 @@ export const UpdateMarketingContactBody = zod.object({
 
 export const UpdateMarketingContactResponse = zod.object({
   "id": zod.number(),
+  "type": zod.enum(['cliente', 'contador']),
   "name": zod.string(),
   "email": zod.string(),
   "phone": zod.string().nullish(),
