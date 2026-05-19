@@ -784,3 +784,316 @@ export const GetMeStatsResponse = zod.object({
 })
 
 
+/**
+ * @summary Marketing dashboard stats
+ */
+export const GetMarketingStatsResponse = zod.object({
+  "totalContacts": zod.number(),
+  "activeContacts": zod.number(),
+  "unsubscribed": zod.number(),
+  "bounced": zod.number(),
+  "totalCampaigns": zod.number(),
+  "sentCampaigns": zod.number(),
+  "scheduledCampaigns": zod.number(),
+  "unreadReplies": zod.number()
+})
+
+
+/**
+ * @summary List contacts
+ */
+export const ListMarketingContactsQueryParams = zod.object({
+  "page": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "status": zod.coerce.string().optional()
+})
+
+export const ListMarketingContactsResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().nullish(),
+  "tags": zod.string().nullish(),
+  "status": zod.string(),
+  "bounced": zod.boolean(),
+  "unsubscribedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Create contact
+ */
+export const CreateMarketingContactBody = zod.object({
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().optional(),
+  "tags": zod.string().optional()
+})
+
+
+/**
+ * @summary Delete contact
+ */
+export const DeleteMarketingContactParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteMarketingContactResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Update contact status
+ */
+export const UpdateMarketingContactParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateMarketingContactBody = zod.object({
+  "status": zod.string().optional(),
+  "tags": zod.string().optional()
+})
+
+export const UpdateMarketingContactResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().nullish(),
+  "tags": zod.string().nullish(),
+  "status": zod.string(),
+  "bounced": zod.boolean(),
+  "unsubscribedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary List campaigns
+ */
+export const ListMarketingCampaignsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "bodyText": zod.string().nullish(),
+  "fromName": zod.string(),
+  "fromEmail": zod.string(),
+  "replyTo": zod.string().nullish(),
+  "status": zod.string(),
+  "scheduledAt": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "totalSent": zod.number(),
+  "totalDelivered": zod.number(),
+  "totalOpened": zod.number(),
+  "totalClicked": zod.number(),
+  "totalBounced": zod.number(),
+  "totalReplied": zod.number(),
+  "filterTags": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListMarketingCampaignsResponse = zod.array(ListMarketingCampaignsResponseItem)
+
+
+/**
+ * @summary Create campaign
+ */
+export const CreateMarketingCampaignBody = zod.object({
+  "name": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "bodyText": zod.string().optional(),
+  "fromName": zod.string().optional(),
+  "fromEmail": zod.string().optional(),
+  "replyTo": zod.string().optional(),
+  "scheduledAt": zod.string().optional(),
+  "filterTags": zod.string().optional()
+})
+
+
+/**
+ * @summary Get campaign detail
+ */
+export const GetMarketingCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetMarketingCampaignResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "bodyText": zod.string().nullish(),
+  "fromName": zod.string(),
+  "fromEmail": zod.string(),
+  "replyTo": zod.string().nullish(),
+  "status": zod.string(),
+  "scheduledAt": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "totalSent": zod.number(),
+  "totalDelivered": zod.number(),
+  "totalOpened": zod.number(),
+  "totalClicked": zod.number(),
+  "totalBounced": zod.number(),
+  "totalReplied": zod.number(),
+  "filterTags": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Update campaign
+ */
+export const UpdateMarketingCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateMarketingCampaignBody = zod.object({
+  "name": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "bodyText": zod.string().optional(),
+  "fromName": zod.string().optional(),
+  "fromEmail": zod.string().optional(),
+  "replyTo": zod.string().optional(),
+  "scheduledAt": zod.string().optional(),
+  "filterTags": zod.string().optional()
+})
+
+export const UpdateMarketingCampaignResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "bodyText": zod.string().nullish(),
+  "fromName": zod.string(),
+  "fromEmail": zod.string(),
+  "replyTo": zod.string().nullish(),
+  "status": zod.string(),
+  "scheduledAt": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "totalSent": zod.number(),
+  "totalDelivered": zod.number(),
+  "totalOpened": zod.number(),
+  "totalClicked": zod.number(),
+  "totalBounced": zod.number(),
+  "totalReplied": zod.number(),
+  "filterTags": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete campaign
+ */
+export const DeleteMarketingCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteMarketingCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Send or schedule campaign
+ */
+export const SendMarketingCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SendMarketingCampaignBody = zod.object({
+  "scheduledAt": zod.string().optional()
+})
+
+export const SendMarketingCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Cancel scheduled campaign
+ */
+export const CancelMarketingCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CancelMarketingCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary List inbound replies
+ */
+export const ListMarketingRepliesQueryParams = zod.object({
+  "unreadOnly": zod.coerce.boolean().optional()
+})
+
+export const ListMarketingRepliesResponseItem = zod.object({
+  "id": zod.number(),
+  "sendId": zod.number().nullish(),
+  "contactId": zod.number().nullish(),
+  "fromEmail": zod.string(),
+  "fromName": zod.string().nullish(),
+  "subject": zod.string().nullish(),
+  "bodyText": zod.string().nullish(),
+  "bodyHtml": zod.string().nullish(),
+  "readAt": zod.string().nullish(),
+  "repliedAt": zod.string().nullish(),
+  "replyBody": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListMarketingRepliesResponse = zod.array(ListMarketingRepliesResponseItem)
+
+
+/**
+ * @summary Mark reply as read
+ */
+export const MarkReplyReadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkReplyReadResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Reply to a contact message
+ */
+export const ReplyToContactParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ReplyToContactBody = zod.object({
+  "body": zod.string()
+})
+
+export const ReplyToContactResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Inbound email webhook (Sendgrid/Mailgun/etc)
+ */
+export const MarketingInboundWebhookBody = zod.object({
+  "from": zod.string().optional(),
+  "subject": zod.string().optional(),
+  "text": zod.string().optional(),
+  "html": zod.string().optional()
+})
+
+export const MarketingInboundWebhookResponse = zod.object({
+  "message": zod.string()
+})
+
+

@@ -20,7 +20,7 @@ function createTransporter() {
   });
 }
 
-const FROM = process.env.SMTP_FROM ?? "LealCert <noreply@lealcert.com>";
+const FROM = process.env.SMTP_FROM ?? "LealCert <naoresponda@lealcert.com.br>";
 
 export async function sendVerificationEmail(to: string, name: string, code: string): Promise<void> {
   const subject = "Código de verificação — LealCert";

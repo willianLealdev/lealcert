@@ -26,6 +26,8 @@ tags:
     description: App settings
   - name: dashboard
     description: Dashboard stats
+  - name: marketing
+    description: Email marketing
 
 paths:
   /healthz:
@@ -765,6 +767,330 @@ paths:
               schema:
                 $ref: "#/components/schemas/MeStats"
 
+  /marketing/stats:
+    get:
+      operationId: getMarketingStats
+      tags: [marketing]
+      summary: Marketing dashboard stats
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingStats"
+
+  /marketing/contacts:
+    get:
+      operationId: listMarketingContacts
+      tags: [marketing]
+      summary: List contacts
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Contacts list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, total]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MarketingContact"
+                  total:
+                    type: integer
+    post:
+      operationId: createMarketingContact
+      tags: [marketing]
+      summary: Create contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMarketingContactInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingContact"
+
+  /marketing/contacts/{id}:
+    delete:
+      operationId: deleteMarketingContact
+      tags: [marketing]
+      summary: Delete contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+    patch:
+      operationId: updateMarketingContact
+      tags: [marketing]
+      summary: Update contact status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMarketingContactInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingContact"
+
+  /marketing/campaigns:
+    get:
+      operationId: listMarketingCampaigns
+      tags: [marketing]
+      summary: List campaigns
+      responses:
+        "200":
+          description: Campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MarketingCampaign"
+    post:
+      operationId: createMarketingCampaign
+      tags: [marketing]
+      summary: Create campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCampaignInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingCampaign"
+
+  /marketing/campaigns/{id}:
+    get:
+      operationId: getMarketingCampaign
+      tags: [marketing]
+      summary: Get campaign detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingCampaign"
+    put:
+      operationId: updateMarketingCampaign
+      tags: [marketing]
+      summary: Update campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCampaignInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingCampaign"
+    delete:
+      operationId: deleteMarketingCampaign
+      tags: [marketing]
+      summary: Delete campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/campaigns/{id}/send:
+    post:
+      operationId: sendMarketingCampaign
+      tags: [marketing]
+      summary: Send or schedule campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendCampaignInput"
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/campaigns/{id}/cancel:
+    post:
+      operationId: cancelMarketingCampaign
+      tags: [marketing]
+      summary: Cancel scheduled campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/replies:
+    get:
+      operationId: listMarketingReplies
+      tags: [marketing]
+      summary: List inbound replies
+      parameters:
+        - name: unreadOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Replies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MarketingReply"
+
+  /marketing/replies/{id}/read:
+    post:
+      operationId: markReplyRead
+      tags: [marketing]
+      summary: Mark reply as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/replies/{id}/reply:
+    post:
+      operationId: replyToContact
+      tags: [marketing]
+      summary: Reply to a contact message
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendReplyInput"
+      responses:
+        "200":
+          description: Replied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/webhook/inbound:
+    post:
+      operationId: marketingInboundWebhook
+      tags: [marketing]
+      summary: Inbound email webhook (Sendgrid/Mailgun/etc)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InboundWebhookInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1440,3 +1766,205 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Appointment"
+
+    MarketingContact:
+      type: object
+      required: [id, name, email, status, bounced, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        tags:
+          type: ["string", "null"]
+        status:
+          type: string
+        bounced:
+          type: boolean
+        unsubscribedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    MarketingCampaign:
+      type: object
+      required: [id, name, subject, bodyHtml, fromName, fromEmail, status, totalSent, totalDelivered, totalOpened, totalClicked, totalBounced, totalReplied, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        subject:
+          type: string
+        bodyHtml:
+          type: string
+        bodyText:
+          type: ["string", "null"]
+        fromName:
+          type: string
+        fromEmail:
+          type: string
+        replyTo:
+          type: ["string", "null"]
+        status:
+          type: string
+        scheduledAt:
+          type: ["string", "null"]
+        sentAt:
+          type: ["string", "null"]
+        totalSent:
+          type: integer
+        totalDelivered:
+          type: integer
+        totalOpened:
+          type: integer
+        totalClicked:
+          type: integer
+        totalBounced:
+          type: integer
+        totalReplied:
+          type: integer
+        filterTags:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    MarketingReply:
+      type: object
+      required: [id, fromEmail, createdAt]
+      properties:
+        id:
+          type: integer
+        sendId:
+          type: ["integer", "null"]
+        contactId:
+          type: ["integer", "null"]
+        fromEmail:
+          type: string
+        fromName:
+          type: ["string", "null"]
+        subject:
+          type: ["string", "null"]
+        bodyText:
+          type: ["string", "null"]
+        bodyHtml:
+          type: ["string", "null"]
+        readAt:
+          type: ["string", "null"]
+        repliedAt:
+          type: ["string", "null"]
+        replyBody:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    MarketingStats:
+      type: object
+      required: [totalContacts, activeContacts, unsubscribed, bounced, totalCampaigns, sentCampaigns, scheduledCampaigns, unreadReplies]
+      properties:
+        totalContacts:
+          type: integer
+        activeContacts:
+          type: integer
+        unsubscribed:
+          type: integer
+        bounced:
+          type: integer
+        totalCampaigns:
+          type: integer
+        sentCampaigns:
+          type: integer
+        scheduledCampaigns:
+          type: integer
+        unreadReplies:
+          type: integer
+
+    ImportContactsResult:
+      type: object
+      required: [imported, skipped, total]
+      properties:
+        imported:
+          type: integer
+        skipped:
+          type: integer
+        total:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: string
+
+    CreateCampaignInput:
+      type: object
+      required: [name, subject, bodyHtml]
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        bodyHtml:
+          type: string
+        bodyText:
+          type: string
+        fromName:
+          type: string
+        fromEmail:
+          type: string
+        replyTo:
+          type: string
+        scheduledAt:
+          type: string
+        filterTags:
+          type: string
+
+    SendReplyInput:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+
+    CreateMarketingContactInput:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        tags:
+          type: string
+
+    UpdateMarketingContactInput:
+      type: object
+      properties:
+        status:
+          type: string
+        tags:
+          type: string
+
+    SendCampaignInput:
+      type: object
+      properties:
+        scheduledAt:
+          type: string
+
+    InboundWebhookInput:
+      type: object
+      properties:
+        from:
+          type: string
+        subject:
+          type: string
+        text:
+          type: string
+        html:
+          type: string

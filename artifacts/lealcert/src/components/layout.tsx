@@ -11,6 +11,7 @@ import {
   LifeBuoy,
   LogOut,
   User as UserIcon,
+  Megaphone,
 } from "lucide-react";
 
 const navigation = [
@@ -23,6 +24,7 @@ const adminNav = [
   { name: "Usuários", href: "/admin/users", icon: Users },
   { name: "Catálogo", href: "/admin/certificates", icon: FileBadge },
   { name: "Agenda", href: "/admin/slots", icon: CalendarDays },
+  { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 

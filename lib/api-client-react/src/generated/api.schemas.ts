@@ -483,6 +483,130 @@ export interface MeStats {
   next_appointments: Appointment[];
 }
 
+export interface MarketingContact {
+  id: number;
+  name: string;
+  email: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  tags?: string | null;
+  status: string;
+  bounced: boolean;
+  /** @nullable */
+  unsubscribedAt?: string | null;
+  createdAt: string;
+}
+
+export interface MarketingCampaign {
+  id: number;
+  name: string;
+  subject: string;
+  bodyHtml: string;
+  /** @nullable */
+  bodyText?: string | null;
+  fromName: string;
+  fromEmail: string;
+  /** @nullable */
+  replyTo?: string | null;
+  status: string;
+  /** @nullable */
+  scheduledAt?: string | null;
+  /** @nullable */
+  sentAt?: string | null;
+  totalSent: number;
+  totalDelivered: number;
+  totalOpened: number;
+  totalClicked: number;
+  totalBounced: number;
+  totalReplied: number;
+  /** @nullable */
+  filterTags?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MarketingReply {
+  id: number;
+  /** @nullable */
+  sendId?: number | null;
+  /** @nullable */
+  contactId?: number | null;
+  fromEmail: string;
+  /** @nullable */
+  fromName?: string | null;
+  /** @nullable */
+  subject?: string | null;
+  /** @nullable */
+  bodyText?: string | null;
+  /** @nullable */
+  bodyHtml?: string | null;
+  /** @nullable */
+  readAt?: string | null;
+  /** @nullable */
+  repliedAt?: string | null;
+  /** @nullable */
+  replyBody?: string | null;
+  createdAt: string;
+}
+
+export interface MarketingStats {
+  totalContacts: number;
+  activeContacts: number;
+  unsubscribed: number;
+  bounced: number;
+  totalCampaigns: number;
+  sentCampaigns: number;
+  scheduledCampaigns: number;
+  unreadReplies: number;
+}
+
+export interface ImportContactsResult {
+  imported: number;
+  skipped: number;
+  total: number;
+  errors?: string[];
+}
+
+export interface CreateCampaignInput {
+  name: string;
+  subject: string;
+  bodyHtml: string;
+  bodyText?: string;
+  fromName?: string;
+  fromEmail?: string;
+  replyTo?: string;
+  scheduledAt?: string;
+  filterTags?: string;
+}
+
+export interface SendReplyInput {
+  body: string;
+}
+
+export interface CreateMarketingContactInput {
+  name: string;
+  email: string;
+  phone?: string;
+  tags?: string;
+}
+
+export interface UpdateMarketingContactInput {
+  status?: string;
+  tags?: string;
+}
+
+export interface SendCampaignInput {
+  scheduledAt?: string;
+}
+
+export interface InboundWebhookInput {
+  from?: string;
+  subject?: string;
+  text?: string;
+  html?: string;
+}
+
 export type ListCertificatesParams = {
 activeOnly?: boolean;
 };
@@ -531,4 +655,19 @@ export const GetMeStatsRange = {
   '90d': '90d',
   custom: 'custom',
 } as const;
+
+export type ListMarketingContactsParams = {
+page?: number;
+search?: string;
+status?: string;
+};
+
+export type ListMarketingContacts200 = {
+  data: MarketingContact[];
+  total: number;
+};
+
+export type ListMarketingRepliesParams = {
+unreadOnly?: boolean;
+};
 

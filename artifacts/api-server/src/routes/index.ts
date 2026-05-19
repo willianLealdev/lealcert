@@ -9,6 +9,7 @@ import supportRouter from "./support";
 import settingsRouter from "./settings";
 import dashboardRouter from "./dashboard";
 import uploadRouter from "./upload";
+import marketingRouter from "./marketing";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(supportRouter);
 router.use(settingsRouter);
 router.use(dashboardRouter);
 router.use(uploadRouter);
+router.use(marketingRouter);
 
 export default router;

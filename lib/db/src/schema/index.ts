@@ -4,3 +4,4 @@ export * from "./slots";
 export * from "./orders";
 export * from "./tickets";
 export * from "./settings";
+export * from "./marketing";
