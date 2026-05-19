@@ -2028,6 +2028,26 @@ components:
       properties:
         scheduledAt:
           type: string
+        targetOverride:
+          type: string
+          enum: [all, cliente, contador, specific, manual]
+          description: Override campaign targetType for this send
+        specificContactIds:
+          type: array
+          items:
+            type: integer
+          description: Contact IDs to send to when targetOverride=specific
+        manualRecipients:
+          type: array
+          description: Ad-hoc recipients when targetOverride=manual
+          items:
+            type: object
+            required: [name, email]
+            properties:
+              name:
+                type: string
+              email:
+                type: string
 
     InboundWebhookInput:
       type: object

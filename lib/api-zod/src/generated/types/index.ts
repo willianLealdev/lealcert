@@ -70,6 +70,8 @@ export * from './profileUpdate';
 export * from './registerInput';
 export * from './resendVerificationInput';
 export * from './sendCampaignInput';
+export * from './sendCampaignInputManualRecipientsItem';
+export * from './sendCampaignInputTargetOverride';
 export * from './sendReplyInput';
 export * from './slot';
 export * from './slotInput';

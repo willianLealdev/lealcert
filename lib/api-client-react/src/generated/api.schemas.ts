@@ -673,8 +673,33 @@ export interface UpdateMarketingContactInput {
   tags?: string;
 }
 
+/**
+ * Override campaign targetType for this send
+ */
+export type SendCampaignInputTargetOverride = typeof SendCampaignInputTargetOverride[keyof typeof SendCampaignInputTargetOverride];
+
+
+export const SendCampaignInputTargetOverride = {
+  all: 'all',
+  cliente: 'cliente',
+  contador: 'contador',
+  specific: 'specific',
+  manual: 'manual',
+} as const;
+
+export type SendCampaignInputManualRecipientsItem = {
+  name: string;
+  email: string;
+};
+
 export interface SendCampaignInput {
   scheduledAt?: string;
+  /** Override campaign targetType for this send */
+  targetOverride?: SendCampaignInputTargetOverride;
+  /** Contact IDs to send to when targetOverride=specific */
+  specificContactIds?: number[];
+  /** Ad-hoc recipients when targetOverride=manual */
+  manualRecipients?: SendCampaignInputManualRecipientsItem[];
 }
 
 export interface InboundWebhookInput {

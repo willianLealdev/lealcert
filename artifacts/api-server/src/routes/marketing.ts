@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, ilike, or, sql, and, isNull, ne } from "drizzle-orm";
+import { eq, desc, ilike, or, sql, and, isNull, ne, inArray } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { promises as dns } from "dns";
 import multer from "multer";
@@ -284,12 +284,23 @@ router.delete("/marketing/campaigns/:id", async (req, res): Promise<void> => {
 
 router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const { scheduledAt } = req.body ?? {};
+  const { scheduledAt, targetOverride, specificContactIds, manualRecipients } = req.body ?? {};
 
   const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
   if (campaign.status === "sent" || campaign.status === "sending") {
     res.status(400).json({ error: "Campanha já enviada ou em progresso." }); return;
+  }
+
+  const dispatchOpts: DispatchOptions = {};
+  if (targetOverride && ["all", "cliente", "contador", "specific", "manual"].includes(targetOverride)) {
+    dispatchOpts.targetOverride = targetOverride;
+  }
+  if (Array.isArray(specificContactIds) && specificContactIds.length > 0) {
+    dispatchOpts.specificContactIds = specificContactIds.map(Number);
+  }
+  if (Array.isArray(manualRecipients) && manualRecipients.length > 0) {
+    dispatchOpts.manualRecipients = manualRecipients;
   }
 
   if (scheduledAt) {
@@ -301,7 +312,7 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
   await db.update(marketingCampaignsTable).set({ status: "sending" }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Campanha iniciada. Os e-mails serão enviados em segundo plano." });
 
-  setImmediate(() => dispatchCampaign(campaign.id).catch(err => logger.error({ err }, "Campaign dispatch error")));
+  setImmediate(() => dispatchCampaign(campaign.id, dispatchOpts).catch(err => logger.error({ err }, "Campaign dispatch error")));
 });
 
 router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> => {
@@ -311,20 +322,41 @@ router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> =
 });
 
 // ─── Campaign Dispatch ────────────────────────────────────────────────────────
-export async function dispatchCampaign(campaignId: number) {
+interface DispatchOptions {
+  targetOverride?: "all" | "cliente" | "contador" | "specific" | "manual";
+  specificContactIds?: number[];
+  manualRecipients?: { name: string; email: string }[];
+}
+
+export async function dispatchCampaign(campaignId: number, opts: DispatchOptions = {}) {
   const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, campaignId)).limit(1);
   if (!campaign) return;
 
-  const typeConditions = [
-    eq(marketingContactsTable.status, "active"),
-    eq(marketingContactsTable.bounced, false),
-    ne(marketingContactsTable.emailStatus, "invalid"),
-    ne(marketingContactsTable.emailStatus, "disposable"),
-  ];
-  if (campaign.targetType === "cliente") typeConditions.push(eq(marketingContactsTable.type, "cliente"));
-  else if (campaign.targetType === "contador") typeConditions.push(eq(marketingContactsTable.type, "contador"));
+  const effectiveTarget = opts.targetOverride ?? campaign.targetType;
 
-  const contacts = await db.select().from(marketingContactsTable).where(and(...typeConditions));
+  let contacts: { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; emailStatus: string; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date }[] = [];
+
+  if (effectiveTarget === "manual" && opts.manualRecipients?.length) {
+    contacts = opts.manualRecipients.map((r, i) => ({
+      id: -(i + 1), name: r.name, email: r.email, phone: null,
+      type: "manual", status: "active", bounced: false, tags: null,
+      emailStatus: "unknown", emailValidatedAt: null,
+      unsubscribedAt: null, createdAt: new Date(),
+    }));
+  } else if (effectiveTarget === "specific" && opts.specificContactIds?.length) {
+    contacts = await db.select().from(marketingContactsTable)
+      .where(inArray(marketingContactsTable.id, opts.specificContactIds));
+  } else {
+    const typeConditions = [
+      eq(marketingContactsTable.status, "active"),
+      eq(marketingContactsTable.bounced, false),
+      ne(marketingContactsTable.emailStatus, "invalid"),
+      ne(marketingContactsTable.emailStatus, "disposable"),
+    ];
+    if (effectiveTarget === "cliente") typeConditions.push(eq(marketingContactsTable.type, "cliente"));
+    else if (effectiveTarget === "contador") typeConditions.push(eq(marketingContactsTable.type, "contador"));
+    contacts = await db.select().from(marketingContactsTable).where(and(...typeConditions));
+  }
 
   let sent = 0;
   let bounced = 0;

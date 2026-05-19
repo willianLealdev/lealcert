@@ -5,7 +5,15 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { SendCampaignInputManualRecipientsItem } from './sendCampaignInputManualRecipientsItem';
+import type { SendCampaignInputTargetOverride } from './sendCampaignInputTargetOverride';
 
 export interface SendCampaignInput {
   scheduledAt?: string;
+  /** Override campaign targetType for this send */
+  targetOverride?: SendCampaignInputTargetOverride;
+  /** Contact IDs to send to when targetOverride=specific */
+  specificContactIds?: number[];
+  /** Ad-hoc recipients when targetOverride=manual */
+  manualRecipients?: SendCampaignInputManualRecipientsItem[];
 }

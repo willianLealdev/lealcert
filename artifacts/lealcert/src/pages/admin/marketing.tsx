@@ -202,16 +202,11 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
   const [showForm, setShowForm] = useState(false);
   const [editCampaign, setEditCampaign] = useState<number | null>(null);
   const [showSendDialog, setShowSendDialog] = useState<number | null>(null);
-  const [scheduledAt, setScheduledAt] = useState("");
 
   const { data: campaigns = [], isLoading } = useListMarketingCampaigns();
   const deleteMutation = useDeleteMarketingCampaign({ mutation: {
     onSuccess: () => { toast({ title: "Campanha removida." }); invalidate(); },
     onError: () => toast({ title: "Erro", description: "Não foi possível remover.", variant: "destructive" }),
-  }});
-  const sendMutation = useSendMarketingCampaign({ mutation: {
-    onSuccess: (data) => { toast({ title: "Sucesso!", description: data.message }); invalidate(); setShowSendDialog(null); },
-    onError: () => toast({ title: "Erro ao enviar", variant: "destructive" }),
   }});
   const cancelMutation = useCancelMarketingCampaign({ mutation: {
     onSuccess: () => { toast({ title: "Campanha cancelada." }); invalidate(); },
@@ -311,31 +306,241 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
       )}
 
       {showSendDialog !== null && (
-        <Dialog open onOpenChange={() => setShowSendDialog(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Enviar Campanha</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <p className="text-sm text-muted-foreground">Escolha enviar agora ou agendar para uma data específica.</p>
-              <div className="space-y-2">
-                <Label>Data e Hora de Envio (opcional)</Label>
-                <Input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
-                <p className="text-xs text-muted-foreground">Deixe em branco para enviar imediatamente.</p>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowSendDialog(null)}>Cancelar</Button>
-              <Button disabled={sendMutation.isPending} onClick={() => {
-                sendMutation.mutate({ id: showSendDialog!, data: { scheduledAt: scheduledAt || undefined } });
-              }}>
-                {scheduledAt ? <><Calendar className="h-4 w-4 mr-2" />Agendar</> : <><Send className="h-4 w-4 mr-2" />Enviar Agora</>}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <SendCampaignDialog
+          campaignId={showSendDialog}
+          onClose={() => setShowSendDialog(null)}
+          onSent={() => { setShowSendDialog(null); invalidate(); }}
+          toast={toast}
+        />
       )}
     </div>
+  );
+}
+
+// ─── Send Campaign Dialog ─────────────────────────────────────────────────────
+type SendTarget = "all" | "cliente" | "contador" | "specific" | "manual";
+
+interface ManualRecipient { name: string; email: string }
+
+function SendCampaignDialog({
+  campaignId, onClose, onSent, toast,
+}: {
+  campaignId: number;
+  onClose: () => void;
+  onSent: () => void;
+  toast: ReturnType<typeof useToast>["toast"];
+}) {
+  const [target, setTarget] = useState<SendTarget>("all");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [contactSearch, setContactSearch] = useState("");
+  const [selectedContacts, setSelectedContacts] = useState<{ id: number; name: string; email: string }[]>([]);
+  const [manualList, setManualList] = useState<ManualRecipient[]>([{ name: "", email: "" }]);
+
+  const { data: searchResult } = useListMarketingContacts({
+    search: contactSearch.length >= 2 ? contactSearch : undefined,
+    page: 1,
+  });
+  const foundContacts = searchResult?.data ?? [];
+
+  const sendMutation = useSendMarketingCampaign({ mutation: {
+    onSuccess: (data) => { toast({ title: "Sucesso!", description: data.message }); onSent(); },
+    onError: (err: unknown) => {
+      const msg = (err as { data?: { error?: string } })?.data?.error ?? "Erro ao enviar campanha.";
+      toast({ title: "Erro", description: msg, variant: "destructive" });
+    },
+  }});
+
+  function toggleContact(c: { id: number; name: string; email: string }) {
+    setSelectedContacts(prev =>
+      prev.some(x => x.id === c.id) ? prev.filter(x => x.id !== c.id) : [...prev, c]
+    );
+  }
+
+  function setManualField(idx: number, field: keyof ManualRecipient, value: string) {
+    setManualList(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  }
+
+  function addManualRow() { setManualList(prev => [...prev, { name: "", email: "" }]); }
+  function removeManualRow(idx: number) { setManualList(prev => prev.filter((_, i) => i !== idx)); }
+
+  function handleSend() {
+    const body: {
+      scheduledAt?: string;
+      targetOverride: SendTarget;
+      specificContactIds?: number[];
+      manualRecipients?: ManualRecipient[];
+    } = { targetOverride: target, scheduledAt: scheduledAt || undefined };
+
+    if (target === "specific") {
+      if (!selectedContacts.length) {
+        toast({ title: "Selecione ao menos um contato.", variant: "destructive" }); return;
+      }
+      body.specificContactIds = selectedContacts.map(c => c.id);
+    }
+    if (target === "manual") {
+      const valid = manualList.filter(r => r.name.trim() && /\S+@\S+\.\S+/.test(r.email));
+      if (!valid.length) {
+        toast({ title: "Adicione ao menos um destinatário válido.", variant: "destructive" }); return;
+      }
+      body.manualRecipients = valid;
+    }
+
+    sendMutation.mutate({ id: campaignId, data: body });
+  }
+
+  const targetOptions: { id: SendTarget; label: string; desc: string; icon: React.ElementType }[] = [
+    { id: "all", label: "Todos os contatos", desc: "Clientes e contadores ativos", icon: Users },
+    { id: "contador", label: "Contadores", desc: "Apenas contadores ativos da base", icon: Users },
+    { id: "cliente", label: "Lista de clientes", desc: "Apenas clientes ativos da base", icon: Users },
+    { id: "specific", label: "Cliente específico", desc: "Busque e selecione da base", icon: Search },
+    { id: "manual", label: "Destinatário manual", desc: "Digite nome e e-mail na hora", icon: Plus },
+  ];
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Send className="h-4 w-4 text-primary" /> Enviar Campanha
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 py-1">
+          {/* Target selection */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Para quem enviar?</Label>
+            <div className="space-y-2">
+              {targetOptions.map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setTarget(opt.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
+                    target === opt.id
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:border-muted-foreground/40 hover:bg-muted/30"
+                  }`}
+                >
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    target === opt.id ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                  }`}>
+                    <opt.icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{opt.label}</p>
+                    <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                  </div>
+                  <div className={`ml-auto h-4 w-4 rounded-full border-2 shrink-0 ${
+                    target === opt.id ? "border-primary bg-primary" : "border-muted-foreground/40"
+                  }`} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Specific contact search */}
+          {target === "specific" && (
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Buscar contato</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Nome ou e-mail (mín. 2 caracteres)…"
+                  value={contactSearch}
+                  onChange={e => setContactSearch(e.target.value)}
+                />
+              </div>
+              {selectedContacts.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedContacts.map(c => (
+                    <span key={c.id} className="flex items-center gap-1 bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
+                      {c.name}
+                      <button onClick={() => toggleContact(c)} className="hover:text-destructive ml-0.5">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {contactSearch.length >= 2 && foundContacts.length > 0 && (
+                <div className="border rounded-lg overflow-hidden max-h-40 overflow-y-auto">
+                  {foundContacts.map(c => {
+                    const sel = selectedContacts.some(x => x.id === c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => toggleContact(c)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-left border-b last:border-0 transition-colors ${
+                          sel ? "bg-primary/5" : "hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className={`h-3.5 w-3.5 rounded border shrink-0 ${sel ? "bg-primary border-primary" : "border-muted-foreground/40"}`} />
+                        <span className="font-medium">{c.name}</span>
+                        <span className="text-muted-foreground text-xs truncate ml-auto">{c.email}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {contactSearch.length >= 2 && foundContacts.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-2">Nenhum contato encontrado.</p>
+              )}
+            </div>
+          )}
+
+          {/* Manual recipients */}
+          {target === "manual" && (
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Destinatários</Label>
+              <div className="space-y-2">
+                {manualList.map((r, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Input
+                      placeholder="Nome"
+                      value={r.name}
+                      onChange={e => setManualField(i, "name", e.target.value)}
+                      className="flex-1"
+                    />
+                    <Input
+                      placeholder="E-mail"
+                      type="email"
+                      value={r.email}
+                      onChange={e => setManualField(i, "email", e.target.value)}
+                      className="flex-1"
+                    />
+                    {manualList.length > 1 && (
+                      <button onClick={() => removeManualRow(i)} className="text-destructive/70 hover:text-destructive shrink-0">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button onClick={addManualRow} className="text-sm text-primary hover:underline flex items-center gap-1">
+                  <Plus className="h-3.5 w-3.5" /> Adicionar outro
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Schedule */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold">Data e hora de envio <span className="font-normal text-muted-foreground">(opcional)</span></Label>
+            <Input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+            <p className="text-xs text-muted-foreground">Deixe em branco para enviar imediatamente.</p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button disabled={sendMutation.isPending} onClick={handleSend} className="gap-2">
+            {sendMutation.isPending
+              ? <><RefreshCw className="h-4 w-4 animate-spin" />Enviando…</>
+              : scheduledAt
+                ? <><Calendar className="h-4 w-4" />Agendar</>
+                : <><Send className="h-4 w-4" />Enviar Agora</>
+            }
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
