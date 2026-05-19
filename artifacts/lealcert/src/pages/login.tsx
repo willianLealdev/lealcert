@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLogin, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,7 +159,14 @@ export default function Login() {
               </Button>
             </form>
 
-            <div className="mt-6 pt-5 border-t border-white/10">
+            <div className="mt-6 pt-5 border-t border-white/10 space-y-3">
+              <div className="text-center">
+                <Link href="/register">
+                  <span className="text-sm text-blue-300 hover:text-blue-200 transition-colors cursor-pointer font-medium">
+                    Não tem conta? Cadastre-se
+                  </span>
+                </Link>
+              </div>
               <p className="text-xs text-center text-blue-200/40">
                 Em caso de problemas de acesso, entre em contato com o administrador.
               </p>

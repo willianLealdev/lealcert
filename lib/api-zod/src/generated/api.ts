@@ -17,6 +17,53 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Register a new account
+ */
+export const registerBodyPasswordMin = 6;
+
+
+
+export const RegisterBody = zod.object({
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "cpfCnpj": zod.string(),
+  "password": zod.string().min(registerBodyPasswordMin),
+  "phone": zod.string().optional()
+})
+
+
+/**
+ * @summary Verify email with code
+ */
+export const VerifyEmailBody = zod.object({
+  "email": zod.string(),
+  "code": zod.string()
+})
+
+export const VerifyEmailResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "cpfCnpj": zod.string(),
+  "role": zod.enum(['admin', 'contador']),
+  "phone": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Resend verification code
+ */
+export const ResendVerificationBody = zod.object({
+  "email": zod.string()
+})
+
+export const ResendVerificationResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Login with CPF/CNPJ and password
  */
 export const LoginBody = zod.object({

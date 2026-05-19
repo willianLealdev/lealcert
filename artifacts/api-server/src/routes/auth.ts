@@ -1,10 +1,127 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { sendVerificationEmail } from "../lib/email";
+
+function generateCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 const router = Router();
+
+router.post("/auth/register", async (req, res): Promise<void> => {
+  const { name, email, cpfCnpj, password, phone } = req.body ?? {};
+  if (!name || !email || !cpfCnpj || !password) {
+    res.status(400).json({ error: "Nome, e-mail, CPF/CNPJ e senha são obrigatórios." });
+    return;
+  }
+  if (password.length < 6) {
+    res.status(400).json({ error: "A senha deve ter no mínimo 6 caracteres." });
+    return;
+  }
+  const digits = cpfCnpj.replace(/\D/g, "");
+  const existing = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(or(eq(usersTable.cpfCnpj, digits), eq(usersTable.email, email.toLowerCase().trim())))
+    .limit(1);
+  if (existing.length > 0) {
+    res.status(409).json({ error: "CPF/CNPJ ou e-mail já cadastrado." });
+    return;
+  }
+  const passwordHash = await bcrypt.hash(password, 10);
+  const code = generateCode();
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+  await db.insert(usersTable).values({
+    name: name.trim(),
+    email: email.toLowerCase().trim(),
+    cpfCnpj: digits,
+    passwordHash,
+    phone: phone || null,
+    role: "contador",
+    isActive: true,
+    emailVerified: false,
+    emailVerificationCode: code,
+    emailVerificationExpiresAt: expiresAt,
+  });
+  try {
+    await sendVerificationEmail(email, name, code);
+  } catch (err) {
+    logger.error({ err }, "Failed to send verification email");
+  }
+  res.status(201).json({ message: "Conta criada! Verifique seu e-mail para ativar o acesso." });
+});
+
+router.post("/auth/verify-email", async (req, res): Promise<void> => {
+  const { email, code } = req.body ?? {};
+  if (!email || !code) {
+    res.status(400).json({ error: "E-mail e código são obrigatórios." });
+    return;
+  }
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email.toLowerCase().trim()))
+    .limit(1);
+  if (!user) {
+    res.status(400).json({ error: "E-mail não encontrado." });
+    return;
+  }
+  if (user.emailVerified) {
+    res.status(400).json({ error: "E-mail já verificado. Faça login normalmente." });
+    return;
+  }
+  if (!user.emailVerificationCode || user.emailVerificationCode !== code) {
+    res.status(400).json({ error: "Código inválido." });
+    return;
+  }
+  if (!user.emailVerificationExpiresAt || new Date() > user.emailVerificationExpiresAt) {
+    res.status(400).json({ error: "Código expirado. Solicite um novo código." });
+    return;
+  }
+  await db
+    .update(usersTable)
+    .set({ emailVerified: true, emailVerificationCode: null, emailVerificationExpiresAt: null })
+    .where(eq(usersTable.id, user.id));
+  req.session.userId = user.id;
+  req.session.role = user.role;
+  res.json({ id: user.id, name: user.name, email: user.email, cpfCnpj: user.cpfCnpj, role: user.role, phone: user.phone, createdAt: user.createdAt });
+});
+
+router.post("/auth/resend-verification", async (req, res): Promise<void> => {
+  const { email } = req.body ?? {};
+  if (!email) {
+    res.status(400).json({ error: "E-mail é obrigatório." });
+    return;
+  }
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email.toLowerCase().trim()))
+    .limit(1);
+  if (!user) {
+    res.status(400).json({ error: "E-mail não encontrado." });
+    return;
+  }
+  if (user.emailVerified) {
+    res.status(400).json({ error: "E-mail já verificado." });
+    return;
+  }
+  const code = generateCode();
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+  await db
+    .update(usersTable)
+    .set({ emailVerificationCode: code, emailVerificationExpiresAt: expiresAt })
+    .where(eq(usersTable.id, user.id));
+  try {
+    await sendVerificationEmail(email, user.name, code);
+  } catch (err) {
+    logger.error({ err }, "Failed to resend verification email");
+  }
+  res.json({ message: "Código reenviado. Verifique seu e-mail." });
+});
 
 router.post("/auth/login", async (req, res): Promise<void> => {
   const { cpfCnpj, password } = req.body ?? {};

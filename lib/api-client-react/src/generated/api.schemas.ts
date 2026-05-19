@@ -13,6 +13,28 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface RegisterInput {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  /** @minLength 6 */
+  password: string;
+  phone?: string;
+}
+
+export interface VerifyEmailInput {
+  email: string;
+  code: string;
+}
+
+export interface ResendVerificationInput {
+  email: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
 export interface LoginInput {
   cpfCnpj: string;
   password: string;
