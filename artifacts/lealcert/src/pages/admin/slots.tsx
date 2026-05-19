@@ -63,20 +63,26 @@ export default function AdminSlots() {
   const create = useCreateSlot({ mutation: { onSuccess: () => { toast({ title: "Horário adicionado!" }); setNewDatetime(""); refetch(); } } });
   const del = useDeleteSlot({ mutation: { onSuccess: () => { toast({ title: "Horário removido." }); setDeleteId(null); refetch(); } } });
 
-  const updateSettings = useUpdateSettings({
-    mutation: {
-      onSuccess: () => { toast({ title: "Configuração salva!" }); refetchSettings(); },
-      onError: () => toast({ title: "Erro ao salvar", variant: "destructive" }),
-    },
-  });
-
   const generateSlots = useGenerateSlots({
     mutation: {
       onSuccess: (data) => {
-        toast({ title: `${data.created} horários gerados!`, description: `${data.skipped} já existiam e foram ignorados.` });
+        toast({ title: `Configuração salva! ${data.created} horários gerados para os próximos 60 dias.`, description: data.skipped > 0 ? `${data.skipped} horários já existiam e foram mantidos.` : undefined });
         refetch();
+        refetchSettings();
       },
       onError: () => toast({ title: "Erro ao gerar horários", variant: "destructive" }),
+    },
+  });
+
+  const updateSettings = useUpdateSettings({
+    mutation: {
+      onSuccess: () => {
+        // After saving config, auto-generate slots for next 60 days
+        const from = todayISO();
+        const to = (() => { const d = new Date(); d.setDate(d.getDate() + 60); return d.toLocaleDateString("sv-SE", { timeZone: BRT }); })();
+        generateSlots.mutate({ data: { dateFrom: from, dateTo: to } });
+      },
+      onError: () => toast({ title: "Erro ao salvar", variant: "destructive" }),
     },
   });
 
@@ -192,10 +198,13 @@ export default function AdminSlots() {
               </div>
             </div>
 
-            <Button className="w-full" onClick={saveScheduleConfig} disabled={updateSettings.isPending}>
+            <Button className="w-full" onClick={saveScheduleConfig} disabled={updateSettings.isPending || generateSlots.isPending}>
               <Settings2 className="h-4 w-4 mr-2" />
-              Salvar Configuração
+              {updateSettings.isPending ? "Salvando..." : generateSlots.isPending ? "Gerando horários..." : "Salvar Configuração"}
             </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Salva a configuração e gera automaticamente os horários dos próximos 60 dias.
+            </p>
           </CardContent>
         </Card>
 
