@@ -17,6 +17,7 @@ import {
   useMarkReplyRead,
   useReplyToContact,
   useValidateContactEmails,
+  useBulkDeleteMarketingContacts,
   getGetMarketingStatsQueryKey,
   getListMarketingContactsQueryKey,
   getListMarketingCampaignsQueryKey,
@@ -709,6 +710,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
   const [emailStatusFilter, setEmailStatusFilter] = useState<EmailStatusFilter>("all");
   const [showAdd, setShowAdd] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
 
   const isCliente = type === "cliente";
@@ -733,10 +735,25 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
     emailStatus: emailStatusFilter !== "all" ? emailStatusFilter : undefined,
   });
 
-  function handleSearchChange(val: string) { setSearch(val); setPage(1); }
-  function handleEmailStatusChange(val: EmailStatusFilter) { setEmailStatusFilter(val); setPage(1); }
+  function handleSearchChange(val: string) { setSearch(val); setPage(1); setSelectedIds(new Set()); }
+  function handleEmailStatusChange(val: EmailStatusFilter) { setEmailStatusFilter(val); setPage(1); setSelectedIds(new Set()); }
   const contacts = data?.data ?? [];
   const total = data?.total ?? 0;
+
+  const allPageSelected = contacts.length > 0 && contacts.every(c => selectedIds.has(c.id));
+  const somePageSelected = contacts.some(c => selectedIds.has(c.id)) && !allPageSelected;
+
+  function toggleSelectAll() {
+    if (allPageSelected) {
+      setSelectedIds(prev => { const next = new Set(prev); contacts.forEach(c => next.delete(c.id)); return next; });
+    } else {
+      setSelectedIds(prev => { const next = new Set(prev); contacts.forEach(c => next.add(c.id)); return next; });
+    }
+  }
+
+  function toggleSelect(id: number) {
+    setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  }
 
   const deleteMutation = useDeleteMarketingContact({ mutation: {
     onSuccess: () => { toast({ title: "Contato removido." }); invalidate(); },
@@ -744,6 +761,14 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
   }});
   const updateMutation = useUpdateMarketingContact({ mutation: {
     onSuccess: () => { toast({ title: "Contato atualizado." }); invalidate(); },
+  }});
+  const bulkDeleteMutation = useBulkDeleteMarketingContacts({ mutation: {
+    onSuccess: (result) => {
+      toast({ title: `${result.deleted} contato(s) removido(s).` });
+      setSelectedIds(new Set());
+      invalidate();
+    },
+    onError: () => toast({ title: "Erro ao remover contatos", variant: "destructive" }),
   }});
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -829,9 +854,47 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
         </span>
       </div>
 
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-xl">
+          <span className="text-sm font-medium text-primary">{selectedIds.size} selecionado(s)</span>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Limpar seleção
+          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={bulkDeleteMutation.isPending}
+              onClick={() => {
+                if (confirm(`Remover ${selectedIds.size} contato(s) permanentemente?`))
+                  bulkDeleteMutation.mutate({ data: { ids: Array.from(selectedIds) } });
+              }}
+              className="gap-2"
+            >
+              {bulkDeleteMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              Excluir selecionados
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Contacts table */}
       <div className="bg-card border rounded-xl overflow-hidden">
-        <div className={`grid ${isCliente ? "grid-cols-[2fr_2fr_1fr_1fr_auto]" : "grid-cols-[2fr_2fr_1.5fr_1fr_1fr_auto]"} text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30`}>
+        <div className={`grid ${isCliente ? "grid-cols-[auto_2fr_2fr_1fr_1fr_auto]" : "grid-cols-[auto_2fr_2fr_1.5fr_1fr_1fr_auto]"} text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30 items-center`}>
+          <span className="flex items-center pr-3">
+            <input
+              type="checkbox"
+              checked={allPageSelected}
+              ref={el => { if (el) el.indeterminate = somePageSelected; }}
+              onChange={toggleSelectAll}
+              className="h-4 w-4 rounded border-border cursor-pointer accent-primary"
+              title="Selecionar todos desta página"
+            />
+          </span>
           <span>Nome{!isCliente && " / Escritório"}</span>
           <span>E-mail</span>
           {!isCliente && <span>Telefone</span>}
@@ -854,7 +917,18 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
           </div>
         ) : (
           contacts.map(c => (
-            <div key={c.id} className={`grid ${isCliente ? "grid-cols-[2fr_2fr_1fr_1fr_auto]" : "grid-cols-[2fr_2fr_1.5fr_1fr_1fr_auto]"} px-4 py-3 border-b last:border-0 items-center hover:bg-muted/20 transition-colors`}>
+            <div
+              key={c.id}
+              className={`grid ${isCliente ? "grid-cols-[auto_2fr_2fr_1fr_1fr_auto]" : "grid-cols-[auto_2fr_2fr_1.5fr_1fr_1fr_auto]"} px-4 py-3 border-b last:border-0 items-center transition-colors ${selectedIds.has(c.id) ? "bg-primary/5" : "hover:bg-muted/20"}`}
+            >
+              <span className="flex items-center pr-3">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(c.id)}
+                  onChange={() => toggleSelect(c.id)}
+                  className="h-4 w-4 rounded border-border cursor-pointer accent-primary"
+                />
+              </span>
               <span className="font-medium text-sm truncate">{c.name}</span>
               <span className="text-sm text-muted-foreground truncate">{c.email}</span>
               {!isCliente && <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>}

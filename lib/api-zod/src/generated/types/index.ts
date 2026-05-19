@@ -17,6 +17,8 @@ export * from './appSettings';
 export * from './appSettingsUpdate';
 export * from './authUser';
 export * from './authUserRole';
+export * from './bulkDeleteContactsInput';
+export * from './bulkDeleteContactsResult';
 export * from './certificate';
 export * from './certificateInput';
 export * from './certificateUpdate';

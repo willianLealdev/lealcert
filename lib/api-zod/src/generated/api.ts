@@ -843,6 +843,18 @@ export const CreateMarketingContactBody = zod.object({
 
 
 /**
+ * @summary Delete multiple contacts by ID
+ */
+export const BulkDeleteMarketingContactsBody = zod.object({
+  "ids": zod.array(zod.number())
+})
+
+export const BulkDeleteMarketingContactsResponse = zod.object({
+  "deleted": zod.number()
+})
+
+
+/**
  * @summary Validate email addresses of contacts (MX + disposable + format check)
  */
 export const ValidateContactEmailsBody = zod.object({

@@ -24,6 +24,8 @@ import type {
   AppSettings,
   AppSettingsUpdate,
   AuthUser,
+  BulkDeleteContactsInput,
+  BulkDeleteContactsResult,
   Certificate,
   CertificateInput,
   CertificateUpdate,
@@ -3145,6 +3147,77 @@ export const useCreateMarketingContact = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateMarketingContactMutationOptions(options));
+    }
+
+export const getBulkDeleteMarketingContactsUrl = () => {
+
+
+
+
+  return `/api/marketing/contacts/bulk-delete`
+}
+
+/**
+ * @summary Delete multiple contacts by ID
+ */
+export const bulkDeleteMarketingContacts = async (bulkDeleteContactsInput: BulkDeleteContactsInput, options?: RequestInit): Promise<BulkDeleteContactsResult> => {
+
+  return customFetch<BulkDeleteContactsResult>(getBulkDeleteMarketingContactsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      bulkDeleteContactsInput,)
+  }
+);}
+
+
+
+
+export const getBulkDeleteMarketingContactsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteMarketingContacts>>, TError,{data: BodyType<BulkDeleteContactsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteMarketingContacts>>, TError,{data: BodyType<BulkDeleteContactsInput>}, TContext> => {
+
+const mutationKey = ['bulkDeleteMarketingContacts'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkDeleteMarketingContacts>>, {data: BodyType<BulkDeleteContactsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkDeleteMarketingContacts(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkDeleteMarketingContactsMutationResult = NonNullable<Awaited<ReturnType<typeof bulkDeleteMarketingContacts>>>
+    export type BulkDeleteMarketingContactsMutationBody = BodyType<BulkDeleteContactsInput>
+    export type BulkDeleteMarketingContactsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete multiple contacts by ID
+ */
+export const useBulkDeleteMarketingContacts = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteMarketingContacts>>, TError,{data: BodyType<BulkDeleteContactsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkDeleteMarketingContacts>>,
+        TError,
+        {data: BodyType<BulkDeleteContactsInput>},
+        TContext
+      > => {
+      return useMutation(getBulkDeleteMarketingContactsMutationOptions(options));
     }
 
 export const getValidateContactEmailsUrl = () => {

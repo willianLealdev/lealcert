@@ -241,6 +241,15 @@ router.patch("/marketing/contacts/:id", async (req, res): Promise<void> => {
   res.json(contact);
 });
 
+router.post("/marketing/contacts/bulk-delete", async (req, res): Promise<void> => {
+  const { ids } = req.body ?? {};
+  if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ message: "ids required" }); return; }
+  const numericIds = ids.map(Number).filter(n => Number.isFinite(n) && n > 0);
+  if (numericIds.length === 0) { res.status(400).json({ message: "No valid ids" }); return; }
+  await db.delete(marketingContactsTable).where(inArray(marketingContactsTable.id, numericIds));
+  res.json({ deleted: numericIds.length });
+});
+
 router.delete("/marketing/contacts/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   await db.delete(marketingContactsTable).where(eq(marketingContactsTable.id, id));

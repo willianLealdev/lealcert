@@ -483,6 +483,14 @@ export interface MeStats {
   next_appointments: Appointment[];
 }
 
+export interface BulkDeleteContactsInput {
+  ids: number[];
+}
+
+export interface BulkDeleteContactsResult {
+  deleted: number;
+}
+
 export type ValidateEmailsInputType = typeof ValidateEmailsInputType[keyof typeof ValidateEmailsInputType];
 
 
