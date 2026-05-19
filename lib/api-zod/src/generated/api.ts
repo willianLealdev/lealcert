@@ -9,6 +9,15 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Send message to the AI sales chat (SSE stream)
+ */
+export const SendChatMessageBody = zod.object({
+  "message": zod.string(),
+  "sessionId": zod.number().describe('Conversation\/session ID returned by createChatSession')
+})
+
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

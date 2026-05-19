@@ -28,8 +28,40 @@ tags:
     description: Dashboard stats
   - name: marketing
     description: Email marketing
+  - name: openai
+    description: OpenAI AI chat operations
 
 paths:
+  /openai/chat/session:
+    post:
+      operationId: createChatSession
+      tags: [openai]
+      summary: Create a new chat session (returns session id)
+      responses:
+        "201":
+          description: Created session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiConversation"
+
+  /openai/chat:
+    post:
+      operationId: sendChatMessage
+      tags: [openai]
+      summary: Send message to the AI sales chat (SSE stream)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "200":
+          description: SSE stream of assistant text chunks
+          content:
+            text/event-stream: {}
+
   /healthz:
     get:
       operationId: healthCheck
@@ -2103,3 +2135,73 @@ components:
           type: string
         html:
           type: string
+
+    OpenaiConversation:
+      type: object
+      required: [id, title, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    OpenaiMessage:
+      type: object
+      required: [id, conversationId, role, content, createdAt]
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    OpenaiConversationInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+    OpenaiMessageInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+    OpenaiConversationWithMessages:
+      type: object
+      required: [id, title, createdAt, messages]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpenaiMessage"
+    OpenaiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    ChatMessageInput:
+      type: object
+      required: [message, sessionId]
+      properties:
+        message:
+          type: string
+        sessionId:
+          type: integer
+          description: Conversation/session ID returned by createChatSession

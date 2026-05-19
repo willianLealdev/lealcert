@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/layout";
+import Landing from "@/pages/landing";
 
 import Login from "@/pages/login";
 import Register from "@/pages/register";
@@ -58,10 +59,13 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
 function Router() {
   return (
     <Switch>
+      {/* Public routes */}
+      <Route path="/" component={Landing} />
+      <Route path="/entrar" component={Login} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/verify-email" component={VerifyEmail} />
-      <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
+      {/* Protected user routes */}
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/orders" component={() => <ProtectedRoute component={Orders} />} />
       <Route path="/orders/new" component={() => <ProtectedRoute component={NewOrder} />} />
@@ -70,6 +74,7 @@ function Router() {
       <Route path="/support/new" component={() => <ProtectedRoute component={NewTicket} />} />
       <Route path="/support/:id" component={() => <ProtectedRoute component={TicketDetail} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
+      {/* Protected admin routes */}
       <Route path="/admin/users" component={() => <ProtectedRoute component={AdminUsers} adminOnly />} />
       <Route path="/admin/certificates" component={() => <ProtectedRoute component={AdminCertificates} adminOnly />} />
       <Route path="/admin/slots" component={() => <ProtectedRoute component={AdminSlots} adminOnly />} />

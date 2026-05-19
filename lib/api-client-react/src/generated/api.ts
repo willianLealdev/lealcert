@@ -29,6 +29,7 @@ import type {
   Certificate,
   CertificateInput,
   CertificateUpdate,
+  ChatMessageInput,
   CreateCampaignInput,
   CreateMarketingContactInput,
   DashboardStats,
@@ -55,6 +56,7 @@ import type {
   Message,
   MessageInput,
   MessageResponse,
+  OpenaiConversation,
   Order,
   OrderInput,
   OrderUpdate,
@@ -89,6 +91,147 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
+
+export const getCreateChatSessionUrl = () => {
+
+
+
+
+  return `/api/openai/chat/session`
+}
+
+/**
+ * @summary Create a new chat session (returns session id)
+ */
+export const createChatSession = async ( options?: RequestInit): Promise<OpenaiConversation> => {
+
+  return customFetch<OpenaiConversation>(getCreateChatSessionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCreateChatSessionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChatSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createChatSession>>, TError,void, TContext> => {
+
+const mutationKey = ['createChatSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createChatSession>>, void> = () => {
+
+
+          return  createChatSession(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateChatSessionMutationResult = NonNullable<Awaited<ReturnType<typeof createChatSession>>>
+
+    export type CreateChatSessionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a new chat session (returns session id)
+ */
+export const useCreateChatSession = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChatSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createChatSession>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCreateChatSessionMutationOptions(options));
+    }
+
+export const getSendChatMessageUrl = () => {
+
+
+
+
+  return `/api/openai/chat`
+}
+
+/**
+ * @summary Send message to the AI sales chat (SSE stream)
+ */
+export const sendChatMessage = async (chatMessageInput: ChatMessageInput, options?: RequestInit): Promise<unknown> => {
+
+  return customFetch<unknown>(getSendChatMessageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      chatMessageInput,)
+  }
+);}
+
+
+
+
+export const getSendChatMessageMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendChatMessage>>, TError,{data: BodyType<ChatMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendChatMessage>>, TError,{data: BodyType<ChatMessageInput>}, TContext> => {
+
+const mutationKey = ['sendChatMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendChatMessage>>, {data: BodyType<ChatMessageInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendChatMessage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendChatMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendChatMessage>>>
+    export type SendChatMessageMutationBody = BodyType<ChatMessageInput>
+    export type SendChatMessageMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Send message to the AI sales chat (SSE stream)
+ */
+export const useSendChatMessage = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendChatMessage>>, TError,{data: BodyType<ChatMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendChatMessage>>,
+        TError,
+        {data: BodyType<ChatMessageInput>},
+        TContext
+      > => {
+      return useMutation(getSendChatMessageMutationOptions(options));
+    }
 
 export const getHealthCheckUrl = () => {
 

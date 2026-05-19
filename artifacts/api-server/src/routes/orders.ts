@@ -2,6 +2,8 @@ import { Router } from "express";
 import { eq, desc, ilike, or, sql } from "drizzle-orm";
 import { db, ordersTable, usersTable, certificatesTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { sendOrderStatusEmail } from "../lib/email";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -173,6 +175,21 @@ router.patch("/orders/:id", requireAdmin, async (req, res): Promise<void> => {
     res.status(404).json({ error: "Pedido não encontrado." });
     return;
   }
+
+  if (status !== undefined && order.customerEmail) {
+    const [user] = await db
+      .select({ name: usersTable.name })
+      .from(usersTable)
+      .where(eq(usersTable.id, order.userId))
+      .limit(1);
+    sendOrderStatusEmail({
+      to: order.customerEmail,
+      customerName: order.customerName ?? user?.name ?? "Cliente",
+      orderNumber: order.orderNumber,
+      status: order.status,
+    }).catch((err: unknown) => logger.error({ err }, "Erro ao enviar e-mail de status"));
+  }
+
   res.json(orderRow(order));
 });
 

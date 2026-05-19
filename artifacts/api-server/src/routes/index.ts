@@ -10,6 +10,7 @@ import settingsRouter from "./settings";
 import dashboardRouter from "./dashboard";
 import uploadRouter from "./upload";
 import marketingRouter from "./marketing";
+import chatRouter from "./chat";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(settingsRouter);
 router.use(dashboardRouter);
 router.use(uploadRouter);
 router.use(marketingRouter);
+router.use(chatRouter);
 
 export default router;

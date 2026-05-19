@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     mutation: {
       onSuccess: () => {
         queryClient.setQueryData(getGetMeQueryKey(), null);
-        setLocation("/login");
+        setLocation("/entrar");
       }
     }
   });
