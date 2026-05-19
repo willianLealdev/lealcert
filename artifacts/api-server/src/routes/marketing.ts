@@ -159,13 +159,14 @@ router.get("/marketing/campaigns/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/marketing/campaigns", async (req, res): Promise<void> => {
-  const { name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, scheduledAt, filterTags } = req.body ?? {};
+  const { name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, scheduledAt, filterTags, targetType } = req.body ?? {};
   if (!name || !subject || !bodyHtml) { res.status(400).json({ error: "Nome, assunto e corpo são obrigatórios." }); return; }
   const [campaign] = await db.insert(marketingCampaignsTable).values({
     name, subject, bodyHtml, bodyText,
     fromName: fromName ?? "LealCert Marketing",
     fromEmail: fromEmail ?? "mkt@lealcert.com.br",
     replyTo, filterTags,
+    targetType: (targetType === "cliente" || targetType === "contador") ? targetType : "all",
     scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
     status: scheduledAt ? "scheduled" : "draft",
   }).returning();
@@ -174,9 +175,10 @@ router.post("/marketing/campaigns", async (req, res): Promise<void> => {
 
 router.put("/marketing/campaigns/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const { name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, scheduledAt, filterTags } = req.body ?? {};
+  const { name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, scheduledAt, filterTags, targetType } = req.body ?? {};
   const [campaign] = await db.update(marketingCampaignsTable).set({
     name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, filterTags,
+    targetType: (targetType === "cliente" || targetType === "contador") ? targetType : "all",
     scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
   }).where(eq(marketingCampaignsTable.id, id)).returning();
   res.json(campaign);
@@ -221,8 +223,11 @@ export async function dispatchCampaign(campaignId: number) {
   const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, campaignId)).limit(1);
   if (!campaign) return;
 
-  const contacts = await db.select().from(marketingContactsTable)
-    .where(and(eq(marketingContactsTable.status, "active"), eq(marketingContactsTable.bounced, false)));
+  const typeConditions = [eq(marketingContactsTable.status, "active"), eq(marketingContactsTable.bounced, false)];
+  if (campaign.targetType === "cliente") typeConditions.push(eq(marketingContactsTable.type, "cliente"));
+  else if (campaign.targetType === "contador") typeConditions.push(eq(marketingContactsTable.type, "contador"));
+
+  const contacts = await db.select().from(marketingContactsTable).where(and(...typeConditions));
 
   let sent = 0;
   let bounced = 0;

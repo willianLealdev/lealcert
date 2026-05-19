@@ -898,6 +898,7 @@ export const ListMarketingCampaignsResponseItem = zod.object({
   "totalBounced": zod.number(),
   "totalReplied": zod.number(),
   "filterTags": zod.string().nullish(),
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -916,7 +917,8 @@ export const CreateMarketingCampaignBody = zod.object({
   "fromEmail": zod.string().optional(),
   "replyTo": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
-  "filterTags": zod.string().optional()
+  "filterTags": zod.string().optional(),
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional()
 })
 
 
@@ -946,6 +948,7 @@ export const GetMarketingCampaignResponse = zod.object({
   "totalBounced": zod.number(),
   "totalReplied": zod.number(),
   "filterTags": zod.string().nullish(),
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -967,7 +970,8 @@ export const UpdateMarketingCampaignBody = zod.object({
   "fromEmail": zod.string().optional(),
   "replyTo": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
-  "filterTags": zod.string().optional()
+  "filterTags": zod.string().optional(),
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional()
 })
 
 export const UpdateMarketingCampaignResponse = zod.object({
@@ -989,6 +993,7 @@ export const UpdateMarketingCampaignResponse = zod.object({
   "totalBounced": zod.number(),
   "totalReplied": zod.number(),
   "filterTags": zod.string().nullish(),
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })

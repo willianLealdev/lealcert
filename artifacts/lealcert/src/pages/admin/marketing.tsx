@@ -351,6 +351,7 @@ function CampaignFormDialog({
     fromEmail: existing?.fromEmail ?? "mkt@lealcert.com.br",
     replyTo: existing?.replyTo ?? "",
     filterTags: existing?.filterTags ?? "",
+    targetType: existing?.targetType ?? "all",
   });
 
   function set(k: keyof typeof form, v: string) { setForm(p => ({ ...p, [k]: v })); }
@@ -360,12 +361,23 @@ function CampaignFormDialog({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const data = { ...form, replyTo: form.replyTo || undefined, bodyText: form.bodyText || undefined, filterTags: form.filterTags || undefined };
+    const data = {
+      ...form,
+      replyTo: form.replyTo || undefined,
+      bodyText: form.bodyText || undefined,
+      filterTags: form.filterTags || undefined,
+    };
     if (campaignId) updateMutation.mutate({ id: campaignId, data });
     else createMutation.mutate({ data });
   }
 
   const isPending = createMutation.isPending || updateMutation.isPending;
+
+  const targetLabels: Record<string, string> = {
+    all: "Todos os contatos (clientes + contadores)",
+    cliente: "Somente clientes",
+    contador: "Somente contadores",
+  };
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -374,6 +386,36 @@ function CampaignFormDialog({
           <DialogTitle>{campaignId ? "Editar Campanha" : "Nova Campanha"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
+
+          {/* Destinatários — campo principal em destaque */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold">Destinatários *</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(["all", "cliente", "contador"] as const).map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => set("targetType", t)}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-all text-left ${
+                    form.targetType === t
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                  }`}
+                >
+                  <span className="block text-xs font-bold mb-0.5">
+                    {t === "all" ? "Todos" : t === "cliente" ? "Clientes" : "Contadores"}
+                  </span>
+                  <span className="text-xs opacity-70 leading-tight">
+                    {t === "all" ? "4.545 + 1.392" : t === "cliente" ? "4.545 contatos" : "1.392 contatos"}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {targetLabels[form.targetType]}
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Nome da Campanha *</Label>

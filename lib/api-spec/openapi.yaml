@@ -1838,6 +1838,9 @@ components:
           type: integer
         filterTags:
           type: ["string", "null"]
+        targetType:
+          type: string
+          enum: [all, cliente, contador]
         createdAt:
           type: string
         updatedAt:
@@ -1930,6 +1933,9 @@ components:
           type: string
         filterTags:
           type: string
+        targetType:
+          type: string
+          enum: [all, cliente, contador]
 
     SendReplyInput:
       type: object

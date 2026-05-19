@@ -5,6 +5,7 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { MarketingCampaignTargetType } from './marketingCampaignTargetType';
 
 export interface MarketingCampaign {
   id: number;
@@ -30,6 +31,7 @@ export interface MarketingCampaign {
   totalReplied: number;
   /** @nullable */
   filterTags?: string | null;
+  targetType?: MarketingCampaignTargetType;
   createdAt: string;
   updatedAt: string;
 }

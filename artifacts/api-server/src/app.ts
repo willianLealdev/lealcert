@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -26,16 +27,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const sessionSecret = process.env.SESSION_SECRET ?? "lealcert-dev-secret-change-me";
+const PgSession = connectPgSimple(session);
 
 app.use(
   session({
+    store: new PgSession({
+      conString: process.env.DATABASE_URL,
+      tableName: "session",
+      createTableIfMissing: false,
+    }),
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: false,
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
     },
   }),
 );

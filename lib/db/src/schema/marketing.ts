@@ -34,6 +34,7 @@ export const marketingCampaignsTable = pgTable("marketing_campaigns", {
   totalBounced: integer("total_bounced").notNull().default(0),
   totalReplied: integer("total_replied").notNull().default(0),
   filterTags: text("filter_tags"),
+  targetType: text("target_type").notNull().default("all"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

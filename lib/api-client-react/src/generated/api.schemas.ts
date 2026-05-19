@@ -507,6 +507,15 @@ export interface MarketingContact {
   createdAt: string;
 }
 
+export type MarketingCampaignTargetType = typeof MarketingCampaignTargetType[keyof typeof MarketingCampaignTargetType];
+
+
+export const MarketingCampaignTargetType = {
+  all: 'all',
+  cliente: 'cliente',
+  contador: 'contador',
+} as const;
+
 export interface MarketingCampaign {
   id: number;
   name: string;
@@ -531,6 +540,7 @@ export interface MarketingCampaign {
   totalReplied: number;
   /** @nullable */
   filterTags?: string | null;
+  targetType?: MarketingCampaignTargetType;
   createdAt: string;
   updatedAt: string;
 }
@@ -577,6 +587,15 @@ export interface ImportContactsResult {
   errors?: string[];
 }
 
+export type CreateCampaignInputTargetType = typeof CreateCampaignInputTargetType[keyof typeof CreateCampaignInputTargetType];
+
+
+export const CreateCampaignInputTargetType = {
+  all: 'all',
+  cliente: 'cliente',
+  contador: 'contador',
+} as const;
+
 export interface CreateCampaignInput {
   name: string;
   subject: string;
@@ -587,6 +606,7 @@ export interface CreateCampaignInput {
   replyTo?: string;
   scheduledAt?: string;
   filterTags?: string;
+  targetType?: CreateCampaignInputTargetType;
 }
 
 export interface SendReplyInput {

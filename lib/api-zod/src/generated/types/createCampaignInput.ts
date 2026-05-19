@@ -5,6 +5,7 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateCampaignInputTargetType } from './createCampaignInputTargetType';
 
 export interface CreateCampaignInput {
   name: string;
@@ -16,4 +17,5 @@ export interface CreateCampaignInput {
   replyTo?: string;
   scheduledAt?: string;
   filterTags?: string;
+  targetType?: CreateCampaignInputTargetType;
 }
