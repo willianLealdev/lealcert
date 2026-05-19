@@ -192,22 +192,30 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
     try {
       const domain = contact.email.includes("@") ? contact.email.split("@")[1].toLowerCase() : "";
       let status: "valid" | "invalid" | "disposable";
+      let reason: string | null = null;
 
       if (!EMAIL_REGEX.test(contact.email)) {
         status = "invalid";
+        reason = "bad_format";
         stats.badFormat++;
       } else if (DISPOSABLE_DOMAINS.has(domain)) {
         status = "disposable";
+        reason = "disposable_domain";
         stats.disposable++;
       } else {
         const mx = await hasMxRecord(domain);
-        status = mx ? "valid" : "invalid";
-        if (!mx) stats.noMx++;
-        else stats.valid++;
+        if (mx) {
+          status = "valid";
+          stats.valid++;
+        } else {
+          status = "invalid";
+          reason = "no_mx";
+          stats.noMx++;
+        }
       }
 
       await db.update(marketingContactsTable)
-        .set({ emailStatus: status, emailValidatedAt: new Date() })
+        .set({ emailStatus: status, emailInvalidReason: reason, emailValidatedAt: new Date() })
         .where(eq(marketingContactsTable.id, contact.id));
 
       if (status === "invalid" || status === "disposable") stats.invalid++;
@@ -336,13 +344,13 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
 
   const effectiveTarget = opts.targetOverride ?? campaign.targetType;
 
-  let contacts: { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; emailStatus: string; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date }[] = [];
+  let contacts: { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date }[] = [];
 
   if (effectiveTarget === "manual" && opts.manualRecipients?.length) {
     contacts = opts.manualRecipients.map((r, i) => ({
       id: -(i + 1), name: r.name, email: r.email, phone: null,
       type: "manual", status: "active", bounced: false, tags: null,
-      emailStatus: "unknown", emailValidatedAt: null,
+      emailStatus: "unknown", emailInvalidReason: null, emailValidatedAt: null,
       unsubscribedAt: null, createdAt: new Date(),
     }));
   } else if (effectiveTarget === "specific" && opts.specificContactIds?.length) {

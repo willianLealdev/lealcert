@@ -1849,6 +1849,9 @@ components:
         emailStatus:
           type: string
           enum: [unknown, valid, invalid, disposable]
+        emailInvalidReason:
+          type: ["string", "null"]
+          description: Reason why email is invalid (bad_format, no_mx, disposable_domain)
         emailValidatedAt:
           type: ["string", "null"]
         bounced:

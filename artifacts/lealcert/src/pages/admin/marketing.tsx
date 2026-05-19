@@ -69,11 +69,28 @@ function contactStatusBadge(status: string, bounced: boolean) {
   return <Badge className="bg-emerald-500/15 text-emerald-600">Ativo</Badge>;
 }
 
-function emailStatusBadge(emailStatus: string | null | undefined) {
+const INVALID_REASON_LABELS: Record<string, string> = {
+  bad_format: "Formato inválido",
+  no_mx: "Sem servidor MX",
+  disposable_domain: "Domínio descartável",
+};
+
+function emailStatusBadge(emailStatus: string | null | undefined, reason?: string | null) {
   if (!emailStatus || emailStatus === "unknown") return <Badge variant="outline" className="text-xs">Não validado</Badge>;
   if (emailStatus === "valid") return <Badge className="bg-emerald-500/15 text-emerald-700 text-xs border-emerald-200">Válido</Badge>;
-  if (emailStatus === "disposable") return <Badge className="bg-amber-500/15 text-amber-700 text-xs border-amber-200">Descartável</Badge>;
-  return <Badge variant="destructive" className="text-xs">Inválido</Badge>;
+  const reasonLabel = reason ? INVALID_REASON_LABELS[reason] ?? reason : null;
+  if (emailStatus === "disposable") return (
+    <span className="inline-flex flex-col gap-0.5">
+      <Badge className="bg-amber-500/15 text-amber-700 text-xs border-amber-200">Descartável</Badge>
+      {reasonLabel && <span className="text-[10px] text-amber-600 leading-none">{reasonLabel}</span>}
+    </span>
+  );
+  return (
+    <span className="inline-flex flex-col gap-0.5">
+      <Badge variant="destructive" className="text-xs">Inválido</Badge>
+      {reasonLabel && <span className="text-[10px] text-destructive/70 leading-none">{reasonLabel}</span>}
+    </span>
+  );
 }
 
 export default function AdminMarketing() {
@@ -842,7 +859,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
               <span className="text-sm text-muted-foreground truncate">{c.email}</span>
               {!isCliente && <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>}
               <span>{contactStatusBadge(c.status, c.bounced)}</span>
-              <span>{emailStatusBadge(c.emailStatus)}</span>
+              <span>{emailStatusBadge(c.emailStatus, c.emailInvalidReason)}</span>
               <div className="flex items-center gap-1">
                 {c.status === "active" && (
                   <button onClick={() => updateMutation.mutate({ id: c.id, data: { status: "unsubscribed" } })}

@@ -538,6 +538,11 @@ export interface MarketingContact {
   tags?: string | null;
   status: string;
   emailStatus: MarketingContactEmailStatus;
+  /**
+     * Reason why email is invalid (bad_format, no_mx, disposable_domain)
+     * @nullable
+     */
+  emailInvalidReason?: string | null;
   /** @nullable */
   emailValidatedAt?: string | null;
   bounced: boolean;
