@@ -252,27 +252,26 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <nav className="sticky top-0 z-40 bg-gray-100/95 backdrop-blur border-b border-gray-200">
+      <nav className="sticky top-0 z-40 bg-[#0f172a] backdrop-blur border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-28">
           <div className="flex items-center">
             <img src="/logo.png" alt="LealCert" className="h-24 w-auto object-contain" />
           </div>
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-            <a href="#certificados" className="hover:text-[#2563eb] transition-colors">Certificados</a>
-            <a href="#como-funciona" className="hover:text-[#2563eb] transition-colors">Como Funciona</a>
-            <a href="#beneficios" className="hover:text-[#2563eb] transition-colors">Benefícios</a>
-            <a href="#contato" className="hover:text-[#2563eb] transition-colors">Contato</a>
+          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
+            <a href="#certificados" className="hover:text-white transition-colors">Certificados</a>
+            <a href="#como-funciona" className="hover:text-white transition-colors">Como Funciona</a>
+            <a href="#beneficios" className="hover:text-white transition-colors">Benefícios</a>
+            <a href="#contato" className="hover:text-white transition-colors">Contato</a>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/entrar">
-              <Button variant="ghost" size="sm" className="hidden sm:flex text-sm">Entrar</Button>
+              <Button variant="ghost" size="sm" className="hidden sm:flex text-sm text-gray-300 hover:text-white hover:bg-white/10">Entrar</Button>
             </Link>
-            <button
-              onClick={() => document.getElementById("chat-cta")?.click()}
-              className="bg-[#2563eb] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Comprar Agora
-            </button>
+            <Link href="/entrar">
+              <button className="bg-[#2563eb] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                Comprar Agora
+              </button>
+            </Link>
             <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               <Menu className="h-5 w-5" />
             </button>
