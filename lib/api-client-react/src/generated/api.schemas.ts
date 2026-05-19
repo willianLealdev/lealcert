@@ -763,6 +763,7 @@ page?: number;
 search?: string;
 status?: string;
 type?: ListMarketingContactsType;
+emailStatus?: ListMarketingContactsEmailStatus;
 };
 
 export type ListMarketingContactsType = typeof ListMarketingContactsType[keyof typeof ListMarketingContactsType];
@@ -771,6 +772,16 @@ export type ListMarketingContactsType = typeof ListMarketingContactsType[keyof t
 export const ListMarketingContactsType = {
   cliente: 'cliente',
   contador: 'contador',
+} as const;
+
+export type ListMarketingContactsEmailStatus = typeof ListMarketingContactsEmailStatus[keyof typeof ListMarketingContactsEmailStatus];
+
+
+export const ListMarketingContactsEmailStatus = {
+  unknown: 'unknown',
+  valid: 'valid',
+  invalid: 'invalid',
+  disposable: 'disposable',
 } as const;
 
 export type ListMarketingContacts200 = {

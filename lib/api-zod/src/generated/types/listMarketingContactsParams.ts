@@ -5,6 +5,7 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { ListMarketingContactsEmailStatus } from './listMarketingContactsEmailStatus';
 import type { ListMarketingContactsType } from './listMarketingContactsType';
 
 export type ListMarketingContactsParams = {
@@ -12,4 +13,5 @@ page?: number;
 search?: string;
 status?: string;
 type?: ListMarketingContactsType;
+emailStatus?: ListMarketingContactsEmailStatus;
 };

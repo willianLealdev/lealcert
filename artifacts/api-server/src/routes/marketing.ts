@@ -101,6 +101,7 @@ router.get("/marketing/contacts", async (req, res): Promise<void> => {
   const search = req.query.search as string | undefined;
   const status = req.query.status as string | undefined;
   const type = req.query.type as string | undefined;
+  const emailStatus = req.query.emailStatus as string | undefined;
   const limit = 50;
   const offset = (page - 1) * limit;
 
@@ -108,6 +109,7 @@ router.get("/marketing/contacts", async (req, res): Promise<void> => {
   if (search) conditions.push(or(ilike(marketingContactsTable.name, `%${search}%`), ilike(marketingContactsTable.email, `%${search}%`)));
   if (status) conditions.push(eq(marketingContactsTable.status, status));
   if (type) conditions.push(eq(marketingContactsTable.type, type));
+  if (emailStatus) conditions.push(eq(marketingContactsTable.emailStatus, emailStatus));
 
   const where = conditions.length ? and(...conditions) : undefined;
 

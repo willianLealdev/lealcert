@@ -803,6 +803,11 @@ paths:
           schema:
             type: string
             enum: [cliente, contador]
+        - name: emailStatus
+          in: query
+          schema:
+            type: string
+            enum: [unknown, valid, invalid, disposable]
       responses:
         "200":
           description: Contacts list

@@ -806,7 +806,8 @@ export const ListMarketingContactsQueryParams = zod.object({
   "page": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional(),
   "status": zod.coerce.string().optional(),
-  "type": zod.enum(['cliente', 'contador']).optional()
+  "type": zod.enum(['cliente', 'contador']).optional(),
+  "emailStatus": zod.enum(['unknown', 'valid', 'invalid', 'disposable']).optional()
 })
 
 export const ListMarketingContactsResponse = zod.object({

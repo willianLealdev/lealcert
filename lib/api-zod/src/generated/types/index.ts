@@ -40,6 +40,7 @@ export * from './inboundWebhookInput';
 export * from './labelSeries';
 export * from './listCertificatesParams';
 export * from './listMarketingContacts200';
+export * from './listMarketingContactsEmailStatus';
 export * from './listMarketingContactsParams';
 export * from './listMarketingContactsType';
 export * from './listMarketingRepliesParams';

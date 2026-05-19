@@ -85,7 +85,7 @@ export default function AdminMarketing() {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getGetMarketingStatsQueryKey() });
-    qc.invalidateQueries({ queryKey: getListMarketingContactsQueryKey({}) });
+    qc.invalidateQueries({ queryKey: ["/api/marketing/contacts"] });
     qc.invalidateQueries({ queryKey: getListMarketingCampaignsQueryKey() });
     qc.invalidateQueries({ queryKey: getListMarketingRepliesQueryKey({}) });
   };
@@ -684,9 +684,12 @@ function CampaignFormDialog({
 }
 
 // ─── Contatos (Clientes e Contadores) ────────────────────────────────────────
+type EmailStatusFilter = "all" | "unknown" | "valid" | "invalid" | "disposable";
+
 function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"; invalidate: () => void; toast: ReturnType<typeof useToast>["toast"] }) {
   const [search, setSearch] = useState("");
-  const [page] = useState(1);
+  const [page, setPage] = useState(1);
+  const [emailStatusFilter, setEmailStatusFilter] = useState<EmailStatusFilter>("all");
   const [showAdd, setShowAdd] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -706,7 +709,15 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
     onError: () => toast({ title: "Erro na validação", variant: "destructive" }),
   }});
 
-  const { data, isLoading } = useListMarketingContacts({ page, search: search || undefined, type });
+  const { data, isLoading } = useListMarketingContacts({
+    page,
+    search: search || undefined,
+    type,
+    emailStatus: emailStatusFilter !== "all" ? emailStatusFilter : undefined,
+  });
+
+  function handleSearchChange(val: string) { setSearch(val); setPage(1); }
+  function handleEmailStatusChange(val: EmailStatusFilter) { setEmailStatusFilter(val); setPage(1); }
   const contacts = data?.data ?? [];
   const total = data?.total ?? 0;
 
@@ -742,12 +753,23 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
     ? <><strong>Planilha de Clientes:</strong> colunas <code>NOME</code> e <code>EMAIL</code> (obrigatórias). Aceita CSV ou XLSX.</>
     : <><strong>Planilha de Contadores:</strong> colunas <code>CONTATO</code>, <code>E-MAIL</code> e <code>TELEFONE</code>. Aceita CSV ou XLSX. As colunas <em>COM QUEM FAZ</em> e <em>OBSERVAÇÃO</em> são ignoradas automaticamente.</>;
 
+  const totalPages = Math.max(1, Math.ceil(total / 50));
+
+  const emailFilterOptions: { id: EmailStatusFilter; label: string; color: string }[] = [
+    { id: "all", label: "Todos", color: "" },
+    { id: "unknown", label: "Não validado", color: "text-muted-foreground" },
+    { id: "valid", label: "Válido", color: "text-emerald-600" },
+    { id: "invalid", label: "Inválido", color: "text-destructive" },
+    { id: "disposable", label: "Descartável", color: "text-amber-600" },
+  ];
+
   return (
     <div className="space-y-4">
+      {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" placeholder={`Buscar por nome ou e-mail…`} value={search} onChange={e => setSearch(e.target.value)} />
+          <Input className="pl-9" placeholder={`Buscar por nome ou e-mail…`} value={search} onChange={e => handleSearchChange(e.target.value)} />
         </div>
         <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImport} />
         <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={importing} className="gap-2 shrink-0">
@@ -762,17 +784,35 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
           title="Valida MX, domínios descartáveis e formato dos e-mails ainda não validados"
         >
           {validateMutation.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-          Validar E-mails
+          {validateMutation.isPending ? "Validando…" : "Validar E-mails"}
         </Button>
         <Button onClick={() => setShowAdd(true)} className="gap-2 shrink-0">
           <Plus className="h-4 w-4" /> Adicionar
         </Button>
       </div>
 
-      <div className="bg-muted/50 rounded-lg px-4 py-2 text-sm text-muted-foreground">
-        <strong>{total}</strong> {labelPl} no total
+      {/* Email status filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Filtrar e-mail:</span>
+        {emailFilterOptions.map(opt => (
+          <button
+            key={opt.id}
+            onClick={() => handleEmailStatusChange(opt.id)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+              emailStatusFilter === opt.id
+                ? "bg-primary text-white border-primary shadow-sm"
+                : `border-border hover:border-muted-foreground/50 ${opt.color}`
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-muted-foreground">
+          <strong>{total}</strong> {labelPl} {emailStatusFilter !== "all" ? "filtrados" : "no total"}
+        </span>
       </div>
 
+      {/* Contacts table */}
       <div className="bg-card border rounded-xl overflow-hidden">
         <div className={`grid ${isCliente ? "grid-cols-[2fr_2fr_1fr_1fr_auto]" : "grid-cols-[2fr_2fr_1.5fr_1fr_1fr_auto]"} text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30`}>
           <span>Nome{!isCliente && " / Escritório"}</span>
@@ -783,12 +823,17 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
           <span></span>
         </div>
         {isLoading ? (
-          <div className="text-center py-10 text-muted-foreground">Carregando…</div>
+          <div className="text-center py-10 text-muted-foreground">
+            <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 opacity-40" />
+            Carregando…
+          </div>
         ) : contacts.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
             <p className="text-sm">Nenhum {label} encontrado.</p>
-            <p className="text-xs mt-1">Importe a planilha ou adicione manualmente.</p>
+            <p className="text-xs mt-1">
+              {emailStatusFilter !== "all" ? "Tente remover o filtro de status." : "Importe a planilha ou adicione manualmente."}
+            </p>
           </div>
         ) : (
           contacts.map(c => (
@@ -814,6 +859,51 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
           ))
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-muted"
+          >
+            <ChevronRight className="h-4 w-4 rotate-180" /> Anterior
+          </button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+              let p: number;
+              if (totalPages <= 7) {
+                p = i + 1;
+              } else if (page <= 4) {
+                p = i + 1;
+              } else if (page >= totalPages - 3) {
+                p = totalPages - 6 + i;
+              } else {
+                p = page - 3 + i;
+              }
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${
+                    p === page ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {p}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed hover:bg-muted"
+          >
+            Próxima <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3">
         {csvHint}
