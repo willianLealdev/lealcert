@@ -33,12 +33,13 @@ const BENEFITS = [
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
 function ChatWidget() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -49,26 +50,34 @@ function ChatWidget() {
   async function startSession() {
     if (sessionId) return;
     setStarting(true);
+    setSessionError(false);
     try {
       const res = await fetch("/api/chat/session", { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { id: number };
       setSessionId(data.id);
       setMessages([{
         role: "assistant",
         content: "Olá! 👋 Sou a assistente de vendas da **LealCert**.\n\nEstou aqui para te ajudar a encontrar e adquirir o certificado digital ideal para você ou sua empresa.\n\nComo posso te ajudar hoje?",
       }]);
+    } catch {
+      setSessionError(true);
     } finally {
       setStarting(false);
     }
   }
 
   useEffect(() => {
-    if (open && !sessionId) { startSession(); }
+    startSession();
+  }, []);
+
+  useEffect(() => {
     if (open) { setTimeout(() => inputRef.current?.focus(), 300); }
   }, [open]);
 
   async function send() {
-    if (!input.trim() || loading || !sessionId) return;
+    if (!input.trim() || loading) return;
+    if (!sessionId) { await startSession(); return; }
     const userMsg = input.trim();
     setInput("");
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
@@ -204,19 +213,25 @@ function ChatWidget() {
           </div>
 
           <div className="px-3 py-3 bg-white border-t border-gray-100 shrink-0">
+            {sessionError && (
+              <div className="mb-2 flex items-center justify-between text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">
+                <span>Erro ao conectar. Tente novamente.</span>
+                <button onClick={startSession} className="underline font-medium ml-2">Reconectar</button>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <input
                 ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder="Digite sua mensagem…"
-                disabled={loading || starting || !sessionId}
+                placeholder={starting ? "Conectando…" : "Digite sua mensagem…"}
+                disabled={loading || starting}
                 className="flex-1 text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] placeholder:text-gray-400 disabled:opacity-50 transition-all"
               />
               <button
                 onClick={send}
-                disabled={!input.trim() || loading || starting || !sessionId}
+                disabled={!input.trim() || loading || starting}
                 className="h-10 w-10 flex items-center justify-center bg-[#2563eb] text-white rounded-xl disabled:opacity-40 hover:bg-blue-700 transition-colors shrink-0"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -237,11 +252,12 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="LealCert" className="h-8 w-auto" onError={e => { e.currentTarget.style.display = "none"; }} />
-            <span className="text-xl font-black tracking-tight">LEAL<span className="text-[#2563eb]">CERT</span></span>
+      <nav className="sticky top-0 z-40 bg-gray-100/95 backdrop-blur border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-20">
+          <div className="flex items-center">
+            <div className="bg-[#0f172a] rounded-xl px-3 py-1.5">
+              <img src="/logo.png" alt="LealCert" className="h-12 w-auto object-contain" />
+            </div>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
             <a href="#certificados" className="hover:text-[#2563eb] transition-colors">Certificados</a>
@@ -460,9 +476,9 @@ export default function Landing() {
       {/* Footer */}
       <footer className="bg-[#0f172a] text-white py-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-black tracking-tight">LEAL<span className="text-[#2563eb]">CERT</span></span>
-            <span className="text-gray-500 text-sm">— Certificados Digitais ICP-Brasil</span>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="LealCert" className="h-10 w-auto object-contain brightness-0 invert" />
+            <span className="text-gray-400 text-sm">— Certificados Digitais ICP-Brasil</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-gray-400">
             <Link href="/entrar"><span className="hover:text-white transition-colors cursor-pointer">Área do Cliente</span></Link>

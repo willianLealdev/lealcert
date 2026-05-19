@@ -15,6 +15,7 @@ import chatRouter from "./chat";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(chatRouter);
 router.use(authRouter);
 router.use(usersRouter);
 router.use(certificatesRouter);
@@ -25,6 +26,5 @@ router.use(settingsRouter);
 router.use(dashboardRouter);
 router.use(uploadRouter);
 router.use(marketingRouter);
-router.use(chatRouter);
 
 export default router;
