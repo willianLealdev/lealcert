@@ -32,7 +32,7 @@ export default function Profile() {
         setConfirmPassword("");
       },
       onError: (err: unknown) => {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Erro ao atualizar perfil.";
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao atualizar perfil.";
         toast({ title: "Erro", description: msg, variant: "destructive" });
       },
     },

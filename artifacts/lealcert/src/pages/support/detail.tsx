@@ -39,7 +39,7 @@ export default function TicketDetail() {
     mutation: {
       onSuccess: () => { setNewMessage(""); refetch(); },
       onError: (err: unknown) => {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Erro ao enviar.";
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao enviar.";
         toast({ title: "Erro", description: msg, variant: "destructive" });
       },
     },

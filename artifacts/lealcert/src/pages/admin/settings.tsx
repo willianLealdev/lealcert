@@ -48,7 +48,7 @@ export default function AdminSettings() {
   const update = useUpdateSettings({
     mutation: {
       onSuccess: () => { toast({ title: "Configurações salvas!" }); refetch(); },
-      onError: (e: unknown) => toast({ title: "Erro", description: (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Erro ao salvar.", variant: "destructive" }),
+      onError: (e: unknown) => toast({ title: "Erro", description: (e as { data?: { error?: string } })?.data?.error ?? (e as Error)?.message ?? "Erro ao salvar.", variant: "destructive" }),
     },
   });
 

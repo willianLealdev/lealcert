@@ -25,8 +25,8 @@ export default function Login() {
         setLocation("/dashboard");
       },
       onError: (err: unknown) => {
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        const status = (err as { status?: number })?.status;
+        const msg = (err as { data?: { error?: string } })?.data?.error;
         if (!status) {
           toast({ title: "Servidor indisponível", description: "Não foi possível conectar ao servidor. Tente novamente em instantes.", variant: "destructive" });
         } else {

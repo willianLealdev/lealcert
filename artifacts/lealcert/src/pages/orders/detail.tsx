@@ -71,7 +71,7 @@ export default function OrderDetail() {
         }
       },
       onError: (err: unknown) => {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Erro ao gerar pagamento.";
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao gerar pagamento.";
         toast({ title: "Erro", description: msg, variant: "destructive" });
       },
     },

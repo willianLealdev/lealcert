@@ -594,7 +594,7 @@ function AddContactDialog({ type, onClose, onSaved, toast }: { type: "cliente" |
   const mutation = useCreateMarketingContact({ mutation: {
     onSuccess: onSaved,
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Erro ao adicionar contato.";
+      const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao adicionar contato.";
       toast({ title: "Erro", description: msg, variant: "destructive" });
     },
   }});

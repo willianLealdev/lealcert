@@ -11,15 +11,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { getApiError } from "@/lib/api-error";
 
 type CertForm = { name: string; description: string; price: string; active: boolean };
 const EMPTY: CertForm = { name: "", description: "", price: "", active: true };
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
-}
-function apiErr(e: unknown) {
-  return (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Erro inesperado.";
 }
 
 export default function AdminCertificates() {
@@ -30,8 +28,8 @@ export default function AdminCertificates() {
   const [form, setForm] = useState<CertForm>(EMPTY);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const create = useCreateCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo criado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: apiErr(e), variant: "destructive" }) } });
-  const update = useUpdateCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo atualizado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: apiErr(e), variant: "destructive" }) } });
+  const create = useCreateCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo criado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
+  const update = useUpdateCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo atualizado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const del = useDeleteCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo removido." }); setDeleteId(null); refetch(); } } });
 
   function openCreate() { setForm(EMPTY); setEditId(null); setOpen(true); }

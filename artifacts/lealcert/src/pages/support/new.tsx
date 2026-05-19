@@ -23,7 +23,7 @@ export default function NewTicket() {
         setLocation(`/support/${data.id}`);
       },
       onError: (err: unknown) => {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Erro ao abrir chamado.";
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao abrir chamado.";
         toast({ title: "Erro", description: msg, variant: "destructive" });
       },
     },

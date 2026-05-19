@@ -37,7 +37,7 @@ export default function VerifyEmail() {
         setLocation("/dashboard");
       },
       onError: (err: unknown) => {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Código inválido ou expirado.";
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Código inválido ou expirado.";
         toast({ title: "Erro na verificação", description: msg, variant: "destructive" });
         setDigits(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
@@ -52,7 +52,7 @@ export default function VerifyEmail() {
         setCooldown(60);
       },
       onError: (err: unknown) => {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Erro ao reenviar.";
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao reenviar.";
         toast({ title: "Erro", description: msg, variant: "destructive" });
       },
     },

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { getApiError } from "@/lib/api-error";
 
 type UserForm = { name: string; email: string; cpfCnpj: string; phone: string; role: string; password: string; isActive: boolean };
 const EMPTY: UserForm = { name: "", email: "", cpfCnpj: "", phone: "", role: "contador", password: "", isActive: true };
@@ -17,9 +18,6 @@ const EMPTY: UserForm = { name: "", email: "", cpfCnpj: "", phone: "", role: "co
 function formatDate(d: string | Date | null) {
   if (!d) return "—";
   return new Intl.DateTimeFormat("pt-BR").format(new Date(d));
-}
-function apiErr(e: unknown) {
-  return (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Erro inesperado.";
 }
 
 export default function AdminUsers() {
@@ -30,8 +28,8 @@ export default function AdminUsers() {
   const [form, setForm] = useState<UserForm>(EMPTY);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const createUser = useCreateUser({ mutation: { onSuccess: () => { toast({ title: "Usuário criado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: apiErr(e), variant: "destructive" }) } });
-  const updateUser = useUpdateUser({ mutation: { onSuccess: () => { toast({ title: "Usuário atualizado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: apiErr(e), variant: "destructive" }) } });
+  const createUser = useCreateUser({ mutation: { onSuccess: () => { toast({ title: "Usuário criado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
+  const updateUser = useUpdateUser({ mutation: { onSuccess: () => { toast({ title: "Usuário atualizado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const deleteUser = useDeleteUser({ mutation: { onSuccess: () => { toast({ title: "Usuário removido." }); setDeleteId(null); refetch(); } } });
 
   function openCreate() { setForm(EMPTY); setEditId(null); setOpen(true); }

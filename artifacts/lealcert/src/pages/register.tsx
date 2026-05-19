@@ -36,7 +36,7 @@ export default function Register() {
         setLocation(`/verify-email?email=${encodeURIComponent(form.email)}`);
       },
       onError: (err: unknown) => {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Erro ao criar conta.";
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao criar conta.";
         toast({ title: "Erro no cadastro", description: msg, variant: "destructive" });
       },
     },
