@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { eq, desc, ilike, or, sql, and } from "drizzle-orm";
+import { eq, desc, ilike, or, sql, and, isNull, ne } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import { promises as dns } from "dns";
 import multer from "multer";
 import { parse } from "csv-parse/sync";
 import * as xlsx from "xlsx";
@@ -8,6 +9,51 @@ import { db, marketingContactsTable, marketingCampaignsTable, marketingSendsTabl
 import { requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { sendMarketingEmail, sendReplyEmail } from "../lib/marketing-email";
+
+// ─── Email Validation Helpers ─────────────────────────────────────────────────
+
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+
+const DISPOSABLE_DOMAINS = new Set([
+  "mailinator.com","guerrillamail.com","guerrillamail.net","guerrillamail.org","guerrillamail.biz","guerrillamail.de",
+  "10minutemail.com","10minutemail.net","10minutemail.org","trashmail.com","trashmail.me","trashmail.net","trashmail.at",
+  "throwam.com","throwam.net","fakeinbox.com","maildrop.cc","yopmail.com","yopmail.fr","spam4.me",
+  "getnada.com","dispostable.com","mailnull.com","sharklasers.com","guerrillamailblock.com",
+  "grr.la","guerrillamail.info","byom.de","spam.la","mintemail.com","tempr.email","discard.email",
+  "spamgourmet.com","spamgourmet.net","spamgourmet.org","mailnesia.com","mailnull.com",
+  "noblepioneer.com","filzmail.com","trbvm.com","trbvn.com","wegwerfmail.de","wegwerfmail.net",
+  "spamfree24.org","spamfree24.de","mailme.lv","throwam.com","owlpic.com","dispostable.com",
+  "tempinbox.co.uk","tempemail.com","nwldx.com","qq.com.br","armyspy.com","cuvox.de","dayrep.com",
+  "einrot.com","fleckens.hu","gustr.com","jourrapide.com","rhyta.com","superrito.com",
+  "teleworm.us","zetgets.com","tempr.email","mt2015.com","mt2016.com","mt2017.com",
+  "mt2014.com","hailmail.net","inoutmail.eu","inoutmail.net","courriel.fr.nf",
+  "zetgets.com","zippymail.info","t.lol","binkmail.com","bobmurchison.com",
+]);
+
+const mxCache = new Map<string, { result: boolean; ts: number }>();
+const MX_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
+
+async function hasMxRecord(domain: string): Promise<boolean> {
+  const cached = mxCache.get(domain);
+  if (cached && Date.now() - cached.ts < MX_CACHE_TTL) return cached.result;
+  try {
+    const records = await dns.resolveMx(domain);
+    const result = records.length > 0;
+    mxCache.set(domain, { result, ts: Date.now() });
+    return result;
+  } catch {
+    mxCache.set(domain, { result: false, ts: Date.now() });
+    return false;
+  }
+}
+
+async function validateEmail(email: string): Promise<"valid" | "invalid" | "disposable"> {
+  if (!EMAIL_REGEX.test(email)) return "invalid";
+  const domain = email.split("@")[1].toLowerCase();
+  if (DISPOSABLE_DOMAINS.has(domain)) return "disposable";
+  const mx = await hasMxRecord(domain);
+  return mx ? "valid" : "invalid";
+}
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -126,6 +172,52 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
   res.json({ imported, skipped, total: records.length, errors: errors.slice(0, 20) });
 });
 
+router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
+  const batchLimit = Math.min(parseInt(req.body?.limit ?? "500", 10), 2000);
+  const typeFilter = req.body?.type;
+
+  const conditions = [eq(marketingContactsTable.emailStatus, "unknown")];
+  if (typeFilter && typeFilter !== "all") conditions.push(eq(marketingContactsTable.type, typeFilter));
+
+  const contacts = await db.select({ id: marketingContactsTable.id, email: marketingContactsTable.email })
+    .from(marketingContactsTable)
+    .where(and(...conditions))
+    .limit(batchLimit);
+
+  const stats = { processed: 0, valid: 0, invalid: 0, disposable: 0, badFormat: 0, noMx: 0, alreadyValidated: 0, skipped: 0 };
+
+  for (const contact of contacts) {
+    try {
+      const domain = contact.email.includes("@") ? contact.email.split("@")[1].toLowerCase() : "";
+      let status: "valid" | "invalid" | "disposable";
+
+      if (!EMAIL_REGEX.test(contact.email)) {
+        status = "invalid";
+        stats.badFormat++;
+      } else if (DISPOSABLE_DOMAINS.has(domain)) {
+        status = "disposable";
+        stats.disposable++;
+      } else {
+        const mx = await hasMxRecord(domain);
+        status = mx ? "valid" : "invalid";
+        if (!mx) stats.noMx++;
+        else stats.valid++;
+      }
+
+      await db.update(marketingContactsTable)
+        .set({ emailStatus: status, emailValidatedAt: new Date() })
+        .where(eq(marketingContactsTable.id, contact.id));
+
+      if (status === "invalid" || status === "disposable") stats.invalid++;
+      stats.processed++;
+    } catch {
+      stats.skipped++;
+    }
+  }
+
+  res.json(stats);
+});
+
 router.patch("/marketing/contacts/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   const { status, tags } = req.body ?? {};
@@ -223,7 +315,12 @@ export async function dispatchCampaign(campaignId: number) {
   const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, campaignId)).limit(1);
   if (!campaign) return;
 
-  const typeConditions = [eq(marketingContactsTable.status, "active"), eq(marketingContactsTable.bounced, false)];
+  const typeConditions = [
+    eq(marketingContactsTable.status, "active"),
+    eq(marketingContactsTable.bounced, false),
+    ne(marketingContactsTable.emailStatus, "invalid"),
+    ne(marketingContactsTable.emailStatus, "disposable"),
+  ];
   if (campaign.targetType === "cliente") typeConditions.push(eq(marketingContactsTable.type, "cliente"));
   else if (campaign.targetType === "contador") typeConditions.push(eq(marketingContactsTable.type, "contador"));
 

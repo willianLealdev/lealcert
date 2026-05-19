@@ -16,6 +16,7 @@ import {
   useListMarketingReplies,
   useMarkReplyRead,
   useReplyToContact,
+  useValidateContactEmails,
   getGetMarketingStatsQueryKey,
   getListMarketingContactsQueryKey,
   getListMarketingCampaignsQueryKey,
@@ -31,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Megaphone, Users, Mail, MailOpen, Send, Upload, Plus, Trash2,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
-  ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare,
+  ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck,
 } from "lucide-react";
 
 type Tab = "overview" | "campanhas" | "clientes" | "contadores" | "respostas";
@@ -66,6 +67,13 @@ function contactStatusBadge(status: string, bounced: boolean) {
   if (bounced) return <Badge variant="destructive">Bounce</Badge>;
   if (status === "unsubscribed") return <Badge variant="outline">Descadastrado</Badge>;
   return <Badge className="bg-emerald-500/15 text-emerald-600">Ativo</Badge>;
+}
+
+function emailStatusBadge(emailStatus: string | null | undefined) {
+  if (!emailStatus || emailStatus === "unknown") return <Badge variant="outline" className="text-xs">Não validado</Badge>;
+  if (emailStatus === "valid") return <Badge className="bg-emerald-500/15 text-emerald-700 text-xs border-emerald-200">Válido</Badge>;
+  if (emailStatus === "disposable") return <Badge className="bg-amber-500/15 text-amber-700 text-xs border-amber-200">Descartável</Badge>;
+  return <Badge variant="destructive" className="text-xs">Inválido</Badge>;
 }
 
 export default function AdminMarketing() {
@@ -482,6 +490,17 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
   const label = isCliente ? "cliente" : "contador";
   const labelPl = isCliente ? "clientes" : "contadores";
 
+  const validateMutation = useValidateContactEmails({ mutation: {
+    onSuccess: (result) => {
+      toast({
+        title: "Validação concluída!",
+        description: `${result.processed} e-mails processados — ${result.valid} válidos, ${result.invalid} inválidos, ${result.disposable} descartáveis.`,
+      });
+      invalidate();
+    },
+    onError: () => toast({ title: "Erro na validação", variant: "destructive" }),
+  }});
+
   const { data, isLoading } = useListMarketingContacts({ page, search: search || undefined, type });
   const contacts = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -530,6 +549,16 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
           {importing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
           Importar planilha
         </Button>
+        <Button
+          variant="outline"
+          onClick={() => validateMutation.mutate({ data: { type, limit: 500 } })}
+          disabled={validateMutation.isPending}
+          className="gap-2 shrink-0"
+          title="Valida MX, domínios descartáveis e formato dos e-mails ainda não validados"
+        >
+          {validateMutation.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+          Validar E-mails
+        </Button>
         <Button onClick={() => setShowAdd(true)} className="gap-2 shrink-0">
           <Plus className="h-4 w-4" /> Adicionar
         </Button>
@@ -540,11 +569,12 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
       </div>
 
       <div className="bg-card border rounded-xl overflow-hidden">
-        <div className={`grid ${isCliente ? "grid-cols-[2fr_2fr_1fr_auto]" : "grid-cols-[2fr_2fr_1.5fr_1fr_auto]"} text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30`}>
+        <div className={`grid ${isCliente ? "grid-cols-[2fr_2fr_1fr_1fr_auto]" : "grid-cols-[2fr_2fr_1.5fr_1fr_1fr_auto]"} text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30`}>
           <span>Nome{!isCliente && " / Escritório"}</span>
           <span>E-mail</span>
           {!isCliente && <span>Telefone</span>}
           <span>Status</span>
+          <span>E-mail Válido</span>
           <span></span>
         </div>
         {isLoading ? (
@@ -557,11 +587,12 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
           </div>
         ) : (
           contacts.map(c => (
-            <div key={c.id} className={`grid ${isCliente ? "grid-cols-[2fr_2fr_1fr_auto]" : "grid-cols-[2fr_2fr_1.5fr_1fr_auto]"} px-4 py-3 border-b last:border-0 items-center hover:bg-muted/20 transition-colors`}>
+            <div key={c.id} className={`grid ${isCliente ? "grid-cols-[2fr_2fr_1fr_1fr_auto]" : "grid-cols-[2fr_2fr_1.5fr_1fr_1fr_auto]"} px-4 py-3 border-b last:border-0 items-center hover:bg-muted/20 transition-colors`}>
               <span className="font-medium text-sm truncate">{c.name}</span>
               <span className="text-sm text-muted-foreground truncate">{c.email}</span>
               {!isCliente && <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>}
               <span>{contactStatusBadge(c.status, c.bounced)}</span>
+              <span>{emailStatusBadge(c.emailStatus)}</span>
               <div className="flex items-center gap-1">
                 {c.status === "active" && (
                   <button onClick={() => updateMutation.mutate({ id: c.id, data: { status: "unsubscribed" } })}

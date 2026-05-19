@@ -30,6 +30,7 @@ import type {
   CreateCampaignInput,
   CreateMarketingContactInput,
   DashboardStats,
+  EmailValidationResult,
   ErrorResponse,
   GenerateSlotsInput,
   GenerateSlotsResult,
@@ -71,6 +72,7 @@ import type {
   User,
   UserInput,
   UserUpdate,
+  ValidateEmailsInput,
   VerifyEmailInput
 } from './api.schemas';
 
@@ -3143,6 +3145,77 @@ export const useCreateMarketingContact = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateMarketingContactMutationOptions(options));
+    }
+
+export const getValidateContactEmailsUrl = () => {
+
+
+
+
+  return `/api/marketing/contacts/validate`
+}
+
+/**
+ * @summary Validate email addresses of contacts (MX + disposable + format check)
+ */
+export const validateContactEmails = async (validateEmailsInput?: ValidateEmailsInput, options?: RequestInit): Promise<EmailValidationResult> => {
+
+  return customFetch<EmailValidationResult>(getValidateContactEmailsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      validateEmailsInput,)
+  }
+);}
+
+
+
+
+export const getValidateContactEmailsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof validateContactEmails>>, TError,{data?: BodyType<ValidateEmailsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof validateContactEmails>>, TError,{data?: BodyType<ValidateEmailsInput>}, TContext> => {
+
+const mutationKey = ['validateContactEmails'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof validateContactEmails>>, {data?: BodyType<ValidateEmailsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  validateContactEmails(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ValidateContactEmailsMutationResult = NonNullable<Awaited<ReturnType<typeof validateContactEmails>>>
+    export type ValidateContactEmailsMutationBody = BodyType<ValidateEmailsInput> | undefined
+    export type ValidateContactEmailsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Validate email addresses of contacts (MX + disposable + format check)
+ */
+export const useValidateContactEmails = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof validateContactEmails>>, TError,{data?: BodyType<ValidateEmailsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof validateContactEmails>>,
+        TError,
+        {data?: BodyType<ValidateEmailsInput>},
+        TContext
+      > => {
+      return useMutation(getValidateContactEmailsMutationOptions(options));
     }
 
 export const getDeleteMarketingContactUrl = (id: number,) => {

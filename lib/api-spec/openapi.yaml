@@ -836,6 +836,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/MarketingContact"
 
+  /marketing/contacts/validate:
+    post:
+      operationId: validateContactEmails
+      tags: [marketing]
+      summary: Validate email addresses of contacts (MX + disposable + format check)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateEmailsInput"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailValidationResult"
+
   /marketing/contacts/{id}:
     delete:
       operationId: deleteMarketingContact
@@ -1772,9 +1791,40 @@ components:
           items:
             $ref: "#/components/schemas/Appointment"
 
+    ValidateEmailsInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [cliente, contador, all]
+        limit:
+          type: integer
+          description: Max contacts to validate in this batch (default 500)
+
+    EmailValidationResult:
+      type: object
+      required: [processed, valid, invalid, disposable, badFormat, noMx, alreadyValidated, skipped]
+      properties:
+        processed:
+          type: integer
+        valid:
+          type: integer
+        invalid:
+          type: integer
+        disposable:
+          type: integer
+        badFormat:
+          type: integer
+        noMx:
+          type: integer
+        alreadyValidated:
+          type: integer
+        skipped:
+          type: integer
+
     MarketingContact:
       type: object
-      required: [id, type, name, email, status, bounced, createdAt]
+      required: [id, type, name, email, status, emailStatus, bounced, createdAt]
       properties:
         id:
           type: integer
@@ -1791,6 +1841,11 @@ components:
           type: ["string", "null"]
         status:
           type: string
+        emailStatus:
+          type: string
+          enum: [unknown, valid, invalid, disposable]
+        emailValidatedAt:
+          type: ["string", "null"]
         bounced:
           type: boolean
         unsubscribedAt:

@@ -483,12 +483,48 @@ export interface MeStats {
   next_appointments: Appointment[];
 }
 
+export type ValidateEmailsInputType = typeof ValidateEmailsInputType[keyof typeof ValidateEmailsInputType];
+
+
+export const ValidateEmailsInputType = {
+  cliente: 'cliente',
+  contador: 'contador',
+  all: 'all',
+} as const;
+
+export interface ValidateEmailsInput {
+  type?: ValidateEmailsInputType;
+  /** Max contacts to validate in this batch (default 500) */
+  limit?: number;
+}
+
+export interface EmailValidationResult {
+  processed: number;
+  valid: number;
+  invalid: number;
+  disposable: number;
+  badFormat: number;
+  noMx: number;
+  alreadyValidated: number;
+  skipped: number;
+}
+
 export type MarketingContactType = typeof MarketingContactType[keyof typeof MarketingContactType];
 
 
 export const MarketingContactType = {
   cliente: 'cliente',
   contador: 'contador',
+} as const;
+
+export type MarketingContactEmailStatus = typeof MarketingContactEmailStatus[keyof typeof MarketingContactEmailStatus];
+
+
+export const MarketingContactEmailStatus = {
+  unknown: 'unknown',
+  valid: 'valid',
+  invalid: 'invalid',
+  disposable: 'disposable',
 } as const;
 
 export interface MarketingContact {
@@ -501,6 +537,9 @@ export interface MarketingContact {
   /** @nullable */
   tags?: string | null;
   status: string;
+  emailStatus: MarketingContactEmailStatus;
+  /** @nullable */
+  emailValidatedAt?: string | null;
   bounced: boolean;
   /** @nullable */
   unsubscribedAt?: string | null;

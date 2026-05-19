@@ -5,6 +5,7 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { MarketingContactEmailStatus } from './marketingContactEmailStatus';
 import type { MarketingContactType } from './marketingContactType';
 
 export interface MarketingContact {
@@ -17,6 +18,9 @@ export interface MarketingContact {
   /** @nullable */
   tags?: string | null;
   status: string;
+  emailStatus: MarketingContactEmailStatus;
+  /** @nullable */
+  emailValidatedAt?: string | null;
   bounced: boolean;
   /** @nullable */
   unsubscribedAt?: string | null;

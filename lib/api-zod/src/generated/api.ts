@@ -818,6 +818,8 @@ export const ListMarketingContactsResponse = zod.object({
   "phone": zod.string().nullish(),
   "tags": zod.string().nullish(),
   "status": zod.string(),
+  "emailStatus": zod.enum(['unknown', 'valid', 'invalid', 'disposable']),
+  "emailValidatedAt": zod.string().nullish(),
   "bounced": zod.boolean(),
   "unsubscribedAt": zod.string().nullish(),
   "createdAt": zod.string()
@@ -835,6 +837,26 @@ export const CreateMarketingContactBody = zod.object({
   "email": zod.string(),
   "phone": zod.string().optional(),
   "tags": zod.string().optional()
+})
+
+
+/**
+ * @summary Validate email addresses of contacts (MX + disposable + format check)
+ */
+export const ValidateContactEmailsBody = zod.object({
+  "type": zod.enum(['cliente', 'contador', 'all']).optional(),
+  "limit": zod.number().optional().describe('Max contacts to validate in this batch (default 500)')
+})
+
+export const ValidateContactEmailsResponse = zod.object({
+  "processed": zod.number(),
+  "valid": zod.number(),
+  "invalid": zod.number(),
+  "disposable": zod.number(),
+  "badFormat": zod.number(),
+  "noMx": zod.number(),
+  "alreadyValidated": zod.number(),
+  "skipped": zod.number()
 })
 
 
@@ -870,6 +892,8 @@ export const UpdateMarketingContactResponse = zod.object({
   "phone": zod.string().nullish(),
   "tags": zod.string().nullish(),
   "status": zod.string(),
+  "emailStatus": zod.enum(['unknown', 'valid', 'invalid', 'disposable']),
+  "emailValidatedAt": zod.string().nullish(),
   "bounced": zod.boolean(),
   "unsubscribedAt": zod.string().nullish(),
   "createdAt": zod.string()

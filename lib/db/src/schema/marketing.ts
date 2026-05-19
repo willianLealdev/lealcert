@@ -10,6 +10,8 @@ export const marketingContactsTable = pgTable("marketing_contacts", {
   phone: text("phone"),
   tags: text("tags"),
   status: text("status").notNull().default("active"),
+  emailStatus: text("email_status").notNull().default("unknown"),
+  emailValidatedAt: timestamp("email_validated_at", { withTimezone: true }),
   unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
   bounced: boolean("bounced").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
