@@ -43,25 +43,18 @@ function ChatWidget() {
   const [starting, setStarting] = useState(false);
   const [sessionError, setSessionError] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [pendingVoiceMsg, setPendingVoiceMsg] = useState<string | null>(null);
   const [micSupported] = useState(() => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window));
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<{ start(): void; stop(): void; abort(): void; onresult: ((e: SpeechRecognitionEvent) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; lang: string; continuous: boolean; interimResults: boolean } | null>(null);
   const sendRef = useRef<(msg?: string) => Promise<void>>(() => Promise.resolve());
+  const transcriptRef = useRef("");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
   useEffect(() => { sendRef.current = send; });
-
-  useEffect(() => {
-    if (pendingVoiceMsg) {
-      setPendingVoiceMsg(null);
-      sendRef.current(pendingVoiceMsg);
-    }
-  }, [pendingVoiceMsg]);
 
   async function startSession() {
     if (sessionId) return;
@@ -154,44 +147,43 @@ function ChatWidget() {
 
     if (isListening) {
       recognitionRef.current?.stop();
-      setIsListening(false);
       return;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRecognition = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition() as typeof recognitionRef.current;
+    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+    const recognition = new SR() as typeof recognitionRef.current;
     if (!recognition) return;
 
+    transcriptRef.current = "";
     recognition.lang = "pt-BR";
     recognition.continuous = false;
     recognition.interimResults = true;
 
-    let finalTranscript = "";
-
     recognition.onresult = (e: SpeechRecognitionEvent) => {
-      let interim = "";
+      let full = "";
       for (let i = 0; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r[0].isFinal) finalTranscript += r[0].transcript;
-        else interim = r[0].transcript;
+        full += e.results[i][0].transcript;
       }
-      setInput(finalTranscript + interim);
+      transcriptRef.current = full;
+      setInput(full);
     };
 
     recognition.onend = () => {
       setIsListening(false);
       recognitionRef.current = null;
-      const transcript = finalTranscript.trim();
-      if (transcript) {
+      const msg = transcriptRef.current.trim();
+      transcriptRef.current = "";
+      if (msg) {
         setInput("");
-        setPendingVoiceMsg(transcript);
+        sendRef.current(msg);
       }
     };
 
     recognition.onerror = () => {
       setIsListening(false);
       recognitionRef.current = null;
+      transcriptRef.current = "";
     };
 
     recognitionRef.current = recognition;
