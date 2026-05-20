@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   FileBadge,
@@ -12,6 +13,11 @@ import {
   LogOut,
   User as UserIcon,
   Megaphone,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 const navigation = [
@@ -28,18 +34,31 @@ const adminNav = [
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 
-function NavItem({ href, icon: Icon, name, active }: { href: string; icon: React.ElementType; name: string; active: boolean }) {
+function NavItem({
+  href, icon: Icon, name, active, collapsed, onClick,
+}: {
+  href: string;
+  icon: React.ElementType;
+  name: string;
+  active: boolean;
+  collapsed: boolean;
+  onClick?: () => void;
+}) {
   return (
     <Link href={href}>
       <div
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-          active
+        onClick={onClick}
+        title={collapsed ? name : undefined}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer select-none
+          ${active
             ? "bg-primary text-white shadow-sm"
             : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-        }`}
+          }
+          ${collapsed ? "justify-center px-0" : ""}
+        `}
       >
         <Icon className="h-4 w-4 shrink-0" />
-        {name}
+        {!collapsed && <span className="truncate">{name}</span>}
       </div>
     </Link>
   );
@@ -49,19 +68,80 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [location] = useLocation();
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem("sidebar-collapsed") === "true"; } catch { return false; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem("sidebar-collapsed", String(collapsed)); } catch { /* ignore */ }
+  }, [collapsed]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location]);
+
+  const close = () => setMobileOpen(false);
+
   return (
     <div className="min-h-screen flex bg-background">
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
+          onClick={close}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-sidebar flex flex-col shrink-0 border-r border-sidebar-border shadow-xl">
-        {/* Brand */}
-        <div className="px-4 pt-5 pb-4 border-b border-sidebar-border/50 flex items-center justify-center">
-          <img src="/logo.png" alt="LealCert" className="h-20 w-auto object-contain" />
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar border-r border-sidebar-border shadow-2xl
+          transition-[transform,width] duration-300 ease-in-out
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+          md:relative md:translate-x-0 md:z-auto md:shrink-0
+          ${collapsed ? "md:w-16" : "md:w-64"}
+          w-72
+        `}
+      >
+        {/* Brand + collapse button */}
+        <div className={`px-3 pt-5 pb-4 border-b border-sidebar-border/50 flex items-center ${collapsed ? "justify-center" : "justify-between gap-2"}`}>
+          {!collapsed ? (
+            <>
+              <img src="/logo.png" alt="LealCert" className="h-16 w-auto object-contain" />
+              <button
+                onClick={() => setCollapsed(true)}
+                className="hidden md:flex p-1.5 rounded-lg text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors shrink-0"
+                title="Recolher menu"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setCollapsed(false)}
+              className="hidden md:flex p-1.5 rounded-lg text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+              title="Expandir menu"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </button>
+          )}
+          {/* Mobile: show logo always */}
+          {collapsed && (
+            <img src="/logo.png" alt="LealCert" className="h-8 w-8 object-contain md:hidden" />
+          )}
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-            Principal
-          </p>
+        {/* Nav */}
+        <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
+          {!collapsed && (
+            <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+              Principal
+            </p>
+          )}
+          {collapsed && <div className="mb-2" />}
+
           {navigation.map((item) => (
             <NavItem
               key={item.name}
@@ -69,14 +149,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               icon={item.icon}
               name={item.name}
               active={location === item.href || location.startsWith(item.href + "/")}
+              collapsed={collapsed}
+              onClick={close}
             />
           ))}
 
           {user?.role === "admin" && (
             <>
-              <p className="px-3 mt-6 mb-2 text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-                Administração
-              </p>
+              {!collapsed ? (
+                <p className="px-3 pt-5 pb-2 text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+                  Administração
+                </p>
+              ) : (
+                <div className="my-3 border-t border-sidebar-border/30" />
+              )}
               {adminNav.map((item) => (
                 <NavItem
                   key={item.name}
@@ -84,6 +170,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   icon={item.icon}
                   name={item.name}
                   active={location === item.href || location.startsWith(item.href + "/")}
+                  collapsed={collapsed}
+                  onClick={close}
                 />
               ))}
             </>
@@ -91,38 +179,59 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* User footer */}
-        <div className="p-3 border-t border-sidebar-border/50 space-y-1">
+        <div className="p-2 border-t border-sidebar-border/50 space-y-0.5">
           <Link href="/profile">
-            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all">
+            <div
+              onClick={close}
+              title={collapsed ? user?.name ?? "Perfil" : undefined}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all select-none ${collapsed ? "justify-center px-0" : ""}`}
+            >
               <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                 <UserIcon className="h-3.5 w-3.5 text-primary" />
               </div>
-              <div className="min-w-0">
-                <p className="font-medium text-sidebar-foreground truncate text-xs">{user?.name}</p>
-                <p className="text-xs text-sidebar-foreground/50 capitalize">
-                  {user?.role === "admin" ? "Administrador" : "Contador"}
-                </p>
-              </div>
+              {!collapsed && (
+                <div className="min-w-0">
+                  <p className="font-medium text-sidebar-foreground truncate text-xs">{user?.name}</p>
+                  <p className="text-xs text-sidebar-foreground/50 capitalize">
+                    {user?.role === "admin" ? "Administrador" : "Contador"}
+                  </p>
+                </div>
+              )}
             </div>
           </Link>
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-3 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            title={collapsed ? "Sair" : undefined}
+            className={`w-full text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent ${collapsed ? "justify-center px-0" : "justify-start gap-3"}`}
             onClick={logout}
           >
             <LogOut className="h-4 w-4" />
-            Sair
+            {!collapsed && "Sair"}
           </Button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-8 max-w-6xl mx-auto">
-          {children}
-        </div>
-      </main>
+      {/* Main content column */}
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+        {/* Mobile top bar */}
+        <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-sidebar border-b border-sidebar-border sticky top-0 z-30 shrink-0">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="p-2 -ml-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <img src="/logo.png" alt="LealCert" className="h-9 w-auto object-contain" />
+        </header>
+
+        <main className="flex-1 overflow-auto">
+          <div className="p-4 md:p-8 max-w-6xl mx-auto">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
