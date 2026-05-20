@@ -23,6 +23,11 @@ ${certList}
 - Certificados A3 NÃO incluem mídia (cartão/token). O cliente precisa ter seu próprio leitor compatível.
 - Sempre mencione isso quando o cliente escolher A3.
 
+**Normalização de dados falados por voz:**
+- CPF/CNPJ pode chegar com espaços entre os dígitos (ex: "123 456 789 00") — SEMPRE remova espaços e pontuação, use apenas os dígitos. CPF = 11 dígitos, CNPJ = 14 dígitos.
+- CEP pode chegar como "01310100" ou "0 1 3 1 0 1 0 0" — remova espaços. Quando o sistema informar o endereço via [CEP consultado], use esses dados diretamente sem perguntar novamente.
+- Telefone pode chegar com espaços entre dígitos — remova espaços e use só números + DDD.
+
 **Fluxo de venda — siga esta ordem:**
 1. Cumprimente e pergunte o que o cliente precisa
 2. Identifique o tipo de certificado adequado (CPF/CNPJ, A1/A3, validade)
@@ -32,7 +37,7 @@ ${certList}
    - CPF (se e-CPF) ou CNPJ + Razão Social (se e-CNPJ)
    - E-mail
    - Telefone (WhatsApp)
-   - CEP e endereço completo
+   - CEP — quando o cliente informar, o sistema buscará o endereço automaticamente
 5. Pergunte se deseja garantia estendida (+R$15,00 — cobre falhas de mídia/suporte estendido)
 6. Quando tiver TODOS os dados, confirme com o cliente
 7. Use a ação CRIAR_PEDIDO para registrar o pedido
@@ -47,9 +52,9 @@ ${certList}
 **NUNCA mostre preços espontaneamente** — apresente apenas quando o cliente perguntar ou quando chegar na etapa de oferta.
 
 Quando tiver todos os dados e confirmação do cliente, responda EXATAMENTE neste formato (sem markdown, sem texto extra antes ou depois):
-ACAO:CRIAR_PEDIDO:{"certificateId":<numero_inteiro_do_ID>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<cpf_ou_cnpj>","customerEmail":"<email>","customerPhone":"<telefone>","companyName":"<razao_social_ou_null>","addressZipcode":"<cep>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<uf>","extendedWarranty":<true|false>}
+ACAO:CRIAR_PEDIDO:{"certificateId":<numero_inteiro_do_ID>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<apenas_digitos>","customerEmail":"<email>","customerPhone":"<apenas_digitos_com_ddd>","companyName":"<razao_social_ou_null>","addressZipcode":"<apenas_digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<uf>","extendedWarranty":<true|false>}
 
-ATENÇÃO: certificateId DEVE ser o número inteiro do ID listado acima (ex: 1, 2, 3...). NUNCA use texto ou slug.`;
+ATENÇÃO: certificateId DEVE ser o número inteiro do ID listado acima (ex: 1, 2, 3...). NUNCA use texto ou slug. customerCpfCnpj, customerPhone e addressZipcode devem ter APENAS dígitos, sem pontos, traços ou espaços.`;
 }
 
 router.post("/chat/session", async (req, res): Promise<void> => {
@@ -90,6 +95,25 @@ router.post("/chat", async (req, res): Promise<void> => {
     .where(eq(certificatesTable.active, true));
 
   const systemPrompt = buildSystemPrompt(activeCerts);
+
+  // Auto-lookup CEP if the user's message contains exactly 8 digits (possibly with spaces)
+  const cepDigits = message.replace(/\D/g, "");
+  const cepMatch = cepDigits.match(/^(\d{8})$/) ?? message.replace(/\s/g, "").match(/\b(\d{8})\b/);
+  if (cepMatch) {
+    const cep = (cepMatch[1] ?? cepMatch[0]).replace(/\D/g, "");
+    try {
+      const cepRes = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      if (cepRes.ok) {
+        const cepData = await cepRes.json() as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string; complemento?: string };
+        if (!cepData.erro && cepData.localidade) {
+          const addressNote = `[CEP consultado automaticamente] CEP ${cep}: ${cepData.logradouro ?? ""}, bairro ${cepData.bairro ?? ""}, ${cepData.localidade}-${cepData.uf}. Use estes dados para preencher o endereço do cliente (rua, bairro, cidade, estado). Pergunte apenas o número da residência/estabelecimento.`;
+          chatHistory.push({ role: "system" as const, content: addressNote });
+        }
+      }
+    } catch (cepErr) {
+      logger.warn({ err: cepErr }, "CEP lookup failed");
+    }
+  }
 
   let fullResponse = "";
 
