@@ -318,7 +318,7 @@ function ChatWidget() {
                 </button>
               )}
               <button
-                onClick={send}
+                onClick={() => send()}
                 disabled={!input.trim() || loading || starting || isListening}
                 className="h-10 w-10 flex items-center justify-center bg-[#2563eb] text-white rounded-xl disabled:opacity-40 hover:bg-blue-700 transition-colors shrink-0"
               >
