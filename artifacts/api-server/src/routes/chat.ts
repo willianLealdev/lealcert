@@ -7,17 +7,17 @@ import { sendOrderStatusEmail } from "../lib/email";
 
 const router = Router();
 
-const SYSTEM_PROMPT = `Você é a assistente virtual de vendas da LealCert, uma empresa especializada em Certificados Digitais ICP-Brasil.
+function buildSystemPrompt(certs: { id: number; name: string; price: string }[]): string {
+  const certList = certs
+    .map(c => `- ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`)
+    .join("\n");
+
+  return `Você é a assistente virtual de vendas da LealCert, uma empresa especializada em Certificados Digitais ICP-Brasil.
 
 Seu objetivo é guiar o cliente pelo processo de compra de forma amigável, profissional e eficiente, sem que ele precise fazer login.
 
 **Certificados disponíveis (apresente apenas quando o cliente perguntar ou demonstrar interesse):**
-- e-CPF A1 (1 ano) — R$ 90,00 — Para pessoa física, arquivo digital, renovação anual
-- e-CPF A3 (1 ano) — R$ 90,00 — Para pessoa física, cartão/token, 1 ano de validade
-- e-CPF A3 (2 anos) — R$ 110,00 — Para pessoa física, cartão/token, 2 anos de validade  
-- e-CPF A3 (3 anos) — R$ 130,00 — Para pessoa física, cartão/token, 3 anos de validade
-- e-CNPJ A1 (1 ano) — R$ 90,00 — Para empresa, arquivo digital, renovação anual
-- e-CNPJ A3 (3 anos) — R$ 150,00 — Para empresa, cartão/token, 3 anos de validade
+${certList}
 
 **IMPORTANTE sobre A3:**
 - Certificados A3 NÃO incluem mídia (cartão/token). O cliente precisa ter seu próprio leitor compatível.
@@ -35,8 +35,8 @@ Seu objetivo é guiar o cliente pelo processo de compra de forma amigável, prof
    - CEP e endereço completo
 5. Pergunte se deseja garantia estendida (+R$15,00 — cobre falhas de mídia/suporte estendido)
 6. Quando tiver TODOS os dados, confirme com o cliente
-7. Use a ferramenta CRIAR_PEDIDO para registrar o pedido
-8. Apresente o QR Code e chave PIX para pagamento
+7. Use a ação CRIAR_PEDIDO para registrar o pedido
+8. Apresente a chave PIX para pagamento
 9. Explique que após confirmação do pagamento, a equipe entrará em contato para agendamento
 
 **Detecção de tipo de cliente:**
@@ -46,8 +46,11 @@ Seu objetivo é guiar o cliente pelo processo de compra de forma amigável, prof
 **Tom:** Amigável, direto ao ponto, profissional. Use linguagem simples em Português do Brasil.
 **NUNCA mostre preços espontaneamente** — apresente apenas quando o cliente perguntar ou quando chegar na etapa de oferta.
 
-Quando tiver todos os dados e confirmação do cliente, responda EXATAMENTE neste formato JSON (sem markdown, sem explicação):
-ACAO:CRIAR_PEDIDO:{"certificateId":<id>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<cpf_ou_cnpj>","customerEmail":"<email>","customerPhone":"<telefone>","companyName":"<razao_social_ou_null>","addressZipcode":"<cep>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<uf>","extendedWarranty":<true|false>}`;
+Quando tiver todos os dados e confirmação do cliente, responda EXATAMENTE neste formato (sem markdown, sem texto extra antes ou depois):
+ACAO:CRIAR_PEDIDO:{"certificateId":<numero_inteiro_do_ID>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<cpf_ou_cnpj>","customerEmail":"<email>","customerPhone":"<telefone>","companyName":"<razao_social_ou_null>","addressZipcode":"<cep>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<uf>","extendedWarranty":<true|false>}
+
+ATENÇÃO: certificateId DEVE ser o número inteiro do ID listado acima (ex: 1, 2, 3...). NUNCA use texto ou slug.`;
+}
 
 router.post("/chat/session", async (req, res): Promise<void> => {
   const [conv] = await db.insert(conversations).values({ title: "Chat de Vendas" }).returning();
@@ -82,6 +85,12 @@ router.post("/chat", async (req, res): Promise<void> => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
+  const activeCerts = await db.select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price })
+    .from(certificatesTable)
+    .where(eq(certificatesTable.active, true));
+
+  const systemPrompt = buildSystemPrompt(activeCerts);
+
   let fullResponse = "";
 
   try {
@@ -89,7 +98,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       model: "gpt-5.1",
       max_completion_tokens: 1024,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         ...chatHistory,
       ],
       stream: true,
@@ -125,7 +134,20 @@ router.post("/chat", async (req, res): Promise<void> => {
           extendedWarranty: boolean;
         };
 
-        const [cert] = await db.select().from(certificatesTable).where(eq(certificatesTable.id, orderData.certificateId)).limit(1);
+        const certIdNum = typeof orderData.certificateId === "string"
+          ? parseInt(orderData.certificateId as string, 10)
+          : orderData.certificateId;
+
+        let cert = certIdNum && !isNaN(certIdNum)
+          ? (await db.select().from(certificatesTable).where(eq(certificatesTable.id, certIdNum)).limit(1))[0]
+          : undefined;
+
+        if (!cert && typeof orderData.certificateId === "string") {
+          const nameLike = (orderData.certificateId as string).toLowerCase().replace(/-/g, " ");
+          const allCerts = await db.select().from(certificatesTable).where(eq(certificatesTable.active, true));
+          cert = allCerts.find(c => c.name.toLowerCase().includes(nameLike) || nameLike.includes(c.name.toLowerCase().split(" ")[0]));
+        }
+
         if (!cert) throw new Error("Certificado não encontrado");
 
         const basePrice = parseFloat(cert.price);
@@ -152,7 +174,7 @@ router.post("/chat", async (req, res): Promise<void> => {
         const [order] = await db.insert(ordersTable).values({
           orderNumber,
           userId,
-          certificateId: orderData.certificateId,
+          certificateId: cert.id,
           status: "pending_payment",
           total: String(total),
           clientType: orderData.clientType,
