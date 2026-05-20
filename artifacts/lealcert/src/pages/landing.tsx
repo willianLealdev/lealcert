@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import {
   Shield, CheckCircle2, Clock, Award, Users, FileText,
   ChevronRight, MessageCircle, X, Send, Loader2, Bot,
-  Star, Lock, Zap, Phone, Mail, MapPin, Menu, Mic, MicOff
+  Star, Lock, Zap, Phone, Mail, MapPin, Menu, Mic, MicOff,
+  Upload, Paperclip
 } from "lucide-react";
 
 const CERTS = [
@@ -63,8 +64,12 @@ function ChatWidget() {
   const [sessionError, setSessionError] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [micSupported] = useState(() => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window));
+  const [docRequest, setDocRequest] = useState<{ tipo: "cpf" | "cnpj" } | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<{ start(): void; stop(): void; abort(): void; onresult: ((e: SpeechRecognitionEvent) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; lang: string; continuous: boolean; interimResults: boolean } | null>(null);
   const sendRef = useRef<(msg?: string) => Promise<void>>(() => Promise.resolve());
   const transcriptRef = useRef("");
@@ -137,14 +142,22 @@ function ChatWidget() {
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           try {
-            const ev = JSON.parse(line.slice(6)) as { content?: string; done?: boolean; action?: string; orderNumber?: string; pixPayload?: { pixKey: string; amount: number } };
+            const ev = JSON.parse(line.slice(6)) as { content?: string; done?: boolean; action?: string; tipo?: string; orderNumber?: string; pixPayload?: { pixKey: string; amount: number } };
             if (ev.content) {
               assistantContent += ev.content;
+              const display = assistantContent
+                .split("\n")
+                .filter(l => !l.startsWith("ACAO:"))
+                .join("\n")
+                .trim();
               setMessages(prev => {
                 const copy = [...prev];
-                copy[copy.length - 1] = { role: "assistant", content: assistantContent };
+                copy[copy.length - 1] = { role: "assistant", content: display };
                 return copy;
               });
+            }
+            if (ev.action === "solicitar_docs" && ev.tipo) {
+              setDocRequest({ tipo: ev.tipo as "cpf" | "cnpj" });
             }
           } catch { /* ignore parse errors */ }
         }
@@ -158,6 +171,31 @@ function ChatWidget() {
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }
+
+  async function uploadDocs() {
+    if (!pendingFiles.length || !sessionId) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      pendingFiles.forEach(f => formData.append("files", f));
+      formData.append("sessionId", String(sessionId));
+      const res = await fetch("/api/chat/upload-docs", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json() as { files: string[] };
+      setDocRequest(null);
+      setPendingFiles([]);
+      const names = data.files.join(", ");
+      await sendRef.current(`[DOCUMENTOS_ENVIADOS] Arquivos enviados: ${names}. Por favor, prossiga com a criação do pedido.`);
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", content: "❌ Erro ao enviar os documentos. Por favor, tente novamente." }]);
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -288,6 +326,58 @@ function ChatWidget() {
               </div>
             ))}
             {loading && messages[messages.length - 1]?.content === "" && null}
+            {docRequest && (
+              <div className="flex justify-start gap-2">
+                <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="max-w-[90%] bg-white border border-blue-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm">
+                  <p className="font-semibold text-gray-800 mb-2">
+                    📎 Documentos necessários ({docRequest.tipo === "cpf" ? "e-CPF" : "e-CNPJ"})
+                  </p>
+                  <ul className="text-gray-600 text-xs space-y-1 mb-3">
+                    {(docRequest.tipo === "cpf"
+                      ? ["RG ou CNH — frente", "RG ou CNH — verso", "Comprovante de residência"]
+                      : ["Cartão CNPJ", "Contrato Social ou Requerimento de Empresário", "RG/CNH do responsável — frente", "RG/CNH do responsável — verso", "Comprovante de endereço da empresa"]
+                    ).map(doc => (
+                      <li key={doc} className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                        {doc}
+                      </li>
+                    ))}
+                  </ul>
+                  {pendingFiles.length > 0 && (
+                    <div className="mb-3 space-y-1">
+                      {pendingFiles.map(f => (
+                        <div key={f.name} className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 rounded px-2 py-1">
+                          <FileText className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{f.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                    >
+                      <Paperclip className="h-3.5 w-3.5" />
+                      {pendingFiles.length > 0 ? "Adicionar mais" : "Selecionar arquivos"}
+                    </button>
+                    {pendingFiles.length > 0 && (
+                      <button
+                        onClick={uploadDocs}
+                        disabled={uploading}
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+                      >
+                        {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        {uploading ? "Enviando…" : "Enviar documentos"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
 
@@ -305,6 +395,18 @@ function ChatWidget() {
                 <span className="ml-auto text-gray-400 italic truncate">{input || "aguardando fala…"}</span>
               </div>
             )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf"
+              className="hidden"
+              onChange={e => {
+                const files = Array.from(e.target.files ?? []);
+                if (files.length) setPendingFiles(prev => [...prev, ...files]);
+                e.target.value = "";
+              }}
+            />
             <div className="flex items-center gap-2">
               <input
                 ref={inputRef}

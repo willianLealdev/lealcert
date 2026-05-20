@@ -4,6 +4,23 @@ import { db, conversations, chatMessages, certificatesTable, usersTable, ordersT
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
 import { sendOrderStatusEmail } from "../lib/email";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const UPLOAD_DIR = path.resolve("uploads", "chat-docs");
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9._-]/g, "_");
+    cb(null, `${Date.now()}_${base}${ext}`);
+  },
+});
+
+const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024, files: 10 } });
 
 const router = Router();
 
@@ -27,7 +44,7 @@ ${certList}
 - CPF/CNPJ pode chegar com espaços entre os dígitos (ex: "123 456 789 00") — SEMPRE remova espaços e pontuação, use apenas os dígitos. CPF = 11 dígitos, CNPJ = 14 dígitos.
 - CEP pode chegar como "01310100" ou "0 1 3 1 0 1 0 0" — remova espaços. Quando o sistema informar o endereço via [CEP consultado], use esses dados diretamente sem perguntar novamente.
 - Telefone pode chegar com espaços entre dígitos — remova espaços e use só números + DDD.
-- E-mail pode chegar de várias formas faladas: "joao arroba gmail ponto com" ou "joao @ gmail . com" ou "joao@gmail . com" — SEMPRE reconstrua o e-mail corretamente removendo espaços ao redor de @ e pontos, e convertendo "arroba" em @ e "ponto" em . Exemplo: "joao silva arroba empresa ponto com ponto br" → "joaosilva@empresa.com.br". Se não conseguir montar um e-mail válido, peça para o cliente digitar ou soletrar.
+- E-mail pode chegar de várias formas faladas: "joao arroba gmail ponto com" ou "joao @ gmail . com" — SEMPRE reconstrua o e-mail corretamente removendo espaços ao redor de @ e pontos, e convertendo "arroba" em @ e "ponto" em . Exemplo: "joao silva arroba empresa ponto com ponto br" → "joaosilva@empresa.com.br". Se não conseguir montar um e-mail válido, peça para o cliente digitar ou soletrar.
 
 **Fluxo de venda — siga esta ordem:**
 1. Cumprimente e pergunte o que o cliente precisa
@@ -41,9 +58,15 @@ ${certList}
    - CEP — quando o cliente informar, o sistema buscará o endereço automaticamente
 5. Pergunte se deseja garantia estendida (+R$15,00 — cobre falhas de mídia/suporte estendido)
 6. Quando tiver TODOS os dados, confirme com o cliente
-7. Use a ação CRIAR_PEDIDO para registrar o pedido
-8. Apresente a chave PIX para pagamento
-9. Explique que após confirmação do pagamento, a equipe entrará em contato para agendamento
+7. Solicite os documentos obrigatórios. Escreva uma mensagem amigável explicando quais documentos são necessários e, na linha imediatamente seguinte (sem linhas em branco entre elas), inclua a ação:
+   - e-CPF → precisa de: RG ou CNH (frente e verso) + Comprovante de residência
+     Use: ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
+   - e-CNPJ → precisa de: Cartão CNPJ + Contrato Social ou Requerimento de Empresário + RG/CNH do responsável (frente e verso) + Comprovante de endereço da empresa
+     Use: ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
+8. Aguarde o cliente enviar os documentos. Quando receber mensagem contendo [DOCUMENTOS_ENVIADOS], confirme brevemente o recebimento e prossiga para o próximo passo.
+9. Use a ação CRIAR_PEDIDO para registrar o pedido
+10. Apresente a chave PIX para pagamento
+11. Explique que após confirmação do pagamento, a equipe entrará em contato para agendamento
 
 **Detecção de tipo de cliente:**
 - Se o e-mail informado já estiver cadastrado como contador no sistema, informe que o pedido será vinculado à conta dele
@@ -52,7 +75,7 @@ ${certList}
 **Tom:** Amigável, direto ao ponto, profissional. Use linguagem simples em Português do Brasil.
 **NUNCA mostre preços espontaneamente** — apresente apenas quando o cliente perguntar ou quando chegar na etapa de oferta.
 
-Quando tiver todos os dados e confirmação do cliente, responda EXATAMENTE neste formato (sem markdown, sem texto extra antes ou depois):
+Quando tiver todos os dados, confirmação do cliente E documentos enviados ([DOCUMENTOS_ENVIADOS] recebido), responda EXATAMENTE neste formato (sem markdown, sem texto extra antes ou depois):
 ACAO:CRIAR_PEDIDO:{"certificateId":<numero_inteiro_do_ID>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<apenas_digitos>","customerEmail":"<email>","customerPhone":"<apenas_digitos_com_ddd>","companyName":"<razao_social_ou_null>","addressZipcode":"<apenas_digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<uf>","extendedWarranty":<true|false>}
 
 ATENÇÃO: certificateId DEVE ser o número inteiro do ID listado acima (ex: 1, 2, 3...). NUNCA use texto ou slug. customerCpfCnpj, customerPhone e addressZipcode devem ter APENAS dígitos, sem pontos, traços ou espaços.`;
@@ -61,6 +84,16 @@ ATENÇÃO: certificateId DEVE ser o número inteiro do ID listado acima (ex: 1, 
 router.post("/chat/session", async (req, res): Promise<void> => {
   const [conv] = await db.insert(conversations).values({ title: "Chat de Vendas" }).returning();
   res.status(201).json({ id: conv.id, title: conv.title, createdAt: conv.createdAt });
+});
+
+router.post("/chat/upload-docs", upload.array("files", 10), async (req, res): Promise<void> => {
+  const files = req.files as Express.Multer.File[] | undefined;
+  if (!files || files.length === 0) {
+    res.status(400).json({ error: "Nenhum arquivo enviado" });
+    return;
+  }
+  const fileNames = files.map(f => f.originalname);
+  res.json({ ok: true, files: fileNames });
 });
 
 router.post("/chat", async (req, res): Promise<void> => {
@@ -139,6 +172,14 @@ router.post("/chat", async (req, res): Promise<void> => {
 
     await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: fullResponse });
 
+    // Detect document request action
+    if (fullResponse.includes("ACAO:SOLICITAR_DOCS:")) {
+      const match = fullResponse.match(/ACAO:SOLICITAR_DOCS:\{"tipo":"(cpf|cnpj)"\}/);
+      if (match) {
+        res.write(`data: ${JSON.stringify({ action: "solicitar_docs", tipo: match[1] })}\n\n`);
+      }
+    }
+
     if (fullResponse.includes("ACAO:CRIAR_PEDIDO:")) {
       try {
         const jsonStr = fullResponse.split("ACAO:CRIAR_PEDIDO:")[1].trim();
@@ -188,6 +229,10 @@ router.post("/chat", async (req, res): Promise<void> => {
           if (existingUser) userId = existingUser.id;
         }
 
+        // Gather uploaded document names from chat history
+        const docMsg = history.find(m => m.content.includes("[DOCUMENTOS_ENVIADOS]"));
+        const chatDocuments = docMsg ? docMsg.content : null;
+
         let orderNumber: string;
         do {
           const rand = Math.floor(1000 + Math.random() * 9000);
@@ -215,6 +260,7 @@ router.post("/chat", async (req, res): Promise<void> => {
           addressCity: orderData.addressCity || null,
           addressState: orderData.addressState || null,
           extendedWarranty: orderData.extendedWarranty,
+          chatDocuments,
         }).returning();
 
         const [settings] = await db.select().from(settingsTable).limit(1);

@@ -39,6 +39,7 @@ export const ordersTable = pgTable("orders", {
   addressNeighborhood: text("address_neighborhood"),
   addressCity: text("address_city"),
   addressState: text("address_state"),
+  chatDocuments: text("chat_documents"),
   mpPreferenceId: text("mp_preference_id"),
   mpPaymentId: text("mp_payment_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
