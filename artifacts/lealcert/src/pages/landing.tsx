@@ -43,14 +43,25 @@ function ChatWidget() {
   const [starting, setStarting] = useState(false);
   const [sessionError, setSessionError] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [pendingVoiceMsg, setPendingVoiceMsg] = useState<string | null>(null);
   const [micSupported] = useState(() => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window));
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<{ start(): void; stop(): void; abort(): void; onresult: ((e: SpeechRecognitionEvent) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; lang: string; continuous: boolean; interimResults: boolean } | null>(null);
+  const sendRef = useRef<(msg?: string) => Promise<void>>(() => Promise.resolve());
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => { sendRef.current = send; });
+
+  useEffect(() => {
+    if (pendingVoiceMsg) {
+      setPendingVoiceMsg(null);
+      sendRef.current(pendingVoiceMsg);
+    }
+  }, [pendingVoiceMsg]);
 
   async function startSession() {
     if (sessionId) return;
@@ -174,7 +185,7 @@ function ChatWidget() {
       const transcript = finalTranscript.trim();
       if (transcript) {
         setInput("");
-        send(transcript);
+        setPendingVoiceMsg(transcript);
       }
     };
 
