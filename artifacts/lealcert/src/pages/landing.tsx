@@ -80,10 +80,10 @@ function ChatWidget() {
     if (open) { setTimeout(() => inputRef.current?.focus(), 300); }
   }, [open]);
 
-  async function send() {
-    if (!input.trim() || loading) return;
+  async function send(directMsg?: string) {
+    const userMsg = (directMsg ?? input).trim();
+    if (!userMsg || loading) return;
     if (!sessionId) { await startSession(); return; }
-    const userMsg = input.trim();
     setInput("");
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
     setLoading(true);
@@ -171,11 +171,10 @@ function ChatWidget() {
     recognition.onend = () => {
       setIsListening(false);
       recognitionRef.current = null;
-      if (finalTranscript.trim()) {
-        setTimeout(() => {
-          setInput(finalTranscript.trim());
-          inputRef.current?.focus();
-        }, 50);
+      const transcript = finalTranscript.trim();
+      if (transcript) {
+        setInput("");
+        send(transcript);
       }
     };
 
@@ -279,7 +278,7 @@ function ChatWidget() {
             {isListening && (
               <div className="mb-2 flex items-center gap-2 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">
                 <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-                <span className="font-medium">Ouvindo… fale agora</span>
+                <span className="font-medium">Ouvindo… envio automático ao parar</span>
                 <span className="ml-auto text-gray-400 italic truncate">{input || "aguardando fala…"}</span>
               </div>
             )}
