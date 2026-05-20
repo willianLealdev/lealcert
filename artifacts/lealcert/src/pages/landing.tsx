@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Shield, CheckCircle2, Clock, Award, Users, FileText,
   ChevronRight, MessageCircle, X, Send, Loader2, Bot,
-  Star, Lock, Zap, Phone, Mail, MapPin, Menu
+  Star, Lock, Zap, Phone, Mail, MapPin, Menu, Mic, MicOff
 } from "lucide-react";
 
 const CERTS = [
@@ -32,6 +32,8 @@ const BENEFITS = [
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
+type SpeechRecognitionEvent = { results: { transcript: string; isFinal: boolean }[][] };
+
 function ChatWidget() {
   const [open, setOpen] = useState(true);
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -40,8 +42,11 @@ function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [sessionError, setSessionError] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [micSupported] = useState(() => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window));
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<{ start(): void; stop(): void; abort(): void; onresult: ((e: SpeechRecognitionEvent) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; lang: string; continuous: boolean; interimResults: boolean } | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -133,6 +138,58 @@ function ChatWidget() {
     }
   }
 
+  function toggleMic() {
+    if (!micSupported) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognition = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition() as typeof recognitionRef.current;
+    if (!recognition) return;
+
+    recognition.lang = "pt-BR";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    let finalTranscript = "";
+
+    recognition.onresult = (e: SpeechRecognitionEvent) => {
+      let interim = "";
+      for (let i = 0; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r[0].isFinal) finalTranscript += r[0].transcript;
+        else interim = r[0].transcript;
+      }
+      setInput(finalTranscript + interim);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+      if (finalTranscript.trim()) {
+        setTimeout(() => {
+          setInput(finalTranscript.trim());
+          inputRef.current?.focus();
+        }, 50);
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+    setInput("");
+  }
+
   function renderContent(text: string) {
     const lines = text.split("\n");
     return lines.map((line, i) => {
@@ -219,19 +276,40 @@ function ChatWidget() {
                 <button onClick={startSession} className="underline font-medium ml-2">Reconectar</button>
               </div>
             )}
+            {isListening && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                <span className="font-medium">Ouvindo… fale agora</span>
+                <span className="ml-auto text-gray-400 italic truncate">{input || "aguardando fala…"}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <input
                 ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={starting ? "Conectando…" : "Digite sua mensagem…"}
-                disabled={loading || starting}
+                placeholder={isListening ? "Ouvindo…" : starting ? "Conectando…" : "Digite sua mensagem…"}
+                disabled={loading || starting || isListening}
                 className="flex-1 text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] placeholder:text-gray-400 disabled:opacity-50 transition-all"
               />
+              {micSupported && (
+                <button
+                  onClick={toggleMic}
+                  disabled={loading || starting}
+                  title={isListening ? "Parar gravação" : "Falar mensagem"}
+                  className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all shrink-0 disabled:opacity-40 ${
+                    isListening
+                      ? "bg-red-500 text-white animate-pulse hover:bg-red-600"
+                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                  }`}
+                >
+                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+              )}
               <button
                 onClick={send}
-                disabled={!input.trim() || loading || starting}
+                disabled={!input.trim() || loading || starting || isListening}
                 className="h-10 w-10 flex items-center justify-center bg-[#2563eb] text-white rounded-xl disabled:opacity-40 hover:bg-blue-700 transition-colors shrink-0"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
