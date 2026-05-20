@@ -32,6 +32,25 @@ const BENEFITS = [
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
+function normalizeVoiceText(text: string): string {
+  let t = text;
+
+  // "arroba" → "@"
+  t = t.replace(/\s*\barroba\b\s*/gi, "@");
+
+  if (t.includes("@")) {
+    // "ponto" → "." in email context
+    t = t.replace(/\s*\bponto\b\s*/gi, ".");
+    // remove spaces around @ and .
+    t = t.replace(/\s*@\s*/g, "@");
+    t = t.replace(/(\w)\s*\.\s*(\w)/g, "$1.$2");
+    // collapse any remaining multiple spaces
+    t = t.replace(/\s+/g, " ").trim();
+  }
+
+  return t;
+}
+
 type SpeechRecognitionEvent = { results: { transcript: string; isFinal: boolean }[][] };
 
 function ChatWidget() {
@@ -172,9 +191,10 @@ function ChatWidget() {
     recognition.onend = () => {
       setIsListening(false);
       recognitionRef.current = null;
-      const msg = transcriptRef.current.trim();
+      const raw = transcriptRef.current.trim();
       transcriptRef.current = "";
-      if (msg) {
+      if (raw) {
+        const msg = normalizeVoiceText(raw);
         setInput("");
         sendRef.current(msg);
       }

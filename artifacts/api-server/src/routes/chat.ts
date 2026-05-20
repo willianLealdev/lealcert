@@ -27,6 +27,7 @@ ${certList}
 - CPF/CNPJ pode chegar com espaços entre os dígitos (ex: "123 456 789 00") — SEMPRE remova espaços e pontuação, use apenas os dígitos. CPF = 11 dígitos, CNPJ = 14 dígitos.
 - CEP pode chegar como "01310100" ou "0 1 3 1 0 1 0 0" — remova espaços. Quando o sistema informar o endereço via [CEP consultado], use esses dados diretamente sem perguntar novamente.
 - Telefone pode chegar com espaços entre dígitos — remova espaços e use só números + DDD.
+- E-mail pode chegar de várias formas faladas: "joao arroba gmail ponto com" ou "joao @ gmail . com" ou "joao@gmail . com" — SEMPRE reconstrua o e-mail corretamente removendo espaços ao redor de @ e pontos, e convertendo "arroba" em @ e "ponto" em . Exemplo: "joao silva arroba empresa ponto com ponto br" → "joaosilva@empresa.com.br". Se não conseguir montar um e-mail válido, peça para o cliente digitar ou soletrar.
 
 **Fluxo de venda — siga esta ordem:**
 1. Cumprimente e pergunte o que o cliente precisa
