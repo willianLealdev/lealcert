@@ -51,12 +51,16 @@ export default function AdminCertificates() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Catálogo de Certificados</h1>
-          <p className="text-muted-foreground">Defina os modelos e preços dos certificados disponíveis.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Catálogo</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">Modelos e preços dos certificados.</p>
         </div>
-        <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Novo Modelo</Button>
+        <Button className="shrink-0" onClick={openCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          <span className="hidden sm:inline">Novo Modelo</span>
+          <span className="sm:hidden">Novo</span>
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

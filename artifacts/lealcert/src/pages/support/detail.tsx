@@ -66,17 +66,17 @@ export default function TicketDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-start gap-3">
         <Link href="/support">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="shrink-0">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar
           </Button>
         </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold">{ticket.subject}</h1>
-            <Badge variant={STATUS_VARIANTS[ticket.status] ?? "secondary"}>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-bold line-clamp-2">{ticket.subject}</h1>
+            <Badge variant={STATUS_VARIANTS[ticket.status] ?? "secondary"} className="shrink-0">
               {STATUS_LABELS[ticket.status] ?? ticket.status}
             </Badge>
           </div>
@@ -85,7 +85,7 @@ export default function TicketDetail() {
           )}
         </div>
         {ticket.status !== "closed" && (
-          <Button variant="outline" onClick={() => closeTicket.mutate({ id: Number(id) })} disabled={closeTicket.isPending}>
+          <Button variant="outline" size="sm" className="shrink-0" onClick={() => closeTicket.mutate({ id: Number(id) })} disabled={closeTicket.isPending}>
             <CheckCircle className="h-4 w-4 mr-2" />
             Encerrar
           </Button>

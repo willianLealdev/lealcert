@@ -55,12 +55,16 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Usuários</h1>
-          <p className="text-muted-foreground">Gerencie os contadores e administradores do sistema.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Usuários</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">Gerencie os contadores e administradores.</p>
         </div>
-        <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Novo Usuário</Button>
+        <Button className="shrink-0" onClick={openCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          <span className="hidden sm:inline">Novo Usuário</span>
+          <span className="sm:hidden">Novo</span>
+        </Button>
       </div>
 
       <Card>

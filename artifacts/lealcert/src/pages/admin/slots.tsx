@@ -127,8 +127,8 @@ export default function AdminSlots() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Agenda de Horários</h1>
-        <p className="text-muted-foreground">Configure os dias e horários de atendimento, gere slots e gerencie datas fechadas.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Agenda de Horários</h1>
+        <p className="text-muted-foreground text-sm sm:text-base">Configure dias e horários de atendimento.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

@@ -55,28 +55,30 @@ function RangeBar({ value, onChange }: { value: RangeState; onChange: (v: RangeS
         className="h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
       >
         <option value="today">Hoje</option>
-        <option value="7d">Últimos 7 dias</option>
-        <option value="15d">Últimos 15 dias</option>
-        <option value="30d">Últimos 30 dias</option>
-        <option value="90d">Últimos 3 meses</option>
+        <option value="7d">7 dias</option>
+        <option value="15d">15 dias</option>
+        <option value="30d">30 dias</option>
+        <option value="90d">3 meses</option>
         <option value="custom">Personalizado</option>
       </select>
-      <Input
-        type="date"
-        value={value.from}
-        disabled={!isCustom}
-        onChange={e => onChange({ ...value, from: e.target.value })}
-        className="h-9 w-36 text-sm"
-        placeholder="De"
-      />
-      <Input
-        type="date"
-        value={value.to}
-        disabled={!isCustom}
-        onChange={e => onChange({ ...value, to: e.target.value })}
-        className="h-9 w-36 text-sm"
-        placeholder="Até"
-      />
+      {isCustom && (
+        <>
+          <Input
+            type="date"
+            value={value.from}
+            onChange={e => onChange({ ...value, from: e.target.value })}
+            className="h-9 w-32 sm:w-36 text-sm"
+            placeholder="De"
+          />
+          <Input
+            type="date"
+            value={value.to}
+            onChange={e => onChange({ ...value, to: e.target.value })}
+            className="h-9 w-32 sm:w-36 text-sm"
+            placeholder="Até"
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -152,14 +154,14 @@ function AdminDashboard() {
       </div>
 
       {/* Row 2 cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <StatCard label="Aguardando pagamento" value={cards.pending_period} />
         <StatCard label="Pagos"                value={cards.paid_period} />
         <StatCard label="Com protocolo"        value={cards.protocol_period} />
       </div>
 
       {/* Row 3 cards — revenue */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <StatCard label="Vendas Hoje"   value={brl(revenue.today)} />
         <StatCard label="Vendas no Mês" value={brl(revenue.month)} />
         <StatCard label="Vendas Totais" value={brl(revenue.all)} />

@@ -44,15 +44,16 @@ export default function Orders() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pedidos</h1>
-          <p className="text-muted-foreground">Gerencie e acompanhe seus pedidos de certificados digitais.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Pedidos</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">Gerencie e acompanhe seus pedidos.</p>
         </div>
-        <Link href="/orders/new">
+        <Link href="/orders/new" className="shrink-0">
           <Button>
             <Plus className="h-4 w-4 mr-2" />
-            Novo Pedido
+            <span className="hidden sm:inline">Novo Pedido</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </Link>
       </div>
@@ -70,7 +71,7 @@ export default function Orders() {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[220px]">
+              <SelectTrigger className="w-full sm:w-[220px]">
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
               <SelectContent>

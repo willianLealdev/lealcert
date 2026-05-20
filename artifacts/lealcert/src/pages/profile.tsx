@@ -58,8 +58,8 @@ export default function Profile() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Meu Perfil</h1>
-        <p className="text-muted-foreground">Gerencie seus dados pessoais e senha de acesso.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Meu Perfil</h1>
+        <p className="text-muted-foreground text-sm sm:text-base">Gerencie seus dados e senha de acesso.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -92,7 +92,7 @@ export default function Profile() {
 
                 <div className="border-t pt-4 space-y-4">
                   <p className="text-sm font-medium text-muted-foreground">Alterar Senha (opcional)</p>
-                  <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="space-y-2">
                       <Label htmlFor="currentPassword">Senha Atual</Label>
                       <Input id="currentPassword" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />

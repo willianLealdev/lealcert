@@ -41,7 +41,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value || "—"}</span>
+      <span className="text-sm font-medium break-words">{value || "—"}</span>
     </div>
   );
 }
@@ -81,6 +81,7 @@ export default function OrderDetail() {
   if (!order) return <div className="text-center py-20 text-muted-foreground">Pedido não encontrado.</div>;
 
   const isAdmin = user?.role === "admin";
+  const isPayable = order.status === "pending_payment" || order.status === "created";
 
   function handleStatusUpdate(e: React.FormEvent) {
     e.preventDefault();
@@ -92,25 +93,46 @@ export default function OrderDetail() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <div className={`space-y-6 ${isPayable ? "pb-28 md:pb-0" : ""}`}>
+
+      {/* Barra de pagamento fixa no rodapé — só mobile */}
+      {isPayable && (
+        <div className="fixed bottom-0 left-0 right-0 z-20 px-4 py-3 bg-background/95 backdrop-blur-sm border-t shadow-xl md:hidden">
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={() => createPayment.mutate({ id: Number(id) })}
+            disabled={createPayment.isPending}
+          >
+            {createPayment.isPending
+              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              : <CreditCard className="h-4 w-4 mr-2" />}
+            Pagar com MercadoPago
+          </Button>
+        </div>
+      )}
+
+      {/* Cabeçalho */}
+      <div className="flex flex-wrap items-start gap-3">
         <Link href="/orders">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="shrink-0">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar
           </Button>
         </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight font-mono">{order.orderNumber}</h1>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight font-mono">{order.orderNumber}</h1>
             <Badge variant={STATUS_VARIANTS[order.status] ?? "secondary"}>
               {STATUS_LABELS[order.status] ?? order.status}
             </Badge>
           </div>
           <p className="text-muted-foreground text-sm">Criado em {formatDateTime(order.createdAt)}</p>
         </div>
-        {(order.status === "pending_payment" || order.status === "created") && (
+        {/* Botão de pagar — apenas desktop */}
+        {isPayable && (
           <Button
+            className="hidden md:flex shrink-0"
             onClick={() => createPayment.mutate({ id: Number(id) })}
             disabled={createPayment.isPending}
           >
@@ -126,7 +148,7 @@ export default function OrderDetail() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader><CardTitle>Dados do Cliente</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InfoRow label="Nome" value={order.customerName} />
               <InfoRow label={order.clientType === "cnpj" ? "CNPJ" : "CPF"} value={order.customerCpfCnpj} />
               {order.companyName && <InfoRow label="Razão Social" value={order.companyName} />}
@@ -138,7 +160,7 @@ export default function OrderDetail() {
 
           <Card>
             <CardHeader><CardTitle>Endereço</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InfoRow label="CEP" value={order.addressZipcode} />
               <InfoRow label="Logradouro" value={order.addressStreet} />
               <InfoRow label="Número" value={order.addressNumber} />

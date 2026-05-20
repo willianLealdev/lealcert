@@ -28,13 +28,17 @@ export default function Support() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Suporte</h1>
-          <p className="text-muted-foreground">Abra e acompanhe seus chamados de suporte.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Suporte</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">Abra e acompanhe seus chamados.</p>
         </div>
-        <Link href="/support/new">
-          <Button><Plus className="h-4 w-4 mr-2" />Novo Chamado</Button>
+        <Link href="/support/new" className="shrink-0">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Novo Chamado</span>
+            <span className="sm:hidden">Novo</span>
+          </Button>
         </Link>
       </div>
 
