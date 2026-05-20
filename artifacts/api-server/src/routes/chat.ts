@@ -92,8 +92,28 @@ router.post("/chat/upload-docs", upload.array("files", 10), async (req, res): Pr
     res.status(400).json({ error: "Nenhum arquivo enviado" });
     return;
   }
-  const fileNames = files.map(f => f.originalname);
-  res.json({ ok: true, files: fileNames });
+
+  const fileMeta = files.map(f => ({
+    name: f.originalname,
+    key: `uploads/chat-docs/${f.filename}`,
+    url: `/api/uploads/chat-docs/${f.filename}`,
+  }));
+
+  // Persist structured doc metadata into the conversation so CRIAR_PEDIDO can find it
+  const sessionId = req.body?.sessionId ? Number(req.body.sessionId) : null;
+  if (sessionId && !isNaN(sessionId)) {
+    try {
+      await db.insert(chatMessages).values({
+        conversationId: sessionId,
+        role: "system",
+        content: `[DOC_KEYS] ${JSON.stringify(fileMeta)}`,
+      });
+    } catch (dbErr) {
+      logger.warn({ err: dbErr }, "Failed to persist doc metadata to chat history");
+    }
+  }
+
+  res.json({ ok: true, files: files.map(f => f.originalname) });
 });
 
 router.post("/chat", async (req, res): Promise<void> => {
@@ -229,9 +249,14 @@ router.post("/chat", async (req, res): Promise<void> => {
           if (existingUser) userId = existingUser.id;
         }
 
-        // Gather uploaded document names from chat history
-        const docMsg = history.find(m => m.content.includes("[DOCUMENTOS_ENVIADOS]"));
-        const chatDocuments = docMsg ? docMsg.content : null;
+        // Gather uploaded document metadata from chat history (stored by upload endpoint)
+        const allMsgs = await db.select().from(chatMessages)
+          .where(eq(chatMessages.conversationId, sessionId))
+          .orderBy(asc(chatMessages.createdAt));
+        const docKeyMsg = allMsgs.findLast(m => m.content.startsWith("[DOC_KEYS]"));
+        const chatDocuments = docKeyMsg
+          ? docKeyMsg.content.replace("[DOC_KEYS] ", "").trim()
+          : null;
 
         let orderNumber: string;
         do {

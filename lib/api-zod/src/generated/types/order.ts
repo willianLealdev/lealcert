@@ -33,6 +33,8 @@ export interface Order {
   /** @nullable */
   cnhPath?: string | null;
   /** @nullable */
+  chatDocuments?: string | null;
+  /** @nullable */
   scheduledAt?: string | null;
   /** @nullable */
   protocolNumber?: string | null;

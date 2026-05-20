@@ -1406,6 +1406,8 @@ components:
           type: ["string", "null"]
         cnhPath:
           type: ["string", "null"]
+        chatDocuments:
+          type: ["string", "null"]
         scheduledAt:
           type: ["string", "null"]
         protocolNumber:

@@ -6,6 +6,19 @@ import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
 
+const CHAT_DOCS_DIR = path.join(process.cwd(), "uploads", "chat-docs");
+if (!fs.existsSync(CHAT_DOCS_DIR)) fs.mkdirSync(CHAT_DOCS_DIR, { recursive: true });
+
+router.get("/uploads/chat-docs/:filename", requireAuth, (req, res): void => {
+  const filename = Array.isArray(req.params.filename) ? req.params.filename[0] : req.params.filename;
+  const filePath = path.join(CHAT_DOCS_DIR, filename);
+  if (!fs.existsSync(filePath)) {
+    res.status(404).json({ error: "Arquivo não encontrado." });
+    return;
+  }
+  res.sendFile(filePath);
+});
+
 const TIPOS = ["cnh", "cartao-cnpj", "ficha-cadastral"] as const;
 type Tipo = (typeof TIPOS)[number];
 

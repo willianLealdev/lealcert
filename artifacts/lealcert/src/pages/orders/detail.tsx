@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CreditCard, Loader2 } from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, FileText, Download } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 
@@ -198,6 +198,32 @@ export default function OrderDetail() {
               </div>
             </CardContent>
           </Card>
+
+          {order.chatDocuments && (() => {
+            let docs: { name: string; key: string; url: string }[] = [];
+            try { docs = JSON.parse(order.chatDocuments); } catch { /* ignore */ }
+            if (!docs.length) return null;
+            return (
+              <Card>
+                <CardHeader><CardTitle>Documentos Enviados</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  {docs.map((doc, i) => (
+                    <a
+                      key={i}
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <FileText className="h-4 w-4 shrink-0" />
+                      <span className="truncate flex-1">{doc.name}</span>
+                      <Download className="h-4 w-4 shrink-0" />
+                    </a>
+                  ))}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {order.mpPaymentId && (
             <Card>
