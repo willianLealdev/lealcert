@@ -962,6 +962,69 @@ paths:
               schema:
                 type: object
 
+  /orders/{id}/events:
+    get:
+      operationId: getOrderEvents
+      tags: [orders]
+      summary: Histórico completo de eventos de um pedido
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Lista de eventos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderEvent"
+
+  /renewals:
+    get:
+      operationId: listRenewals
+      tags: [renewals]
+      summary: Listar todos os certificados emitidos com controle de renovação
+      responses:
+        "200":
+          description: Lista de renovações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CertificateRenewal"
+
+  /renewals/check-alerts:
+    post:
+      operationId: checkRenewalAlerts
+      tags: [renewals]
+      summary: Verifica vencimentos e envia e-mails automáticos de alerta
+      responses:
+        "200":
+          description: Resultado da verificação
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckAlertsResult"
+
+  /renewals/{id}/send-alert:
+    post:
+      operationId: sendRenewalAlert
+      tags: [renewals]
+      summary: Envia e-mail de alerta de vencimento manualmente
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: E-mail enviado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  daysLeft: { type: integer }
+
   /gestaoar/sync-order/{orderId}:
     post:
       operationId: syncGarOrder
@@ -1557,6 +1620,86 @@ paths:
 
 components:
   schemas:
+    OrderEvent:
+      type: object
+      required: [id, orderId, type, message, createdAt]
+      properties:
+        id:
+          type: integer
+        orderId:
+          type: integer
+        type:
+          type: string
+        message:
+          type: string
+        meta:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CertificateRenewal:
+      type: object
+      required: [id, orderId, customerName, customerCpfCnpj, certificateName, validityMonths, emittedAt, expiresAt]
+      properties:
+        id:
+          type: integer
+        orderId:
+          type: integer
+        customerName:
+          type: string
+        customerCpfCnpj:
+          type: string
+        customerEmail:
+          type: string
+          nullable: true
+        certificateName:
+          type: string
+        garPedido:
+          type: string
+          nullable: true
+        garProtocolo:
+          type: string
+          nullable: true
+        validityMonths:
+          type: integer
+        emittedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        alertSent30d:
+          type: boolean
+        alertSent7d:
+          type: boolean
+        alertSent1d:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    CheckAlertsResult:
+      type: object
+      required: [ok, processed, sent]
+      properties:
+        ok:
+          type: boolean
+        processed:
+          type: integer
+        sent:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              customer: { type: string }
+              daysLeft: { type: integer }
+              sent: { type: boolean }
+
     HealthStatus:
       type: object
       required: [status]

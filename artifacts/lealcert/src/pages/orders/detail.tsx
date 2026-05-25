@@ -8,6 +8,7 @@ import {
   useGetOrderGarLocais,
   useGetOrderGarSlots,
   useAgendarOrder,
+  useGetOrderEvents,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, CreditCard, Loader2, FileText, Download, RefreshCw,
   ShoppingBag, CheckCircle2, Calendar, MapPin, Video, Clock, ChevronRight, Check,
+  Activity, CreditCard as PayIcon, Package, Shield, AlertCircle, Tag,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useMemo } from "react";
@@ -57,6 +59,81 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-sm font-medium break-words">{value || "—"}</span>
     </div>
+  );
+}
+
+// ── Timeline de Eventos ───────────────────────────────────────────────────────
+const EVENT_ICONS: Record<string, React.ReactNode> = {
+  order_created:        <Package className="h-4 w-4" />,
+  payment_initiated:    <PayIcon className="h-4 w-4" />,
+  payment_confirmed:    <CheckCircle2 className="h-4 w-4 text-green-600" />,
+  gar_sale_registered:  <ShoppingBag className="h-4 w-4 text-blue-600" />,
+  gar_protocol_emitted: <Tag className="h-4 w-4 text-blue-600" />,
+  scheduling_confirmed: <Calendar className="h-4 w-4 text-green-600" />,
+  gar_status_updated:   <RefreshCw className="h-4 w-4 text-muted-foreground" />,
+  certificate_emitted:  <Shield className="h-4 w-4 text-green-600" />,
+  order_completed:      <CheckCircle2 className="h-4 w-4 text-green-700" />,
+  order_cancelled:      <AlertCircle className="h-4 w-4 text-destructive" />,
+  status_updated:       <Activity className="h-4 w-4" />,
+  admin_action:         <Activity className="h-4 w-4 text-muted-foreground" />,
+  sync_performed:       <RefreshCw className="h-4 w-4 text-muted-foreground" />,
+};
+
+function OrderTimeline({ orderId }: { orderId: number }) {
+  const { data: events, isLoading } = useGetOrderEvents(orderId);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4" />Histórico</CardTitle></CardHeader>
+        <CardContent><div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Carregando...</div></CardContent>
+      </Card>
+    );
+  }
+
+  if (!events || events.length === 0) {
+    return (
+      <Card>
+        <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4" />Histórico</CardTitle></CardHeader>
+        <CardContent><p className="text-sm text-muted-foreground">Nenhum evento registrado ainda.</p></CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Activity className="h-4 w-4" />
+          Histórico do Pedido
+          <Badge variant="secondary" className="ml-auto text-xs">{events.length}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="relative">
+          {events.map((ev, i) => {
+            const icon = EVENT_ICONS[ev.type] ?? <Activity className="h-4 w-4" />;
+            const isLast = i === events.length - 1;
+            return (
+              <div key={ev.id} className="flex gap-3 px-4 py-2.5 group hover:bg-muted/40 transition-colors">
+                <div className="flex flex-col items-center">
+                  <div className="rounded-full bg-muted border p-1.5 mt-0.5 shrink-0">
+                    {icon}
+                  </div>
+                  {!isLast && <div className="w-px flex-1 bg-border mt-1" />}
+                </div>
+                <div className="flex-1 min-w-0 pb-2">
+                  <p className="text-xs font-medium leading-tight">{ev.message}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(ev.createdAt))}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -882,6 +959,8 @@ export default function OrderDetail() {
               </CardContent>
             </Card>
           )}
+
+          <OrderTimeline orderId={Number(id)} />
         </div>
       </div>
     </div>

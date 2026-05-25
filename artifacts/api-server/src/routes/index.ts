@@ -13,6 +13,7 @@ import marketingRouter from "./marketing";
 import chatRouter from "./chat";
 import gestaoarRouter from "./gestaoar";
 import mpWebhookRouter from "./mp-webhook";
+import renewalsRouter from "./renewals";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(settingsRouter);
 router.use(dashboardRouter);
 router.use(uploadRouter);
 router.use(marketingRouter);
+router.use(renewalsRouter);
 
 export default router;

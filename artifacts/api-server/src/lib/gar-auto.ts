@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { db, ordersTable, certificatesTable, settingsTable } from "@workspace/db";
 import { garComprar, garEmitirProtocolo } from "./gestaoar";
 import { logger } from "./logger";
+import { logEvent } from "./order-events";
 
 export async function garAutoComprar(orderId: number): Promise<void> {
   // 1. Buscar pedido + certificado
@@ -35,6 +36,7 @@ export async function garAutoComprar(orderId: number): Promise<void> {
   const hashProduto = cert?.garHashProduto;
   if (!hashProduto) {
     logger.warn({ orderId, certificateId: order.certificateId }, "garAutoComprar: certificado sem hash GAR — registro manual necessário");
+    await logEvent(orderId, "admin_action", "Certificado sem hash GAR configurado — registro manual necessário", { certificateId: order.certificateId });
     return;
   }
 
@@ -87,6 +89,7 @@ export async function garAutoComprar(orderId: number): Promise<void> {
 
     if (result.Status !== 0 && result.Erros?.length) {
       logger.error({ orderId, erros: result.Erros }, "garAutoComprar: GAR retornou erro na compra");
+      await logEvent(orderId, "gar_sale_registered", `Erro ao registrar venda na GAR: ${result.Erros.map(e => e.Ocorrencia).join("; ")}`, { erros: result.Erros });
       return;
     }
 
@@ -99,6 +102,12 @@ export async function garAutoComprar(orderId: number): Promise<void> {
       garStatus: "Compra registrada",
       garSyncedAt: new Date(),
     }).where(eq(ordersTable.id, orderId));
+
+    await logEvent(orderId, "gar_sale_registered", `Venda registrada na Gestão AR — Pedido GAR #${garPedidoNumero}`, {
+      garPedido: garPedidoNumero,
+      hashProduto,
+      formaPagamento,
+    });
 
     logger.info({ orderId, garPedidoNumero }, "garAutoComprar: venda registrada na GAR");
 
@@ -120,20 +129,30 @@ export async function garAutoComprar(orderId: number): Promise<void> {
 
         const success = protoResult[0]?.ErrorCode === "000";
         if (success) {
+          const protocolo = protoResult[0]?.ErrorDescription;
           await db.update(ordersTable).set({
-            garProtocolo: protoResult[0]?.ErrorDescription,
+            garProtocolo: protocolo,
             garStatus: "Protocolo emitido",
             status: "protocol_assigned",
           }).where(eq(ordersTable.id, orderId));
-          logger.info({ orderId, protocolo: protoResult[0]?.ErrorDescription }, "garAutoComprar: protocolo emitido com sucesso");
+
+          await logEvent(orderId, "gar_protocol_emitted", `Protocolo emitido na Gestão AR: ${protocolo}`, {
+            protocolo,
+            garPedido: garPedidoNumero,
+          });
+
+          logger.info({ orderId, protocolo }, "garAutoComprar: protocolo emitido com sucesso");
         } else {
           logger.warn({ orderId, protoResult }, "garAutoComprar: EmitirProtocolo retornou resultado inesperado");
+          await logEvent(orderId, "gar_protocol_emitted", "Emissão de protocolo retornou resultado inesperado — verificar manualmente", { protoResult });
         }
       } catch (protoErr) {
         logger.warn({ orderId, err: protoErr }, "garAutoComprar: falha ao emitir protocolo — pode ser emitido manualmente pelo admin");
+        await logEvent(orderId, "gar_protocol_emitted", "Falha ao emitir protocolo automaticamente — emitir manualmente pelo painel admin");
       }
     }
   } catch (err) {
     logger.error({ orderId, err }, "garAutoComprar: erro inesperado ao registrar venda na GAR");
+    await logEvent(orderId, "gar_sale_registered", "Erro inesperado ao registrar venda na Gestão AR");
   }
 }

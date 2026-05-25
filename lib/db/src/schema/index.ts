@@ -2,6 +2,8 @@ export * from "./users";
 export * from "./certificates";
 export * from "./slots";
 export * from "./orders";
+export * from "./order-events";
+export * from "./certificate-renewals";
 export * from "./tickets";
 export * from "./settings";
 export * from "./marketing";

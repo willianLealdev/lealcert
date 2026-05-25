@@ -870,6 +870,78 @@ export const GetGarPedidosContadorResponse = zod.object({
 
 
 /**
+ * @summary Histórico completo de eventos de um pedido
+ */
+export const GetOrderEventsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetOrderEventsResponseItem = zod.object({
+  "id": zod.number(),
+  "orderId": zod.number(),
+  "type": zod.string(),
+  "message": zod.string(),
+  "meta": zod.object({
+
+}).passthrough().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const GetOrderEventsResponse = zod.array(GetOrderEventsResponseItem)
+
+
+/**
+ * @summary Listar todos os certificados emitidos com controle de renovação
+ */
+export const ListRenewalsResponseItem = zod.object({
+  "id": zod.number(),
+  "orderId": zod.number(),
+  "customerName": zod.string(),
+  "customerCpfCnpj": zod.string(),
+  "customerEmail": zod.string().nullish(),
+  "certificateName": zod.string(),
+  "garPedido": zod.string().nullish(),
+  "garProtocolo": zod.string().nullish(),
+  "validityMonths": zod.number(),
+  "emittedAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "alertSent30d": zod.boolean().optional(),
+  "alertSent7d": zod.boolean().optional(),
+  "alertSent1d": zod.boolean().optional(),
+  "createdAt": zod.coerce.date().optional()
+})
+export const ListRenewalsResponse = zod.array(ListRenewalsResponseItem)
+
+
+/**
+ * @summary Verifica vencimentos e envia e-mails automáticos de alerta
+ */
+export const CheckRenewalAlertsResponse = zod.object({
+  "ok": zod.boolean(),
+  "processed": zod.number(),
+  "sent": zod.number(),
+  "results": zod.array(zod.object({
+  "id": zod.number().optional(),
+  "customer": zod.string().optional(),
+  "daysLeft": zod.number().optional(),
+  "sent": zod.boolean().optional()
+})).optional()
+})
+
+
+/**
+ * @summary Envia e-mail de alerta de vencimento manualmente
+ */
+export const SendRenewalAlertParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SendRenewalAlertResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "daysLeft": zod.number().optional()
+})
+
+
+/**
  * @summary Sincroniza status de um pedido local com a Gestão AR
  */
 export const SyncGarOrderParams = zod.object({

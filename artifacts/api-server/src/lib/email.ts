@@ -145,6 +145,58 @@ export async function sendSchedulingEmail(opts: {
   logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "Scheduling confirmation email sent");
 }
 
+export async function sendRenewalAlertEmail(opts: {
+  to: string;
+  customerName: string;
+  certificateName: string;
+  protocolo?: string;
+  expiresAt: Date;
+  daysLeft: number;
+  siteUrl?: string;
+}): Promise<void> {
+  const daysText = opts.daysLeft === 1 ? "amanhã" : `em ${opts.daysLeft} dias`;
+  const urgency = opts.daysLeft <= 7 ? "#ef4444" : opts.daysLeft <= 30 ? "#f59e0b" : "#2563eb";
+  const subject = `⚠️ Seu certificado digital vence ${daysText} | LealCert`;
+  const expiresFormatted = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(opts.expiresAt);
+  const html = `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#f8fafc;padding:32px 24px;border-radius:12px;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="font-size:26px;font-weight:900;color:#0f172a;letter-spacing:-1px;">LEAL<span style="color:#2563eb;">CERT</span></span>
+        <p style="color:#64748b;font-size:13px;margin:4px 0 0;">Certificados Digitais ICP-Brasil</p>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:24px;border:1px solid #e2e8f0;">
+        <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">Olá, ${opts.customerName}!</h2>
+        <p style="color:#475569;margin:0 0 20px;">Seu certificado digital está próximo do vencimento.</p>
+        <div style="background:${urgency}15;border:2px solid ${urgency}40;border-radius:8px;padding:16px;margin-bottom:20px;text-align:center;">
+          <div style="font-size:13px;color:#64748b;margin-bottom:4px;">Vence ${daysText}</div>
+          <div style="font-size:22px;font-weight:900;color:${urgency};">${expiresFormatted}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px;">
+          <tr><td style="padding:6px 0;color:#64748b;">Certificado</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">${opts.certificateName}</td></tr>
+          ${opts.protocolo ? `<tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;color:#0f172a;">${opts.protocolo}</td></tr>` : ""}
+        </table>
+        <div style="text-align:center;">
+          <a href="${opts.siteUrl || "https://lealcert.com.br"}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+            Renovar Certificado
+          </a>
+        </div>
+        <p style="font-size:13px;color:#94a3b8;margin-top:20px;text-align:center;">
+          Não perca o prazo — a renovação garante continuidade nas suas operações digitais.
+        </p>
+      </div>
+    </div>
+  `;
+  const text = `Atenção, ${opts.customerName}!\n\nSeu certificado ${opts.certificateName} vence ${daysText} (${expiresFormatted}).\n\nAcesse lealcert.com.br para renovar.\n\nLealCert — Certificados Digitais`;
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    logger.info({ to: opts.to, certificateName: opts.certificateName, daysLeft: opts.daysLeft }, "📧 [DEV] Renewal alert email (SMTP not configured)");
+    return;
+  }
+  await transporter.sendMail({ from: FROM, to: opts.to, subject, html, text });
+  logger.info({ to: opts.to, daysLeft: opts.daysLeft }, "Renewal alert email sent");
+}
+
 export async function sendVerificationEmail(to: string, name: string, code: string): Promise<void> {
   const subject = "Código de verificação — LealCert";
   const html = `

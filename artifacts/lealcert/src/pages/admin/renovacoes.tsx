@@ -1,176 +1,265 @@
 import { useState } from "react";
-import { useGetGarRenovacoes } from "@workspace/api-client-react";
+import { useListRenewals, useCheckRenewalAlerts, useSendRenewalAlert } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, AlertCircle, CalendarDays } from "lucide-react";
+import { Loader2, RefreshCw, AlertCircle, CalendarDays, Mail, Bell, CheckCircle2, Clock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
-function formatDate(d: string | undefined | null) {
+function formatDate(d: string | Date | null | undefined) {
   if (!d) return "—";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(new Date(d));
 }
 
-function formatBRL(v: number | undefined | null) {
-  if (v == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+function daysUntil(d: string | Date | null | undefined): number | null {
+  if (!d) return null;
+  const diff = new Date(d).getTime() - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-function statusVariant(status: string | undefined): "default" | "secondary" | "destructive" | "outline" {
-  if (!status) return "secondary";
-  const s = status.toLowerCase();
-  if (s.includes("vencer") || s.includes("renov")) return "outline";
-  if (s.includes("vencido") || s.includes("expirado")) return "destructive";
-  return "secondary";
-}
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-function nDaysAgo(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-}
-function nDaysAhead(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+function urgencyBadge(days: number | null): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } {
+  if (days === null) return { label: "—", variant: "secondary" };
+  if (days < 0) return { label: "Vencido", variant: "destructive" };
+  if (days === 0) return { label: "Vence hoje!", variant: "destructive" };
+  if (days <= 7) return { label: `${days}d`, variant: "destructive" };
+  if (days <= 30) return { label: `${days}d`, variant: "outline" };
+  return { label: `${days}d`, variant: "secondary" };
 }
 
 export default function AdminRenovacoes() {
-  const [dataInicial, setDataInicial] = useState(nDaysAgo(30));
-  const [dataFinal, setDataFinal] = useState(nDaysAhead(30));
-  const [query, setQuery] = useState({ dataInicial: nDaysAgo(30), dataFinal: nDaysAhead(30) });
+  const { toast } = useToast();
+  const [busca, setBusca] = useState("");
 
-  const { data, isLoading, isError, refetch, isFetching } = useGetGarRenovacoes(
-    { dataInicial: query.dataInicial, dataFinal: query.dataFinal }
-  );
+  const { data, isLoading, isError, refetch, isFetching } = useListRenewals();
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    setQuery({ dataInicial, dataFinal });
-  }
+  const checkAlerts = useCheckRenewalAlerts({
+    mutation: {
+      onSuccess: (res) => {
+        toast({
+          title: "Alertas verificados",
+          description: `${res.sent} e-mail(s) enviado(s) de ${res.processed} registros verificados.`,
+        });
+        refetch();
+      },
+      onError: () => toast({ title: "Erro ao verificar alertas", variant: "destructive" }),
+    },
+  });
+
+  const sendAlert = useSendRenewalAlert({
+    mutation: {
+      onSuccess: (res) => {
+        toast({ title: "Alerta enviado!", description: `Dias restantes: ${res.daysLeft ?? "—"}` });
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? "Erro ao enviar e-mail.";
+        toast({ title: "Erro ao enviar e-mail", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
+  const filteredData = (data ?? []).filter(item => {
+    if (!busca) return true;
+    const q = busca.toLowerCase();
+    return (
+      item.customerName.toLowerCase().includes(q) ||
+      item.customerCpfCnpj.includes(q) ||
+      item.certificateName.toLowerCase().includes(q) ||
+      (item.garProtocolo?.toLowerCase().includes(q) ?? false)
+    );
+  }).sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
+
+  const expiring30 = (data ?? []).filter(item => {
+    const d = daysUntil(item.expiresAt);
+    return d !== null && d >= 0 && d <= 30;
+  }).length;
+
+  const expired = (data ?? []).filter(item => {
+    const d = daysUntil(item.expiresAt);
+    return d !== null && d < 0;
+  }).length;
 
   return (
     <div className="space-y-6">
+      {/* Cabeçalho */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Renovações</h1>
-          <p className="text-muted-foreground">Extrato de renovações de certificados digitais via Gestão AR.</p>
+          <p className="text-muted-foreground">Controle de vencimento dos certificados emitidos pelo sistema.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => checkAlerts.mutate()}
+            disabled={checkAlerts.isPending || isFetching}
+          >
+            {checkAlerts.isPending
+              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              : <Bell className="h-4 w-4 mr-2" />}
+            Verificar Alertas
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
-      {/* Filtros */}
-      <Card>
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Período</CardTitle></CardHeader>
-        <CardContent>
-          <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-4">
-            <div className="space-y-2">
-              <Label>Data Inicial</Label>
-              <Input
-                type="date"
-                value={dataInicial}
-                onChange={e => setDataInicial(e.target.value)}
-                max={today()}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Data Final</Label>
-              <Input
-                type="date"
-                value={dataFinal}
-                onChange={e => setDataFinal(e.target.value)}
-              />
-            </div>
-            <Button type="submit" disabled={isLoading || isFetching}>
-              {(isLoading || isFetching) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Buscar
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      {/* Métricas */}
+      {data && data.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="text-2xl font-bold">{data.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Vencem em 30d</p>
+              <p className={`text-2xl font-bold ${expiring30 > 0 ? "text-amber-600" : ""}`}>{expiring30}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Vencidos</p>
+              <p className={`text-2xl font-bold ${expired > 0 ? "text-destructive" : ""}`}>{expired}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-      {/* Resultados */}
+      {/* Busca */}
+      <Input
+        placeholder="Buscar por nome, CPF/CNPJ, certificado ou protocolo..."
+        value={busca}
+        onChange={e => setBusca(e.target.value)}
+        className="max-w-md"
+      />
+
+      {/* Conteúdo */}
       {isLoading ? (
         <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p>Consultando Gestão AR...</p>
+          <p>Carregando registros...</p>
         </div>
       ) : isError ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
             <AlertCircle className="h-10 w-10 text-destructive/60" />
-            <p className="font-medium text-destructive">Não foi possível carregar as renovações.</p>
-            <p className="text-sm text-muted-foreground">Verifique se as credenciais da Gestão AR estão configuradas em <strong>Configurações</strong>.</p>
+            <p className="font-medium text-destructive">Não foi possível carregar os registros.</p>
           </CardContent>
         </Card>
-      ) : !data?.length ? (
+      ) : !filteredData.length ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center text-muted-foreground">
             <CalendarDays className="h-10 w-10 opacity-30" />
-            <p>Nenhuma renovação encontrada para o período selecionado.</p>
+            <p>{busca ? "Nenhum resultado encontrado." : "Nenhum certificado emitido registrado ainda."}</p>
+            {!busca && (
+              <p className="text-sm max-w-sm">
+                Quando um pedido for sincronizado com a Gestão AR e o status indicar emissão, ele aparecerá aqui automaticamente.
+              </p>
+            )}
           </CardContent>
         </Card>
       ) : (
-        <>
-          <p className="text-sm text-muted-foreground">{data.length} renovação(ões) encontrada(s)</p>
-          <div className="space-y-3">
-            {data.map((item, i) => (
-              <Card key={i}>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">{filteredData.length} registro(s)</p>
+          {filteredData.map((item) => {
+            const days = daysUntil(item.expiresAt);
+            const urgency = urgencyBadge(days);
+            const alertsSent = [item.alertSent30d, item.alertSent7d, item.alertSent1d].filter(Boolean).length;
+
+            return (
+              <Card key={item.id} className={days !== null && days < 0 ? "border-destructive/40 bg-destructive/5" : days !== null && days <= 7 ? "border-amber-400/60 bg-amber-50/40" : ""}>
                 <CardContent className="p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
+                    <div className="min-w-0 space-y-1 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-sm">{item.Cliente ?? "—"}</span>
-                        {item.StatusRenovacao && (
-                          <Badge variant={statusVariant(item.StatusRenovacao)}>
-                            {item.StatusRenovacao}
+                        <span className="font-semibold">{item.customerName}</span>
+                        <Badge variant={urgency.variant} className="text-xs">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {urgency.label}
+                        </Badge>
+                        {alertsSent > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Mail className="h-3 w-3 mr-1" />
+                            {alertsSent} alerta(s)
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono">{item.CPF ?? item.CNPJ ?? "—"}</p>
-                      {item.RazaoSocial && <p className="text-xs text-muted-foreground">{item.RazaoSocial}</p>}
+                      <p className="text-xs text-muted-foreground font-mono">{item.customerCpfCnpj}</p>
+                      <p className="text-sm text-foreground">{item.certificateName}</p>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-lg font-bold text-primary">{formatBRL(item.ValorProduto)}</p>
-                      <p className="text-xs text-muted-foreground">{item.Produto}</p>
+                    <div className="text-right shrink-0 space-y-1">
+                      <p className="text-xs text-muted-foreground">Vencimento</p>
+                      <p className="font-semibold">{formatDate(item.expiresAt)}</p>
+                      <p className="text-xs text-muted-foreground">Emissão: {formatDate(item.emittedAt)}</p>
                     </div>
                   </div>
+
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t text-xs text-muted-foreground">
-                    <div>
-                      <p className="font-medium text-foreground mb-0.5">Pedido</p>
-                      <p className="font-mono">{item.Pedido ?? "—"}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground mb-0.5">Emissão</p>
-                      <p>{formatDate(item.DataEmissao)}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground mb-0.5">Expiração</p>
-                      <p>{formatDate(item.DataExpiracao)}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground mb-0.5">Contato</p>
-                      <p>{item.Telefone ?? item.Email ?? "—"}</p>
-                    </div>
-                    {item.Observacao && (
-                      <div className="col-span-2 sm:col-span-4">
-                        <p className="font-medium text-foreground mb-0.5">Observação</p>
-                        <p>{item.Observacao}</p>
+                    {item.garProtocolo && (
+                      <div>
+                        <p className="font-medium text-foreground mb-0.5">Protocolo</p>
+                        <p className="font-mono">{item.garProtocolo}</p>
                       </div>
+                    )}
+                    {item.garPedido && (
+                      <div>
+                        <p className="font-medium text-foreground mb-0.5">Pedido GAR</p>
+                        <p className="font-mono">{item.garPedido}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-foreground mb-0.5">Validade</p>
+                      <p>{item.validityMonths} meses</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground mb-0.5">Alertas enviados</p>
+                      <div className="flex gap-1 flex-wrap mt-0.5">
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${item.alertSent30d ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>30d</span>
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${item.alertSent7d ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>7d</span>
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${item.alertSent1d ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>1d</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
+                    {item.orderId && (
+                      <Link href={`/orders/${item.orderId}`}>
+                        <Button variant="outline" size="sm">
+                          Ver Pedido
+                        </Button>
+                      </Link>
+                    )}
+                    {item.customerEmail && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => sendAlert.mutate({ id: item.id })}
+                        disabled={sendAlert.isPending}
+                      >
+                        {sendAlert.isPending
+                          ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          : <Mail className="h-3 w-3 mr-1" />}
+                        Enviar Alerta
+                      </Button>
+                    )}
+                    {days !== null && days > 0 && days <= 60 && (
+                      <Badge variant="outline" className="text-xs items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-amber-500" />
+                        Renovação recomendada
+                      </Badge>
                     )}
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </>
+            );
+          })}
+        </div>
       )}
     </div>
   );

@@ -1,8 +1,10 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
-import { db, settingsTable, ordersTable, usersTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { db, settingsTable, ordersTable, usersTable, orderEventsTable, certificateRenewalsTable, certificatesTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
+import { logEvent, getOrderEvents, isGarStatusEmitido } from "../lib/order-events";
+import { sendOrderStatusEmail } from "../lib/email";
 import {
   garConsultarStatus,
   garTabelaPrecos,
@@ -312,7 +314,26 @@ router.post("/gestaoar/pedido/:garPedido/emitir-protocolo", requireAdmin, async 
   }
 });
 
-// ── Sincronizar pedido local com GAR (lê garPedido do DB) ────────────────────
+// ── GET /orders/:id/events — histórico completo de eventos do pedido ──────────
+router.get("/orders/:id/events", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const userId = req.session.userId as number;
+  const role = req.session.role as string;
+
+  const [row] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
+  if (role !== "admin" && row.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+
+  const events = await db
+    .select()
+    .from(orderEventsTable)
+    .where(eq(orderEventsTable.orderId, id))
+    .orderBy(desc(orderEventsTable.createdAt));
+
+  res.json(events);
+});
+
+// ── Sincronizar pedido local com GAR — detecta emissão e cria renovação ───────
 router.post("/gestaoar/sync-order/:orderId", requireAuth, async (req, res): Promise<void> => {
   const s = await getGarSettings();
   if (!requireGarKey(s?.garApiKey, res)) return;
@@ -320,20 +341,97 @@ router.post("/gestaoar/sync-order/:orderId", requireAuth, async (req, res): Prom
   const role = req.session.role as string;
   const userId = req.session.userId as number;
 
-  const [orderRow] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId)).limit(1);
+  const [orderRow] = await db
+    .select({ order: ordersTable, cert: certificatesTable })
+    .from(ordersTable)
+    .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
+    .where(eq(ordersTable.id, orderId))
+    .limit(1);
+
   if (!orderRow) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
-  if (role !== "admin" && orderRow.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
-  if (!orderRow.garPedido) { res.status(400).json({ error: "Este pedido não possui número GAR registrado." }); return; }
+  if (role !== "admin" && orderRow.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+  if (!orderRow.order.garPedido) { res.status(400).json({ error: "Este pedido não possui número GAR registrado." }); return; }
+
+  const order = orderRow.order;
+  const cert = orderRow.cert;
 
   try {
-    const garStatus = await garConsultarStatus(s.garApiKey!, orderRow.garPedido);
-    await db.update(ordersTable).set({
-      garStatus: garStatus.StatusPedido ?? null,
-      garProtocolo: garStatus.Protocolo ?? orderRow.garProtocolo,
-      garSyncedAt: new Date(),
-    }).where(eq(ordersTable.id, orderId));
+    const garStatus = await garConsultarStatus(s.garApiKey!, order.garPedido!);
+    const newGarStatus = garStatus.StatusPedido ?? null;
+    const newProtocolo = garStatus.Protocolo ?? order.garProtocolo;
 
-    res.json({ ok: true, garStatus });
+    // Detectar se o certificado foi emitido na GAR
+    const wasEmitido = isGarStatusEmitido(newGarStatus) && order.status !== "completed";
+
+    if (wasEmitido) {
+      // Criar registro de renovação local
+      const validityMonths = cert?.validityMonths ?? 12;
+      const emittedAt = new Date();
+      const expiresAt = new Date(emittedAt);
+      expiresAt.setMonth(expiresAt.getMonth() + validityMonths);
+
+      // Verificar se já existe registro de renovação para este pedido
+      const [existingRenewal] = await db
+        .select()
+        .from(certificateRenewalsTable)
+        .where(eq(certificateRenewalsTable.orderId, orderId))
+        .limit(1);
+
+      if (!existingRenewal) {
+        await db.insert(certificateRenewalsTable).values({
+          orderId,
+          customerName: order.customerName,
+          customerCpfCnpj: order.customerCpfCnpj,
+          customerEmail: order.customerEmail ?? null,
+          certificateName: cert?.name ?? "Certificado Digital",
+          garPedido: order.garPedido,
+          garProtocolo: newProtocolo ?? null,
+          validityMonths,
+          emittedAt,
+          expiresAt,
+        });
+      }
+
+      await logEvent(orderId, "certificate_emitted", `Certificado emitido com sucesso — status GAR: ${newGarStatus}`, {
+        garStatus: newGarStatus,
+        protocolo: newProtocolo,
+        expiresAt: expiresAt.toISOString(),
+        validityMonths,
+      });
+      await logEvent(orderId, "order_completed", "Pedido concluído — certificado emitido e registro de renovação criado");
+
+      // E-mail de conclusão ao cliente
+      if (order.customerEmail) {
+        sendOrderStatusEmail({
+          to: order.customerEmail,
+          customerName: order.customerName,
+          orderNumber: order.orderNumber,
+          status: "completed",
+          certName: cert?.name,
+          protocolNumber: newProtocolo ?? undefined,
+        }).catch((err: unknown) => logger.error({ err }, "Erro ao enviar e-mail de conclusão"));
+      }
+
+      await db.update(ordersTable).set({
+        garStatus: newGarStatus,
+        garProtocolo: newProtocolo,
+        garSyncedAt: new Date(),
+        status: "completed",
+      }).where(eq(ordersTable.id, orderId));
+
+      logger.info({ orderId, garStatus: newGarStatus }, "Certificado emitido — pedido concluído e renovação registrada");
+    } else {
+      if (newGarStatus && newGarStatus !== order.garStatus) {
+        await logEvent(orderId, "gar_status_updated", `Status GAR atualizado: ${order.garStatus ?? "—"} → ${newGarStatus}`, { garStatus: newGarStatus });
+      }
+      await db.update(ordersTable).set({
+        garStatus: newGarStatus,
+        garProtocolo: newProtocolo,
+        garSyncedAt: new Date(),
+      }).where(eq(ordersTable.id, orderId));
+    }
+
+    res.json({ ok: true, garStatus, wasEmitido });
   } catch (err) {
     logger.error({ err }, "GAR SyncOrder error");
     res.status(502).json({ error: "Erro ao sincronizar pedido com Gestão AR." });

@@ -30,8 +30,10 @@ import type {
   BulkDeleteContactsResult,
   Certificate,
   CertificateInput,
+  CertificateRenewal,
   CertificateUpdate,
   ChatMessageInput,
+  CheckAlertsResult,
   CreateCampaignInput,
   CreateMarketingContactInput,
   DashboardStats,
@@ -88,6 +90,7 @@ import type {
   MessageResponse,
   OpenaiConversation,
   Order,
+  OrderEvent,
   OrderInput,
   OrderUpdate,
   OrdersByDay,
@@ -96,6 +99,7 @@ import type {
   RegisterInput,
   ResendVerificationInput,
   SendCampaignInput,
+  SendRenewalAlert200,
   SendReplyInput,
   Slot,
   SlotInput,
@@ -3889,6 +3893,300 @@ export function useGetGarPedidosContador<TData = Awaited<ReturnType<typeof getGa
 
 
 
+
+export const getGetOrderEventsUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/events`
+}
+
+/**
+ * @summary Histórico completo de eventos de um pedido
+ */
+export const getOrderEvents = async (id: number, options?: RequestInit): Promise<OrderEvent[]> => {
+
+  return customFetch<OrderEvent[]>(getGetOrderEventsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrderEventsQueryKey = (id: number,) => {
+    return [
+    `/api/orders/${id}/events`
+    ] as const;
+    }
+
+
+export const getGetOrderEventsQueryOptions = <TData = Awaited<ReturnType<typeof getOrderEvents>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrderEventsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrderEvents>>> = ({ signal }) => getOrderEvents(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrderEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrderEventsQueryResult = NonNullable<Awaited<ReturnType<typeof getOrderEvents>>>
+export type GetOrderEventsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Histórico completo de eventos de um pedido
+ */
+
+export function useGetOrderEvents<TData = Awaited<ReturnType<typeof getOrderEvents>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrderEventsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListRenewalsUrl = () => {
+
+
+
+
+  return `/api/renewals`
+}
+
+/**
+ * @summary Listar todos os certificados emitidos com controle de renovação
+ */
+export const listRenewals = async ( options?: RequestInit): Promise<CertificateRenewal[]> => {
+
+  return customFetch<CertificateRenewal[]>(getListRenewalsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRenewalsQueryKey = () => {
+    return [
+    `/api/renewals`
+    ] as const;
+    }
+
+
+export const getListRenewalsQueryOptions = <TData = Awaited<ReturnType<typeof listRenewals>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRenewals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRenewalsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRenewals>>> = ({ signal }) => listRenewals({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRenewals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRenewalsQueryResult = NonNullable<Awaited<ReturnType<typeof listRenewals>>>
+export type ListRenewalsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Listar todos os certificados emitidos com controle de renovação
+ */
+
+export function useListRenewals<TData = Awaited<ReturnType<typeof listRenewals>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRenewals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRenewalsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCheckRenewalAlertsUrl = () => {
+
+
+
+
+  return `/api/renewals/check-alerts`
+}
+
+/**
+ * @summary Verifica vencimentos e envia e-mails automáticos de alerta
+ */
+export const checkRenewalAlerts = async ( options?: RequestInit): Promise<CheckAlertsResult> => {
+
+  return customFetch<CheckAlertsResult>(getCheckRenewalAlertsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCheckRenewalAlertsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkRenewalAlerts>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkRenewalAlerts>>, TError,void, TContext> => {
+
+const mutationKey = ['checkRenewalAlerts'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkRenewalAlerts>>, void> = () => {
+
+
+          return  checkRenewalAlerts(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckRenewalAlertsMutationResult = NonNullable<Awaited<ReturnType<typeof checkRenewalAlerts>>>
+
+    export type CheckRenewalAlertsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Verifica vencimentos e envia e-mails automáticos de alerta
+ */
+export const useCheckRenewalAlerts = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkRenewalAlerts>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkRenewalAlerts>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCheckRenewalAlertsMutationOptions(options));
+    }
+
+export const getSendRenewalAlertUrl = (id: number,) => {
+
+
+
+
+  return `/api/renewals/${id}/send-alert`
+}
+
+/**
+ * @summary Envia e-mail de alerta de vencimento manualmente
+ */
+export const sendRenewalAlert = async (id: number, options?: RequestInit): Promise<SendRenewalAlert200> => {
+
+  return customFetch<SendRenewalAlert200>(getSendRenewalAlertUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSendRenewalAlertMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendRenewalAlert>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendRenewalAlert>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['sendRenewalAlert'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendRenewalAlert>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  sendRenewalAlert(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendRenewalAlertMutationResult = NonNullable<Awaited<ReturnType<typeof sendRenewalAlert>>>
+
+    export type SendRenewalAlertMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Envia e-mail de alerta de vencimento manualmente
+ */
+export const useSendRenewalAlert = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendRenewalAlert>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendRenewalAlert>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getSendRenewalAlertMutationOptions(options));
+    }
 
 export const getSyncGarOrderUrl = (orderId: number,) => {
 

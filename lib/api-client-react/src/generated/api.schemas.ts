@@ -5,6 +5,49 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+export type OrderEventMeta = { [key: string]: unknown } | null;
+
+export interface OrderEvent {
+  id: number;
+  orderId: number;
+  type: string;
+  message: string;
+  meta?: OrderEventMeta;
+  createdAt: string;
+}
+
+export interface CertificateRenewal {
+  id: number;
+  orderId: number;
+  customerName: string;
+  customerCpfCnpj: string;
+  customerEmail?: string | null;
+  certificateName: string;
+  garPedido?: string | null;
+  garProtocolo?: string | null;
+  validityMonths: number;
+  emittedAt: string;
+  expiresAt: string;
+  alertSent30d?: boolean;
+  alertSent7d?: boolean;
+  alertSent1d?: boolean;
+  createdAt?: string;
+}
+
+export type CheckAlertsResultResultsItem = {
+  id?: number;
+  customer?: string;
+  daysLeft?: number;
+  sent?: boolean;
+};
+
+export interface CheckAlertsResult {
+  ok: boolean;
+  processed: number;
+  sent: number;
+  results?: CheckAlertsResultResultsItem[];
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -1006,6 +1049,11 @@ dataFinal: string;
 export type GetGarPedidosCliente200 = { [key: string]: unknown };
 
 export type GetGarPedidosContador200 = { [key: string]: unknown };
+
+export type SendRenewalAlert200 = {
+  ok?: boolean;
+  daysLeft?: number;
+};
 
 export type GetAdminStatsParams = {
 range?: GetAdminStatsRange;
