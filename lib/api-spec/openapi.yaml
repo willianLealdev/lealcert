@@ -30,6 +30,8 @@ tags:
     description: Email marketing
   - name: openai
     description: OpenAI AI chat operations
+  - name: gestaoar
+    description: Gestão AR integration — produtos, vendas, protocolo e agenda
 
 paths:
   /openai/chat/session:
@@ -669,6 +671,332 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Ticket"
+
+  /gestaoar/produtos:
+    get:
+      operationId: getGarProdutos
+      tags: [gestaoar]
+      summary: Tabela de preços real da Gestão AR
+      parameters:
+        - { name: documento, in: query, schema: { type: string } }
+        - { name: tipoProduto, in: query, schema: { type: integer } }
+        - { name: tipoEmissao, in: query, schema: { type: integer } }
+        - { name: validade, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Tabela de preços
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GarTabelaPrecos"
+
+  /gestaoar/tipos-emissao:
+    get:
+      operationId: getGarTiposEmissao
+      tags: [gestaoar]
+      summary: Tipos de emissão disponíveis na Gestão AR
+      parameters:
+        - { name: documento, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Tipos de emissão
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarTipoEmissao"
+
+  /gestaoar/tipos-produto:
+    get:
+      operationId: getGarTiposProduto
+      tags: [gestaoar]
+      summary: Tipos de produto disponíveis na Gestão AR
+      parameters:
+        - { name: documento, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Tipos de produto
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarTipoProduto"
+
+  /gestaoar/validades:
+    get:
+      operationId: getGarValidades
+      tags: [gestaoar]
+      summary: Validades disponíveis na Gestão AR
+      parameters:
+        - { name: tipo, in: query, schema: { type: integer } }
+        - { name: tipoEmissao, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Validades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarValidade"
+
+  /gestaoar/familias:
+    get:
+      operationId: getGarFamilias
+      tags: [gestaoar]
+      summary: Famílias de produtos da Gestão AR
+      responses:
+        "200":
+          description: Famílias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    Id: { type: integer }
+                    Nome: { type: string }
+
+  /gestaoar/formas-pagamento:
+    get:
+      operationId: getGarFormasPagamento
+      tags: [gestaoar]
+      summary: Formas de pagamento da Gestão AR
+      responses:
+        "200":
+          description: Formas de pagamento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarFormaPagamento"
+
+  /gestaoar/psbio:
+    post:
+      operationId: checkGarPsBio
+      tags: [gestaoar]
+      summary: Verifica biometria coletada (PSBio) para um CPF
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GarPsBioInput"
+      responses:
+        "200":
+          description: Resultado PSBio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GarPsBioResult"
+
+  /gestaoar/ufs:
+    get:
+      operationId: getGarUFs
+      tags: [gestaoar]
+      summary: UFs com locais de atendimento na Gestão AR
+      responses:
+        "200":
+          description: UFs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarUF"
+
+  /gestaoar/municipios:
+    get:
+      operationId: getGarMunicipios
+      tags: [gestaoar]
+      summary: Municípios com locais de atendimento
+      parameters:
+        - { name: uf, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Municípios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarMunicipio"
+
+  /gestaoar/locais:
+    get:
+      operationId: getGarLocais
+      tags: [gestaoar]
+      summary: Locais de agendamento da Gestão AR
+      parameters:
+        - { name: uf, in: query, schema: { type: string } }
+        - { name: municipio, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Locais de agendamento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarLocalAgendamento"
+
+  /gestaoar/locais/{hashLocal}/slots:
+    get:
+      operationId: getGarSlotsLocal
+      tags: [gestaoar]
+      summary: Slots de atendimento de um local
+      parameters:
+        - { name: hashLocal, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarSlotAtendimento"
+
+  /gestaoar/renovacoes:
+    get:
+      operationId: getGarRenovacoes
+      tags: [gestaoar]
+      summary: Extrato de renovações da Gestão AR
+      parameters:
+        - { name: dataInicial, in: query, required: true, schema: { type: string } }
+        - { name: dataFinal, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Renovações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarRenovacaoItem"
+
+  /gestaoar/pedido/{garPedido}:
+    get:
+      operationId: getGarPedido
+      tags: [gestaoar]
+      summary: Consulta dados de um pedido na Gestão AR
+      parameters:
+        - { name: garPedido, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Pedido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GarStatusPedido"
+
+  /gestaoar/pedido/{garPedido}/status:
+    get:
+      operationId: getGarPedidoStatus
+      tags: [gestaoar]
+      summary: Consulta status atual de um pedido na Gestão AR
+      parameters:
+        - { name: garPedido, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Status do pedido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GarStatusPedido"
+
+  /gestaoar/pedido/{garPedido}/emitir-protocolo:
+    post:
+      operationId: emitirProtocoloGar
+      tags: [gestaoar]
+      summary: Emite protocolo de um pedido na Gestão AR
+      parameters:
+        - { name: garPedido, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GarEmitirProtocoloInput"
+      responses:
+        "200":
+          description: Resultado da emissão
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarEmitirProtocoloResult"
+
+  /gestaoar/cliente/{documento}/pedidos:
+    get:
+      operationId: getGarPedidosCliente
+      tags: [gestaoar]
+      summary: Pedidos de um cliente (CPF/CNPJ) na Gestão AR
+      parameters:
+        - { name: documento, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Pedidos do cliente
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /gestaoar/contador/{documento}/pedidos:
+    get:
+      operationId: getGarPedidosContador
+      tags: [gestaoar]
+      summary: Pedidos indicados por um contador na Gestão AR
+      parameters:
+        - { name: documento, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Pedidos do contador
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /gestaoar/sync-order/{orderId}:
+    post:
+      operationId: syncGarOrder
+      tags: [gestaoar]
+      summary: Sincroniza status de um pedido local com a Gestão AR
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Sincronização realizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GarSyncResult"
+
+  /orders/{id}/gar-comprar:
+    post:
+      operationId: garComprarOrder
+      tags: [gestaoar]
+      summary: Registra a venda de um pedido na Gestão AR e emite protocolo
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GarComprarInput"
+      responses:
+        "200":
+          description: Venda registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GarComprarResult"
 
   /settings:
     get:
@@ -1622,6 +1950,16 @@ components:
           type: string
         scheduleClosedDates:
           type: string
+        garApiKey:
+          type: ["string", "null"]
+        garHashVendedor:
+          type: ["string", "null"]
+        garHashTabela:
+          type: ["string", "null"]
+        garFormaPagamento:
+          type: string
+        garPreferirVideoconferencia:
+          type: string
         updatedAt:
           type: string
 
@@ -1650,6 +1988,217 @@ components:
           type: string
         scheduleClosedDates:
           type: string
+        garApiKey:
+          type: string
+        garHashVendedor:
+          type: string
+        garHashTabela:
+          type: string
+        garFormaPagamento:
+          type: string
+        garPreferirVideoconferencia:
+          type: string
+
+    GarProduto:
+      type: object
+      required: [HashProduto, Nome, TipoProduto, TipoEmissao, Validade, ValorVenda]
+      properties:
+        HashProduto: { type: string }
+        Nome: { type: string }
+        TipoProduto: { type: integer }
+        TipoProdutoDescricao: { type: string }
+        TipoEmissao: { type: integer }
+        TipoCertificado: { type: string }
+        Validade: { type: integer }
+        TipoEmissaoDescricao: { type: string }
+        Agrupador: { type: string }
+        ValorVenda: { type: number }
+
+    GarTabelaPrecos:
+      type: object
+      properties:
+        FamiliaProduto: { type: integer }
+        TipoProduto: { type: integer }
+        TipoEmissao: { type: integer }
+        Documento: { type: string }
+        HashVendedor: { type: string }
+        HashTabela: { type: string }
+        Validade: { type: integer }
+        Produtos:
+          type: array
+          items:
+            $ref: "#/components/schemas/GarProduto"
+        Status: { type: integer }
+
+    GarFormaPagamento:
+      type: object
+      required: [Id, Nome]
+      properties:
+        Id: { type: integer }
+        Nome: { type: string }
+
+    GarTipoEmissao:
+      type: object
+      required: [TipoEmissao, TipoEmissaoDescricao]
+      properties:
+        TipoEmissao: { type: integer }
+        TipoEmissaoDescricao: { type: string }
+
+    GarTipoProduto:
+      type: object
+      required: [Produto, Tipo]
+      properties:
+        Produto: { type: string }
+        Tipo: { type: integer }
+
+    GarValidade:
+      type: object
+      required: [Validade, ValidadeDescricao]
+      properties:
+        Validade: { type: integer }
+        ValidadeDescricao: { type: string }
+
+    GarPsBioResult:
+      type: object
+      required: [IsOk]
+      properties:
+        IsOk: { type: boolean }
+
+    GarLocalAgendamento:
+      type: object
+      required: [HashPessoa, HashLocal, NomeLocalAgendamento, Municipio, UF]
+      properties:
+        HashPessoa: { type: string }
+        HashLocal: { type: string }
+        DadosPesquisa: { type: string }
+        NomeLocalAgendamento: { type: string }
+        NomeCidadeLocalAgendamento: { type: string }
+        Endereco: { type: string }
+        CEP: { type: string }
+        Municipio: { type: string }
+        UF: { type: string }
+        Telefone: { type: string }
+        Email: { type: string }
+
+    GarSlotAtendimento:
+      type: object
+      required: [HashSlot, NomeSlotAgendamento]
+      properties:
+        HashSlot: { type: string }
+        NomeSlotAgendamento: { type: string }
+
+    GarUF:
+      type: object
+      required: [UF]
+      properties:
+        UF: { type: string }
+
+    GarMunicipio:
+      type: object
+      required: [UF, Municipio]
+      properties:
+        UF: { type: string }
+        Municipio: { type: string }
+
+    GarStatusPedido:
+      type: object
+      properties:
+        HashVenda: { type: string }
+        Pedido: { type: string }
+        Protocolo: { type: string }
+        NomeVendedor: { type: string }
+        NomeCliente: { type: string }
+        DocumentoCliente: { type: string }
+        Produto: { type: string }
+        TipoProduto: { type: string }
+        TipoEmissao: { type: string }
+        StatusPedido: { type: string }
+        DataStatusPedido: { type: string }
+        StatusFinanceiro: { type: string }
+        LinkFatura: { type: string }
+        LinkAgenda: { type: string }
+        LocalAgendamento: { type: string }
+        DataHoraAgenda: { type: string }
+        Status: { type: integer }
+
+    GarRenovacaoItem:
+      type: object
+      properties:
+        Pedido: { type: string }
+        StatusRenovacao: { type: string }
+        Produto: { type: string }
+        ValorProduto: { type: number }
+        Cliente: { type: string }
+        Email: { type: string }
+        Telefone: { type: string }
+        CPF: { type: string }
+        CNPJ: { type: string }
+        RazaoSocial: { type: string }
+        DataEmissao: { type: string }
+        DataExpiracao: { type: string }
+        Observacao: { type: string }
+
+    GarEmitirProtocoloInput:
+      type: object
+      required: [cpf]
+      properties:
+        cpf: { type: string }
+        cnpj: { type: string }
+        dataNascimento: { type: string }
+        isPossuiCNH: { type: boolean }
+        isCNPJ: { type: boolean }
+
+    GarEmitirProtocoloResult:
+      type: object
+      required: [ErrorCode, ErrorDescription]
+      properties:
+        ErrorCode: { type: string }
+        ErrorDescription: { type: string }
+
+    GarComprarInput:
+      type: object
+      required: [hashProduto]
+      properties:
+        hashProduto:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+
+    GarComprarResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        garResult:
+          type: object
+          properties:
+            LinkAgenda: { type: string }
+            FormaPagamentoDescricao: { type: string }
+            Status: { type: integer }
+            Descricao: { type: string }
+            ValorTotal: { type: number }
+            LinkFatura: { type: string }
+            Erros:
+              type: array
+              items:
+                type: object
+                properties:
+                  Ocorrencia: { type: string }
+
+    GarSyncResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        garStatus:
+          $ref: "#/components/schemas/GarStatusPedido"
+
+    GarPsBioInput:
+      type: object
+      required: [cpf]
+      properties:
+        cpf: { type: string }
 
     GenerateSlotsInput:
       type: object

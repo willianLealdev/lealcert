@@ -18,4 +18,9 @@ export interface AppSettingsUpdate {
   scheduleCloseHour?: string;
   scheduleStepMin?: string;
   scheduleClosedDates?: string;
+  garApiKey?: string;
+  garHashVendedor?: string;
+  garHashTabela?: string;
+  garFormaPagamento?: string;
+  garPreferirVideoconferencia?: string;
 }

@@ -352,6 +352,14 @@ export interface AppSettings {
   scheduleCloseHour?: string;
   scheduleStepMin?: string;
   scheduleClosedDates?: string;
+  /** @nullable */
+  garApiKey?: string | null;
+  /** @nullable */
+  garHashVendedor?: string | null;
+  /** @nullable */
+  garHashTabela?: string | null;
+  garFormaPagamento?: string;
+  garPreferirVideoconferencia?: string;
   updatedAt?: string;
 }
 
@@ -367,6 +375,169 @@ export interface AppSettingsUpdate {
   scheduleCloseHour?: string;
   scheduleStepMin?: string;
   scheduleClosedDates?: string;
+  garApiKey?: string;
+  garHashVendedor?: string;
+  garHashTabela?: string;
+  garFormaPagamento?: string;
+  garPreferirVideoconferencia?: string;
+}
+
+export interface GarProduto {
+  HashProduto: string;
+  Nome: string;
+  TipoProduto: number;
+  TipoProdutoDescricao?: string;
+  TipoEmissao: number;
+  TipoCertificado?: string;
+  Validade: number;
+  TipoEmissaoDescricao?: string;
+  Agrupador?: string;
+  ValorVenda: number;
+}
+
+export interface GarTabelaPrecos {
+  FamiliaProduto?: number;
+  TipoProduto?: number;
+  TipoEmissao?: number;
+  Documento?: string;
+  HashVendedor?: string;
+  HashTabela?: string;
+  Validade?: number;
+  Produtos?: GarProduto[];
+  Status?: number;
+}
+
+export interface GarFormaPagamento {
+  Id: number;
+  Nome: string;
+}
+
+export interface GarTipoEmissao {
+  TipoEmissao: number;
+  TipoEmissaoDescricao: string;
+}
+
+export interface GarTipoProduto {
+  Produto: string;
+  Tipo: number;
+}
+
+export interface GarValidade {
+  Validade: number;
+  ValidadeDescricao: string;
+}
+
+export interface GarPsBioResult {
+  IsOk: boolean;
+}
+
+export interface GarLocalAgendamento {
+  HashPessoa: string;
+  HashLocal: string;
+  DadosPesquisa?: string;
+  NomeLocalAgendamento: string;
+  NomeCidadeLocalAgendamento?: string;
+  Endereco?: string;
+  CEP?: string;
+  Municipio: string;
+  UF: string;
+  Telefone?: string;
+  Email?: string;
+}
+
+export interface GarSlotAtendimento {
+  HashSlot: string;
+  NomeSlotAgendamento: string;
+}
+
+export interface GarUF {
+  UF: string;
+}
+
+export interface GarMunicipio {
+  UF: string;
+  Municipio: string;
+}
+
+export interface GarStatusPedido {
+  HashVenda?: string;
+  Pedido?: string;
+  Protocolo?: string;
+  NomeVendedor?: string;
+  NomeCliente?: string;
+  DocumentoCliente?: string;
+  Produto?: string;
+  TipoProduto?: string;
+  TipoEmissao?: string;
+  StatusPedido?: string;
+  DataStatusPedido?: string;
+  StatusFinanceiro?: string;
+  LinkFatura?: string;
+  LinkAgenda?: string;
+  LocalAgendamento?: string;
+  DataHoraAgenda?: string;
+  Status?: number;
+}
+
+export interface GarRenovacaoItem {
+  Pedido?: string;
+  StatusRenovacao?: string;
+  Produto?: string;
+  ValorProduto?: number;
+  Cliente?: string;
+  Email?: string;
+  Telefone?: string;
+  CPF?: string;
+  CNPJ?: string;
+  RazaoSocial?: string;
+  DataEmissao?: string;
+  DataExpiracao?: string;
+  Observacao?: string;
+}
+
+export interface GarEmitirProtocoloInput {
+  cpf: string;
+  cnpj?: string;
+  dataNascimento?: string;
+  isPossuiCNH?: boolean;
+  isCNPJ?: boolean;
+}
+
+export interface GarEmitirProtocoloResult {
+  ErrorCode: string;
+  ErrorDescription: string;
+}
+
+export interface GarComprarInput {
+  hashProduto: string | string[];
+}
+
+export type GarComprarResultGarResultErrosItem = {
+  Ocorrencia?: string;
+};
+
+export type GarComprarResultGarResult = {
+  LinkAgenda?: string;
+  FormaPagamentoDescricao?: string;
+  Status?: number;
+  Descricao?: string;
+  ValorTotal?: number;
+  LinkFatura?: string;
+  Erros?: GarComprarResultGarResultErrosItem[];
+};
+
+export interface GarComprarResult {
+  ok?: boolean;
+  garResult?: GarComprarResultGarResult;
+}
+
+export interface GarSyncResult {
+  ok: boolean;
+  garStatus?: GarStatusPedido;
+}
+
+export interface GarPsBioInput {
+  cpf: string;
 }
 
 export interface GenerateSlotsInput {
@@ -775,6 +946,49 @@ search?: string;
 export type ListSlotsParams = {
 date?: string;
 };
+
+export type GetGarProdutosParams = {
+documento?: string;
+tipoProduto?: number;
+tipoEmissao?: number;
+validade?: number;
+};
+
+export type GetGarTiposEmissaoParams = {
+documento?: string;
+};
+
+export type GetGarTiposProdutoParams = {
+documento?: string;
+};
+
+export type GetGarValidadesParams = {
+tipo?: number;
+tipoEmissao?: number;
+};
+
+export type GetGarFamilias200Item = {
+  Id?: number;
+  Nome?: string;
+};
+
+export type GetGarMunicipiosParams = {
+uf: string;
+};
+
+export type GetGarLocaisParams = {
+uf?: string;
+municipio?: string;
+};
+
+export type GetGarRenovacoesParams = {
+dataInicial: string;
+dataFinal: string;
+};
+
+export type GetGarPedidosCliente200 = { [key: string]: unknown };
+
+export type GetGarPedidosContador200 = { [key: string]: unknown };
 
 export type GetAdminStatsParams = {
 range?: GetAdminStatsRange;

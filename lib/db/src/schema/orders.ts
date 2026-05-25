@@ -42,6 +42,13 @@ export const ordersTable = pgTable("orders", {
   chatDocuments: text("chat_documents"),
   mpPreferenceId: text("mp_preference_id"),
   mpPaymentId: text("mp_payment_id"),
+  // Gestão AR integration fields
+  garPedido: text("gar_pedido"),
+  garProtocolo: text("gar_protocolo"),
+  garHashVenda: text("gar_hash_venda"),
+  garStatus: text("gar_status"),
+  garAgendamentoLink: text("gar_agendamento_link"),
+  garSyncedAt: timestamp("gar_synced_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

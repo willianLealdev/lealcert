@@ -161,7 +161,7 @@ router.post("/chat", async (req, res): Promise<void> => {
         const cepData = await cepRes.json() as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string; complemento?: string };
         if (!cepData.erro && cepData.localidade) {
           const addressNote = `[CEP consultado automaticamente] CEP ${cep}: ${cepData.logradouro ?? ""}, bairro ${cepData.bairro ?? ""}, ${cepData.localidade}-${cepData.uf}. Use estes dados para preencher o endereço do cliente (rua, bairro, cidade, estado). Pergunte apenas o número da residência/estabelecimento.`;
-          chatHistory.push({ role: "system" as const, content: addressNote });
+          chatHistory.push({ role: "user" as const, content: `[Sistema] ${addressNote}` });
         }
       }
     } catch (cepErr) {
@@ -253,7 +253,7 @@ router.post("/chat", async (req, res): Promise<void> => {
         const allMsgs = await db.select().from(chatMessages)
           .where(eq(chatMessages.conversationId, sessionId))
           .orderBy(asc(chatMessages.createdAt));
-        const docKeyMsg = allMsgs.findLast(m => m.content.startsWith("[DOC_KEYS]"));
+        const docKeyMsg = [...allMsgs].reverse().find((m) => m.content.startsWith("[DOC_KEYS]"));
         const chatDocuments = docKeyMsg
           ? docKeyMsg.content.replace("[DOC_KEYS] ", "").trim()
           : null;

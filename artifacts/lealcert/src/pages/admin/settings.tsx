@@ -1,14 +1,15 @@
-import { useState, useState as useLocalState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useGetSettings, useUpdateSettings } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, ShieldCheck, Globe, Mail } from "lucide-react";
+import { Loader2, Eye, EyeOff, ShieldCheck, Globe, Mail, Link2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function MaskedInput({ value, onChange, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> & { value: string; onChange: (v: string) => void }) {
-  const [show, setShow] = useLocalState(false);
+  const [show, setShow] = useState(false);
   return (
     <div className="relative">
       <Input
@@ -29,7 +30,17 @@ export default function AdminSettings() {
   const { toast } = useToast();
   const { data: settings, isLoading, refetch } = useGetSettings();
   const [form, setForm] = useState({
-    appName: "", mpAccessToken: "", mpPublicKey: "", webhookSecret: "", mailFrom: "", siteUrl: ""
+    appName: "",
+    mpAccessToken: "",
+    mpPublicKey: "",
+    webhookSecret: "",
+    mailFrom: "",
+    siteUrl: "",
+    garApiKey: "",
+    garHashVendedor: "",
+    garHashTabela: "",
+    garFormaPagamento: "11",
+    garPreferirVideoconferencia: "1",
   });
 
   useEffect(() => {
@@ -41,6 +52,11 @@ export default function AdminSettings() {
         webhookSecret: settings.webhookSecret ?? "",
         mailFrom: settings.mailFrom ?? "",
         siteUrl: settings.siteUrl ?? "",
+        garApiKey: settings.garApiKey ?? "",
+        garHashVendedor: settings.garHashVendedor ?? "",
+        garHashTabela: settings.garHashTabela ?? "",
+        garFormaPagamento: settings.garFormaPagamento ?? "11",
+        garPreferirVideoconferencia: settings.garPreferirVideoconferencia ?? "1",
       });
     }
   }, [settings]);
@@ -109,33 +125,78 @@ export default function AdminSettings() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Access Token</Label>
-              <MaskedInput
-                value={form.mpAccessToken}
-                onChange={v => set("mpAccessToken", v)}
-                placeholder="APP_USR-..."
-              />
+              <MaskedInput value={form.mpAccessToken} onChange={v => set("mpAccessToken", v)} placeholder="APP_USR-..." />
               <p className="text-xs text-muted-foreground">Usado para criar preferências de pagamento no servidor.</p>
             </div>
             <div className="space-y-2">
               <Label>Public Key</Label>
-              <MaskedInput
-                value={form.mpPublicKey}
-                onChange={v => set("mpPublicKey", v)}
-                placeholder="APP_USR-..."
-              />
+              <MaskedInput value={form.mpPublicKey} onChange={v => set("mpPublicKey", v)} placeholder="APP_USR-..." />
               <p className="text-xs text-muted-foreground">Usado no checkout do lado do cliente.</p>
             </div>
             <div className="space-y-2">
               <Label>Webhook Secret</Label>
-              <MaskedInput
-                value={form.webhookSecret}
-                onChange={v => set("webhookSecret", v)}
-                placeholder="Chave secreta para verificar notificações"
-              />
+              <MaskedInput value={form.webhookSecret} onChange={v => set("webhookSecret", v)} placeholder="Chave secreta para verificar notificações" />
               <p className="text-xs text-muted-foreground">
                 Configure o webhook no painel do MercadoPago apontando para:{" "}
                 <code className="bg-muted px-1 rounded text-xs">{form.siteUrl || "[siteUrl]"}/api/mp/webhook</code>
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Gestão AR */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Link2 className="h-5 w-5 text-primary" />
+              <CardTitle>Gestão AR — Integração</CardTitle>
+            </div>
+            <CardDescription>
+              Credenciais e preferências para integração com a plataforma Gestão AR.
+              Obtenha suas chaves em <a href="https://gestaoar.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">gestaoar.com.br</a>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>API Key</Label>
+              <MaskedInput value={form.garApiKey} onChange={v => set("garApiKey", v)} placeholder="Chave de API fornecida pela Gestão AR" />
+              <p className="text-xs text-muted-foreground">Enviada em todas as requisições à API GAR.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Hash do Vendedor</Label>
+              <MaskedInput value={form.garHashVendedor} onChange={v => set("garHashVendedor", v)} placeholder="Hash do vendedor/AR na plataforma GAR" />
+            </div>
+            <div className="space-y-2">
+              <Label>Hash da Tabela de Preços</Label>
+              <MaskedInput value={form.garHashTabela} onChange={v => set("garHashTabela", v)} placeholder="Hash da tabela de preços configurada no GAR" />
+            </div>
+            <div className="space-y-2">
+              <Label>Forma de Pagamento Padrão</Label>
+              <Select value={form.garFormaPagamento} onValueChange={v => set("garFormaPagamento", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="11">11 — Pagamento no Local</SelectItem>
+                  <SelectItem value="1">1 — Boleto Bancário</SelectItem>
+                  <SelectItem value="2">2 — Cartão de Crédito</SelectItem>
+                  <SelectItem value="3">3 — Transferência/PIX</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Forma de pagamento registrada no GAR ao criar a venda. "Pagamento no Local" (11) é o padrão pois o pagamento já é processado via MercadoPago.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Preferir Videoconferência</Label>
+              <Select value={form.garPreferirVideoconferencia} onValueChange={v => set("garPreferirVideoconferencia", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Sim — priorizar agendamento por videoconferência</SelectItem>
+                  <SelectItem value="0">Não — usar locais presenciais</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Quando ativado, o sistema busca locais de videoconferência disponíveis antes de oferecer opções presenciais.</p>
             </div>
           </CardContent>
         </Card>

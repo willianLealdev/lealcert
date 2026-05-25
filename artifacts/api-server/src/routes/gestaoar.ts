@@ -1,0 +1,460 @@
+import { Router } from "express";
+import { eq } from "drizzle-orm";
+import { db, settingsTable, ordersTable, usersTable } from "@workspace/db";
+import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { logger } from "../lib/logger";
+import {
+  garConsultarStatus,
+  garTabelaPrecos,
+  garFormasPagamento,
+  garTiposEmissao,
+  garTiposProduto,
+  garValidades,
+  garPsBio,
+  garComprar,
+  garEmitirProtocolo,
+  garConsultarPedido,
+  garPedidosPorCliente,
+  garPedidosContador,
+  garRenovacoes,
+  garLocaisAgendamento,
+  garSlotsLocal,
+  garUFs,
+  garMunicipios,
+  garDiasSemana,
+  garFamilias,
+} from "../lib/gestaoar";
+
+const router = Router();
+
+async function getGarSettings() {
+  const [s] = await db.select().from(settingsTable).limit(1);
+  return s;
+}
+
+function requireGarKey(apiKey: string | null | undefined, res: Parameters<Parameters<typeof router.get>[1]>[1]): apiKey is string {
+  if (!apiKey) {
+    res.status(400).json({ error: "API Key da Gestão AR não configurada. Acesse Configurações → Gestão AR para inserir a chave." });
+    return false;
+  }
+  return true;
+}
+
+// ── Tabela de preços (produtos reais) ─────────────────────────────────────────
+router.get("/gestaoar/produtos", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const { documento, tipoProduto, tipoEmissao, validade } = req.query as Record<string, string>;
+  try {
+    const result = await garTabelaPrecos(
+      s.garApiKey!,
+      documento ?? s.garHashVendedor ?? "",
+      tipoProduto ? Number(tipoProduto) : undefined,
+      tipoEmissao ? Number(tipoEmissao) : undefined,
+      validade ? Number(validade) : undefined,
+    );
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR TabelaPrecos error");
+    res.status(502).json({ error: "Erro ao consultar tabela de preços na Gestão AR." });
+  }
+});
+
+// ── Tipos de emissão ──────────────────────────────────────────────────────────
+router.get("/gestaoar/tipos-emissao", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const { documento } = req.query as Record<string, string>;
+  try {
+    const result = await garTiposEmissao(s.garApiKey!, documento);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR TipoEmissao error");
+    res.status(502).json({ error: "Erro ao consultar tipos de emissão." });
+  }
+});
+
+// ── Tipos de produto ──────────────────────────────────────────────────────────
+router.get("/gestaoar/tipos-produto", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const { documento } = req.query as Record<string, string>;
+  try {
+    const result = await garTiposProduto(s.garApiKey!, documento);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR TipoProduto error");
+    res.status(502).json({ error: "Erro ao consultar tipos de produto." });
+  }
+});
+
+// ── Validades ─────────────────────────────────────────────────────────────────
+router.get("/gestaoar/validades", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const { tipo, tipoEmissao } = req.query as Record<string, string>;
+  try {
+    const result = await garValidades(s.garApiKey!, Number(tipo ?? 1), Number(tipoEmissao ?? 1));
+    res.json(result ?? []);
+  } catch (err) {
+    logger.error({ err }, "GAR Validade error");
+    res.status(502).json({ error: "Erro ao consultar validades." });
+  }
+});
+
+// ── Famílias de produtos ──────────────────────────────────────────────────────
+router.get("/gestaoar/familias", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  try {
+    const result = await garFamilias(s.garApiKey!);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR Familias error");
+    res.status(502).json({ error: "Erro ao consultar famílias de produtos." });
+  }
+});
+
+// ── Formas de pagamento ───────────────────────────────────────────────────────
+router.get("/gestaoar/formas-pagamento", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  try {
+    const result = await garFormasPagamento(s.garApiKey!);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR FormasPagamento error");
+    res.status(502).json({ error: "Erro ao consultar formas de pagamento." });
+  }
+});
+
+// ── PSBio (verifica biometria) ────────────────────────────────────────────────
+router.post("/gestaoar/psbio", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const { cpf } = req.body ?? {};
+  if (!cpf) { res.status(400).json({ error: "CPF obrigatório." }); return; }
+  try {
+    const result = await garPsBio(s.garApiKey!, cpf);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR PSBio error");
+    res.status(502).json({ error: "Erro ao consultar PSBio." });
+  }
+});
+
+// ── Dias da semana ────────────────────────────────────────────────────────────
+router.get("/gestaoar/dias-semana", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  try {
+    const result = await garDiasSemana(s.garApiKey!);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR DiasSemana error");
+    res.status(502).json({ error: "Erro ao consultar dias da semana." });
+  }
+});
+
+// ── Locais de agendamento ─────────────────────────────────────────────────────
+router.get("/gestaoar/locais", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const { uf, municipio } = req.query as Record<string, string>;
+  try {
+    const result = await garLocaisAgendamento(s.garApiKey!, uf, municipio);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR LocaisAgendamento error");
+    res.status(502).json({ error: "Erro ao consultar locais de agendamento." });
+  }
+});
+
+// ── Slots de um local ─────────────────────────────────────────────────────────
+router.get("/gestaoar/locais/:hashLocal/slots", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const hashLocal = Array.isArray(req.params.hashLocal) ? req.params.hashLocal[0] : req.params.hashLocal;
+  try {
+    const result = await garSlotsLocal(s.garApiKey!, hashLocal);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR LocaisSlot error");
+    res.status(502).json({ error: "Erro ao consultar slots do local." });
+  }
+});
+
+// ── UFs ───────────────────────────────────────────────────────────────────────
+router.get("/gestaoar/ufs", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  try {
+    const result = await garUFs(s.garApiKey!);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR UFs error");
+    res.status(502).json({ error: "Erro ao consultar UFs." });
+  }
+});
+
+// ── Municípios ────────────────────────────────────────────────────────────────
+router.get("/gestaoar/municipios", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const { uf } = req.query as Record<string, string>;
+  if (!uf) { res.status(400).json({ error: "UF obrigatória." }); return; }
+  try {
+    const result = await garMunicipios(s.garApiKey!, uf);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR Municipios error");
+    res.status(502).json({ error: "Erro ao consultar municípios." });
+  }
+});
+
+// ── Consultar status de um pedido GAR ─────────────────────────────────────────
+router.get("/gestaoar/pedido/:garPedido/status", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const garPedido = Array.isArray(req.params.garPedido) ? req.params.garPedido[0] : req.params.garPedido;
+  try {
+    const result = await garConsultarStatus(s.garApiKey!, garPedido);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR ConsultarStatus error");
+    res.status(502).json({ error: "Erro ao consultar pedido na Gestão AR." });
+  }
+});
+
+// ── Consultar pedido completo ─────────────────────────────────────────────────
+router.get("/gestaoar/pedido/:garPedido", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const garPedido = Array.isArray(req.params.garPedido) ? req.params.garPedido[0] : req.params.garPedido;
+  try {
+    const result = await garConsultarPedido(s.garApiKey!, garPedido);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR ConsultarPedido error");
+    res.status(502).json({ error: "Erro ao consultar pedido na Gestão AR." });
+  }
+});
+
+// ── Pedidos de um cliente (CPF/CNPJ) ─────────────────────────────────────────
+router.get("/gestaoar/cliente/:documento/pedidos", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const documento = Array.isArray(req.params.documento) ? req.params.documento[0] : req.params.documento;
+  try {
+    const result = await garPedidosPorCliente(s.garApiKey!, documento);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR PedidosCliente error");
+    res.status(502).json({ error: "Erro ao consultar pedidos do cliente." });
+  }
+});
+
+// ── Pedidos do contador ───────────────────────────────────────────────────────
+router.get("/gestaoar/contador/:documento/pedidos", requireAdmin, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const documento = Array.isArray(req.params.documento) ? req.params.documento[0] : req.params.documento;
+  try {
+    const result = await garPedidosContador(s.garApiKey!, documento);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR PedidosContador error");
+    res.status(502).json({ error: "Erro ao consultar pedidos do contador." });
+  }
+});
+
+// ── Extrato de renovações ─────────────────────────────────────────────────────
+router.get("/gestaoar/renovacoes", requireAdmin, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const { dataInicial, dataFinal } = req.query as Record<string, string>;
+  if (!dataInicial || !dataFinal) {
+    res.status(400).json({ error: "dataInicial e dataFinal são obrigatórios." });
+    return;
+  }
+  try {
+    const result = await garRenovacoes(s.garApiKey!, dataInicial, dataFinal);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR Renovacoes error");
+    res.status(502).json({ error: "Erro ao consultar renovações." });
+  }
+});
+
+// ── Emitir protocolo manualmente ──────────────────────────────────────────────
+router.post("/gestaoar/pedido/:garPedido/emitir-protocolo", requireAdmin, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const garPedido = Array.isArray(req.params.garPedido) ? req.params.garPedido[0] : req.params.garPedido;
+  const { cpf, cnpj, dataNascimento, isPossuiCNH, isCNPJ } = req.body ?? {};
+  if (!cpf) { res.status(400).json({ error: "CPF obrigatório." }); return; }
+  try {
+    const result = await garEmitirProtocolo(
+      s.garApiKey!,
+      Number(garPedido),
+      cpf,
+      cnpj,
+      dataNascimento,
+      isPossuiCNH,
+      isCNPJ,
+    );
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "GAR EmitirProtocolo error");
+    res.status(502).json({ error: "Erro ao emitir protocolo na Gestão AR." });
+  }
+});
+
+// ── Sincronizar pedido local com GAR (lê garPedido do DB) ────────────────────
+router.post("/gestaoar/sync-order/:orderId", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  const orderId = parseInt(Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId, 10);
+  const role = req.session.role as string;
+  const userId = req.session.userId as number;
+
+  const [orderRow] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId)).limit(1);
+  if (!orderRow) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
+  if (role !== "admin" && orderRow.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+  if (!orderRow.garPedido) { res.status(400).json({ error: "Este pedido não possui número GAR registrado." }); return; }
+
+  try {
+    const garStatus = await garConsultarStatus(s.garApiKey!, orderRow.garPedido);
+    await db.update(ordersTable).set({
+      garStatus: garStatus.StatusPedido ?? null,
+      garProtocolo: garStatus.Protocolo ?? orderRow.garProtocolo,
+      garSyncedAt: new Date(),
+    }).where(eq(ordersTable.id, orderId));
+
+    res.json({ ok: true, garStatus });
+  } catch (err) {
+    logger.error({ err }, "GAR SyncOrder error");
+    res.status(502).json({ error: "Erro ao sincronizar pedido com Gestão AR." });
+  }
+});
+
+// ── POST /orders/:id/gar-comprar — registra venda na GAR após pagamento ───────
+// Chamado automaticamente pelo webhook de pagamento, mas também disponível manualmente
+router.post("/orders/:id/gar-comprar", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const role = req.session.role as string;
+  const userId = req.session.userId as number;
+
+  const [row] = await db
+    .select({ order: ordersTable, userName: usersTable.name })
+    .from(ordersTable)
+    .leftJoin(usersTable, eq(ordersTable.userId, usersTable.id))
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
+  if (role !== "admin" && row.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+
+  const order = row.order;
+  if (!s.garHashVendedor || !s.garHashTabela) {
+    res.status(400).json({ error: "HashVendedor e HashTabela da Gestão AR não configurados." });
+    return;
+  }
+
+  const { hashProduto } = req.body ?? {};
+  if (!hashProduto) {
+    res.status(400).json({ error: "hashProduto obrigatório para registrar a venda na Gestão AR." });
+    return;
+  }
+
+  // Prefer videoconference (tipoEmissao=3) as default
+  const formaPagamento = parseInt(s.garFormaPagamento ?? "11", 10);
+
+  // Extract DDD + phone
+  const phone = (order.customerPhone ?? "").replace(/\D/g, "");
+  const ddd = phone.slice(0, 2);
+  const tel = phone.slice(2);
+
+  const cliente = {
+    CNPJCPF: order.customerCpfCnpj,
+    NomeRazaoSocial: order.companyName ?? order.customerName,
+    NomeFantasia: order.companyName ? order.customerName : "",
+    Email: order.customerEmail ?? "",
+    CEP: (order.addressZipcode ?? "").replace(/\D/g, ""),
+    Logradouro: order.addressStreet ?? "",
+    Numero: order.addressNumber ?? "",
+    Complemento: "",
+    Bairro: order.addressNeighborhood ?? "",
+    Cidade: order.addressCity ?? "",
+    UF: order.addressState ?? "",
+    CodigoIBGE: "",
+    DDD: ddd,
+    Telefone: tel,
+  };
+
+  try {
+    const result = await garComprar(
+      s.garApiKey!,
+      s.garHashVendedor,
+      s.garHashTabela,
+      formaPagamento,
+      cliente,
+      Array.isArray(hashProduto) ? hashProduto : [hashProduto],
+    );
+
+    if (result.Status !== 0 && result.Erros?.length) {
+      res.status(400).json({ error: result.Erros.map(e => e.Ocorrencia).join("; ") });
+      return;
+    }
+
+    // Save GAR order numbers
+    const garPedidoNumero = result.Produtos?.[0]?.Pedido ?? null;
+    const garHashVenda = result.Produtos?.[0] ? undefined : null;
+
+    await db.update(ordersTable).set({
+      garPedido: garPedidoNumero,
+      garHashVenda: result.LinkFatura ?? null,
+      garAgendamentoLink: result.LinkAgenda ?? null,
+      garStatus: "Compra registrada",
+      garSyncedAt: new Date(),
+      status: "paid",
+    }).where(eq(ordersTable.id, id));
+
+    // Auto emit protocol if we have a pedido number
+    if (garPedidoNumero) {
+      try {
+        const cpf = order.clientType === "cnpj" ? order.customerCpfCnpj : order.customerCpfCnpj;
+        const cnpj = order.clientType === "cnpj" ? order.customerCpfCnpj : undefined;
+        const protoResult = await garEmitirProtocolo(
+          s.garApiKey!,
+          Number(garPedidoNumero),
+          cpf,
+          cnpj,
+          undefined,
+          false,
+          order.clientType === "cnpj",
+        );
+        const success = protoResult[0]?.ErrorCode === "000";
+        if (success) {
+          await db.update(ordersTable).set({
+            garProtocolo: protoResult[0]?.ErrorDescription,
+            garStatus: "Protocolo emitido",
+            status: "protocol_assigned",
+          }).where(eq(ordersTable.id, id));
+        }
+      } catch (protoErr) {
+        logger.warn({ protoErr }, "GAR EmitirProtocolo falhou automaticamente — pode ser emitido manualmente");
+      }
+    }
+
+    res.json({ ok: true, garResult: result });
+  } catch (err) {
+    logger.error({ err }, "GAR Comprar error");
+    res.status(502).json({ error: "Erro ao registrar venda na Gestão AR." });
+  }
+});
+
+export default router;

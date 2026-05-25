@@ -23,6 +23,7 @@ import AdminCertificates from "@/pages/admin/certificates";
 import AdminSlots from "@/pages/admin/slots";
 import AdminSettings from "@/pages/admin/settings";
 import AdminMarketing from "@/pages/admin/marketing";
+import AdminRenovacoes from "@/pages/admin/renovacoes";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +81,7 @@ function Router() {
       <Route path="/admin/slots" component={() => <ProtectedRoute component={AdminSlots} adminOnly />} />
       <Route path="/admin/settings" component={() => <ProtectedRoute component={AdminSettings} adminOnly />} />
       <Route path="/admin/marketing" component={() => <ProtectedRoute component={AdminMarketing} adminOnly />} />
+      <Route path="/admin/renovacoes" component={() => <ProtectedRoute component={AdminRenovacoes} adminOnly />} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -15,6 +15,12 @@ export const settingsTable = pgTable("settings", {
   scheduleCloseHour: text("schedule_close_hour").default("18"),
   scheduleStepMin: text("schedule_step_min").default("60"),
   scheduleClosedDates: text("schedule_closed_dates").default(""),
+  // Gestão AR integration
+  garApiKey: text("gar_api_key"),
+  garHashVendedor: text("gar_hash_vendedor"),
+  garHashTabela: text("gar_hash_tabela"),
+  garFormaPagamento: text("gar_forma_pagamento").default("11"),
+  garPreferirVideoconferencia: text("gar_preferir_videoconferencia").default("1"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

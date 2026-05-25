@@ -26,6 +26,11 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     scheduleCloseHour: s.scheduleCloseHour ?? "18",
     scheduleStepMin: s.scheduleStepMin ?? "60",
     scheduleClosedDates: s.scheduleClosedDates ?? "",
+    garApiKey: s.garApiKey,
+    garHashVendedor: s.garHashVendedor,
+    garHashTabela: s.garHashTabela,
+    garFormaPagamento: s.garFormaPagamento ?? "11",
+    garPreferirVideoconferencia: s.garPreferirVideoconferencia ?? "1",
     updatedAt: s.updatedAt,
   };
 }
@@ -40,6 +45,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   const {
     appName, mpAccessToken, mpPublicKey, webhookSecret, mailFrom, siteUrl,
     scheduleOpenDays, scheduleOpenHour, scheduleCloseHour, scheduleStepMin, scheduleClosedDates,
+    garApiKey, garHashVendedor, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
   } = req.body ?? {};
 
   const updates: Record<string, unknown> = {};
@@ -54,6 +60,11 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (scheduleCloseHour !== undefined) updates.scheduleCloseHour = scheduleCloseHour;
   if (scheduleStepMin !== undefined) updates.scheduleStepMin = scheduleStepMin;
   if (scheduleClosedDates !== undefined) updates.scheduleClosedDates = scheduleClosedDates;
+  if (garApiKey !== undefined) updates.garApiKey = garApiKey;
+  if (garHashVendedor !== undefined) updates.garHashVendedor = garHashVendedor;
+  if (garHashTabela !== undefined) updates.garHashTabela = garHashTabela;
+  if (garFormaPagamento !== undefined) updates.garFormaPagamento = garFormaPagamento;
+  if (garPreferirVideoconferencia !== undefined) updates.garPreferirVideoconferencia = garPreferirVideoconferencia;
 
   const [updated] = await db
     .update(settingsTable)

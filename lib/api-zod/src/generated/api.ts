@@ -568,6 +568,362 @@ export const CloseTicketResponse = zod.object({
 
 
 /**
+ * @summary Tabela de preços real da Gestão AR
+ */
+export const GetGarProdutosQueryParams = zod.object({
+  "documento": zod.coerce.string().optional(),
+  "tipoProduto": zod.coerce.number().optional(),
+  "tipoEmissao": zod.coerce.number().optional(),
+  "validade": zod.coerce.number().optional()
+})
+
+export const GetGarProdutosResponse = zod.object({
+  "FamiliaProduto": zod.number().optional(),
+  "TipoProduto": zod.number().optional(),
+  "TipoEmissao": zod.number().optional(),
+  "Documento": zod.string().optional(),
+  "HashVendedor": zod.string().optional(),
+  "HashTabela": zod.string().optional(),
+  "Validade": zod.number().optional(),
+  "Produtos": zod.array(zod.object({
+  "HashProduto": zod.string(),
+  "Nome": zod.string(),
+  "TipoProduto": zod.number(),
+  "TipoProdutoDescricao": zod.string().optional(),
+  "TipoEmissao": zod.number(),
+  "TipoCertificado": zod.string().optional(),
+  "Validade": zod.number(),
+  "TipoEmissaoDescricao": zod.string().optional(),
+  "Agrupador": zod.string().optional(),
+  "ValorVenda": zod.number()
+})).optional(),
+  "Status": zod.number().optional()
+})
+
+
+/**
+ * @summary Tipos de emissão disponíveis na Gestão AR
+ */
+export const GetGarTiposEmissaoQueryParams = zod.object({
+  "documento": zod.coerce.string().optional()
+})
+
+export const GetGarTiposEmissaoResponseItem = zod.object({
+  "TipoEmissao": zod.number(),
+  "TipoEmissaoDescricao": zod.string()
+})
+export const GetGarTiposEmissaoResponse = zod.array(GetGarTiposEmissaoResponseItem)
+
+
+/**
+ * @summary Tipos de produto disponíveis na Gestão AR
+ */
+export const GetGarTiposProdutoQueryParams = zod.object({
+  "documento": zod.coerce.string().optional()
+})
+
+export const GetGarTiposProdutoResponseItem = zod.object({
+  "Produto": zod.string(),
+  "Tipo": zod.number()
+})
+export const GetGarTiposProdutoResponse = zod.array(GetGarTiposProdutoResponseItem)
+
+
+/**
+ * @summary Validades disponíveis na Gestão AR
+ */
+export const GetGarValidadesQueryParams = zod.object({
+  "tipo": zod.coerce.number().optional(),
+  "tipoEmissao": zod.coerce.number().optional()
+})
+
+export const GetGarValidadesResponseItem = zod.object({
+  "Validade": zod.number(),
+  "ValidadeDescricao": zod.string()
+})
+export const GetGarValidadesResponse = zod.array(GetGarValidadesResponseItem)
+
+
+/**
+ * @summary Famílias de produtos da Gestão AR
+ */
+export const GetGarFamiliasResponseItem = zod.object({
+  "Id": zod.number().optional(),
+  "Nome": zod.string().optional()
+})
+export const GetGarFamiliasResponse = zod.array(GetGarFamiliasResponseItem)
+
+
+/**
+ * @summary Formas de pagamento da Gestão AR
+ */
+export const GetGarFormasPagamentoResponseItem = zod.object({
+  "Id": zod.number(),
+  "Nome": zod.string()
+})
+export const GetGarFormasPagamentoResponse = zod.array(GetGarFormasPagamentoResponseItem)
+
+
+/**
+ * @summary Verifica biometria coletada (PSBio) para um CPF
+ */
+export const CheckGarPsBioBody = zod.object({
+  "cpf": zod.string()
+})
+
+export const CheckGarPsBioResponse = zod.object({
+  "IsOk": zod.boolean()
+})
+
+
+/**
+ * @summary UFs com locais de atendimento na Gestão AR
+ */
+export const GetGarUFsResponseItem = zod.object({
+  "UF": zod.string()
+})
+export const GetGarUFsResponse = zod.array(GetGarUFsResponseItem)
+
+
+/**
+ * @summary Municípios com locais de atendimento
+ */
+export const GetGarMunicipiosQueryParams = zod.object({
+  "uf": zod.coerce.string()
+})
+
+export const GetGarMunicipiosResponseItem = zod.object({
+  "UF": zod.string(),
+  "Municipio": zod.string()
+})
+export const GetGarMunicipiosResponse = zod.array(GetGarMunicipiosResponseItem)
+
+
+/**
+ * @summary Locais de agendamento da Gestão AR
+ */
+export const GetGarLocaisQueryParams = zod.object({
+  "uf": zod.coerce.string().optional(),
+  "municipio": zod.coerce.string().optional()
+})
+
+export const GetGarLocaisResponseItem = zod.object({
+  "HashPessoa": zod.string(),
+  "HashLocal": zod.string(),
+  "DadosPesquisa": zod.string().optional(),
+  "NomeLocalAgendamento": zod.string(),
+  "NomeCidadeLocalAgendamento": zod.string().optional(),
+  "Endereco": zod.string().optional(),
+  "CEP": zod.string().optional(),
+  "Municipio": zod.string(),
+  "UF": zod.string(),
+  "Telefone": zod.string().optional(),
+  "Email": zod.string().optional()
+})
+export const GetGarLocaisResponse = zod.array(GetGarLocaisResponseItem)
+
+
+/**
+ * @summary Slots de atendimento de um local
+ */
+export const GetGarSlotsLocalParams = zod.object({
+  "hashLocal": zod.coerce.string()
+})
+
+export const GetGarSlotsLocalResponseItem = zod.object({
+  "HashSlot": zod.string(),
+  "NomeSlotAgendamento": zod.string()
+})
+export const GetGarSlotsLocalResponse = zod.array(GetGarSlotsLocalResponseItem)
+
+
+/**
+ * @summary Extrato de renovações da Gestão AR
+ */
+export const GetGarRenovacoesQueryParams = zod.object({
+  "dataInicial": zod.coerce.string(),
+  "dataFinal": zod.coerce.string()
+})
+
+export const GetGarRenovacoesResponseItem = zod.object({
+  "Pedido": zod.string().optional(),
+  "StatusRenovacao": zod.string().optional(),
+  "Produto": zod.string().optional(),
+  "ValorProduto": zod.number().optional(),
+  "Cliente": zod.string().optional(),
+  "Email": zod.string().optional(),
+  "Telefone": zod.string().optional(),
+  "CPF": zod.string().optional(),
+  "CNPJ": zod.string().optional(),
+  "RazaoSocial": zod.string().optional(),
+  "DataEmissao": zod.string().optional(),
+  "DataExpiracao": zod.string().optional(),
+  "Observacao": zod.string().optional()
+})
+export const GetGarRenovacoesResponse = zod.array(GetGarRenovacoesResponseItem)
+
+
+/**
+ * @summary Consulta dados de um pedido na Gestão AR
+ */
+export const GetGarPedidoParams = zod.object({
+  "garPedido": zod.coerce.string()
+})
+
+export const GetGarPedidoResponse = zod.object({
+  "HashVenda": zod.string().optional(),
+  "Pedido": zod.string().optional(),
+  "Protocolo": zod.string().optional(),
+  "NomeVendedor": zod.string().optional(),
+  "NomeCliente": zod.string().optional(),
+  "DocumentoCliente": zod.string().optional(),
+  "Produto": zod.string().optional(),
+  "TipoProduto": zod.string().optional(),
+  "TipoEmissao": zod.string().optional(),
+  "StatusPedido": zod.string().optional(),
+  "DataStatusPedido": zod.string().optional(),
+  "StatusFinanceiro": zod.string().optional(),
+  "LinkFatura": zod.string().optional(),
+  "LinkAgenda": zod.string().optional(),
+  "LocalAgendamento": zod.string().optional(),
+  "DataHoraAgenda": zod.string().optional(),
+  "Status": zod.number().optional()
+})
+
+
+/**
+ * @summary Consulta status atual de um pedido na Gestão AR
+ */
+export const GetGarPedidoStatusParams = zod.object({
+  "garPedido": zod.coerce.string()
+})
+
+export const GetGarPedidoStatusResponse = zod.object({
+  "HashVenda": zod.string().optional(),
+  "Pedido": zod.string().optional(),
+  "Protocolo": zod.string().optional(),
+  "NomeVendedor": zod.string().optional(),
+  "NomeCliente": zod.string().optional(),
+  "DocumentoCliente": zod.string().optional(),
+  "Produto": zod.string().optional(),
+  "TipoProduto": zod.string().optional(),
+  "TipoEmissao": zod.string().optional(),
+  "StatusPedido": zod.string().optional(),
+  "DataStatusPedido": zod.string().optional(),
+  "StatusFinanceiro": zod.string().optional(),
+  "LinkFatura": zod.string().optional(),
+  "LinkAgenda": zod.string().optional(),
+  "LocalAgendamento": zod.string().optional(),
+  "DataHoraAgenda": zod.string().optional(),
+  "Status": zod.number().optional()
+})
+
+
+/**
+ * @summary Emite protocolo de um pedido na Gestão AR
+ */
+export const EmitirProtocoloGarParams = zod.object({
+  "garPedido": zod.coerce.string()
+})
+
+export const EmitirProtocoloGarBody = zod.object({
+  "cpf": zod.string(),
+  "cnpj": zod.string().optional(),
+  "dataNascimento": zod.string().optional(),
+  "isPossuiCNH": zod.boolean().optional(),
+  "isCNPJ": zod.boolean().optional()
+})
+
+export const EmitirProtocoloGarResponseItem = zod.object({
+  "ErrorCode": zod.string(),
+  "ErrorDescription": zod.string()
+})
+export const EmitirProtocoloGarResponse = zod.array(EmitirProtocoloGarResponseItem)
+
+
+/**
+ * @summary Pedidos de um cliente (CPF/CNPJ) na Gestão AR
+ */
+export const GetGarPedidosClienteParams = zod.object({
+  "documento": zod.coerce.string()
+})
+
+export const GetGarPedidosClienteResponse = zod.object({
+
+}).passthrough()
+
+
+/**
+ * @summary Pedidos indicados por um contador na Gestão AR
+ */
+export const GetGarPedidosContadorParams = zod.object({
+  "documento": zod.coerce.string()
+})
+
+export const GetGarPedidosContadorResponse = zod.object({
+
+}).passthrough()
+
+
+/**
+ * @summary Sincroniza status de um pedido local com a Gestão AR
+ */
+export const SyncGarOrderParams = zod.object({
+  "orderId": zod.coerce.number()
+})
+
+export const SyncGarOrderResponse = zod.object({
+  "ok": zod.boolean(),
+  "garStatus": zod.object({
+  "HashVenda": zod.string().optional(),
+  "Pedido": zod.string().optional(),
+  "Protocolo": zod.string().optional(),
+  "NomeVendedor": zod.string().optional(),
+  "NomeCliente": zod.string().optional(),
+  "DocumentoCliente": zod.string().optional(),
+  "Produto": zod.string().optional(),
+  "TipoProduto": zod.string().optional(),
+  "TipoEmissao": zod.string().optional(),
+  "StatusPedido": zod.string().optional(),
+  "DataStatusPedido": zod.string().optional(),
+  "StatusFinanceiro": zod.string().optional(),
+  "LinkFatura": zod.string().optional(),
+  "LinkAgenda": zod.string().optional(),
+  "LocalAgendamento": zod.string().optional(),
+  "DataHoraAgenda": zod.string().optional(),
+  "Status": zod.number().optional()
+}).optional()
+})
+
+
+/**
+ * @summary Registra a venda de um pedido na Gestão AR e emite protocolo
+ */
+export const GarComprarOrderParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GarComprarOrderBody = zod.object({
+  "hashProduto": zod.union([zod.string(),zod.array(zod.string())])
+})
+
+export const GarComprarOrderResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "garResult": zod.object({
+  "LinkAgenda": zod.string().optional(),
+  "FormaPagamentoDescricao": zod.string().optional(),
+  "Status": zod.number().optional(),
+  "Descricao": zod.string().optional(),
+  "ValorTotal": zod.number().optional(),
+  "LinkFatura": zod.string().optional(),
+  "Erros": zod.array(zod.object({
+  "Ocorrencia": zod.string().optional()
+})).optional()
+}).optional()
+})
+
+
+/**
  * @summary Get app settings (admin only)
  */
 export const GetSettingsResponse = zod.object({
@@ -583,6 +939,11 @@ export const GetSettingsResponse = zod.object({
   "scheduleCloseHour": zod.string().optional(),
   "scheduleStepMin": zod.string().optional(),
   "scheduleClosedDates": zod.string().optional(),
+  "garApiKey": zod.string().nullish(),
+  "garHashVendedor": zod.string().nullish(),
+  "garHashTabela": zod.string().nullish(),
+  "garFormaPagamento": zod.string().optional(),
+  "garPreferirVideoconferencia": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
 
@@ -601,7 +962,12 @@ export const UpdateSettingsBody = zod.object({
   "scheduleOpenHour": zod.string().optional(),
   "scheduleCloseHour": zod.string().optional(),
   "scheduleStepMin": zod.string().optional(),
-  "scheduleClosedDates": zod.string().optional()
+  "scheduleClosedDates": zod.string().optional(),
+  "garApiKey": zod.string().optional(),
+  "garHashVendedor": zod.string().optional(),
+  "garHashTabela": zod.string().optional(),
+  "garFormaPagamento": zod.string().optional(),
+  "garPreferirVideoconferencia": zod.string().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -617,6 +983,11 @@ export const UpdateSettingsResponse = zod.object({
   "scheduleCloseHour": zod.string().optional(),
   "scheduleStepMin": zod.string().optional(),
   "scheduleClosedDates": zod.string().optional(),
+  "garApiKey": zod.string().nullish(),
+  "garHashVendedor": zod.string().nullish(),
+  "garHashTabela": zod.string().nullish(),
+  "garFormaPagamento": zod.string().optional(),
+  "garPreferirVideoconferencia": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
 

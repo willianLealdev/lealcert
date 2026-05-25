@@ -11,6 +11,7 @@ import dashboardRouter from "./dashboard";
 import uploadRouter from "./upload";
 import marketingRouter from "./marketing";
 import chatRouter from "./chat";
+import gestaoarRouter from "./gestaoar";
 
 const router: IRouter = Router();
 
@@ -20,6 +21,7 @@ router.use(authRouter);
 router.use(usersRouter);
 router.use(certificatesRouter);
 router.use(ordersRouter);
+router.use(gestaoarRouter);
 router.use(slotsRouter);
 router.use(supportRouter);
 router.use(settingsRouter);

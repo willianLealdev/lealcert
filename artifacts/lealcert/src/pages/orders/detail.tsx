@@ -1,5 +1,5 @@
 import { useParams } from "wouter";
-import { useGetOrder, useUpdateOrder, useCreatePayment } from "@workspace/api-client-react";
+import { useGetOrder, useUpdateOrder, useCreatePayment, useGarComprarOrder, useSyncGarOrder } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CreditCard, Loader2, FileText, Download } from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, FileText, Download, RefreshCw, ShoppingBag, ExternalLink, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 
@@ -52,6 +52,7 @@ export default function OrderDetail() {
   const { toast } = useToast();
   const [protocol, setProtocol] = useState("");
   const [newStatus, setNewStatus] = useState("");
+  const [garHashProduto, setGarHashProduto] = useState("");
 
   const { data: order, isLoading, refetch } = useGetOrder(Number(id));
 
@@ -77,11 +78,48 @@ export default function OrderDetail() {
     },
   });
 
+  const garComprar = useGarComprarOrder({
+    mutation: {
+      onSuccess: (data) => {
+        if (data.ok) {
+          toast({ title: "Venda registrada na GAR!", description: "Protocolo emitido com sucesso." });
+        } else {
+          toast({ title: "Venda registrada", description: "Verifique o status na GAR.", variant: "default" });
+        }
+        refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao registrar na GAR.";
+        toast({ title: "Erro GAR", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
+  const garSync = useSyncGarOrder({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Sincronizado com a GAR!" });
+        refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao sincronizar com GAR.";
+        toast({ title: "Erro GAR", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
   if (isLoading) return <div className="text-center py-20 text-muted-foreground">Carregando...</div>;
   if (!order) return <div className="text-center py-20 text-muted-foreground">Pedido não encontrado.</div>;
 
   const isAdmin = user?.role === "admin";
   const isPayable = order.status === "pending_payment" || order.status === "created";
+  const orderAny = order as unknown as Record<string, unknown>;
+  const hasGar = !!orderAny.garPedido;
+  const garPedido = orderAny.garPedido as string | undefined;
+  const garProtocolo = orderAny.garProtocolo as string | undefined;
+  const garStatus = orderAny.garStatus as string | undefined;
+  const garAgendamentoLink = orderAny.garAgendamentoLink as string | undefined;
+  const garSyncedAt = orderAny.garSyncedAt as string | undefined;
 
   function handleStatusUpdate(e: React.FormEvent) {
     e.preventDefault();
@@ -90,6 +128,15 @@ export default function OrderDetail() {
     if (protocol) data.protocolNumber = protocol;
     if (Object.keys(data).length === 0) return;
     updateOrder.mutate({ id: Number(id), data: data as Parameters<typeof updateOrder.mutate>[0]["data"] });
+  }
+
+  function handleGarComprar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!garHashProduto.trim()) {
+      toast({ title: "Atenção", description: "Informe o hash do produto GAR.", variant: "destructive" });
+      return;
+    }
+    garComprar.mutate({ id: Number(id), data: { hashProduto: garHashProduto.trim() } });
   }
 
   return (
@@ -126,6 +173,11 @@ export default function OrderDetail() {
             <Badge variant={STATUS_VARIANTS[order.status] ?? "secondary"}>
               {STATUS_LABELS[order.status] ?? order.status}
             </Badge>
+            {hasGar && (
+              <Badge variant="outline" className="border-blue-500 text-blue-600 bg-blue-50">
+                GAR
+              </Badge>
+            )}
           </div>
           <p className="text-muted-foreground text-sm">Criado em {formatDateTime(order.createdAt)}</p>
         </div>
@@ -197,6 +249,74 @@ export default function OrderDetail() {
                     Salvar Alterações
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Gestão AR — card para admin */}
+          {isAdmin && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4 text-primary" />
+                  Gestão AR
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {hasGar ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <InfoRow label="Pedido GAR" value={garPedido} />
+                      <InfoRow label="Protocolo" value={garProtocolo} />
+                      <InfoRow label="Status GAR" value={garStatus} />
+                      <InfoRow label="Última sincronização" value={garSyncedAt ? formatDateTime(garSyncedAt) : "—"} />
+                    </div>
+                    {garAgendamentoLink && (
+                      <a
+                        href={garAgendamentoLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Link de Agendamento GAR
+                      </a>
+                    )}
+                    <div className="pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => garSync.mutate({ orderId: Number(id) })}
+                        disabled={garSync.isPending}
+                      >
+                        {garSync.isPending
+                          ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          : <RefreshCw className="h-4 w-4 mr-2" />}
+                        Sincronizar com GAR
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleGarComprar} className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Este pedido ainda não foi registrado na Gestão AR. Informe o hash do produto para registrar a venda e emitir o protocolo.
+                    </p>
+                    <div className="space-y-2">
+                      <Label>Hash do Produto GAR</Label>
+                      <Input
+                        value={garHashProduto}
+                        onChange={e => setGarHashProduto(e.target.value)}
+                        placeholder="Hash do produto da tabela de preços GAR"
+                      />
+                    </div>
+                    <Button type="submit" disabled={garComprar.isPending}>
+                      {garComprar.isPending
+                        ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                      Registrar Venda na GAR
+                    </Button>
+                  </form>
+                )}
               </CardContent>
             </Card>
           )}

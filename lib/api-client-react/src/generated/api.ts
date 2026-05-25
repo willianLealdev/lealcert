@@ -35,9 +35,37 @@ import type {
   DashboardStats,
   EmailValidationResult,
   ErrorResponse,
+  GarComprarInput,
+  GarComprarResult,
+  GarEmitirProtocoloInput,
+  GarEmitirProtocoloResult,
+  GarFormaPagamento,
+  GarLocalAgendamento,
+  GarMunicipio,
+  GarPsBioInput,
+  GarPsBioResult,
+  GarRenovacaoItem,
+  GarSlotAtendimento,
+  GarStatusPedido,
+  GarSyncResult,
+  GarTabelaPrecos,
+  GarTipoEmissao,
+  GarTipoProduto,
+  GarUF,
+  GarValidade,
   GenerateSlotsInput,
   GenerateSlotsResult,
   GetAdminStatsParams,
+  GetGarFamilias200Item,
+  GetGarLocaisParams,
+  GetGarMunicipiosParams,
+  GetGarPedidosCliente200,
+  GetGarPedidosContador200,
+  GetGarProdutosParams,
+  GetGarRenovacoesParams,
+  GetGarTiposEmissaoParams,
+  GetGarTiposProdutoParams,
+  GetGarValidadesParams,
   GetMeStatsParams,
   HealthStatus,
   InboundWebhookInput,
@@ -2511,6 +2539,1495 @@ export const useCloseTicket = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCloseTicketMutationOptions(options));
+    }
+
+export const getGetGarProdutosUrl = (params?: GetGarProdutosParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/gestaoar/produtos?${stringifiedParams}` : `/api/gestaoar/produtos`
+}
+
+/**
+ * @summary Tabela de preços real da Gestão AR
+ */
+export const getGarProdutos = async (params?: GetGarProdutosParams, options?: RequestInit): Promise<GarTabelaPrecos> => {
+
+  return customFetch<GarTabelaPrecos>(getGetGarProdutosUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarProdutosQueryKey = (params?: GetGarProdutosParams,) => {
+    return [
+    `/api/gestaoar/produtos`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGarProdutosQueryOptions = <TData = Awaited<ReturnType<typeof getGarProdutos>>, TError = ErrorType<unknown>>(params?: GetGarProdutosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarProdutos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarProdutosQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarProdutos>>> = ({ signal }) => getGarProdutos(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarProdutos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarProdutosQueryResult = NonNullable<Awaited<ReturnType<typeof getGarProdutos>>>
+export type GetGarProdutosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Tabela de preços real da Gestão AR
+ */
+
+export function useGetGarProdutos<TData = Awaited<ReturnType<typeof getGarProdutos>>, TError = ErrorType<unknown>>(
+ params?: GetGarProdutosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarProdutos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarProdutosQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarTiposEmissaoUrl = (params?: GetGarTiposEmissaoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/gestaoar/tipos-emissao?${stringifiedParams}` : `/api/gestaoar/tipos-emissao`
+}
+
+/**
+ * @summary Tipos de emissão disponíveis na Gestão AR
+ */
+export const getGarTiposEmissao = async (params?: GetGarTiposEmissaoParams, options?: RequestInit): Promise<GarTipoEmissao[]> => {
+
+  return customFetch<GarTipoEmissao[]>(getGetGarTiposEmissaoUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarTiposEmissaoQueryKey = (params?: GetGarTiposEmissaoParams,) => {
+    return [
+    `/api/gestaoar/tipos-emissao`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGarTiposEmissaoQueryOptions = <TData = Awaited<ReturnType<typeof getGarTiposEmissao>>, TError = ErrorType<unknown>>(params?: GetGarTiposEmissaoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarTiposEmissao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarTiposEmissaoQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarTiposEmissao>>> = ({ signal }) => getGarTiposEmissao(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarTiposEmissao>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarTiposEmissaoQueryResult = NonNullable<Awaited<ReturnType<typeof getGarTiposEmissao>>>
+export type GetGarTiposEmissaoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Tipos de emissão disponíveis na Gestão AR
+ */
+
+export function useGetGarTiposEmissao<TData = Awaited<ReturnType<typeof getGarTiposEmissao>>, TError = ErrorType<unknown>>(
+ params?: GetGarTiposEmissaoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarTiposEmissao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarTiposEmissaoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarTiposProdutoUrl = (params?: GetGarTiposProdutoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/gestaoar/tipos-produto?${stringifiedParams}` : `/api/gestaoar/tipos-produto`
+}
+
+/**
+ * @summary Tipos de produto disponíveis na Gestão AR
+ */
+export const getGarTiposProduto = async (params?: GetGarTiposProdutoParams, options?: RequestInit): Promise<GarTipoProduto[]> => {
+
+  return customFetch<GarTipoProduto[]>(getGetGarTiposProdutoUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarTiposProdutoQueryKey = (params?: GetGarTiposProdutoParams,) => {
+    return [
+    `/api/gestaoar/tipos-produto`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGarTiposProdutoQueryOptions = <TData = Awaited<ReturnType<typeof getGarTiposProduto>>, TError = ErrorType<unknown>>(params?: GetGarTiposProdutoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarTiposProduto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarTiposProdutoQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarTiposProduto>>> = ({ signal }) => getGarTiposProduto(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarTiposProduto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarTiposProdutoQueryResult = NonNullable<Awaited<ReturnType<typeof getGarTiposProduto>>>
+export type GetGarTiposProdutoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Tipos de produto disponíveis na Gestão AR
+ */
+
+export function useGetGarTiposProduto<TData = Awaited<ReturnType<typeof getGarTiposProduto>>, TError = ErrorType<unknown>>(
+ params?: GetGarTiposProdutoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarTiposProduto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarTiposProdutoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarValidadesUrl = (params?: GetGarValidadesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/gestaoar/validades?${stringifiedParams}` : `/api/gestaoar/validades`
+}
+
+/**
+ * @summary Validades disponíveis na Gestão AR
+ */
+export const getGarValidades = async (params?: GetGarValidadesParams, options?: RequestInit): Promise<GarValidade[]> => {
+
+  return customFetch<GarValidade[]>(getGetGarValidadesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarValidadesQueryKey = (params?: GetGarValidadesParams,) => {
+    return [
+    `/api/gestaoar/validades`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGarValidadesQueryOptions = <TData = Awaited<ReturnType<typeof getGarValidades>>, TError = ErrorType<unknown>>(params?: GetGarValidadesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarValidades>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarValidadesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarValidades>>> = ({ signal }) => getGarValidades(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarValidades>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarValidadesQueryResult = NonNullable<Awaited<ReturnType<typeof getGarValidades>>>
+export type GetGarValidadesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Validades disponíveis na Gestão AR
+ */
+
+export function useGetGarValidades<TData = Awaited<ReturnType<typeof getGarValidades>>, TError = ErrorType<unknown>>(
+ params?: GetGarValidadesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarValidades>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarValidadesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarFamiliasUrl = () => {
+
+
+
+
+  return `/api/gestaoar/familias`
+}
+
+/**
+ * @summary Famílias de produtos da Gestão AR
+ */
+export const getGarFamilias = async ( options?: RequestInit): Promise<GetGarFamilias200Item[]> => {
+
+  return customFetch<GetGarFamilias200Item[]>(getGetGarFamiliasUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarFamiliasQueryKey = () => {
+    return [
+    `/api/gestaoar/familias`
+    ] as const;
+    }
+
+
+export const getGetGarFamiliasQueryOptions = <TData = Awaited<ReturnType<typeof getGarFamilias>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarFamilias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarFamiliasQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarFamilias>>> = ({ signal }) => getGarFamilias({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarFamilias>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarFamiliasQueryResult = NonNullable<Awaited<ReturnType<typeof getGarFamilias>>>
+export type GetGarFamiliasQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Famílias de produtos da Gestão AR
+ */
+
+export function useGetGarFamilias<TData = Awaited<ReturnType<typeof getGarFamilias>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarFamilias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarFamiliasQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarFormasPagamentoUrl = () => {
+
+
+
+
+  return `/api/gestaoar/formas-pagamento`
+}
+
+/**
+ * @summary Formas de pagamento da Gestão AR
+ */
+export const getGarFormasPagamento = async ( options?: RequestInit): Promise<GarFormaPagamento[]> => {
+
+  return customFetch<GarFormaPagamento[]>(getGetGarFormasPagamentoUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarFormasPagamentoQueryKey = () => {
+    return [
+    `/api/gestaoar/formas-pagamento`
+    ] as const;
+    }
+
+
+export const getGetGarFormasPagamentoQueryOptions = <TData = Awaited<ReturnType<typeof getGarFormasPagamento>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarFormasPagamento>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarFormasPagamentoQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarFormasPagamento>>> = ({ signal }) => getGarFormasPagamento({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarFormasPagamento>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarFormasPagamentoQueryResult = NonNullable<Awaited<ReturnType<typeof getGarFormasPagamento>>>
+export type GetGarFormasPagamentoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Formas de pagamento da Gestão AR
+ */
+
+export function useGetGarFormasPagamento<TData = Awaited<ReturnType<typeof getGarFormasPagamento>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarFormasPagamento>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarFormasPagamentoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCheckGarPsBioUrl = () => {
+
+
+
+
+  return `/api/gestaoar/psbio`
+}
+
+/**
+ * @summary Verifica biometria coletada (PSBio) para um CPF
+ */
+export const checkGarPsBio = async (garPsBioInput: GarPsBioInput, options?: RequestInit): Promise<GarPsBioResult> => {
+
+  return customFetch<GarPsBioResult>(getCheckGarPsBioUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      garPsBioInput,)
+  }
+);}
+
+
+
+
+export const getCheckGarPsBioMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkGarPsBio>>, TError,{data: BodyType<GarPsBioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkGarPsBio>>, TError,{data: BodyType<GarPsBioInput>}, TContext> => {
+
+const mutationKey = ['checkGarPsBio'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkGarPsBio>>, {data: BodyType<GarPsBioInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  checkGarPsBio(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckGarPsBioMutationResult = NonNullable<Awaited<ReturnType<typeof checkGarPsBio>>>
+    export type CheckGarPsBioMutationBody = BodyType<GarPsBioInput>
+    export type CheckGarPsBioMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Verifica biometria coletada (PSBio) para um CPF
+ */
+export const useCheckGarPsBio = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkGarPsBio>>, TError,{data: BodyType<GarPsBioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkGarPsBio>>,
+        TError,
+        {data: BodyType<GarPsBioInput>},
+        TContext
+      > => {
+      return useMutation(getCheckGarPsBioMutationOptions(options));
+    }
+
+export const getGetGarUFsUrl = () => {
+
+
+
+
+  return `/api/gestaoar/ufs`
+}
+
+/**
+ * @summary UFs com locais de atendimento na Gestão AR
+ */
+export const getGarUFs = async ( options?: RequestInit): Promise<GarUF[]> => {
+
+  return customFetch<GarUF[]>(getGetGarUFsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarUFsQueryKey = () => {
+    return [
+    `/api/gestaoar/ufs`
+    ] as const;
+    }
+
+
+export const getGetGarUFsQueryOptions = <TData = Awaited<ReturnType<typeof getGarUFs>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarUFs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarUFsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarUFs>>> = ({ signal }) => getGarUFs({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarUFs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarUFsQueryResult = NonNullable<Awaited<ReturnType<typeof getGarUFs>>>
+export type GetGarUFsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary UFs com locais de atendimento na Gestão AR
+ */
+
+export function useGetGarUFs<TData = Awaited<ReturnType<typeof getGarUFs>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarUFs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarUFsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarMunicipiosUrl = (params: GetGarMunicipiosParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/gestaoar/municipios?${stringifiedParams}` : `/api/gestaoar/municipios`
+}
+
+/**
+ * @summary Municípios com locais de atendimento
+ */
+export const getGarMunicipios = async (params: GetGarMunicipiosParams, options?: RequestInit): Promise<GarMunicipio[]> => {
+
+  return customFetch<GarMunicipio[]>(getGetGarMunicipiosUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarMunicipiosQueryKey = (params?: GetGarMunicipiosParams,) => {
+    return [
+    `/api/gestaoar/municipios`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGarMunicipiosQueryOptions = <TData = Awaited<ReturnType<typeof getGarMunicipios>>, TError = ErrorType<unknown>>(params: GetGarMunicipiosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarMunicipios>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarMunicipiosQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarMunicipios>>> = ({ signal }) => getGarMunicipios(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarMunicipios>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarMunicipiosQueryResult = NonNullable<Awaited<ReturnType<typeof getGarMunicipios>>>
+export type GetGarMunicipiosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Municípios com locais de atendimento
+ */
+
+export function useGetGarMunicipios<TData = Awaited<ReturnType<typeof getGarMunicipios>>, TError = ErrorType<unknown>>(
+ params: GetGarMunicipiosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarMunicipios>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarMunicipiosQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarLocaisUrl = (params?: GetGarLocaisParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/gestaoar/locais?${stringifiedParams}` : `/api/gestaoar/locais`
+}
+
+/**
+ * @summary Locais de agendamento da Gestão AR
+ */
+export const getGarLocais = async (params?: GetGarLocaisParams, options?: RequestInit): Promise<GarLocalAgendamento[]> => {
+
+  return customFetch<GarLocalAgendamento[]>(getGetGarLocaisUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarLocaisQueryKey = (params?: GetGarLocaisParams,) => {
+    return [
+    `/api/gestaoar/locais`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGarLocaisQueryOptions = <TData = Awaited<ReturnType<typeof getGarLocais>>, TError = ErrorType<unknown>>(params?: GetGarLocaisParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarLocais>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarLocaisQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarLocais>>> = ({ signal }) => getGarLocais(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarLocais>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarLocaisQueryResult = NonNullable<Awaited<ReturnType<typeof getGarLocais>>>
+export type GetGarLocaisQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Locais de agendamento da Gestão AR
+ */
+
+export function useGetGarLocais<TData = Awaited<ReturnType<typeof getGarLocais>>, TError = ErrorType<unknown>>(
+ params?: GetGarLocaisParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarLocais>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarLocaisQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarSlotsLocalUrl = (hashLocal: string,) => {
+
+
+
+
+  return `/api/gestaoar/locais/${hashLocal}/slots`
+}
+
+/**
+ * @summary Slots de atendimento de um local
+ */
+export const getGarSlotsLocal = async (hashLocal: string, options?: RequestInit): Promise<GarSlotAtendimento[]> => {
+
+  return customFetch<GarSlotAtendimento[]>(getGetGarSlotsLocalUrl(hashLocal),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarSlotsLocalQueryKey = (hashLocal: string,) => {
+    return [
+    `/api/gestaoar/locais/${hashLocal}/slots`
+    ] as const;
+    }
+
+
+export const getGetGarSlotsLocalQueryOptions = <TData = Awaited<ReturnType<typeof getGarSlotsLocal>>, TError = ErrorType<unknown>>(hashLocal: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarSlotsLocal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarSlotsLocalQueryKey(hashLocal);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarSlotsLocal>>> = ({ signal }) => getGarSlotsLocal(hashLocal, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(hashLocal), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarSlotsLocal>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarSlotsLocalQueryResult = NonNullable<Awaited<ReturnType<typeof getGarSlotsLocal>>>
+export type GetGarSlotsLocalQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Slots de atendimento de um local
+ */
+
+export function useGetGarSlotsLocal<TData = Awaited<ReturnType<typeof getGarSlotsLocal>>, TError = ErrorType<unknown>>(
+ hashLocal: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarSlotsLocal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarSlotsLocalQueryOptions(hashLocal,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarRenovacoesUrl = (params: GetGarRenovacoesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/gestaoar/renovacoes?${stringifiedParams}` : `/api/gestaoar/renovacoes`
+}
+
+/**
+ * @summary Extrato de renovações da Gestão AR
+ */
+export const getGarRenovacoes = async (params: GetGarRenovacoesParams, options?: RequestInit): Promise<GarRenovacaoItem[]> => {
+
+  return customFetch<GarRenovacaoItem[]>(getGetGarRenovacoesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarRenovacoesQueryKey = (params?: GetGarRenovacoesParams,) => {
+    return [
+    `/api/gestaoar/renovacoes`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGarRenovacoesQueryOptions = <TData = Awaited<ReturnType<typeof getGarRenovacoes>>, TError = ErrorType<unknown>>(params: GetGarRenovacoesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarRenovacoes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarRenovacoesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarRenovacoes>>> = ({ signal }) => getGarRenovacoes(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarRenovacoes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarRenovacoesQueryResult = NonNullable<Awaited<ReturnType<typeof getGarRenovacoes>>>
+export type GetGarRenovacoesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Extrato de renovações da Gestão AR
+ */
+
+export function useGetGarRenovacoes<TData = Awaited<ReturnType<typeof getGarRenovacoes>>, TError = ErrorType<unknown>>(
+ params: GetGarRenovacoesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarRenovacoes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarRenovacoesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarPedidoUrl = (garPedido: string,) => {
+
+
+
+
+  return `/api/gestaoar/pedido/${garPedido}`
+}
+
+/**
+ * @summary Consulta dados de um pedido na Gestão AR
+ */
+export const getGarPedido = async (garPedido: string, options?: RequestInit): Promise<GarStatusPedido> => {
+
+  return customFetch<GarStatusPedido>(getGetGarPedidoUrl(garPedido),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarPedidoQueryKey = (garPedido: string,) => {
+    return [
+    `/api/gestaoar/pedido/${garPedido}`
+    ] as const;
+    }
+
+
+export const getGetGarPedidoQueryOptions = <TData = Awaited<ReturnType<typeof getGarPedido>>, TError = ErrorType<unknown>>(garPedido: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarPedido>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarPedidoQueryKey(garPedido);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarPedido>>> = ({ signal }) => getGarPedido(garPedido, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(garPedido), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarPedido>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarPedidoQueryResult = NonNullable<Awaited<ReturnType<typeof getGarPedido>>>
+export type GetGarPedidoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Consulta dados de um pedido na Gestão AR
+ */
+
+export function useGetGarPedido<TData = Awaited<ReturnType<typeof getGarPedido>>, TError = ErrorType<unknown>>(
+ garPedido: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarPedido>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarPedidoQueryOptions(garPedido,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarPedidoStatusUrl = (garPedido: string,) => {
+
+
+
+
+  return `/api/gestaoar/pedido/${garPedido}/status`
+}
+
+/**
+ * @summary Consulta status atual de um pedido na Gestão AR
+ */
+export const getGarPedidoStatus = async (garPedido: string, options?: RequestInit): Promise<GarStatusPedido> => {
+
+  return customFetch<GarStatusPedido>(getGetGarPedidoStatusUrl(garPedido),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarPedidoStatusQueryKey = (garPedido: string,) => {
+    return [
+    `/api/gestaoar/pedido/${garPedido}/status`
+    ] as const;
+    }
+
+
+export const getGetGarPedidoStatusQueryOptions = <TData = Awaited<ReturnType<typeof getGarPedidoStatus>>, TError = ErrorType<unknown>>(garPedido: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarPedidoStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarPedidoStatusQueryKey(garPedido);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarPedidoStatus>>> = ({ signal }) => getGarPedidoStatus(garPedido, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(garPedido), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarPedidoStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarPedidoStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getGarPedidoStatus>>>
+export type GetGarPedidoStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Consulta status atual de um pedido na Gestão AR
+ */
+
+export function useGetGarPedidoStatus<TData = Awaited<ReturnType<typeof getGarPedidoStatus>>, TError = ErrorType<unknown>>(
+ garPedido: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarPedidoStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarPedidoStatusQueryOptions(garPedido,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getEmitirProtocoloGarUrl = (garPedido: string,) => {
+
+
+
+
+  return `/api/gestaoar/pedido/${garPedido}/emitir-protocolo`
+}
+
+/**
+ * @summary Emite protocolo de um pedido na Gestão AR
+ */
+export const emitirProtocoloGar = async (garPedido: string,
+    garEmitirProtocoloInput: GarEmitirProtocoloInput, options?: RequestInit): Promise<GarEmitirProtocoloResult[]> => {
+
+  return customFetch<GarEmitirProtocoloResult[]>(getEmitirProtocoloGarUrl(garPedido),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      garEmitirProtocoloInput,)
+  }
+);}
+
+
+
+
+export const getEmitirProtocoloGarMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof emitirProtocoloGar>>, TError,{garPedido: string;data: BodyType<GarEmitirProtocoloInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof emitirProtocoloGar>>, TError,{garPedido: string;data: BodyType<GarEmitirProtocoloInput>}, TContext> => {
+
+const mutationKey = ['emitirProtocoloGar'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof emitirProtocoloGar>>, {garPedido: string;data: BodyType<GarEmitirProtocoloInput>}> = (props) => {
+          const {garPedido,data} = props ?? {};
+
+          return  emitirProtocoloGar(garPedido,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EmitirProtocoloGarMutationResult = NonNullable<Awaited<ReturnType<typeof emitirProtocoloGar>>>
+    export type EmitirProtocoloGarMutationBody = BodyType<GarEmitirProtocoloInput>
+    export type EmitirProtocoloGarMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Emite protocolo de um pedido na Gestão AR
+ */
+export const useEmitirProtocoloGar = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof emitirProtocoloGar>>, TError,{garPedido: string;data: BodyType<GarEmitirProtocoloInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof emitirProtocoloGar>>,
+        TError,
+        {garPedido: string;data: BodyType<GarEmitirProtocoloInput>},
+        TContext
+      > => {
+      return useMutation(getEmitirProtocoloGarMutationOptions(options));
+    }
+
+export const getGetGarPedidosClienteUrl = (documento: string,) => {
+
+
+
+
+  return `/api/gestaoar/cliente/${documento}/pedidos`
+}
+
+/**
+ * @summary Pedidos de um cliente (CPF/CNPJ) na Gestão AR
+ */
+export const getGarPedidosCliente = async (documento: string, options?: RequestInit): Promise<GetGarPedidosCliente200> => {
+
+  return customFetch<GetGarPedidosCliente200>(getGetGarPedidosClienteUrl(documento),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarPedidosClienteQueryKey = (documento: string,) => {
+    return [
+    `/api/gestaoar/cliente/${documento}/pedidos`
+    ] as const;
+    }
+
+
+export const getGetGarPedidosClienteQueryOptions = <TData = Awaited<ReturnType<typeof getGarPedidosCliente>>, TError = ErrorType<unknown>>(documento: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarPedidosCliente>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarPedidosClienteQueryKey(documento);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarPedidosCliente>>> = ({ signal }) => getGarPedidosCliente(documento, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(documento), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarPedidosCliente>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarPedidosClienteQueryResult = NonNullable<Awaited<ReturnType<typeof getGarPedidosCliente>>>
+export type GetGarPedidosClienteQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Pedidos de um cliente (CPF/CNPJ) na Gestão AR
+ */
+
+export function useGetGarPedidosCliente<TData = Awaited<ReturnType<typeof getGarPedidosCliente>>, TError = ErrorType<unknown>>(
+ documento: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarPedidosCliente>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarPedidosClienteQueryOptions(documento,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarPedidosContadorUrl = (documento: string,) => {
+
+
+
+
+  return `/api/gestaoar/contador/${documento}/pedidos`
+}
+
+/**
+ * @summary Pedidos indicados por um contador na Gestão AR
+ */
+export const getGarPedidosContador = async (documento: string, options?: RequestInit): Promise<GetGarPedidosContador200> => {
+
+  return customFetch<GetGarPedidosContador200>(getGetGarPedidosContadorUrl(documento),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarPedidosContadorQueryKey = (documento: string,) => {
+    return [
+    `/api/gestaoar/contador/${documento}/pedidos`
+    ] as const;
+    }
+
+
+export const getGetGarPedidosContadorQueryOptions = <TData = Awaited<ReturnType<typeof getGarPedidosContador>>, TError = ErrorType<unknown>>(documento: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarPedidosContador>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarPedidosContadorQueryKey(documento);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarPedidosContador>>> = ({ signal }) => getGarPedidosContador(documento, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(documento), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarPedidosContador>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarPedidosContadorQueryResult = NonNullable<Awaited<ReturnType<typeof getGarPedidosContador>>>
+export type GetGarPedidosContadorQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Pedidos indicados por um contador na Gestão AR
+ */
+
+export function useGetGarPedidosContador<TData = Awaited<ReturnType<typeof getGarPedidosContador>>, TError = ErrorType<unknown>>(
+ documento: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarPedidosContador>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarPedidosContadorQueryOptions(documento,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSyncGarOrderUrl = (orderId: number,) => {
+
+
+
+
+  return `/api/gestaoar/sync-order/${orderId}`
+}
+
+/**
+ * @summary Sincroniza status de um pedido local com a Gestão AR
+ */
+export const syncGarOrder = async (orderId: number, options?: RequestInit): Promise<GarSyncResult> => {
+
+  return customFetch<GarSyncResult>(getSyncGarOrderUrl(orderId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSyncGarOrderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncGarOrder>>, TError,{orderId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncGarOrder>>, TError,{orderId: number}, TContext> => {
+
+const mutationKey = ['syncGarOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncGarOrder>>, {orderId: number}> = (props) => {
+          const {orderId} = props ?? {};
+
+          return  syncGarOrder(orderId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncGarOrderMutationResult = NonNullable<Awaited<ReturnType<typeof syncGarOrder>>>
+
+    export type SyncGarOrderMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Sincroniza status de um pedido local com a Gestão AR
+ */
+export const useSyncGarOrder = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncGarOrder>>, TError,{orderId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncGarOrder>>,
+        TError,
+        {orderId: number},
+        TContext
+      > => {
+      return useMutation(getSyncGarOrderMutationOptions(options));
+    }
+
+export const getGarComprarOrderUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/gar-comprar`
+}
+
+/**
+ * @summary Registra a venda de um pedido na Gestão AR e emite protocolo
+ */
+export const garComprarOrder = async (id: number,
+    garComprarInput: GarComprarInput, options?: RequestInit): Promise<GarComprarResult> => {
+
+  return customFetch<GarComprarResult>(getGarComprarOrderUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      garComprarInput,)
+  }
+);}
+
+
+
+
+export const getGarComprarOrderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof garComprarOrder>>, TError,{id: number;data: BodyType<GarComprarInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof garComprarOrder>>, TError,{id: number;data: BodyType<GarComprarInput>}, TContext> => {
+
+const mutationKey = ['garComprarOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof garComprarOrder>>, {id: number;data: BodyType<GarComprarInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  garComprarOrder(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GarComprarOrderMutationResult = NonNullable<Awaited<ReturnType<typeof garComprarOrder>>>
+    export type GarComprarOrderMutationBody = BodyType<GarComprarInput>
+    export type GarComprarOrderMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Registra a venda de um pedido na Gestão AR e emite protocolo
+ */
+export const useGarComprarOrder = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof garComprarOrder>>, TError,{id: number;data: BodyType<GarComprarInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof garComprarOrder>>,
+        TError,
+        {id: number;data: BodyType<GarComprarInput>},
+        TContext
+      > => {
+      return useMutation(getGarComprarOrderMutationOptions(options));
     }
 
 export const getGetSettingsUrl = () => {
