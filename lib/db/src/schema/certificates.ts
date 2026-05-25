@@ -8,6 +8,7 @@ export const certificatesTable = pgTable("certificates", {
   description: text("description"),
   price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0.00"),
   active: boolean("active").notNull().default(true),
+  garHashProduto: text("gar_hash_produto"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

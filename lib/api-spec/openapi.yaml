@@ -1669,6 +1669,8 @@ components:
           type: number
         active:
           type: boolean
+        garHashProduto:
+          type: ["string", "null"]
         createdAt:
           type: string
 
@@ -1684,6 +1686,8 @@ components:
           type: number
         active:
           type: boolean
+        garHashProduto:
+          type: string
 
     CertificateUpdate:
       type: object
@@ -1696,6 +1700,8 @@ components:
           type: number
         active:
           type: boolean
+        garHashProduto:
+          type: string
 
     Order:
       type: object

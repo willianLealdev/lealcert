@@ -5,22 +5,27 @@ import { requireAdmin } from "../middlewares/auth";
 
 const router = Router();
 
-router.get("/certificates", async (req, res): Promise<void> => {
-  const { activeOnly } = req.query;
-  const rows = await db.select().from(certificatesTable).orderBy(certificatesTable.id);
-  const result = activeOnly === "true" ? rows.filter(r => r.active) : rows;
-  res.json(result.map(c => ({
+function certRow(c: typeof certificatesTable.$inferSelect) {
+  return {
     id: c.id,
     name: c.name,
     description: c.description,
     price: parseFloat(c.price),
     active: c.active,
+    garHashProduto: c.garHashProduto ?? null,
     createdAt: c.createdAt,
-  })));
+  };
+}
+
+router.get("/certificates", async (req, res): Promise<void> => {
+  const { activeOnly } = req.query;
+  const rows = await db.select().from(certificatesTable).orderBy(certificatesTable.id);
+  const result = activeOnly === "true" ? rows.filter(r => r.active) : rows;
+  res.json(result.map(certRow));
 });
 
 router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {
-  const { name, description, price, active } = req.body ?? {};
+  const { name, description, price, active, garHashProduto } = req.body ?? {};
   if (!name || price === undefined) {
     res.status(400).json({ error: "Nome e preço são obrigatórios." });
     return;
@@ -30,25 +35,20 @@ router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {
     description: description || null,
     price: String(price),
     active: active !== false,
+    garHashProduto: garHashProduto || null,
   }).returning();
-  res.status(201).json({
-    id: cert.id,
-    name: cert.name,
-    description: cert.description,
-    price: parseFloat(cert.price),
-    active: cert.active,
-    createdAt: cert.createdAt,
-  });
+  res.status(201).json(certRow(cert));
 });
 
 router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const { name, description, price, active } = req.body ?? {};
+  const { name, description, price, active, garHashProduto } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
   if (description !== undefined) updates.description = description;
   if (price !== undefined) updates.price = String(price);
   if (active !== undefined) updates.active = active;
+  if (garHashProduto !== undefined) updates.garHashProduto = garHashProduto || null;
 
   const [cert] = await db
     .update(certificatesTable)
@@ -59,14 +59,7 @@ router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> 
     res.status(404).json({ error: "Modelo não encontrado." });
     return;
   }
-  res.json({
-    id: cert.id,
-    name: cert.name,
-    description: cert.description,
-    price: parseFloat(cert.price),
-    active: cert.active,
-    createdAt: cert.createdAt,
-  });
+  res.json(certRow(cert));
 });
 
 router.delete("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {

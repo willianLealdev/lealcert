@@ -129,6 +129,8 @@ export interface Certificate {
   description?: string | null;
   price: number;
   active: boolean;
+  /** @nullable */
+  garHashProduto?: string | null;
   createdAt: string;
 }
 
@@ -137,6 +139,7 @@ export interface CertificateInput {
   description?: string;
   price: number;
   active?: boolean;
+  garHashProduto?: string;
 }
 
 export interface CertificateUpdate {
@@ -144,6 +147,7 @@ export interface CertificateUpdate {
   description?: string;
   price?: number;
   active?: boolean;
+  garHashProduto?: string;
 }
 
 export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];

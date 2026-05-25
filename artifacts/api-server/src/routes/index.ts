@@ -12,10 +12,12 @@ import uploadRouter from "./upload";
 import marketingRouter from "./marketing";
 import chatRouter from "./chat";
 import gestaoarRouter from "./gestaoar";
+import mpWebhookRouter from "./mp-webhook";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(mpWebhookRouter);
 router.use(chatRouter);
 router.use(authRouter);
 router.use(usersRouter);
