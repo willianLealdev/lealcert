@@ -94,6 +94,57 @@ export async function sendOrderStatusEmail(opts: {
   logger.info({ to: opts.to, orderNumber: opts.orderNumber, status: opts.status }, "Order status email sent");
 }
 
+export async function sendSchedulingEmail(opts: {
+  to: string;
+  customerName: string;
+  orderNumber: string;
+  protocolo: string;
+  localNome: string;
+  dataHora: string;
+  siteUrl?: string;
+}): Promise<void> {
+  const subject = `Agendamento confirmado — Pedido #${opts.orderNumber} | LealCert`;
+  const html = `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#f8fafc;padding:32px 24px;border-radius:12px;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="font-size:26px;font-weight:900;color:#0f172a;letter-spacing:-1px;">LEAL<span style="color:#2563eb;">CERT</span></span>
+        <p style="color:#64748b;font-size:13px;margin:4px 0 0;">Certificados Digitais ICP-Brasil</p>
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:24px;border:1px solid #e2e8f0;">
+        <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">🗓 Agendamento confirmado!</h2>
+        <p style="color:#475569;margin:0 0 20px;">Olá, <strong>${opts.customerName}</strong>! Seu atendimento foi agendado com sucesso:</p>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:20px;">
+          <table style="width:100%;border-collapse:collapse;font-size:14px;">
+            <tr><td style="padding:6px 0;color:#64748b;width:40%;">Pedido</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">#${opts.orderNumber}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;font-weight:700;color:#2563eb;">${opts.protocolo}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b;">Local</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">${opts.localNome}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b;">Data e hora</td><td style="padding:6px 0;font-weight:700;color:#0f172a;">${opts.dataHora}</td></tr>
+          </table>
+        </div>
+        <div style="padding:14px;background:#fef3c7;border-radius:8px;font-size:13px;color:#92400e;margin-bottom:16px;">
+          ⚠️ <strong>Importante:</strong> apresente seu documento de identificação original (RG ou CNH) no momento do atendimento. Compareça com 10 minutos de antecedência.
+        </div>
+        <p style="font-size:13px;color:#475569;margin:0;">
+          Para reagendar ou verificar seu pedido, acesse seu painel em 
+          <a href="${opts.siteUrl || "https://lealcert.com.br"}/entrar" style="color:#2563eb;">${opts.siteUrl || "lealcert.com.br"}</a>.
+        </p>
+      </div>
+      <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:20px;">
+        Dúvidas? Fale conosco pelo WhatsApp ou responda este e-mail.
+      </p>
+    </div>
+  `;
+  const text = `Agendamento confirmado!\n\nOlá, ${opts.customerName}!\n\nPedido: #${opts.orderNumber}\nProtocolo: ${opts.protocolo}\nLocal: ${opts.localNome}\nData e hora: ${opts.dataHora}\n\nApresente documento de identificação original.\n\nLealCert — Certificados Digitais`;
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "📧 [DEV] Scheduling confirmation email (SMTP not configured)");
+    return;
+  }
+  await transporter.sendMail({ from: FROM, to: opts.to, subject, html, text });
+  logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "Scheduling confirmation email sent");
+}
+
 export async function sendVerificationEmail(to: string, name: string, code: string): Promise<void> {
   const subject = "Código de verificação — LealCert";
   const html = `

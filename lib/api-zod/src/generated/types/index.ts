@@ -12,6 +12,8 @@ export * from './adminStatsMeta';
 export * from './adminStatsMetaTiers';
 export * from './adminStatsRevenue';
 export * from './adminStatsRevenue12';
+export * from './agendarInput';
+export * from './agendarResult';
 export * from './appointment';
 export * from './appSettings';
 export * from './appSettingsUpdate';

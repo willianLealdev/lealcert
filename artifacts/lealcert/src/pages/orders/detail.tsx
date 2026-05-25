@@ -1,5 +1,14 @@
 import { useParams } from "wouter";
-import { useGetOrder, useUpdateOrder, useCreatePayment, useGarComprarOrder, useSyncGarOrder } from "@workspace/api-client-react";
+import {
+  useGetOrder,
+  useUpdateOrder,
+  useCreatePayment,
+  useGarComprarOrder,
+  useSyncGarOrder,
+  useGetOrderGarLocais,
+  useGetOrderGarSlots,
+  useAgendarOrder,
+} from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,10 +16,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CreditCard, Loader2, FileText, Download, RefreshCw, ShoppingBag, ExternalLink, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft, CreditCard, Loader2, FileText, Download, RefreshCw,
+  ShoppingBag, CheckCircle2, Calendar, MapPin, Video, Clock, ChevronRight, Check,
+} from "lucide-react";
 import { Link } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const STATUS_LABELS: Record<string, string> = {
   created: "Criado",
@@ -46,6 +60,477 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+// ── Componente de Agendamento ─────────────────────────────────────────────────
+function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgendamentoLocalNome, onSuccess }: {
+  orderId: number;
+  garProtocolo: string;
+  garAgendamentoDataHora?: string;
+  garAgendamentoLocalNome?: string;
+  onSuccess: () => void;
+}) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"locais" | "slots" | "confirm">("locais");
+  const [ufFiltro, setUfFiltro] = useState("");
+  const [municipioFiltro, setMunicipioFiltro] = useState("");
+  const [localSelecionado, setLocalSelecionado] = useState<{ HashLocal: string; NomeLocalAgendamento: string; NomeCidadeLocalAgendamento?: string; UF: string; Endereco?: string; isVideo: boolean } | null>(null);
+  const [slotSelecionado, setSlotSelecionado] = useState<{ HashSlot: string; NomeSlotAgendamento: string } | null>(null);
+
+  const { data: locais, isLoading: loadingLocais } = useGetOrderGarLocais(orderId);
+  const { data: slots, isLoading: loadingSlots } = useGetOrderGarSlots(
+    orderId,
+    localSelecionado?.HashLocal ?? "_",
+  );
+
+  const agendar = useAgendarOrder({
+    mutation: {
+      onSuccess: (data) => {
+        setOpen(false);
+        toast({
+          title: "Agendamento confirmado!",
+          description: `${data.localNome} — ${data.dataHora}. Um e-mail foi enviado com os detalhes.`,
+        });
+        onSuccess();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao agendar.";
+        toast({ title: "Erro no agendamento", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
+  const isVideo = (nome: string) => /video/i.test(nome) || /videoconfer/i.test(nome);
+
+  const locaisFiltrados = useMemo(() => {
+    if (!locais) return [];
+    return locais.filter(l => {
+      const ufOk = !ufFiltro || l.UF?.toLowerCase() === ufFiltro.toLowerCase();
+      const munOk = !municipioFiltro || l.NomeCidadeLocalAgendamento?.toLowerCase().includes(municipioFiltro.toLowerCase());
+      return ufOk && munOk;
+    });
+  }, [locais, ufFiltro, municipioFiltro]);
+
+  const ufsDisponiveis = useMemo(() => {
+    const set = new Set<string>();
+    (locais ?? []).forEach(l => { if (l.UF) set.add(l.UF); });
+    return Array.from(set).sort();
+  }, [locais]);
+
+  function handleOpenModal() {
+    setStep("locais");
+    setLocalSelecionado(null);
+    setSlotSelecionado(null);
+    setUfFiltro("");
+    setMunicipioFiltro("");
+    setOpen(true);
+  }
+
+  function handleSelecionarLocal(l: typeof locaisFiltrados[0]) {
+    setLocalSelecionado({
+      HashLocal: l.HashLocal,
+      NomeLocalAgendamento: l.NomeLocalAgendamento,
+      NomeCidadeLocalAgendamento: l.NomeCidadeLocalAgendamento,
+      UF: l.UF ?? "",
+      Endereco: l.Endereco,
+      isVideo: isVideo(l.NomeLocalAgendamento),
+    });
+    setSlotSelecionado(null);
+    setStep("slots");
+  }
+
+  function handleSelecionarSlot(s: { HashSlot: string; NomeSlotAgendamento: string }) {
+    setSlotSelecionado(s);
+    setStep("confirm");
+  }
+
+  function handleConfirmar() {
+    if (!localSelecionado || !slotSelecionado) return;
+    agendar.mutate({
+      id: orderId,
+      data: {
+        hashLocal: localSelecionado.HashLocal,
+        hashSlot: slotSelecionado.HashSlot,
+        localNome: localSelecionado.NomeLocalAgendamento,
+        slotNome: slotSelecionado.NomeSlotAgendamento,
+      },
+    });
+  }
+
+  // Já agendado — mostrar card de confirmação
+  if (garAgendamentoDataHora) {
+    return (
+      <Card className="border-green-200 bg-green-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-green-800">
+            <Check className="h-5 w-5" />
+            Atendimento Agendado
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {garAgendamentoLocalNome && (
+              <div className="flex items-start gap-2">
+                {isVideo(garAgendamentoLocalNome)
+                  ? <Video className="h-4 w-4 mt-0.5 text-green-700 shrink-0" />
+                  : <MapPin className="h-4 w-4 mt-0.5 text-green-700 shrink-0" />}
+                <div>
+                  <p className="text-xs text-green-700">Local</p>
+                  <p className="text-sm font-semibold text-green-900">{garAgendamentoLocalNome}</p>
+                </div>
+              </div>
+            )}
+            <div className="flex items-start gap-2">
+              <Clock className="h-4 w-4 mt-0.5 text-green-700 shrink-0" />
+              <div>
+                <p className="text-xs text-green-700">Data e hora</p>
+                <p className="text-sm font-semibold text-green-900">{garAgendamentoDataHora}</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-green-700">
+            Um e-mail de confirmação foi enviado com os detalhes do atendimento.
+          </p>
+          <Button variant="outline" size="sm" className="border-green-400 text-green-800 hover:bg-green-100" onClick={handleOpenModal}>
+            <Calendar className="h-4 w-4 mr-2" />
+            Reagendar
+          </Button>
+        </CardContent>
+
+        <SchedulingDialog
+          open={open}
+          onOpenChange={setOpen}
+          step={step}
+          setStep={setStep}
+          locais={locaisFiltrados}
+          loadingLocais={loadingLocais}
+          ufsDisponiveis={ufsDisponiveis}
+          ufFiltro={ufFiltro}
+          setUfFiltro={setUfFiltro}
+          municipioFiltro={municipioFiltro}
+          setMunicipioFiltro={setMunicipioFiltro}
+          localSelecionado={localSelecionado}
+          slots={slots}
+          loadingSlots={loadingSlots}
+          slotSelecionado={slotSelecionado}
+          onSelecionarLocal={handleSelecionarLocal}
+          onSelecionarSlot={handleSelecionarSlot}
+          onConfirmar={handleConfirmar}
+          isPending={agendar.isPending}
+          isVideo={isVideo}
+        />
+      </Card>
+    );
+  }
+
+  // Protocolo emitido mas sem agendamento — convidar para agendar
+  return (
+    <Card className="border-blue-200 bg-blue-50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-blue-800">
+          <Calendar className="h-5 w-5" />
+          Agendar Atendimento
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-blue-800">
+          Seu protocolo foi emitido! Agora é só escolher o local e horário mais convenientes para você.
+        </p>
+        <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-100 px-3 py-2 rounded-md">
+          <Video className="h-4 w-4 shrink-0" />
+          <span>Videoconferência disponível — atendimento no conforto da sua casa.</span>
+        </div>
+        <Button onClick={handleOpenModal} className="w-full sm:w-auto">
+          <Calendar className="h-4 w-4 mr-2" />
+          Escolher data e horário
+        </Button>
+      </CardContent>
+
+      <SchedulingDialog
+        open={open}
+        onOpenChange={setOpen}
+        step={step}
+        setStep={setStep}
+        locais={locaisFiltrados}
+        loadingLocais={loadingLocais}
+        ufsDisponiveis={ufsDisponiveis}
+        ufFiltro={ufFiltro}
+        setUfFiltro={setUfFiltro}
+        municipioFiltro={municipioFiltro}
+        setMunicipioFiltro={setMunicipioFiltro}
+        localSelecionado={localSelecionado}
+        slots={slots}
+        loadingSlots={loadingSlots}
+        slotSelecionado={slotSelecionado}
+        onSelecionarLocal={handleSelecionarLocal}
+        onSelecionarSlot={handleSelecionarSlot}
+        onConfirmar={handleConfirmar}
+        isPending={agendar.isPending}
+        isVideo={isVideo}
+      />
+    </Card>
+  );
+}
+
+// ── Modal de Agendamento ──────────────────────────────────────────────────────
+type Local = {
+  HashLocal: string;
+  NomeLocalAgendamento: string;
+  NomeCidadeLocalAgendamento?: string;
+  UF?: string;
+  Endereco?: string;
+  isVideo: boolean;
+};
+
+function SchedulingDialog({
+  open, onOpenChange, step, setStep,
+  locais, loadingLocais, ufsDisponiveis,
+  ufFiltro, setUfFiltro, municipioFiltro, setMunicipioFiltro,
+  localSelecionado, slots, loadingSlots, slotSelecionado,
+  onSelecionarLocal, onSelecionarSlot, onConfirmar, isPending, isVideo,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  step: "locais" | "slots" | "confirm";
+  setStep: (s: "locais" | "slots" | "confirm") => void;
+  locais: Array<{ HashLocal: string; NomeLocalAgendamento: string; NomeCidadeLocalAgendamento?: string; UF?: string; Endereco?: string }>;
+  loadingLocais: boolean;
+  ufsDisponiveis: string[];
+  ufFiltro: string;
+  setUfFiltro: (v: string) => void;
+  municipioFiltro: string;
+  setMunicipioFiltro: (v: string) => void;
+  localSelecionado: Local | null;
+  slots: Array<{ HashSlot: string; NomeSlotAgendamento: string }> | undefined;
+  loadingSlots: boolean;
+  slotSelecionado: { HashSlot: string; NomeSlotAgendamento: string } | null;
+  onSelecionarLocal: (l: typeof locais[0]) => void;
+  onSelecionarSlot: (s: { HashSlot: string; NomeSlotAgendamento: string }) => void;
+  onConfirmar: () => void;
+  isPending: boolean;
+  isVideo: (nome: string) => boolean;
+}) {
+  const stepTitle: Record<string, string> = {
+    locais: "1 — Escolha o local de atendimento",
+    slots: "2 — Escolha o horário",
+    confirm: "3 — Confirmar agendamento",
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Agendamento — {stepTitle[step]}
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Breadcrumb de passos */}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          {(["locais", "slots", "confirm"] as const).map((s, i) => (
+            <span key={s} className="flex items-center gap-1">
+              {i > 0 && <ChevronRight className="h-3 w-3" />}
+              <span className={step === s ? "text-primary font-semibold" : ""}>
+                {i + 1}. {s === "locais" ? "Local" : s === "slots" ? "Horário" : "Confirmar"}
+              </span>
+            </span>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-hidden">
+
+          {/* PASSO 1 — Escolher local */}
+          {step === "locais" && (
+            <div className="flex flex-col h-full gap-3">
+              <div className="flex gap-2 flex-wrap">
+                <Select value={ufFiltro} onValueChange={setUfFiltro}>
+                  <SelectTrigger className="w-28">
+                    <SelectValue placeholder="UF" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos</SelectItem>
+                    {ufsDisponiveis.map(uf => (
+                      <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Filtrar por cidade..."
+                  value={municipioFiltro}
+                  onChange={e => setMunicipioFiltro(e.target.value)}
+                  className="flex-1 min-w-40"
+                />
+              </div>
+              {loadingLocais ? (
+                <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Buscando locais disponíveis...
+                </div>
+              ) : locais.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  Nenhum local encontrado com esse filtro.
+                </div>
+              ) : (
+                <ScrollArea className="flex-1 -mx-1 px-1">
+                  <div className="space-y-2 pb-2">
+                    {locais.map((local) => {
+                      const video = isVideo(local.NomeLocalAgendamento);
+                      return (
+                        <button
+                          key={local.HashLocal}
+                          className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary ${video ? "border-blue-200 bg-blue-50 hover:bg-blue-100" : "bg-background hover:bg-muted"}`}
+                          onClick={() => onSelecionarLocal(local)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`mt-0.5 rounded-full p-1.5 ${video ? "bg-blue-100 text-blue-700" : "bg-muted text-muted-foreground"}`}>
+                              {video ? <Video className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-semibold">{local.NomeLocalAgendamento}</p>
+                                {video && (
+                                  <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">
+                                    Videoconferência
+                                  </Badge>
+                                )}
+                              </div>
+                              {(local.NomeCidadeLocalAgendamento || local.UF) && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {[local.NomeCidadeLocalAgendamento, local.UF].filter(Boolean).join(" — ")}
+                                </p>
+                              )}
+                              {local.Endereco && !video && (
+                                <p className="text-xs text-muted-foreground mt-0.5 truncate">{local.Endereco}</p>
+                              )}
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+          )}
+
+          {/* PASSO 2 — Escolher horário */}
+          {step === "slots" && (
+            <div className="flex flex-col h-full gap-3">
+              {localSelecionado && (
+                <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${localSelecionado.isVideo ? "bg-blue-50 text-blue-800" : "bg-muted"}`}>
+                  {localSelecionado.isVideo
+                    ? <Video className="h-4 w-4 shrink-0" />
+                    : <MapPin className="h-4 w-4 shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{localSelecionado.NomeLocalAgendamento}</p>
+                    {localSelecionado.NomeCidadeLocalAgendamento && (
+                      <p className="text-xs opacity-70">{localSelecionado.NomeCidadeLocalAgendamento} — {localSelecionado.UF}</p>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="sm" className="shrink-0 text-xs" onClick={() => setStep("locais")}>
+                    Trocar
+                  </Button>
+                </div>
+              )}
+
+              {loadingSlots ? (
+                <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Buscando horários disponíveis...
+                </div>
+              ) : !slots || slots.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  Nenhum horário disponível neste local. Tente outro local.
+                  <div className="mt-3">
+                    <Button variant="outline" size="sm" onClick={() => setStep("locais")}>
+                      Voltar e escolher outro local
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <ScrollArea className="flex-1 -mx-1 px-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-2">
+                    {slots.map((slot) => (
+                      <button
+                        key={slot.HashSlot}
+                        className="w-full text-left rounded-lg border p-3 bg-background hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                        onClick={() => onSelecionarSlot(slot)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-primary shrink-0" />
+                          <p className="text-sm font-medium">{slot.NomeSlotAgendamento}</p>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+          )}
+
+          {/* PASSO 3 — Confirmar */}
+          {step === "confirm" && localSelecionado && slotSelecionado && (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  {localSelecionado.isVideo
+                    ? <Video className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                    : <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />}
+                  <div>
+                    <p className="text-xs text-muted-foreground">Local</p>
+                    <p className="font-semibold">{localSelecionado.NomeLocalAgendamento}</p>
+                    {localSelecionado.NomeCidadeLocalAgendamento && (
+                      <p className="text-sm text-muted-foreground">{localSelecionado.NomeCidadeLocalAgendamento} — {localSelecionado.UF}</p>
+                    )}
+                    {localSelecionado.Endereco && !localSelecionado.isVideo && (
+                      <p className="text-sm text-muted-foreground">{localSelecionado.Endereco}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Clock className="h-5 w-5 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Data e horário</p>
+                    <p className="font-semibold">{slotSelecionado.NomeSlotAgendamento}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                <strong>Importante:</strong> apresente documento de identificação original (RG ou CNH). Compareça com 10 minutos de antecedência.
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Após confirmar, você receberá um e-mail com os detalhes do agendamento.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2">
+          {step !== "locais" && (
+            <Button
+              variant="outline"
+              onClick={() => setStep(step === "confirm" ? "slots" : "locais")}
+              disabled={isPending}
+            >
+              Voltar
+            </Button>
+          )}
+          {step === "confirm" && (
+            <Button onClick={onConfirmar} disabled={isPending} className="min-w-40">
+              {isPending
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Confirmando...</>
+                : <><CheckCircle2 className="h-4 w-4 mr-2" />Confirmar Agendamento</>}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Página principal ──────────────────────────────────────────────────────────
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -118,8 +603,12 @@ export default function OrderDetail() {
   const garPedido = orderAny.garPedido as string | undefined;
   const garProtocolo = orderAny.garProtocolo as string | undefined;
   const garStatus = orderAny.garStatus as string | undefined;
-  const garAgendamentoLink = orderAny.garAgendamentoLink as string | undefined;
   const garSyncedAt = orderAny.garSyncedAt as string | undefined;
+  const garAgendamentoDataHora = orderAny.garAgendamentoDataHora as string | undefined;
+  const garAgendamentoLocalNome = orderAny.garAgendamentoLocalNome as string | undefined;
+
+  // Mostrar card de agendamento para o cliente quando protocolo está emitido
+  const canSchedule = !!garProtocolo && (order.status === "protocol_assigned" || order.status === "paid");
 
   function handleStatusUpdate(e: React.FormEvent) {
     e.preventDefault();
@@ -178,6 +667,12 @@ export default function OrderDetail() {
                 GAR
               </Badge>
             )}
+            {garAgendamentoDataHora && (
+              <Badge variant="outline" className="border-green-500 text-green-700 bg-green-50">
+                <Calendar className="h-3 w-3 mr-1" />
+                Agendado
+              </Badge>
+            )}
           </div>
           <p className="text-muted-foreground text-sm">Criado em {formatDateTime(order.createdAt)}</p>
         </div>
@@ -221,6 +716,17 @@ export default function OrderDetail() {
               <InfoRow label="UF" value={order.addressState} />
             </CardContent>
           </Card>
+
+          {/* Card de agendamento — visível para todos com protocolo */}
+          {canSchedule && (
+            <SchedulingCard
+              orderId={Number(id)}
+              garProtocolo={garProtocolo!}
+              garAgendamentoDataHora={garAgendamentoDataHora}
+              garAgendamentoLocalNome={garAgendamentoLocalNome}
+              onSuccess={refetch}
+            />
+          )}
 
           {isAdmin && (
             <Card>
@@ -270,18 +776,9 @@ export default function OrderDetail() {
                       <InfoRow label="Protocolo" value={garProtocolo} />
                       <InfoRow label="Status GAR" value={garStatus} />
                       <InfoRow label="Última sincronização" value={garSyncedAt ? formatDateTime(garSyncedAt) : "—"} />
+                      {garAgendamentoLocalNome && <InfoRow label="Local agendado" value={garAgendamentoLocalNome} />}
+                      {garAgendamentoDataHora && <InfoRow label="Data/hora agendada" value={garAgendamentoDataHora} />}
                     </div>
-                    {garAgendamentoLink && (
-                      <a
-                        href={garAgendamentoLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        Link de Agendamento GAR
-                      </a>
-                    )}
                     <div className="pt-2">
                       <Button
                         variant="outline"
@@ -327,8 +824,9 @@ export default function OrderDetail() {
             <CardHeader><CardTitle>Resumo</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <InfoRow label="Certificado" value={order.certificateName} />
-              <InfoRow label="Agendamento" value={formatDateTime(order.scheduledAt ?? null)} />
+              <InfoRow label="Agendamento" value={garAgendamentoDataHora ?? formatDateTime(order.scheduledAt ?? null)} />
               {order.protocolNumber && <InfoRow label="Protocolo" value={order.protocolNumber} />}
+              {garProtocolo && !order.protocolNumber && <InfoRow label="Protocolo GAR" value={garProtocolo} />}
               {order.extendedWarranty && (
                 <p className="text-xs text-muted-foreground">Garantia estendida incluída</p>
               )}

@@ -49,6 +49,11 @@ export const ordersTable = pgTable("orders", {
   garStatus: text("gar_status"),
   garAgendamentoLink: text("gar_agendamento_link"),
   garSyncedAt: timestamp("gar_synced_at", { withTimezone: true }),
+  // GAR scheduling (booked inside the panel)
+  garAgendamentoLocalNome: text("gar_agendamento_local_nome"),
+  garAgendamentoLocalHash: text("gar_agendamento_local_hash"),
+  garAgendamentoSlotHash: text("gar_agendamento_slot_hash"),
+  garAgendamentoDataHora: text("gar_agendamento_data_hora"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

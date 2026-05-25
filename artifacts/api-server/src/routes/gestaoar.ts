@@ -23,7 +23,9 @@ import {
   garMunicipios,
   garDiasSemana,
   garFamilias,
+  garAgendar,
 } from "../lib/gestaoar";
+import { sendSchedulingEmail } from "../lib/email";
 
 const router = Router();
 
@@ -454,6 +456,144 @@ router.post("/orders/:id/gar-comprar", requireAuth, async (req, res): Promise<vo
   } catch (err) {
     logger.error({ err }, "GAR Comprar error");
     res.status(502).json({ error: "Erro ao registrar venda na Gestão AR." });
+  }
+});
+
+// ── GET /orders/:id/gar-locais — locais disponíveis para agendamento ──────────
+router.get("/orders/:id/gar-locais", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const userId = req.session.userId as number;
+  const role = req.session.role as string;
+
+  const [row] = await db.select({ order: ordersTable })
+    .from(ordersTable)
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
+  if (role !== "admin" && row.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+
+  const { uf, municipio } = req.query as Record<string, string>;
+
+  try {
+    const locais = await garLocaisAgendamento(s.garApiKey!, uf, municipio);
+    // Priorizar videoconferência se configurado
+    const preferVideo = (s.garPreferirVideoconferencia ?? "1") === "1";
+    if (preferVideo) {
+      const isVideo = (l: { NomeLocalAgendamento: string }) =>
+        /video/i.test(l.NomeLocalAgendamento) || /videoconfer/i.test(l.NomeLocalAgendamento);
+      const video = locais.filter(isVideo);
+      const presencial = locais.filter(l => !isVideo(l));
+      res.json([...video, ...presencial]);
+    } else {
+      res.json(locais);
+    }
+  } catch (err) {
+    logger.error({ err }, "GAR LocaisAgendamento error");
+    res.status(502).json({ error: "Erro ao buscar locais de agendamento na Gestão AR." });
+  }
+});
+
+// ── GET /orders/:id/gar-slots/:hashLocal — slots de um local ─────────────────
+router.get("/orders/:id/gar-slots/:hashLocal", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const userId = req.session.userId as number;
+  const role = req.session.role as string;
+  const hashLocal = Array.isArray(req.params.hashLocal) ? req.params.hashLocal[0] : req.params.hashLocal;
+
+  const [row] = await db.select({ order: ordersTable })
+    .from(ordersTable)
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
+  if (role !== "admin" && row.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+
+  try {
+    const slots = await garSlotsLocal(s.garApiKey!, hashLocal);
+    res.json(slots);
+  } catch (err) {
+    logger.error({ err }, "GAR SlotsLocal error");
+    res.status(502).json({ error: "Erro ao buscar horários disponíveis na Gestão AR." });
+  }
+});
+
+// ── POST /orders/:id/agendar — confirma agendamento e envia e-mail ────────────
+router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const userId = req.session.userId as number;
+  const role = req.session.role as string;
+
+  const [row] = await db
+    .select({ order: ordersTable })
+    .from(ordersTable)
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
+  if (role !== "admin" && row.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+
+  const order = row.order;
+
+  if (!order.garPedido || !order.garProtocolo) {
+    res.status(400).json({ error: "Pedido ainda não tem protocolo emitido na Gestão AR." });
+    return;
+  }
+
+  const { hashLocal, hashSlot, localNome, slotNome } = req.body ?? {};
+  if (!hashLocal || !hashSlot) {
+    res.status(400).json({ error: "hashLocal e hashSlot são obrigatórios." });
+    return;
+  }
+
+  try {
+    const result = await garAgendar(s.garApiKey!, order.garPedido, order.garProtocolo, hashLocal, hashSlot);
+
+    if (result.Status !== 0 && result.Erros?.length) {
+      res.status(400).json({ error: result.Erros.map((e: { Ocorrencia: string }) => e.Ocorrencia).join("; ") });
+      return;
+    }
+
+    const dataHora = result.DataHoraAgendamento ?? slotNome ?? "A confirmar";
+    const nomeLocal = result.NomeLocalAgendamento ?? localNome ?? "A confirmar";
+
+    // Salvar agendamento no pedido
+    await db.update(ordersTable).set({
+      garAgendamentoLocalNome: nomeLocal,
+      garAgendamentoLocalHash: hashLocal,
+      garAgendamentoSlotHash: hashSlot,
+      garAgendamentoDataHora: dataHora,
+      garStatus: "Agendado",
+      scheduledAt: new Date(),
+    }).where(eq(ordersTable.id, id));
+
+    // Enviar e-mail de confirmação via SMTP LealCert (nunca pelo GAR)
+    if (order.customerEmail) {
+      sendSchedulingEmail({
+        to: order.customerEmail,
+        customerName: order.customerName,
+        orderNumber: order.orderNumber,
+        protocolo: order.garProtocolo,
+        localNome: nomeLocal,
+        dataHora,
+        siteUrl: s.siteUrl ?? undefined,
+      }).catch((err: unknown) => logger.error({ err }, "Erro ao enviar e-mail de agendamento"));
+    }
+
+    logger.info({ orderId: id, localNome: nomeLocal, dataHora }, "GAR Agendamento confirmado");
+    res.json({ ok: true, localNome: nomeLocal, dataHora });
+  } catch (err) {
+    logger.error({ err }, "GAR Agendar error");
+    res.status(502).json({ error: "Erro ao confirmar agendamento na Gestão AR." });
   }
 });
 

@@ -21,6 +21,8 @@ import type {
 
 import type {
   AdminStats,
+  AgendarInput,
+  AgendarResult,
   AppSettings,
   AppSettingsUpdate,
   AuthUser,
@@ -3956,6 +3958,237 @@ export const useSyncGarOrder = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSyncGarOrderMutationOptions(options));
+    }
+
+export const getGetOrderGarLocaisUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/gar-locais`
+}
+
+/**
+ * @summary Locais de agendamento disponíveis para um pedido
+ */
+export const getOrderGarLocais = async (id: number, options?: RequestInit): Promise<GarLocalAgendamento[]> => {
+
+  return customFetch<GarLocalAgendamento[]>(getGetOrderGarLocaisUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrderGarLocaisQueryKey = (id: number,) => {
+    return [
+    `/api/orders/${id}/gar-locais`
+    ] as const;
+    }
+
+
+export const getGetOrderGarLocaisQueryOptions = <TData = Awaited<ReturnType<typeof getOrderGarLocais>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderGarLocais>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrderGarLocaisQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrderGarLocais>>> = ({ signal }) => getOrderGarLocais(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrderGarLocais>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrderGarLocaisQueryResult = NonNullable<Awaited<ReturnType<typeof getOrderGarLocais>>>
+export type GetOrderGarLocaisQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Locais de agendamento disponíveis para um pedido
+ */
+
+export function useGetOrderGarLocais<TData = Awaited<ReturnType<typeof getOrderGarLocais>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderGarLocais>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrderGarLocaisQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetOrderGarSlotsUrl = (id: number,
+    hashLocal: string,) => {
+
+
+
+
+  return `/api/orders/${id}/gar-slots/${hashLocal}`
+}
+
+/**
+ * @summary Horários disponíveis num local para um pedido
+ */
+export const getOrderGarSlots = async (id: number,
+    hashLocal: string, options?: RequestInit): Promise<GarSlotAtendimento[]> => {
+
+  return customFetch<GarSlotAtendimento[]>(getGetOrderGarSlotsUrl(id,hashLocal),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrderGarSlotsQueryKey = (id: number,
+    hashLocal: string,) => {
+    return [
+    `/api/orders/${id}/gar-slots/${hashLocal}`
+    ] as const;
+    }
+
+
+export const getGetOrderGarSlotsQueryOptions = <TData = Awaited<ReturnType<typeof getOrderGarSlots>>, TError = ErrorType<unknown>>(id: number,
+    hashLocal: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderGarSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrderGarSlotsQueryKey(id,hashLocal);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrderGarSlots>>> = ({ signal }) => getOrderGarSlots(id,hashLocal, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id && hashLocal), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrderGarSlots>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrderGarSlotsQueryResult = NonNullable<Awaited<ReturnType<typeof getOrderGarSlots>>>
+export type GetOrderGarSlotsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Horários disponíveis num local para um pedido
+ */
+
+export function useGetOrderGarSlots<TData = Awaited<ReturnType<typeof getOrderGarSlots>>, TError = ErrorType<unknown>>(
+ id: number,
+    hashLocal: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderGarSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrderGarSlotsQueryOptions(id,hashLocal,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAgendarOrderUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/agendar`
+}
+
+/**
+ * @summary Confirma agendamento de um pedido na GAR e envia e-mail ao cliente
+ */
+export const agendarOrder = async (id: number,
+    agendarInput: AgendarInput, options?: RequestInit): Promise<AgendarResult> => {
+
+  return customFetch<AgendarResult>(getAgendarOrderUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      agendarInput,)
+  }
+);}
+
+
+
+
+export const getAgendarOrderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agendarOrder>>, TError,{id: number;data: BodyType<AgendarInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof agendarOrder>>, TError,{id: number;data: BodyType<AgendarInput>}, TContext> => {
+
+const mutationKey = ['agendarOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof agendarOrder>>, {id: number;data: BodyType<AgendarInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  agendarOrder(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AgendarOrderMutationResult = NonNullable<Awaited<ReturnType<typeof agendarOrder>>>
+    export type AgendarOrderMutationBody = BodyType<AgendarInput>
+    export type AgendarOrderMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Confirma agendamento de um pedido na GAR e envia e-mail ao cliente
+ */
+export const useAgendarOrder = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agendarOrder>>, TError,{id: number;data: BodyType<AgendarInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof agendarOrder>>,
+        TError,
+        {id: number;data: BodyType<AgendarInput>},
+        TContext
+      > => {
+      return useMutation(getAgendarOrderMutationOptions(options));
     }
 
 export const getGarComprarOrderUrl = (id: number,) => {

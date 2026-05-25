@@ -363,6 +363,31 @@ export async function garMunicipios(apiKey: string, uf: string): Promise<GarMuni
   return garPost<GarMunicipio[]>("Municipios", { apiKey, UF: uf });
 }
 
+export interface GarAgendarResult {
+  Status?: number;
+  Descricao?: string;
+  DataHoraAgendamento?: string;
+  NomeLocalAgendamento?: string;
+  LinkAgenda?: string;
+  Erros?: { Ocorrencia: string }[];
+}
+
+export async function garAgendar(
+  apiKey: string,
+  pedido: string,
+  protocolo: string,
+  hashLocal: string,
+  hashSlot: string,
+): Promise<GarAgendarResult> {
+  return garPost<GarAgendarResult>("AgendarAtendimento", {
+    apiKey,
+    Pedido: Number(pedido),
+    Protocolo: protocolo,
+    HashLocal: hashLocal,
+    HashSlot: hashSlot,
+  });
+}
+
 export interface GarDiaSemana {
   Id: number;
   Name: string;

@@ -454,6 +454,19 @@ export interface GarSlotAtendimento {
   NomeSlotAgendamento: string;
 }
 
+export interface AgendarInput {
+  hashLocal: string;
+  hashSlot: string;
+  localNome?: string;
+  slotNome?: string;
+}
+
+export interface AgendarResult {
+  ok?: boolean;
+  localNome?: string;
+  dataHora?: string;
+}
+
 export interface GarUF {
   UF: string;
 }

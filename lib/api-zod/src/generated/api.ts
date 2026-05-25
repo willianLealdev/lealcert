@@ -901,6 +901,65 @@ export const SyncGarOrderResponse = zod.object({
 
 
 /**
+ * @summary Locais de agendamento disponíveis para um pedido
+ */
+export const GetOrderGarLocaisParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetOrderGarLocaisResponseItem = zod.object({
+  "HashPessoa": zod.string(),
+  "HashLocal": zod.string(),
+  "DadosPesquisa": zod.string().optional(),
+  "NomeLocalAgendamento": zod.string(),
+  "NomeCidadeLocalAgendamento": zod.string().optional(),
+  "Endereco": zod.string().optional(),
+  "CEP": zod.string().optional(),
+  "Municipio": zod.string(),
+  "UF": zod.string(),
+  "Telefone": zod.string().optional(),
+  "Email": zod.string().optional()
+})
+export const GetOrderGarLocaisResponse = zod.array(GetOrderGarLocaisResponseItem)
+
+
+/**
+ * @summary Horários disponíveis num local para um pedido
+ */
+export const GetOrderGarSlotsParams = zod.object({
+  "id": zod.coerce.number(),
+  "hashLocal": zod.coerce.string()
+})
+
+export const GetOrderGarSlotsResponseItem = zod.object({
+  "HashSlot": zod.string(),
+  "NomeSlotAgendamento": zod.string()
+})
+export const GetOrderGarSlotsResponse = zod.array(GetOrderGarSlotsResponseItem)
+
+
+/**
+ * @summary Confirma agendamento de um pedido na GAR e envia e-mail ao cliente
+ */
+export const AgendarOrderParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AgendarOrderBody = zod.object({
+  "hashLocal": zod.string(),
+  "hashSlot": zod.string(),
+  "localNome": zod.string().optional(),
+  "slotNome": zod.string().optional()
+})
+
+export const AgendarOrderResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "localNome": zod.string().optional(),
+  "dataHora": zod.string().optional()
+})
+
+
+/**
  * @summary Registra a venda de um pedido na Gestão AR e emite protocolo
  */
 export const GarComprarOrderParams = zod.object({

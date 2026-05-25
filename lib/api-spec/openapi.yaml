@@ -977,6 +977,62 @@ paths:
               schema:
                 $ref: "#/components/schemas/GarSyncResult"
 
+  /orders/{id}/gar-locais:
+    get:
+      operationId: getOrderGarLocais
+      tags: [gestaoar]
+      summary: Locais de agendamento disponíveis para um pedido
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Locais disponíveis (videoconferência em primeiro se configurado)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarLocalAgendamento"
+
+  /orders/{id}/gar-slots/{hashLocal}:
+    get:
+      operationId: getOrderGarSlots
+      tags: [gestaoar]
+      summary: Horários disponíveis num local para um pedido
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: hashLocal, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Slots disponíveis
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarSlotAtendimento"
+
+  /orders/{id}/agendar:
+    post:
+      operationId: agendarOrder
+      tags: [gestaoar]
+      summary: Confirma agendamento de um pedido na GAR e envia e-mail ao cliente
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgendarInput"
+      responses:
+        "200":
+          description: Agendamento confirmado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgendarResult"
+
   /orders/{id}/gar-comprar:
     post:
       operationId: garComprarOrder
@@ -2092,6 +2148,22 @@ components:
       properties:
         HashSlot: { type: string }
         NomeSlotAgendamento: { type: string }
+
+    AgendarInput:
+      type: object
+      required: [hashLocal, hashSlot]
+      properties:
+        hashLocal: { type: string }
+        hashSlot: { type: string }
+        localNome: { type: string }
+        slotNome: { type: string }
+
+    AgendarResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        localNome: { type: string }
+        dataHora: { type: string }
 
     GarUF:
       type: object
