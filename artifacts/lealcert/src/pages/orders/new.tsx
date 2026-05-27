@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Search, MapPin, Clock, CalendarDays, Upload, FileText, X } from "lucide-react";
+import { ArrowLeft, Loader2, Search, MapPin, Clock, CalendarDays, Upload, FileText, X, Info } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link } from "wouter";
 import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
@@ -70,6 +71,7 @@ export default function NewOrder() {
     repCpf: "",
   });
 
+  const [warrantyInfoOpen, setWarrantyInfoOpen] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [cepFilled, setCepFilled] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -311,11 +313,49 @@ export default function NewOrder() {
                     checked={form.extendedWarranty}
                     onCheckedChange={(v) => set("extendedWarranty", !!v)}
                   />
-                  <div>
-                    <Label htmlFor="warranty" className="cursor-pointer font-medium">Garantia Estendida (+R$ 15,00)</Label>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="warranty" className="cursor-pointer font-medium">Garantia Estendida (+R$ 15,00)</Label>
+                      <button
+                        type="button"
+                        onClick={() => setWarrantyInfoOpen(true)}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                        aria-label="Saiba mais sobre a Garantia Estendida"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </div>
                     <p className="text-xs text-muted-foreground">Protege contra imprevistos durante a emissão.</p>
                   </div>
                 </div>
+
+                <Dialog open={warrantyInfoOpen} onOpenChange={setWarrantyInfoOpen}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Info className="h-5 w-5 text-blue-600" />
+                        Garantia Estendida
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+                      <p>
+                        A <strong className="text-foreground">Garantia Estendida</strong> oferece o direito de emitir
+                        um novo certificado digital sem custo adicional caso o certificado atual seja danificado ou
+                        extraviado, dentro do prazo de <strong className="text-foreground">90 dias</strong> a partir
+                        da data de emissão.
+                      </p>
+                      <p>
+                        Toda reemissão realizada dentro do período de garantia é <strong className="text-foreground">gratuita</strong> para o cliente.
+                      </p>
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800">
+                        <p className="font-medium mb-1">Importante</p>
+                        <p className="text-xs">
+                          Alterações de dados cadastrais ou informações inerentes ao certificado <strong>não são cobertas</strong> pela Garantia Estendida, independentemente do prazo.
+                        </p>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
 
