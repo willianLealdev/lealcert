@@ -8,14 +8,14 @@ import { Loader2, Mail, ArrowLeft, RefreshCw } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 export default function VerifyEmail() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [cooldown, setCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const params = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "");
+  const params = new URLSearchParams(window.location.search);
   const email = params.get("email") ?? "";
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function VerifyEmail() {
     mutation: {
       onSuccess: () => {
         toast({ title: "Código reenviado!", description: "Verifique sua caixa de entrada." });
-        setCooldown(60);
+        setCooldown(600);
       },
       onError: (err: unknown) => {
         const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao reenviar.";
@@ -160,7 +160,9 @@ export default function VerifyEmail() {
                 className="text-blue-200/60 hover:text-blue-300"
               >
                 <RefreshCw className={`h-3.5 w-3.5 mr-2 ${resendMutation.isPending ? "animate-spin" : ""}`} />
-                {cooldown > 0 ? `Reenviar em ${cooldown}s` : "Reenviar código"}
+                {cooldown > 0
+                  ? `Reenviar em ${Math.floor(cooldown / 60)}:${String(cooldown % 60).padStart(2, "0")}`
+                  : "Reenviar código"}
               </Button>
             </div>
 
