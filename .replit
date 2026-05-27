@@ -43,5 +43,5 @@ externalPort = 3000
 
 [userenv.shared]
 SMTP_HOST = "37.60.237.39"
-SMTP_PORT = "587"
+SMTP_PORT = "465"
 SMTP_FROM = "LealCert Certificados <certificados@lealcert.com.br>"
