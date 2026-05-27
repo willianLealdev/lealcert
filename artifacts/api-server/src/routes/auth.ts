@@ -3,16 +3,37 @@ import { eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
 import { logger } from "../lib/logger";
-import { sendVerificationEmail } from "../lib/email";
+import { sendVerificationEmail, sendWelcomeEmail, sendTempPasswordEmail } from "../lib/email";
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+function generateTempPassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  let result = "";
+  for (let i = 0; i < 8; i++) result += chars[Math.floor(Math.random() * chars.length)];
+  return result;
+}
+
+function userResponse(user: typeof usersTable.$inferSelect) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    cpfCnpj: user.cpfCnpj,
+    role: user.role,
+    userType: user.userType,
+    mustChangePassword: user.mustChangePassword,
+    phone: user.phone,
+    createdAt: user.createdAt,
+  };
+}
+
 const router = Router();
 
 router.post("/auth/register", async (req, res): Promise<void> => {
-  const { name, email, cpfCnpj, password, phone } = req.body ?? {};
+  const { name, email, cpfCnpj, password, phone, userType } = req.body ?? {};
   if (!name || !email || !cpfCnpj || !password) {
     res.status(400).json({ error: "Nome, e-mail, CPF/CNPJ e senha são obrigatórios." });
     return;
@@ -21,6 +42,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     res.status(400).json({ error: "A senha deve ter no mínimo 6 caracteres." });
     return;
   }
+  const resolvedUserType = userType === "contador" ? "contador" : "cliente";
   const digits = cpfCnpj.replace(/\D/g, "");
   const existing = await db
     .select({ id: usersTable.id })
@@ -41,6 +63,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     passwordHash,
     phone: phone || null,
     role: "contador",
+    userType: resolvedUserType,
     isActive: true,
     emailVerified: false,
     emailVerificationCode: code,
@@ -85,9 +108,14 @@ router.post("/auth/verify-email", async (req, res): Promise<void> => {
     .update(usersTable)
     .set({ emailVerified: true, emailVerificationCode: null, emailVerificationExpiresAt: null })
     .where(eq(usersTable.id, user.id));
+  try {
+    await sendWelcomeEmail(user.email ?? email, user.name, user.userType);
+  } catch (err) {
+    logger.error({ err }, "Failed to send welcome email");
+  }
   req.session.userId = user.id;
   req.session.role = user.role;
-  res.json({ id: user.id, name: user.name, email: user.email, cpfCnpj: user.cpfCnpj, role: user.role, phone: user.phone, createdAt: user.createdAt });
+  res.json(userResponse({ ...user, emailVerified: true, emailVerificationCode: null, emailVerificationExpiresAt: null }));
 });
 
 router.post("/auth/resend-verification", async (req, res): Promise<void> => {
@@ -144,6 +172,10 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Conta desativada. Entre em contato com o administrador." });
     return;
   }
+  if (!user.emailVerified) {
+    res.status(403).json({ error: "E-mail não verificado. Verifique sua caixa de entrada.", email: user.email });
+    return;
+  }
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     res.status(401).json({ error: "CPF/CNPJ ou senha inválidos." });
@@ -151,15 +183,75 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   req.session.userId = user.id;
   req.session.role = user.role;
-  res.json({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    cpfCnpj: user.cpfCnpj,
-    role: user.role,
-    phone: user.phone,
-    createdAt: user.createdAt,
-  });
+  res.json(userResponse(user));
+});
+
+router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+  const { cpfCnpj } = req.body ?? {};
+  if (!cpfCnpj) {
+    res.status(400).json({ error: "CPF/CNPJ é obrigatório." });
+    return;
+  }
+  const digits = cpfCnpj.replace(/\D/g, "");
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.cpfCnpj, digits))
+    .limit(1);
+
+  if (!user || !user.email) {
+    res.json({ message: "Se o CPF/CNPJ estiver cadastrado, você receberá um e-mail com a senha temporária." });
+    return;
+  }
+  if (!user.isActive) {
+    res.status(401).json({ error: "Conta desativada. Entre em contato com o administrador." });
+    return;
+  }
+  const tempPassword = generateTempPassword();
+  const passwordHash = await bcrypt.hash(tempPassword, 10);
+  await db
+    .update(usersTable)
+    .set({ passwordHash, mustChangePassword: true })
+    .where(eq(usersTable.id, user.id));
+  try {
+    await sendTempPasswordEmail(user.email, user.name, tempPassword);
+  } catch (err) {
+    logger.error({ err }, "Failed to send temp password email");
+  }
+  res.json({ message: "Se o CPF/CNPJ estiver cadastrado, você receberá um e-mail com a senha temporária." });
+});
+
+router.post("/auth/change-password", async (req, res): Promise<void> => {
+  const userId = req.session.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Não autenticado." });
+    return;
+  }
+  const { currentPassword, newPassword } = req.body ?? {};
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ error: "Senha atual e nova senha são obrigatórias." });
+    return;
+  }
+  if (newPassword.length < 6) {
+    res.status(400).json({ error: "A nova senha deve ter no mínimo 6 caracteres." });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) {
+    res.status(404).json({ error: "Usuário não encontrado." });
+    return;
+  }
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) {
+    res.status(400).json({ error: "Senha atual incorreta." });
+    return;
+  }
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await db
+    .update(usersTable)
+    .set({ passwordHash, mustChangePassword: false })
+    .where(eq(usersTable.id, user.id));
+  res.json({ message: "Senha alterada com sucesso." });
 });
 
 router.post("/auth/logout", (req, res): void => {
@@ -178,15 +270,7 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Sessão inválida." });
     return;
   }
-  res.json({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    cpfCnpj: user.cpfCnpj,
-    role: user.role,
-    phone: user.phone,
-    createdAt: user.createdAt,
-  });
+  res.json(userResponse(user));
 });
 
 router.patch("/auth/profile", async (req, res): Promise<void> => {
@@ -225,15 +309,7 @@ router.patch("/auth/profile", async (req, res): Promise<void> => {
     .where(eq(usersTable.id, userId))
     .returning();
 
-  res.json({
-    id: updated.id,
-    name: updated.name,
-    email: updated.email,
-    cpfCnpj: updated.cpfCnpj,
-    role: updated.role,
-    phone: updated.phone,
-    createdAt: updated.createdAt,
-  });
+  res.json(userResponse(updated));
 });
 
 export default router;

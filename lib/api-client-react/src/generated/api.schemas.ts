@@ -56,6 +56,14 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type RegisterInputUserType = typeof RegisterInputUserType[keyof typeof RegisterInputUserType];
+
+
+export const RegisterInputUserType = {
+  contador: 'contador',
+  cliente: 'cliente',
+} as const;
+
 export interface RegisterInput {
   name: string;
   email: string;
@@ -63,6 +71,7 @@ export interface RegisterInput {
   /** @minLength 6 */
   password: string;
   phone?: string;
+  userType: RegisterInputUserType;
 }
 
 export interface VerifyEmailInput {
@@ -91,15 +100,35 @@ export const AuthUserRole = {
   contador: 'contador',
 } as const;
 
+export type AuthUserUserType = typeof AuthUserUserType[keyof typeof AuthUserUserType];
+
+
+export const AuthUserUserType = {
+  contador: 'contador',
+  cliente: 'cliente',
+} as const;
+
 export interface AuthUser {
   id: number;
   name: string;
   email: string;
   cpfCnpj: string;
   role: AuthUserRole;
+  userType?: AuthUserUserType;
+  mustChangePassword?: boolean;
   /** @nullable */
   phone?: string | null;
   createdAt?: string;
+}
+
+export interface ForgotPasswordInput {
+  cpfCnpj: string;
+}
+
+export interface ChangePasswordInput {
+  currentPassword: string;
+  /** @minLength 6 */
+  newPassword: string;
 }
 
 export interface ProfileUpdate {

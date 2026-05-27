@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowLeft, Briefcase, User } from "lucide-react";
 
 function maskCpfCnpj(v: string) {
   const d = v.replace(/\D/g, "");
@@ -28,7 +28,15 @@ export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", cpfCnpj: "", phone: "", password: "", confirm: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    cpfCnpj: "",
+    phone: "",
+    password: "",
+    confirm: "",
+    userType: "" as "contador" | "cliente" | "",
+  });
 
   const registerMutation = useRegister({
     mutation: {
@@ -42,10 +50,16 @@ export default function Register() {
     },
   });
 
-  function set(k: keyof typeof form, v: string) { setForm(p => ({ ...p, [k]: v })); }
+  function set<K extends keyof typeof form>(k: K, v: typeof form[K]) {
+    setForm(p => ({ ...p, [k]: v }));
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.userType) {
+      toast({ title: "Selecione o tipo de cadastro", description: "Informe se você é Contador ou Cliente.", variant: "destructive" });
+      return;
+    }
     if (form.password.length < 6) {
       toast({ title: "Senha muito curta", description: "A senha deve ter no mínimo 6 caracteres.", variant: "destructive" });
       return;
@@ -61,9 +75,12 @@ export default function Register() {
         cpfCnpj: form.cpfCnpj.replace(/\D/g, ""),
         password: form.password,
         phone: form.phone || undefined,
+        userType: form.userType as "contador" | "cliente",
       },
     });
   }
+
+  const inputStyle = { background: "rgba(255,255,255,0.07)" };
 
   return (
     <div
@@ -85,6 +102,48 @@ export default function Register() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Tipo de cadastro */}
+            <div className="space-y-2">
+              <Label className="text-blue-100/80 text-sm font-medium">Tipo de cadastro *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => set("userType", "contador")}
+                  className="flex flex-col items-center gap-2 rounded-xl p-4 border-2 transition-all"
+                  style={{
+                    background: form.userType === "contador" ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.05)",
+                    borderColor: form.userType === "contador" ? "rgba(37,99,235,0.8)" : "rgba(255,255,255,0.15)",
+                  }}
+                >
+                  <Briefcase className={`h-6 w-6 ${form.userType === "contador" ? "text-blue-400" : "text-blue-200/40"}`} />
+                  <span className={`text-sm font-semibold ${form.userType === "contador" ? "text-white" : "text-blue-200/60"}`}>
+                    Contador
+                  </span>
+                  <span className="text-xs text-center leading-tight" style={{ color: form.userType === "contador" ? "rgba(147,197,253,0.8)" : "rgba(147,197,253,0.35)" }}>
+                    Escritório ou profissional contábil
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => set("userType", "cliente")}
+                  className="flex flex-col items-center gap-2 rounded-xl p-4 border-2 transition-all"
+                  style={{
+                    background: form.userType === "cliente" ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.05)",
+                    borderColor: form.userType === "cliente" ? "rgba(37,99,235,0.8)" : "rgba(255,255,255,0.15)",
+                  }}
+                >
+                  <User className={`h-6 w-6 ${form.userType === "cliente" ? "text-blue-400" : "text-blue-200/40"}`} />
+                  <span className={`text-sm font-semibold ${form.userType === "cliente" ? "text-white" : "text-blue-200/60"}`}>
+                    Cliente
+                  </span>
+                  <span className="text-xs text-center leading-tight" style={{ color: form.userType === "cliente" ? "rgba(147,197,253,0.8)" : "rgba(147,197,253,0.35)" }}>
+                    Pessoa física ou jurídica
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label className="text-blue-100/80 text-sm font-medium">Nome completo *</Label>
               <Input
@@ -93,7 +152,7 @@ export default function Register() {
                 required
                 placeholder="Seu nome completo"
                 className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
-                style={{ background: "rgba(255,255,255,0.07)" }}
+                style={inputStyle}
               />
             </div>
 
@@ -106,7 +165,7 @@ export default function Register() {
                 required
                 placeholder="seu@email.com"
                 className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
-                style={{ background: "rgba(255,255,255,0.07)" }}
+                style={inputStyle}
               />
             </div>
 
@@ -118,7 +177,7 @@ export default function Register() {
                 required
                 placeholder="000.000.000-00"
                 className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
-                style={{ background: "rgba(255,255,255,0.07)" }}
+                style={inputStyle}
               />
             </div>
 
@@ -129,7 +188,7 @@ export default function Register() {
                 onChange={e => set("phone", e.target.value)}
                 placeholder="(11) 99999-0000"
                 className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
-                style={{ background: "rgba(255,255,255,0.07)" }}
+                style={inputStyle}
               />
             </div>
 
@@ -142,7 +201,7 @@ export default function Register() {
                   onChange={e => set("password", e.target.value)}
                   required
                   className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11 pr-11"
-                  style={{ background: "rgba(255,255,255,0.07)" }}
+                  style={inputStyle}
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-200/50 hover:text-blue-200 transition-colors" tabIndex={-1}>
@@ -159,7 +218,7 @@ export default function Register() {
                 onChange={e => set("confirm", e.target.value)}
                 required
                 className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
-                style={{ background: "rgba(255,255,255,0.07)" }}
+                style={inputStyle}
               />
             </div>
 

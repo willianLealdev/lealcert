@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AuthUserRole } from './authUserRole';
+import type { AuthUserUserType } from './authUserUserType';
 
 export interface AuthUser {
   id: number;
@@ -13,6 +14,8 @@ export interface AuthUser {
   email: string;
   cpfCnpj: string;
   role: AuthUserRole;
+  userType?: AuthUserUserType;
+  mustChangePassword?: boolean;
   /** @nullable */
   phone?: string | null;
   createdAt?: string;

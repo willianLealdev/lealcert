@@ -5,6 +5,7 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { RegisterInputUserType } from './registerInputUserType';
 
 export interface RegisterInput {
   name: string;
@@ -13,4 +14,5 @@ export interface RegisterInput {
   /** @minLength 6 */
   password: string;
   phone?: string;
+  userType: RegisterInputUserType;
 }

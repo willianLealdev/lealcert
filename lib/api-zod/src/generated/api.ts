@@ -37,7 +37,8 @@ export const RegisterBody = zod.object({
   "email": zod.string().email(),
   "cpfCnpj": zod.string(),
   "password": zod.string().min(registerBodyPasswordMin),
-  "phone": zod.string().optional()
+  "phone": zod.string().optional(),
+  "userType": zod.enum(['contador', 'cliente'])
 })
 
 
@@ -55,6 +56,8 @@ export const VerifyEmailResponse = zod.object({
   "email": zod.string(),
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
+  "userType": zod.enum(['contador', 'cliente']).optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "phone": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -86,8 +89,39 @@ export const LoginResponse = zod.object({
   "email": zod.string(),
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
+  "userType": zod.enum(['contador', 'cliente']).optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "phone": zod.string().nullish(),
   "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Request password reset (sends temporary password via email)
+ */
+export const ForgotPasswordBody = zod.object({
+  "cpfCnpj": zod.string()
+})
+
+export const ForgotPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Change password (required after temp password login)
+ */
+export const changePasswordBodyNewPasswordMin = 6;
+
+
+
+export const ChangePasswordBody = zod.object({
+  "currentPassword": zod.string(),
+  "newPassword": zod.string().min(changePasswordBodyNewPasswordMin)
+})
+
+export const ChangePasswordResponse = zod.object({
+  "message": zod.string()
 })
 
 
@@ -100,6 +134,8 @@ export const GetMeResponse = zod.object({
   "email": zod.string(),
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
+  "userType": zod.enum(['contador', 'cliente']).optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "phone": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -122,6 +158,8 @@ export const UpdateProfileResponse = zod.object({
   "email": zod.string(),
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
+  "userType": zod.enum(['contador', 'cliente']).optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "phone": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })

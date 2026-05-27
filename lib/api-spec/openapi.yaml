@@ -183,6 +183,62 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request password reset (sends temporary password via email)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: Temporary password sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change password (required after temp password login)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Invalid current password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /auth/logout:
     post:
       operationId: logout
@@ -1716,7 +1772,7 @@ components:
 
     RegisterInput:
       type: object
-      required: [name, email, cpfCnpj, password]
+      required: [name, email, cpfCnpj, password, userType]
       properties:
         name:
           type: string
@@ -1730,6 +1786,9 @@ components:
           minLength: 6
         phone:
           type: string
+        userType:
+          type: string
+          enum: [contador, cliente]
 
     VerifyEmailInput:
       type: object
@@ -1778,10 +1837,32 @@ components:
         role:
           type: string
           enum: [admin, contador]
+        userType:
+          type: string
+          enum: [contador, cliente]
+        mustChangePassword:
+          type: boolean
         phone:
           type: ["string", "null"]
         createdAt:
           type: string
+
+    ForgotPasswordInput:
+      type: object
+      required: [cpfCnpj]
+      properties:
+        cpfCnpj:
+          type: string
+
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 6
 
     ProfileUpdate:
       type: object

@@ -20,24 +20,39 @@ export default function Login() {
 
   const loginMutation = useLogin({
     mutation: {
-      onSuccess: async () => {
+      onSuccess: async (data) => {
         await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-        setLocation("/dashboard");
+        if (data.mustChangePassword) {
+          setLocation("/change-password");
+        } else {
+          setLocation("/dashboard");
+        }
       },
       onError: (err: unknown) => {
         const status = (err as { status?: number })?.status;
-        const msg = (err as { data?: { error?: string } })?.data?.error;
+        const body = (err as { data?: { error?: string; email?: string } })?.data;
         if (!status) {
           toast({ title: "Servidor indisponível", description: "Não foi possível conectar ao servidor. Tente novamente em instantes.", variant: "destructive" });
+        } else if (status === 403 && body?.email) {
+          toast({
+            title: "E-mail não verificado",
+            description: "Verifique sua caixa de entrada e confirme o código enviado.",
+            variant: "destructive",
+          });
+          setLocation(`/verify-email?email=${encodeURIComponent(body.email)}`);
         } else {
-          toast({ title: "Acesso negado", description: msg ?? "CPF/CNPJ ou senha inválidos.", variant: "destructive" });
+          toast({ title: "Acesso negado", description: body?.error ?? "CPF/CNPJ ou senha inválidos.", variant: "destructive" });
         }
       },
     },
   });
 
   if (user) {
-    setLocation("/dashboard");
+    if (user.mustChangePassword) {
+      setLocation("/change-password");
+    } else {
+      setLocation("/dashboard");
+    }
     return null;
   }
 
@@ -117,9 +132,16 @@ export default function Login() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-blue-100/80 text-sm font-medium">
-                  Senha
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-blue-100/80 text-sm font-medium">
+                    Senha
+                  </Label>
+                  <Link href="/forgot-password">
+                    <span className="text-xs text-blue-400 hover:text-blue-300 transition-colors cursor-pointer">
+                      Esqueci minha senha
+                    </span>
+                  </Link>
+                </div>
                 <div className="relative">
                   <Input
                     id="password"
