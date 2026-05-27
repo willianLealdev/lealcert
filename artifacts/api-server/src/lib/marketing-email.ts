@@ -8,7 +8,7 @@ function createTransporter() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   if (!host || !user || !pass) return null;
-  return nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+  return nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass }, tls: { rejectUnauthorized: false } });
 }
 
 function getBaseUrl() {
