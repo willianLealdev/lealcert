@@ -12,6 +12,8 @@ export interface Certificate {
   /** @nullable */
   description?: string | null;
   price: number;
+  /** @nullable */
+  priceContador?: number | null;
   active: boolean;
   /** @nullable */
   garHashProduto?: string | null;

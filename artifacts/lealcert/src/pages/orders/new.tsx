@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useListCertificates, useListSlots, useCreateOrder } from "@workspace/api-client-react";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,9 +38,15 @@ function formatSlotDateTime(d: string | Date) {
 export default function NewOrder() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: certificates } = useListCertificates({ activeOnly: true });
   const { data: slots } = useListSlots();
+
+  function certPrice(c: NonNullable<typeof certificates>[number]) {
+    if (user?.userType === "contador" && c.priceContador != null) return c.priceContador;
+    return c.price;
+  }
 
   const [form, setForm] = useState({
     certificateId: "",
@@ -93,7 +100,7 @@ export default function NewOrder() {
   });
 
   const selectedCert = certificates?.find(c => String(c.id) === form.certificateId);
-  const total = (selectedCert?.price ?? 0) + (form.extendedWarranty ? 15 : 0);
+  const total = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? 15 : 0);
 
   // Build slot map keyed by BRT date (YYYY-MM-DD)
   const slotsByBRTDate = new Map<string, typeof slots>();
@@ -292,7 +299,7 @@ export default function NewOrder() {
                           {c.description && (
                             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.description}</p>
                           )}
-                          <p className={["text-lg font-bold mt-3", selected ? "text-primary" : "text-foreground"].join(" ")}>{formatBRL(c.price)}</p>
+                          <p className={["text-lg font-bold mt-3", selected ? "text-primary" : "text-foreground"].join(" ")}>{formatBRL(certPrice(c))}</p>
                         </button>
                       );
                     })}
@@ -747,7 +754,7 @@ export default function NewOrder() {
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{selectedCert.name}</span>
-                      <span>{formatBRL(selectedCert.price)}</span>
+                      <span>{formatBRL(certPrice(selectedCert))}</span>
                     </div>
                     {form.extendedWarranty && (
                       <div className="flex justify-between text-sm">

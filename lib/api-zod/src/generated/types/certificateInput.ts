@@ -10,6 +10,7 @@ export interface CertificateInput {
   name: string;
   description?: string;
   price: number;
+  priceContador?: number;
   active?: boolean;
   garHashProduto?: string;
 }

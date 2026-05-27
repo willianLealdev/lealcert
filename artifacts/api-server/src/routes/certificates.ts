@@ -11,6 +11,7 @@ function certRow(c: typeof certificatesTable.$inferSelect) {
     name: c.name,
     description: c.description,
     price: parseFloat(c.price),
+    priceContador: c.priceContador != null ? parseFloat(c.priceContador) : null,
     active: c.active,
     garHashProduto: c.garHashProduto ?? null,
     createdAt: c.createdAt,
@@ -25,7 +26,7 @@ router.get("/certificates", async (req, res): Promise<void> => {
 });
 
 router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {
-  const { name, description, price, active, garHashProduto } = req.body ?? {};
+  const { name, description, price, priceContador, active, garHashProduto } = req.body ?? {};
   if (!name || price === undefined) {
     res.status(400).json({ error: "Nome e preço são obrigatórios." });
     return;
@@ -34,6 +35,7 @@ router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {
     name,
     description: description || null,
     price: String(price),
+    priceContador: priceContador != null ? String(priceContador) : null,
     active: active !== false,
     garHashProduto: garHashProduto || null,
   }).returning();
@@ -42,11 +44,12 @@ router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {
 
 router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const { name, description, price, active, garHashProduto } = req.body ?? {};
+  const { name, description, price, priceContador, active, garHashProduto } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
   if (description !== undefined) updates.description = description;
   if (price !== undefined) updates.price = String(price);
+  if (priceContador !== undefined) updates.priceContador = priceContador != null ? String(priceContador) : null;
   if (active !== undefined) updates.active = active;
   if (garHashProduto !== undefined) updates.garHashProduto = garHashProduto || null;
 

@@ -200,6 +200,8 @@ export interface Certificate {
   /** @nullable */
   description?: string | null;
   price: number;
+  /** @nullable */
+  priceContador?: number | null;
   active: boolean;
   /** @nullable */
   garHashProduto?: string | null;
@@ -210,6 +212,7 @@ export interface CertificateInput {
   name: string;
   description?: string;
   price: number;
+  priceContador?: number;
   active?: boolean;
   garHashProduto?: string;
 }
@@ -218,6 +221,7 @@ export interface CertificateUpdate {
   name?: string;
   description?: string;
   price?: number;
+  priceContador?: number;
   active?: boolean;
   garHashProduto?: string;
 }

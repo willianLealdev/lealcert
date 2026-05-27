@@ -11,11 +11,19 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Loader2, Link2, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Link2, AlertCircle, Users, User } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
-type CertForm = { name: string; description: string; price: string; active: boolean; garHashProduto: string };
-const EMPTY: CertForm = { name: "", description: "", price: "", active: true, garHashProduto: "" };
+type CertForm = {
+  name: string;
+  description: string;
+  price: string;
+  priceContador: string;
+  active: boolean;
+  garHashProduto: string;
+};
+
+const EMPTY: CertForm = { name: "", description: "", price: "", priceContador: "", active: true, garHashProduto: "" };
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
@@ -44,6 +52,7 @@ export default function AdminCertificates() {
       name: c.name,
       description: c.description ?? "",
       price: String(c.price),
+      priceContador: c.priceContador != null ? String(c.priceContador) : "",
       active: c.active,
       garHashProduto: c.garHashProduto ?? "",
     });
@@ -58,6 +67,7 @@ export default function AdminCertificates() {
       name: form.name,
       description: form.description,
       price: parseFloat(form.price),
+      priceContador: form.priceContador ? parseFloat(form.priceContador) : undefined,
       active: form.active,
       garHashProduto: form.garHashProduto || undefined,
     };
@@ -66,7 +76,6 @@ export default function AdminCertificates() {
   }
 
   const isPending = create.isPending || update.isPending;
-
   const selectedGarProduto = garProdutos.find(p => p.HashProduto === form.garHashProduto);
 
   return (
@@ -103,22 +112,34 @@ export default function AdminCertificates() {
               <div className="mt-3 flex items-center gap-2">
                 {c.garHashProduto ? (
                   <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                    <Link2 className="h-3 w-3" />
-                    Vinculado à GAR
+                    <Link2 className="h-3 w-3" />Vinculado à GAR
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
-                    <AlertCircle className="h-3 w-3" />
-                    Sem vínculo GAR
+                    <AlertCircle className="h-3 w-3" />Sem vínculo GAR
                   </span>
                 )}
               </div>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-xl font-bold text-primary">{formatBRL(c.price)}</span>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(c.id)}><Trash2 className="h-4 w-4" /></Button>
+              {/* Price display: two rows if priceContador is set */}
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <User className="h-3 w-3" />Cliente
+                  </span>
+                  <span className="text-lg font-bold text-primary">{formatBRL(c.price)}</span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Users className="h-3 w-3" />Contador
+                  </span>
+                  <span className={`text-lg font-bold ${c.priceContador != null ? "text-emerald-600" : "text-muted-foreground/50"}`}>
+                    {c.priceContador != null ? formatBRL(c.priceContador) : "—"}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end gap-1">
+                <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(c.id)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -137,10 +158,45 @@ export default function AdminCertificates() {
               <Label>Descrição</Label>
               <Textarea value={form.description} onChange={e => set("description", e.target.value)} rows={3} placeholder="Descrição do certificado..." />
             </div>
-            <div className="space-y-2">
-              <Label>Preço (R$) *</Label>
-              <Input type="number" step="0.01" min="0" value={form.price} onChange={e => set("price", e.target.value)} required placeholder="0,00" />
+
+            {/* Preços por tipo de usuário */}
+            <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+              <p className="text-sm font-medium text-foreground mb-1">Preços por tipo de cliente</p>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5 text-sm">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  Preço Cliente (R$) *
+                </Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.price}
+                  onChange={e => set("price", e.target.value)}
+                  required
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5 text-sm">
+                  <Users className="h-3.5 w-3.5 text-emerald-600" />
+                  Preço Contador (R$)
+                  <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                </Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.priceContador}
+                  onChange={e => set("priceContador", e.target.value)}
+                  placeholder="Deixe vazio para usar preço cliente"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se preenchido, contadores verão este valor. Clientes sempre veem o Preço Cliente.
+                </p>
+              </div>
             </div>
+
             <div className="flex items-center gap-3">
               <Switch checked={form.active} onCheckedChange={v => set("active", v)} id="active" />
               <Label htmlFor="active">Disponível para venda</Label>
