@@ -307,8 +307,8 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
 
   const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
-  if (campaign.status === "sent" || campaign.status === "sending") {
-    res.status(400).json({ error: "Campanha já enviada ou em progresso." }); return;
+  if (campaign.status === "sending") {
+    res.status(400).json({ error: "Campanha em andamento, aguarde concluir." }); return;
   }
 
   const dispatchOpts: DispatchOptions = {};
@@ -332,6 +332,25 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
   res.json({ message: "Campanha iniciada. Os e-mails serão enviados em segundo plano." });
 
   setImmediate(() => dispatchCampaign(campaign.id, dispatchOpts).catch(err => logger.error({ err }, "Campaign dispatch error")));
+});
+
+router.post("/marketing/campaigns/:id/duplicate", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
+  if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
+  const [copy] = await db.insert(marketingCampaignsTable).values({
+    name: campaign.name + " (cópia)",
+    subject: campaign.subject,
+    bodyHtml: campaign.bodyHtml,
+    bodyText: campaign.bodyText ?? undefined,
+    fromName: campaign.fromName,
+    fromEmail: campaign.fromEmail,
+    replyTo: campaign.replyTo ?? undefined,
+    filterTags: campaign.filterTags ?? undefined,
+    targetType: campaign.targetType,
+    status: "draft",
+  }).returning();
+  res.status(201).json(copy);
 });
 
 router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> => {
@@ -384,8 +403,8 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     const token = genToken();
     try {
       await db.insert(marketingSendsTable).values({
-        campaignId, contactId: contact.id, trackingToken: token, status: "pending",
-      }).onConflictDoNothing();
+        campaignId, contactId: contact.id > 0 ? contact.id : null, trackingToken: token, status: "pending",
+      });
     } catch { continue; }
 
     try {

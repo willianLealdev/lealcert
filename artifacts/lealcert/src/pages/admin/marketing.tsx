@@ -33,7 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Megaphone, Users, Mail, MailOpen, Send, Upload, Plus, Trash2,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
-  ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck,
+  ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy,
 } from "lucide-react";
 
 type Tab = "overview" | "campanhas" | "clientes" | "contadores" | "respostas";
@@ -220,6 +220,7 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
   const [showForm, setShowForm] = useState(false);
   const [editCampaign, setEditCampaign] = useState<number | null>(null);
   const [showSendDialog, setShowSendDialog] = useState<number | null>(null);
+  const [duplicating, setDuplicating] = useState<number | null>(null);
 
   const { data: campaigns = [], isLoading } = useListMarketingCampaigns();
   const deleteMutation = useDeleteMarketingCampaign({ mutation: {
@@ -230,6 +231,20 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
     onSuccess: () => { toast({ title: "Campanha cancelada." }); invalidate(); },
     onError: () => toast({ title: "Erro", variant: "destructive" }),
   }});
+
+  async function handleDuplicate(id: number) {
+    setDuplicating(id);
+    try {
+      const res = await fetch(`/api/marketing/campaigns/${id}/duplicate`, { method: "POST" });
+      if (!res.ok) throw new Error("Erro ao duplicar");
+      toast({ title: "Campanha duplicada!", description: "Uma cópia em rascunho foi criada." });
+      invalidate();
+    } catch {
+      toast({ title: "Erro ao duplicar campanha.", variant: "destructive" });
+    } finally {
+      setDuplicating(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -270,17 +285,31 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {c.status !== "sent" && c.status !== "sending" && (
+                  {c.status !== "sending" && (
                     <>
-                      <Button size="sm" variant="outline" onClick={() => { setEditCampaign(c.id); setShowForm(true); }}>Editar</Button>
+                      {c.status !== "sent" && (
+                        <Button size="sm" variant="outline" onClick={() => { setEditCampaign(c.id); setShowForm(true); }}>Editar</Button>
+                      )}
                       <Button size="sm" onClick={() => setShowSendDialog(c.id)} className="gap-1">
-                        <Send className="h-3.5 w-3.5" /> {c.status === "scheduled" ? "Reenviar" : "Enviar"}
+                        <Send className="h-3.5 w-3.5" />
+                        {c.status === "sent" ? "Reenviar" : c.status === "scheduled" ? "Enviar agora" : "Enviar"}
                       </Button>
                       {c.status === "scheduled" && (
                         <Button size="sm" variant="outline" onClick={() => cancelMutation.mutate({ id: c.id })}>Cancelar</Button>
                       )}
                     </>
                   )}
+                  <Button
+                    size="sm" variant="ghost"
+                    className="gap-1 text-muted-foreground hover:text-foreground"
+                    disabled={duplicating === c.id}
+                    onClick={() => handleDuplicate(c.id)}
+                    title="Duplicar campanha"
+                  >
+                    {duplicating === c.id
+                      ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      : <Copy className="h-3.5 w-3.5" />}
+                  </Button>
                   <Button size="icon" variant="ghost" className="text-destructive h-8 w-8"
                     onClick={() => { if (confirm("Remover campanha?")) deleteMutation.mutate({ id: c.id }); }}>
                     <Trash2 className="h-4 w-4" />
