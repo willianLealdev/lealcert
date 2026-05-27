@@ -17,6 +17,34 @@ import { ptBR } from "date-fns/locale";
 
 const BRT = "America/Sao_Paulo";
 
+function maskCpfCnpj(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 14);
+  if (d.length <= 11) {
+    return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, (_, a, b, c, e) =>
+      [a, b, c].filter(Boolean).join(".") + (e ? "-" + e : "")
+    );
+  }
+  return d
+    .replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, (_, a, b, c, dd, e) =>
+      [a, b, c].filter(Boolean).join(".").replace(/^(\d{2})/, "$1") +
+      "/" + dd + (e ? "-" + e : "")
+    )
+    .replace(/^(\d{2})(\d{3})/, "$1.$2")
+    .replace(/\.(\d{3})(\d{3})/, ".$1.$2");
+}
+
+function maskPhone(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 10) {
+    return d.replace(/(\d{2})(\d{4})(\d{0,4})/, (_, a, b, c) =>
+      `(${a}) ${b}${c ? `-${c}` : ""}`
+    );
+  }
+  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, (_, a, b, c) =>
+    `(${a}) ${b}${c ? `-${c}` : ""}`
+  );
+}
+
 function slotBRTDateKey(slotDatetime: string) {
   return new Date(slotDatetime).toLocaleDateString("sv-SE", { timeZone: BRT });
 }
@@ -379,7 +407,7 @@ export default function NewOrder() {
                   </div>
                   <div className="space-y-2">
                     <Label>{form.clientType === "cnpj" ? "CNPJ *" : "CPF *"}</Label>
-                    <Input value={form.customerCpfCnpj} onChange={e => set("customerCpfCnpj", e.target.value)} required placeholder={form.clientType === "cnpj" ? "00.000.000/0001-00" : "000.000.000-00"} />
+                    <Input value={form.customerCpfCnpj} onChange={e => set("customerCpfCnpj", maskCpfCnpj(e.target.value))} required placeholder={form.clientType === "cnpj" ? "00.000.000/0001-00" : "000.000.000-00"} />
                   </div>
                   {form.clientType === "cnpj" && (
                     <div className="space-y-2 sm:col-span-2">
@@ -397,7 +425,7 @@ export default function NewOrder() {
                   </div>
                   <div className="space-y-2">
                     <Label>Telefone / WhatsApp *</Label>
-                    <Input value={form.customerPhone} onChange={e => set("customerPhone", e.target.value)} required placeholder="(11) 99999-0000" />
+                    <Input value={form.customerPhone} onChange={e => set("customerPhone", maskPhone(e.target.value))} required placeholder="(11) 99999-0000" />
                   </div>
                 </div>
               </CardContent>

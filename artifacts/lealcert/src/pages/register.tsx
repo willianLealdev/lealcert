@@ -8,20 +8,31 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, ArrowLeft, Briefcase, User } from "lucide-react";
 
 function maskCpfCnpj(v: string) {
-  const d = v.replace(/\D/g, "");
+  const d = v.replace(/\D/g, "").slice(0, 14);
   if (d.length <= 11) {
     return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, (_, a, b, c, e) =>
       [a, b, c].filter(Boolean).join(".") + (e ? "-" + e : "")
     );
   }
   return d
-    .slice(0, 14)
     .replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, (_, a, b, c, dd, e) =>
       [a, b, c].filter(Boolean).join(".").replace(/^(\d{2})/, "$1") +
       "/" + dd + (e ? "-" + e : "")
     )
     .replace(/^(\d{2})(\d{3})/, "$1.$2")
     .replace(/\.(\d{3})(\d{3})/, ".$1.$2");
+}
+
+function maskPhone(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 10) {
+    return d.replace(/(\d{2})(\d{4})(\d{0,4})/, (_, a, b, c) =>
+      `(${a}) ${b}${c ? `-${c}` : ""}`
+    );
+  }
+  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, (_, a, b, c) =>
+    `(${a}) ${b}${c ? `-${c}` : ""}`
+  );
 }
 
 export default function Register() {
@@ -60,6 +71,16 @@ export default function Register() {
       toast({ title: "Selecione o tipo de cadastro", description: "Informe se você é Contador ou Cliente.", variant: "destructive" });
       return;
     }
+    const cpfCnpjDigits = form.cpfCnpj.replace(/\D/g, "");
+    if (cpfCnpjDigits.length !== 11 && cpfCnpjDigits.length !== 14) {
+      toast({ title: "CPF ou CNPJ inválido", description: "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.", variant: "destructive" });
+      return;
+    }
+    const phoneDigits = form.phone.replace(/\D/g, "");
+    if (phoneDigits.length < 10) {
+      toast({ title: "Telefone inválido", description: "Informe um telefone com DDD e número completo.", variant: "destructive" });
+      return;
+    }
     if (form.password.length < 6) {
       toast({ title: "Senha muito curta", description: "A senha deve ter no mínimo 6 caracteres.", variant: "destructive" });
       return;
@@ -72,9 +93,9 @@ export default function Register() {
       data: {
         name: form.name,
         email: form.email,
-        cpfCnpj: form.cpfCnpj.replace(/\D/g, ""),
+        cpfCnpj: cpfCnpjDigits,
         password: form.password,
-        phone: form.phone || undefined,
+        phone: phoneDigits,
         userType: form.userType as "contador" | "cliente",
       },
     });
@@ -182,10 +203,11 @@ export default function Register() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-blue-100/80 text-sm font-medium">Telefone / WhatsApp</Label>
+              <Label className="text-blue-100/80 text-sm font-medium">Telefone / WhatsApp *</Label>
               <Input
                 value={form.phone}
-                onChange={e => set("phone", e.target.value)}
+                onChange={e => set("phone", maskPhone(e.target.value))}
+                required
                 placeholder="(11) 99999-0000"
                 className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
                 style={inputStyle}
