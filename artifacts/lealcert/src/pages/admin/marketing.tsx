@@ -287,9 +287,7 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
                 <div className="flex items-center gap-2 shrink-0">
                   {c.status !== "sending" && (
                     <>
-                      {c.status !== "sent" && (
-                        <Button size="sm" variant="outline" onClick={() => { setEditCampaign(c.id); setShowForm(true); }}>Editar</Button>
-                      )}
+                      <Button size="sm" variant="outline" onClick={() => { setEditCampaign(c.id); setShowForm(true); }}>Editar</Button>
                       <Button size="sm" onClick={() => setShowSendDialog(c.id)} className="gap-1">
                         <Send className="h-3.5 w-3.5" />
                         {c.status === "sent" ? "Reenviar" : c.status === "scheduled" ? "Enviar agora" : "Enviar"}
