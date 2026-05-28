@@ -448,6 +448,26 @@ router.get("/marketing/track/:token.png", async (req, res): Promise<void> => {
   res.send(PIXEL);
 });
 
+// ─── Click tracking redirect ──────────────────────────────────────────────────
+router.get("/marketing/click/:token", async (req, res): Promise<void> => {
+  const token = req.params.token;
+  const dest = req.query.url as string | undefined;
+
+  const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.trackingToken, token)).limit(1);
+  if (send) {
+    await db.update(marketingSendsTable).set({
+      clickedAt: send.clickedAt ?? new Date(),
+      clickCount: send.clickCount + 1,
+    }).where(eq(marketingSendsTable.id, send.id));
+    if (!send.clickedAt) {
+      await db.update(marketingCampaignsTable).set({ totalClicked: sql`total_clicked + 1` }).where(eq(marketingCampaignsTable.id, send.campaignId));
+    }
+  }
+
+  const target = dest && /^https?:\/\//.test(dest) ? dest : "/";
+  res.redirect(302, target);
+});
+
 // ─── Replies ─────────────────────────────────────────────────────────────────
 router.get("/marketing/replies", async (req, res): Promise<void> => {
   const unreadOnly = req.query.unreadOnly === "true";

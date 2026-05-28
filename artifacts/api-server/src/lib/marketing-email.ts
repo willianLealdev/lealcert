@@ -23,15 +23,29 @@ interface SendMarketingEmailOptions {
   trackingToken: string;
 }
 
+function wrapLinks(html: string, baseUrl: string, trackingToken: string): string {
+  return html.replace(
+    /(<a\s[^>]*href=["'])([^"']+)(["'][^>]*>)/gi,
+    (match, pre, url, post) => {
+      if (url.startsWith("/api/marketing/") || url.startsWith("mailto:") || url.startsWith("#")) return match;
+      const tracked = `${baseUrl}/api/marketing/click/${trackingToken}?url=${encodeURIComponent(url)}`;
+      return `${pre}${tracked}${post}`;
+    }
+  );
+}
+
 export async function sendMarketingEmail({ campaign, contact, trackingToken }: SendMarketingEmailOptions): Promise<void> {
   const baseUrl = getBaseUrl();
   const pixelUrl = `${baseUrl}/api/marketing/track/${trackingToken}.png`;
   const unsubUrl = `${baseUrl}/unsubscribe?token=${trackingToken}`;
 
-  const html = campaign.bodyHtml
+  const bodyWithVars = campaign.bodyHtml
     .replace(/{{nome}}/gi, contact.name)
-    .replace(/{{email}}/gi, contact.email)
-    + `
+    .replace(/{{email}}/gi, contact.email);
+
+  const bodyWithLinks = wrapLinks(bodyWithVars, baseUrl, trackingToken);
+
+  const html = bodyWithLinks + `
     <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;">
       <p style="font-size:11px;color:#94a3b8;">
         Para cancelar o recebimento de e-mails, <a href="${unsubUrl}" style="color:#94a3b8;">clique aqui</a>.

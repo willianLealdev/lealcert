@@ -33,7 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Megaphone, Users, Mail, MailOpen, Send, Upload, Plus, Trash2,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
-  ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy,
+  ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy, MousePointerClick,
 } from "lucide-react";
 
 type Tab = "overview" | "campanhas" | "clientes" | "contadores" | "respostas";
@@ -318,17 +318,18 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
               </div>
 
               {c.status === "sent" && (
-                <div className="grid grid-cols-4 gap-3 mt-4 pt-4 border-t">
+                <div className="grid grid-cols-5 gap-3 mt-4 pt-4 border-t">
                   {[
-                    { label: "Enviados", value: c.totalSent, icon: Send },
-                    { label: "Abertos", value: c.totalOpened, icon: MailOpen },
-                    { label: "Bounces", value: c.totalBounced, icon: AlertCircle },
-                    { label: "Respostas", value: c.totalReplied, icon: Reply },
-                  ].map(({ label, value, icon: Icon }) => (
+                    { label: "Enviados", value: c.totalSent, icon: Send, color: "text-muted-foreground" },
+                    { label: "Abertos", value: c.totalOpened, icon: MailOpen, color: "text-blue-500" },
+                    { label: "Cliques", value: c.totalClicked, icon: MousePointerClick, color: "text-emerald-500" },
+                    { label: "Bounces", value: c.totalBounced, icon: AlertCircle, color: "text-red-400" },
+                    { label: "Respostas", value: c.totalReplied, icon: Reply, color: "text-violet-500" },
+                  ].map(({ label, value, icon: Icon, color }) => (
                     <div key={label} className="text-center">
-                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                      <div className={`flex items-center justify-center gap-1 mb-0.5 ${color}`}>
                         <Icon className="h-3.5 w-3.5" />
-                        <span className="text-xs">{label}</span>
+                        <span className="text-xs font-medium">{label}</span>
                       </div>
                       <p className="text-xl font-bold">{value}</p>
                       {c.totalSent > 0 && (

@@ -51,6 +51,8 @@ export const marketingSendsTable = pgTable("marketing_sends", {
   error: text("error"),
   openedAt: timestamp("opened_at", { withTimezone: true }),
   openCount: integer("open_count").notNull().default(0),
+  clickedAt: timestamp("clicked_at", { withTimezone: true }),
+  clickCount: integer("click_count").notNull().default(0),
   trackingToken: text("tracking_token").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [unique().on(t.campaignId, t.contactId)]);
