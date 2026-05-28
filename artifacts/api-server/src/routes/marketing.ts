@@ -62,6 +62,79 @@ function genToken() {
   return randomBytes(24).toString("hex");
 }
 
+// ─── Public routes (no auth required) ────────────────────────────────────────
+
+const PIXEL = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
+
+router.get("/marketing/track/:token.png", async (req, res): Promise<void> => {
+  const token = req.params.token;
+  const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.trackingToken, token)).limit(1);
+  if (send) {
+    await db.update(marketingSendsTable).set({
+      openedAt: send.openedAt ?? new Date(),
+      openCount: send.openCount + 1,
+    }).where(eq(marketingSendsTable.id, send.id));
+    if (!send.openedAt) {
+      await db.update(marketingCampaignsTable).set({ totalOpened: sql`total_opened + 1` }).where(eq(marketingCampaignsTable.id, send.campaignId));
+    }
+  }
+  res.setHeader("Content-Type", "image/gif");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.send(PIXEL);
+});
+
+router.get("/marketing/click/:token", async (req, res): Promise<void> => {
+  const token = req.params.token;
+  const dest = req.query.url as string | undefined;
+
+  const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.trackingToken, token)).limit(1);
+  if (send) {
+    await db.update(marketingSendsTable).set({
+      clickedAt: send.clickedAt ?? new Date(),
+      clickCount: send.clickCount + 1,
+    }).where(eq(marketingSendsTable.id, send.id));
+    if (!send.clickedAt) {
+      await db.update(marketingCampaignsTable).set({ totalClicked: sql`total_clicked + 1` }).where(eq(marketingCampaignsTable.id, send.campaignId));
+    }
+  }
+
+  const target = dest && /^https?:\/\//.test(dest) ? dest : "/";
+  res.redirect(302, target);
+});
+
+router.post("/marketing/webhook/inbound", async (req, res): Promise<void> => {
+  const body = req.body ?? {};
+  const fromEmail = body.from ?? body.sender ?? body.From ?? "";
+  const fromName = body.fromName ?? body.from_name ?? body.FromName ?? null;
+  const subject = body.subject ?? body.Subject ?? null;
+  const bodyText = body.text ?? body.plain ?? body["body-plain"] ?? null;
+  const bodyHtml = body.html ?? body["body-html"] ?? null;
+
+  if (!fromEmail) { res.json({ message: "ignored" }); return; }
+
+  const [contact] = await db.select().from(marketingContactsTable).where(eq(marketingContactsTable.email, fromEmail.toLowerCase())).limit(1);
+
+  let sendId: number | null = null;
+  if (contact) {
+    const [latestSend] = await db.select().from(marketingSendsTable)
+      .where(and(eq(marketingSendsTable.contactId, contact.id), eq(marketingSendsTable.status, "sent")))
+      .orderBy(desc(marketingSendsTable.sentAt)).limit(1);
+    sendId = latestSend?.id ?? null;
+  }
+
+  await db.insert(marketingRepliesTable).values({
+    sendId, contactId: contact?.id ?? null, fromEmail, fromName, subject, bodyText, bodyHtml,
+  });
+
+  if (sendId) {
+    const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.id, sendId)).limit(1);
+    if (send) await db.update(marketingCampaignsTable).set({ totalReplied: sql`total_replied + 1` }).where(eq(marketingCampaignsTable.id, send.campaignId));
+  }
+
+  res.json({ message: "ok" });
+});
+
+// ─── Admin-only routes ────────────────────────────────────────────────────────
 router.use(requireAdmin);
 
 // ─── Stats ───────────────────────────────────────────────────────────────────
@@ -428,46 +501,6 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   logger.info({ campaignId, sent, bounced }, "Campaign dispatch complete");
 }
 
-// ─── Tracking pixel ───────────────────────────────────────────────────────────
-const PIXEL = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
-
-router.get("/marketing/track/:token.png", async (req, res): Promise<void> => {
-  const token = req.params.token;
-  const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.trackingToken, token)).limit(1);
-  if (send) {
-    await db.update(marketingSendsTable).set({
-      openedAt: send.openedAt ?? new Date(),
-      openCount: send.openCount + 1,
-    }).where(eq(marketingSendsTable.id, send.id));
-    if (!send.openedAt) {
-      await db.update(marketingCampaignsTable).set({ totalOpened: sql`total_opened + 1` }).where(eq(marketingCampaignsTable.id, send.campaignId));
-    }
-  }
-  res.setHeader("Content-Type", "image/gif");
-  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-  res.send(PIXEL);
-});
-
-// ─── Click tracking redirect ──────────────────────────────────────────────────
-router.get("/marketing/click/:token", async (req, res): Promise<void> => {
-  const token = req.params.token;
-  const dest = req.query.url as string | undefined;
-
-  const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.trackingToken, token)).limit(1);
-  if (send) {
-    await db.update(marketingSendsTable).set({
-      clickedAt: send.clickedAt ?? new Date(),
-      clickCount: send.clickCount + 1,
-    }).where(eq(marketingSendsTable.id, send.id));
-    if (!send.clickedAt) {
-      await db.update(marketingCampaignsTable).set({ totalClicked: sql`total_clicked + 1` }).where(eq(marketingCampaignsTable.id, send.campaignId));
-    }
-  }
-
-  const target = dest && /^https?:\/\//.test(dest) ? dest : "/";
-  res.redirect(302, target);
-});
-
 // ─── Replies ─────────────────────────────────────────────────────────────────
 router.get("/marketing/replies", async (req, res): Promise<void> => {
   const unreadOnly = req.query.unreadOnly === "true";
@@ -493,39 +526,6 @@ router.post("/marketing/replies/:id/reply", async (req, res): Promise<void> => {
   await sendReplyEmail({ to: reply.fromEmail, toName: reply.fromName ?? undefined, subject: `Re: ${reply.subject ?? ""}`, body });
   await db.update(marketingRepliesTable).set({ repliedAt: new Date(), replyBody: body, readAt: reply.readAt ?? new Date() }).where(eq(marketingRepliesTable.id, id));
   res.json({ message: "Resposta enviada." });
-});
-
-// ─── Inbound Webhook ─────────────────────────────────────────────────────────
-router.post("/marketing/webhook/inbound", async (req, res): Promise<void> => {
-  const body = req.body ?? {};
-  const fromEmail = body.from ?? body.sender ?? body.From ?? "";
-  const fromName = body.fromName ?? body.from_name ?? body.FromName ?? null;
-  const subject = body.subject ?? body.Subject ?? null;
-  const bodyText = body.text ?? body.plain ?? body["body-plain"] ?? null;
-  const bodyHtml = body.html ?? body["body-html"] ?? null;
-
-  if (!fromEmail) { res.json({ message: "ignored" }); return; }
-
-  const [contact] = await db.select().from(marketingContactsTable).where(eq(marketingContactsTable.email, fromEmail.toLowerCase())).limit(1);
-
-  let sendId: number | null = null;
-  if (contact) {
-    const [latestSend] = await db.select().from(marketingSendsTable)
-      .where(and(eq(marketingSendsTable.contactId, contact.id), eq(marketingSendsTable.status, "sent")))
-      .orderBy(desc(marketingSendsTable.sentAt)).limit(1);
-    sendId = latestSend?.id ?? null;
-  }
-
-  await db.insert(marketingRepliesTable).values({
-    sendId, contactId: contact?.id ?? null, fromEmail, fromName, subject, bodyText, bodyHtml,
-  });
-
-  if (sendId) {
-    const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.id, sendId)).limit(1);
-    if (send) await db.update(marketingCampaignsTable).set({ totalReplied: sql`total_replied + 1` }).where(eq(marketingCampaignsTable.id, send.campaignId));
-  }
-
-  res.json({ message: "ok" });
 });
 
 export default router;
