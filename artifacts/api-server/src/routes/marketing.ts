@@ -401,7 +401,15 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
     return;
   }
 
-  await db.update(marketingCampaignsTable).set({ status: "sending" }).where(eq(marketingCampaignsTable.id, id));
+  if (campaign.status === "sent") {
+    await db.delete(marketingSendsTable).where(eq(marketingSendsTable.campaignId, id));
+  }
+
+  await db.update(marketingCampaignsTable).set({
+    status: "sending",
+    totalSent: 0, totalDelivered: 0, totalOpened: 0, totalClicked: 0, totalBounced: 0, totalReplied: 0,
+    sentAt: null,
+  }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Campanha iniciada. Os e-mails serão enviados em segundo plano." });
 
   setImmediate(() => dispatchCampaign(campaign.id, dispatchOpts).catch(err => logger.error({ err }, "Campaign dispatch error")));
@@ -458,15 +466,17 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     contacts = await db.select().from(marketingContactsTable)
       .where(inArray(marketingContactsTable.id, opts.specificContactIds));
   } else {
-    const typeConditions = [
-      eq(marketingContactsTable.status, "active"),
-      eq(marketingContactsTable.bounced, false),
-      ne(marketingContactsTable.emailStatus, "invalid"),
-      ne(marketingContactsTable.emailStatus, "disposable"),
-    ];
-    if (effectiveTarget === "cliente") typeConditions.push(eq(marketingContactsTable.type, "cliente"));
-    else if (effectiveTarget === "contador") typeConditions.push(eq(marketingContactsTable.type, "contador"));
-    contacts = await db.select().from(marketingContactsTable).where(and(...typeConditions));
+    const typeFilter = effectiveTarget === "cliente" ? "cliente" : effectiveTarget === "contador" ? "contador" : null;
+    const rawContacts = await db.execute<{ id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; created_at: Date }>(
+      sql`SELECT * FROM marketing_contacts WHERE status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``}`
+    );
+    contacts = rawContacts.rows.map(r => ({
+      id: r.id, name: r.name, email: r.email, phone: r.phone, type: r.type, status: r.status,
+      bounced: r.bounced, tags: r.tags, emailStatus: r.email_status,
+      emailInvalidReason: r.email_invalid_reason, emailValidatedAt: r.email_validated_at,
+      unsubscribedAt: r.unsubscribed_at, createdAt: r.created_at,
+    }));
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded");
   }
 
   let sent = 0;
