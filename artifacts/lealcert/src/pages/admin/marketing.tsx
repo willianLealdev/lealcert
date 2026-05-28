@@ -601,10 +601,41 @@ function CampaignFormDialog({
   const { data: campaigns = [] } = useListMarketingCampaigns();
   const existing = campaignId ? campaigns.find(c => c.id === campaignId) : null;
 
+  const defaultBodyHtml = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px;width:100%;">
+      <tr><td style="background:#0f172a;padding:24px 30px;text-align:center;">
+        <span style="color:#f59e0b;font-size:22px;font-weight:bold;">LealCert</span>
+        <span style="color:#ffffff;font-size:18px;"> — Certificação Digital</span>
+      </td></tr>
+      <tr><td style="padding:40px 30px;">
+        <h2 style="color:#0f172a;margin:0 0 16px;">Olá, {{nome}}!</h2>
+        <p style="color:#374151;font-size:16px;line-height:26px;margin:0 0 24px;">
+          Escreva aqui o conteúdo principal da sua mensagem.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:10px 0 30px;">
+          <a href="https://lealcert.com.br" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:16px 40px;font-size:18px;font-weight:bold;border-radius:8px;display:inline-block;">
+            Clique Aqui
+          </a>
+        </td></tr></table>
+        <p style="margin-top:20px;font-size:13px;color:#9ca3af;line-height:22px;">
+          LealCert • Certificação Digital com Credibilidade e Segurança
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+
   const [form, setForm] = useState({
     name: existing?.name ?? "",
     subject: existing?.subject ?? "",
-    bodyHtml: existing?.bodyHtml ?? "",
+    bodyHtml: existing?.bodyHtml ?? defaultBodyHtml,
     bodyText: existing?.bodyText ?? "",
     fromName: existing?.fromName ?? "LealCert Marketing",
     fromEmail: existing?.fromEmail ?? "mkt@lealcert.com.br",
