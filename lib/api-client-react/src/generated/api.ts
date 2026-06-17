@@ -35,6 +35,8 @@ import type {
   ChangePasswordInput,
   ChatMessageInput,
   CheckAlertsResult,
+  ConsultaPreviaInput,
+  ConsultaPreviaResult,
   CreateCampaignInput,
   CreateMarketingContactInput,
   DashboardStats,
@@ -1808,6 +1810,77 @@ export const useCreateOrder = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateOrderMutationOptions(options));
+    }
+
+export const getConsultaPreviaUrl = () => {
+
+
+
+
+  return `/api/orders/consulta-previa`
+}
+
+/**
+ * @summary Valida CPF/CNPJ e verifica PSBio antes de criar pedido
+ */
+export const consultaPrevia = async (consultaPreviaInput: ConsultaPreviaInput, options?: RequestInit): Promise<ConsultaPreviaResult> => {
+
+  return customFetch<ConsultaPreviaResult>(getConsultaPreviaUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      consultaPreviaInput,)
+  }
+);}
+
+
+
+
+export const getConsultaPreviaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof consultaPrevia>>, TError,{data: BodyType<ConsultaPreviaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof consultaPrevia>>, TError,{data: BodyType<ConsultaPreviaInput>}, TContext> => {
+
+const mutationKey = ['consultaPrevia'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof consultaPrevia>>, {data: BodyType<ConsultaPreviaInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  consultaPrevia(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConsultaPreviaMutationResult = NonNullable<Awaited<ReturnType<typeof consultaPrevia>>>
+    export type ConsultaPreviaMutationBody = BodyType<ConsultaPreviaInput>
+    export type ConsultaPreviaMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Valida CPF/CNPJ e verifica PSBio antes de criar pedido
+ */
+export const useConsultaPrevia = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof consultaPrevia>>, TError,{data: BodyType<ConsultaPreviaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof consultaPrevia>>,
+        TError,
+        {data: BodyType<ConsultaPreviaInput>},
+        TContext
+      > => {
+      return useMutation(getConsultaPreviaMutationOptions(options));
     }
 
 export const getGetOrderUrl = (id: number,) => {

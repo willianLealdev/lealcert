@@ -495,6 +495,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/Order"
 
+  /orders/consulta-previa:
+    post:
+      operationId: consultaPrevia
+      tags: [orders]
+      summary: Valida CPF/CNPJ e verifica PSBio antes de criar pedido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsultaPreviaInput"
+      responses:
+        "200":
+          description: Resultado da consulta prévia
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsultaPreviaResult"
+
   /orders/{id}:
     get:
       operationId: getOrder
@@ -2043,6 +2062,10 @@ components:
           type: ["string", "null"]
         customerPhone:
           type: ["string", "null"]
+        customerBirthDate:
+          type: ["string", "null"]
+        hasPsbio:
+          type: ["boolean", "null"]
         clientType:
           type: ["string", "null"]
         companyName:
@@ -2106,7 +2129,7 @@ components:
 
     OrderInput:
       type: object
-      required: [certificateId, customerName, customerCpfCnpj, clientType, scheduledAt]
+      required: [certificateId, customerName, customerCpfCnpj, clientType]
       properties:
         certificateId:
           type: integer
@@ -2121,11 +2144,13 @@ components:
           type: string
         customerPhone:
           type: string
+        customerBirthDate:
+          type: string
+        hasPsbio:
+          type: boolean
         companyName:
           type: string
         inssNumber:
-          type: string
-        scheduledAt:
           type: string
         extendedWarranty:
           type: boolean
@@ -2163,6 +2188,32 @@ components:
           type: string
         error:
           type: string
+
+    ConsultaPreviaInput:
+      type: object
+      required: [dataNascimento]
+      properties:
+        cpf:
+          type: string
+        cnpj:
+          type: string
+        cpfResponsavel:
+          type: string
+        dataNascimento:
+          type: string
+
+    ConsultaPreviaResult:
+      type: object
+      required: [ok, hasPsbio, mensagem, requiresPresencial]
+      properties:
+        ok:
+          type: boolean
+        hasPsbio:
+          type: boolean
+        mensagem:
+          type: string
+        requiresPresencial:
+          type: boolean
 
     PaymentPreference:
       type: object
@@ -2324,6 +2375,12 @@ components:
           type: ["string", "null"]
         activeProvider:
           type: string
+        evolutionUrl:
+          type: ["string", "null"]
+        evolutionApiKey:
+          type: ["string", "null"]
+        evolutionInstance:
+          type: ["string", "null"]
         updatedAt:
           type: string
 
@@ -2371,6 +2428,12 @@ components:
         safewebCnpjAr:
           type: string
         activeProvider:
+          type: string
+        evolutionUrl:
+          type: string
+        evolutionApiKey:
+          type: string
+        evolutionInstance:
           type: string
 
     GarProduto:

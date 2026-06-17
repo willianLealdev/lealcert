@@ -719,8 +719,9 @@ export default function OrderDetail() {
   const safewebStatus = orderExt.safewebStatus ?? undefined;
   const safewebSyncedAt = orderExt.safewebSyncedAt ?? undefined;
 
-  // Mostrar card de agendamento para o cliente quando protocolo está emitido
-  const canSchedule = !!garProtocolo && (order.status === "protocol_assigned" || order.status === "paid");
+  // Mostrar card de agendamento quando pedido está registrado no provedor (GAR ou Safeweb)
+  const canSchedule = (!!garProtocolo || !!orderExt.safewebSolicitacaoId) &&
+    (order.status === "protocol_assigned" || order.status === "paid" || order.status === "completed");
 
   function handleStatusUpdate(e: React.FormEvent) {
     e.preventDefault();

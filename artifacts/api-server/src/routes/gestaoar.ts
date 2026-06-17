@@ -4,7 +4,7 @@ import { db, settingsTable, ordersTable, usersTable, orderEventsTable, certifica
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { logEvent, getOrderEvents, isGarStatusEmitido } from "../lib/order-events";
-import { sendOrderStatusEmail } from "../lib/email";
+import { notifyOrderStatus, notifyScheduling } from "../lib/notify";
 import {
   garConsultarStatus,
   garTabelaPrecos,
@@ -27,7 +27,6 @@ import {
   garFamilias,
   garAgendar,
 } from "../lib/gestaoar";
-import { sendSchedulingEmail } from "../lib/email";
 
 const router = Router();
 
@@ -400,17 +399,16 @@ router.post("/gestaoar/sync-order/:orderId", requireAuth, async (req, res): Prom
       });
       await logEvent(orderId, "order_completed", "Pedido concluído — certificado emitido e registro de renovação criado");
 
-      // E-mail de conclusão ao cliente
-      if (order.customerEmail) {
-        sendOrderStatusEmail({
-          to: order.customerEmail,
-          customerName: order.customerName,
-          orderNumber: order.orderNumber,
-          status: "completed",
-          certName: cert?.name,
-          protocolNumber: newProtocolo ?? undefined,
-        }).catch((err: unknown) => logger.error({ err }, "Erro ao enviar e-mail de conclusão"));
-      }
+      // Notificar cliente (e-mail + WhatsApp) sobre conclusão
+      notifyOrderStatus({
+        to: order.customerEmail,
+        phone: order.customerPhone,
+        customerName: order.customerName,
+        orderNumber: order.orderNumber,
+        status: "completed",
+        certName: cert?.name,
+        protocolNumber: newProtocolo ?? undefined,
+      }).catch((err: unknown) => logger.error({ err }, "Erro ao notificar conclusão do pedido"));
 
       await db.update(ordersTable).set({
         garStatus: newGarStatus,
@@ -674,18 +672,16 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
       scheduledAt: new Date(),
     }).where(eq(ordersTable.id, id));
 
-    // Enviar e-mail de confirmação via SMTP LealCert (nunca pelo GAR)
-    if (order.customerEmail) {
-      sendSchedulingEmail({
-        to: order.customerEmail,
-        customerName: order.customerName,
-        orderNumber: order.orderNumber,
-        protocolo: order.garProtocolo,
-        localNome: nomeLocal,
-        dataHora,
-        siteUrl: s.siteUrl ?? undefined,
-      }).catch((err: unknown) => logger.error({ err }, "Erro ao enviar e-mail de agendamento"));
-    }
+    // Notificar cliente (e-mail + WhatsApp) sobre agendamento
+    notifyScheduling({
+      to: order.customerEmail,
+      phone: order.customerPhone,
+      customerName: order.customerName,
+      orderNumber: order.orderNumber,
+      protocolo: order.garProtocolo ?? "",
+      localNome: nomeLocal,
+      dataHora,
+    }).catch((err: unknown) => logger.error({ err }, "Erro ao notificar agendamento"));
 
     logger.info({ orderId: id, localNome: nomeLocal, dataHora }, "GAR Agendamento confirmado");
     res.json({ ok: true, localNome: nomeLocal, dataHora });

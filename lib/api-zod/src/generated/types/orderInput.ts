@@ -14,9 +14,10 @@ export interface OrderInput {
   customerCpfCnpj: string;
   customerEmail?: string;
   customerPhone?: string;
+  customerBirthDate?: string;
+  hasPsbio?: boolean;
   companyName?: string;
   inssNumber?: string;
-  scheduledAt: string;
   extendedWarranty?: boolean;
   addressZipcode?: string;
   addressStreet?: string;

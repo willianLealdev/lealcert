@@ -2,8 +2,10 @@ import { Router } from "express";
 import { eq, desc, ilike, or, sql } from "drizzle-orm";
 import { db, ordersTable, usersTable, certificatesTable, settingsTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
-import { sendOrderStatusEmail } from "../lib/email";
+import { notifyOrderStatus } from "../lib/notify";
 import { logger } from "../lib/logger";
+import { swConsultaCPF, swConsultaCNPJ, swBiometriaPSBioGlobal, type SafewebSettings } from "../lib/safeweb";
+import { garPsBio } from "../lib/gestaoar";
 
 const router = Router();
 
@@ -22,6 +24,8 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     customerCpfCnpj: o.customerCpfCnpj,
     customerEmail: o.customerEmail,
     customerPhone: o.customerPhone,
+    customerBirthDate: o.customerBirthDate,
+    hasPsbio: o.hasPsbio,
     companyName: o.companyName,
     inssNumber: o.inssNumber,
     cnhPath: o.cnhPath,
@@ -55,6 +59,90 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     updatedAt: o.updatedAt,
   };
 }
+
+// ── POST /orders/consulta-previa — valida CPF/CNPJ + PSBio antes de criar pedido ──
+router.post("/orders/consulta-previa", requireAuth, async (req, res): Promise<void> => {
+  const { cpf, cnpj, cpfResponsavel, dataNascimento } = req.body ?? {};
+
+  if (!dataNascimento) {
+    res.status(400).json({ error: "Data de nascimento obrigatória." });
+    return;
+  }
+  if (!cpf && !cnpj) {
+    res.status(400).json({ error: "CPF ou CNPJ obrigatório." });
+    return;
+  }
+
+  const [s] = await db.select().from(settingsTable).limit(1);
+  const activeProvider = s?.activeProvider ?? "gestaoar";
+
+  try {
+    if (activeProvider === "safeweb") {
+      if (!s?.safewebUrl || !s?.safewebUsername || !s?.safewebPassword) {
+        res.json({ ok: true, hasPsbio: true, mensagem: "Safeweb não configurado — validação ignorada", requiresPresencial: false });
+        return;
+      }
+
+      const sw: SafewebSettings = {
+        url: s.safewebUrl,
+        username: s.safewebUsername,
+        password: s.safewebPassword,
+        cnpjAr: s.safewebCnpjAr ?? undefined,
+      };
+
+      // Consulta prévia
+      let consultaResult;
+      if (cnpj) {
+        consultaResult = await swConsultaCNPJ(sw, cnpj.replace(/\D/g, ""), (cpfResponsavel ?? "").replace(/\D/g, ""), dataNascimento);
+      } else {
+        consultaResult = await swConsultaCPF(sw, cpf.replace(/\D/g, ""), dataNascimento);
+      }
+
+      if (consultaResult.Codigo !== 0) {
+        res.json({ ok: false, hasPsbio: false, mensagem: consultaResult.Mensagem, requiresPresencial: true });
+        return;
+      }
+
+      // PSBio check (usa CPF do titular ou do responsável)
+      const cpfParaPsbio = (cpf ?? cpfResponsavel ?? "").replace(/\D/g, "");
+      let hasPsbio = false;
+      if (cpfParaPsbio) {
+        const psbioResult = await swBiometriaPSBioGlobal(sw, { CPF: cpfParaPsbio });
+        hasPsbio = psbioResult.sucesso === true;
+      }
+
+      res.json({
+        ok: true,
+        hasPsbio,
+        mensagem: hasPsbio
+          ? "CPF com biometria (PSBio) cadastrada — emissão por videoconferência disponível"
+          : "CPF sem biometria (PSBio) — atendimento presencial necessário",
+        requiresPresencial: !hasPsbio,
+      });
+    } else {
+      // Gestão AR — verifica PSBio
+      if (!s?.garApiKey) {
+        res.json({ ok: true, hasPsbio: true, mensagem: "Gestão AR não configurada — validação ignorada", requiresPresencial: false });
+        return;
+      }
+      const documento = (cpf ?? cnpj ?? "").replace(/\D/g, "");
+      const psBioResult = await garPsBio(s.garApiKey, documento);
+      const hasPsbio = psBioResult?.IsOk === true;
+      res.json({
+        ok: true,
+        hasPsbio,
+        mensagem: hasPsbio
+          ? "PSBio disponível — emissão por videoconferência disponível"
+          : "Sem PSBio — atendimento presencial necessário",
+        requiresPresencial: !hasPsbio,
+      });
+    }
+  } catch (err) {
+    logger.error({ err }, "Consulta prévia error");
+    // Fail open — permite continuar mesmo se consulta falhar
+    res.json({ ok: true, hasPsbio: true, mensagem: "Não foi possível validar — prossiga com o cadastro manual", requiresPresencial: false });
+  }
+});
 
 router.get("/orders", requireAuth, async (req, res): Promise<void> => {
   const session = req.session;
@@ -97,11 +185,11 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   const userId = session.userId as number;
   const {
     certificateId, clientType, customerName, customerCpfCnpj, customerEmail,
-    customerPhone, companyName, inssNumber, scheduledAt, extendedWarranty,
+    customerPhone, customerBirthDate, hasPsbio, companyName, inssNumber, extendedWarranty,
     addressZipcode, addressStreet, addressNumber, addressNeighborhood, addressCity, addressState
   } = req.body ?? {};
 
-  if (!certificateId || !customerName || !customerCpfCnpj || !clientType || !scheduledAt) {
+  if (!certificateId || !customerName || !customerCpfCnpj || !clientType) {
     res.status(400).json({ error: "Campos obrigatórios faltando." });
     return;
   }
@@ -134,9 +222,10 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     customerCpfCnpj: customerCpfCnpj.replace(/\D/g, ""),
     customerEmail: customerEmail || null,
     customerPhone: customerPhone || null,
+    customerBirthDate: customerBirthDate || null,
+    hasPsbio: hasPsbio !== undefined ? Boolean(hasPsbio) : null,
     companyName: companyName || null,
     inssNumber: inssNumber || null,
-    scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
     extendedWarranty: !!extendedWarranty,
     addressZipcode: addressZipcode || null,
     addressStreet: addressStreet || null,
@@ -145,6 +234,19 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     addressCity: addressCity || null,
     addressState: addressState || null,
   }).returning();
+
+  // Notify customer about new order
+  if (order.customerEmail || order.customerPhone) {
+    notifyOrderStatus({
+      to: order.customerEmail,
+      phone: order.customerPhone,
+      customerName: order.customerName,
+      orderNumber: order.orderNumber,
+      status: "pending_payment",
+      total,
+      certName: cert.name,
+    }).catch((err: unknown) => logger.error({ err }, "Erro ao notificar criação de pedido"));
+  }
 
   res.status(201).json(orderRow(order, null, cert.name));
 });
@@ -192,18 +294,14 @@ router.patch("/orders/:id", requireAdmin, async (req, res): Promise<void> => {
     return;
   }
 
-  if (status !== undefined && order.customerEmail) {
-    const [user] = await db
-      .select({ name: usersTable.name })
-      .from(usersTable)
-      .where(eq(usersTable.id, order.userId))
-      .limit(1);
-    sendOrderStatusEmail({
+  if (status !== undefined) {
+    notifyOrderStatus({
       to: order.customerEmail,
-      customerName: order.customerName ?? user?.name ?? "Cliente",
+      phone: order.customerPhone,
+      customerName: order.customerName,
       orderNumber: order.orderNumber,
       status: order.status,
-    }).catch((err: unknown) => logger.error({ err }, "Erro ao enviar e-mail de status"));
+    }).catch((err: unknown) => logger.error({ err }, "Erro ao notificar status do pedido"));
   }
 
   res.json(orderRow(order));

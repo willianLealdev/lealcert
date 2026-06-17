@@ -27,6 +27,8 @@ export const ordersTable = pgTable("orders", {
   customerCpfCnpj: text("customer_cpf_cnpj").notNull(),
   customerEmail: text("customer_email"),
   customerPhone: text("customer_phone"),
+  customerBirthDate: text("customer_birth_date"),
+  hasPsbio: boolean("has_psbio"),
   companyName: text("company_name"),
   inssNumber: text("inss_number"),
   cnhPath: text("cnh_path"),

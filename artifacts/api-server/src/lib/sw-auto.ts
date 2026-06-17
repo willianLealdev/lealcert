@@ -8,6 +8,7 @@ import { db, ordersTable, certificatesTable, settingsTable } from "@workspace/db
 import { swAdicionarVideoconferencia, swAdicionarPresencial, swGetToken, type SafewebSettings } from "./safeweb";
 import { logger } from "./logger";
 import { logEvent } from "./order-events";
+import { notifyProviderRegistered } from "./notify";
 
 async function getSwSettings(): Promise<SafewebSettings | null> {
   const [s] = await db.select().from(settingsTable).limit(1);
@@ -114,6 +115,16 @@ export async function swAutoComprar(orderId: number): Promise<void> {
       safewebSolicitacaoId: solicitacaoId,
       safewebIdProduto,
     });
+
+    // Notificar cliente (e-mail + WhatsApp) que pedido foi registrado na Safeweb
+    notifyProviderRegistered({
+      to: order.customerEmail,
+      phone: order.customerPhone,
+      customerName: order.customerName,
+      orderNumber: order.orderNumber,
+      provider: "safeweb",
+      protocolNumber: solicitacaoId ? String(solicitacaoId) : undefined,
+    }).catch((err: unknown) => logger.error({ err }, "swAutoComprar: erro ao notificar registro Safeweb"));
 
     logger.info({ orderId, solicitacaoId }, "swAutoComprar: solicitação Safeweb criada com sucesso");
   } catch (err) {

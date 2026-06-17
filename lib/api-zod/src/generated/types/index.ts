@@ -30,6 +30,8 @@ export * from './changePasswordInput';
 export * from './chatMessageInput';
 export * from './checkAlertsResult';
 export * from './checkAlertsResultResultsItem';
+export * from './consultaPreviaInput';
+export * from './consultaPreviaResult';
 export * from './createCampaignInput';
 export * from './createCampaignInputTargetType';
 export * from './createMarketingContactInput';

@@ -343,6 +343,8 @@ export const ListOrdersResponseItem = zod.object({
   "customerCpfCnpj": zod.string(),
   "customerEmail": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
+  "customerBirthDate": zod.string().nullish(),
+  "hasPsbio": zod.boolean().nullish(),
   "clientType": zod.string().nullish(),
   "companyName": zod.string().nullish(),
   "inssNumber": zod.string().nullish(),
@@ -387,9 +389,10 @@ export const CreateOrderBody = zod.object({
   "customerCpfCnpj": zod.string(),
   "customerEmail": zod.string().optional(),
   "customerPhone": zod.string().optional(),
+  "customerBirthDate": zod.string().optional(),
+  "hasPsbio": zod.boolean().optional(),
   "companyName": zod.string().optional(),
   "inssNumber": zod.string().optional(),
-  "scheduledAt": zod.string(),
   "extendedWarranty": zod.boolean().optional(),
   "addressZipcode": zod.string().optional(),
   "addressStreet": zod.string().optional(),
@@ -397,6 +400,24 @@ export const CreateOrderBody = zod.object({
   "addressNeighborhood": zod.string().optional(),
   "addressCity": zod.string().optional(),
   "addressState": zod.string().optional()
+})
+
+
+/**
+ * @summary Valida CPF/CNPJ e verifica PSBio antes de criar pedido
+ */
+export const ConsultaPreviaBody = zod.object({
+  "cpf": zod.string().optional(),
+  "cnpj": zod.string().optional(),
+  "cpfResponsavel": zod.string().optional(),
+  "dataNascimento": zod.string()
+})
+
+export const ConsultaPreviaResponse = zod.object({
+  "ok": zod.boolean(),
+  "hasPsbio": zod.boolean(),
+  "mensagem": zod.string(),
+  "requiresPresencial": zod.boolean()
 })
 
 
@@ -420,6 +441,8 @@ export const GetOrderResponse = zod.object({
   "customerCpfCnpj": zod.string(),
   "customerEmail": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
+  "customerBirthDate": zod.string().nullish(),
+  "hasPsbio": zod.boolean().nullish(),
   "clientType": zod.string().nullish(),
   "companyName": zod.string().nullish(),
   "inssNumber": zod.string().nullish(),
@@ -479,6 +502,8 @@ export const UpdateOrderResponse = zod.object({
   "customerCpfCnpj": zod.string(),
   "customerEmail": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
+  "customerBirthDate": zod.string().nullish(),
+  "hasPsbio": zod.boolean().nullish(),
   "clientType": zod.string().nullish(),
   "companyName": zod.string().nullish(),
   "inssNumber": zod.string().nullish(),
@@ -1183,6 +1208,9 @@ export const GetSettingsResponse = zod.object({
   "safewebPassword": zod.string().nullish(),
   "safewebCnpjAr": zod.string().nullish(),
   "activeProvider": zod.string().optional(),
+  "evolutionUrl": zod.string().nullish(),
+  "evolutionApiKey": zod.string().nullish(),
+  "evolutionInstance": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 
@@ -1211,7 +1239,10 @@ export const UpdateSettingsBody = zod.object({
   "safewebUsername": zod.string().optional(),
   "safewebPassword": zod.string().optional(),
   "safewebCnpjAr": zod.string().optional(),
-  "activeProvider": zod.string().optional()
+  "activeProvider": zod.string().optional(),
+  "evolutionUrl": zod.string().optional(),
+  "evolutionApiKey": zod.string().optional(),
+  "evolutionInstance": zod.string().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -1237,6 +1268,9 @@ export const UpdateSettingsResponse = zod.object({
   "safewebPassword": zod.string().nullish(),
   "safewebCnpjAr": zod.string().nullish(),
   "activeProvider": zod.string().optional(),
+  "evolutionUrl": zod.string().nullish(),
+  "evolutionApiKey": zod.string().nullish(),
+  "evolutionInstance": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 
@@ -1271,6 +1305,8 @@ export const GetRecentOrdersResponseItem = zod.object({
   "customerCpfCnpj": zod.string(),
   "customerEmail": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
+  "customerBirthDate": zod.string().nullish(),
+  "hasPsbio": zod.boolean().nullish(),
   "clientType": zod.string().nullish(),
   "companyName": zod.string().nullish(),
   "inssNumber": zod.string().nullish(),

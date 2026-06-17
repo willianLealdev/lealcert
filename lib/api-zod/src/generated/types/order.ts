@@ -25,6 +25,10 @@ export interface Order {
   /** @nullable */
   customerPhone?: string | null;
   /** @nullable */
+  customerBirthDate?: string | null;
+  /** @nullable */
+  hasPsbio?: boolean | null;
+  /** @nullable */
   clientType?: string | null;
   /** @nullable */
   companyName?: string | null;

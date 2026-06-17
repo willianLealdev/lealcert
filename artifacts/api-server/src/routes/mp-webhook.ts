@@ -2,14 +2,16 @@
  * POST /mp/webhook — recebe notificações de pagamento do MercadoPago.
  * Ao confirmar pagamento aprovado:
  *  1. Atualiza pedido para status "paid"
- *  2. Dispara registro automático no provedor ativo (Gestão AR ou Safeweb)
+ *  2. Envia notificação (e-mail + WhatsApp)
+ *  3. Dispara registro automático no provedor ativo (Gestão AR ou Safeweb)
  */
 import { Router } from "express";
 import { eq } from "drizzle-orm";
-import { db, ordersTable, settingsTable } from "@workspace/db";
+import { db, ordersTable, settingsTable, certificatesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { garAutoComprar } from "../lib/gar-auto";
 import { swAutoComprar } from "../lib/sw-auto";
+import { notifyOrderStatus } from "../lib/notify";
 
 const router = Router();
 
@@ -47,8 +49,15 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
     const orderNumber = payment.external_reference;
     if (!orderNumber) { logger.warn({ paymentId }, "mp/webhook: pagamento aprovado sem external_reference"); return; }
 
-    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.orderNumber, orderNumber)).limit(1);
-    if (!order) { logger.warn({ orderNumber }, "mp/webhook: pedido não encontrado"); return; }
+    const [row] = await db
+      .select({ order: ordersTable, certName: certificatesTable.name })
+      .from(ordersTable)
+      .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
+      .where(eq(ordersTable.orderNumber, orderNumber))
+      .limit(1);
+
+    if (!row) { logger.warn({ orderNumber }, "mp/webhook: pedido não encontrado"); return; }
+    const order = row.order;
 
     if (order.status !== "pending_payment" && order.status !== "created") {
       logger.info({ orderId: order.id, status: order.status }, "mp/webhook: pedido já processado, ignorando");
@@ -63,7 +72,18 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
 
     logger.info({ orderId: order.id, orderNumber }, "mp/webhook: pedido marcado como PAGO");
 
-    // 2. Disparar registro no provedor ativo
+    // 2. Notificar cliente
+    notifyOrderStatus({
+      to: order.customerEmail,
+      phone: order.customerPhone,
+      customerName: order.customerName,
+      orderNumber: order.orderNumber,
+      status: "paid",
+      total: parseFloat(order.total),
+      certName: row.certName ?? undefined,
+    }).catch((err: unknown) => logger.error({ err }, "mp/webhook: erro ao notificar pagamento"));
+
+    // 3. Disparar registro no provedor ativo
     const activeProvider = settings?.activeProvider ?? "gestaoar";
     logger.info({ orderId: order.id, activeProvider }, "mp/webhook: disparando registro no provedor");
 

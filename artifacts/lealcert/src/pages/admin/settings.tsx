@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, ShieldCheck, Globe, Mail, Link2, ToggleLeft, ToggleRight, CheckCircle2 } from "lucide-react";
+import { Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight, CheckCircle2, MessageCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function MaskedInput({ value, onChange, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> & { value: string; onChange: (v: string) => void }) {
@@ -54,6 +54,9 @@ export default function AdminSettings() {
     safewebPassword: "",
     safewebCnpjAr: "",
     activeProvider: "gestaoar",
+    evolutionUrl: "",
+    evolutionApiKey: "",
+    evolutionInstance: "",
   });
 
   useEffect(() => {
@@ -75,6 +78,9 @@ export default function AdminSettings() {
         safewebPassword: settings.safewebPassword ?? "",
         safewebCnpjAr: settings.safewebCnpjAr ?? "",
         activeProvider: settings.activeProvider ?? "gestaoar",
+        evolutionUrl: (settings as typeof settings & { evolutionUrl?: string }).evolutionUrl ?? "",
+        evolutionApiKey: (settings as typeof settings & { evolutionApiKey?: string }).evolutionApiKey ?? "",
+        evolutionInstance: (settings as typeof settings & { evolutionInstance?: string }).evolutionInstance ?? "",
       });
     }
   }, [settings]);
@@ -331,6 +337,44 @@ export default function AdminSettings() {
             >
               {testingAuth ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testando...</> : "Testar Conexão"}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Evolution API — WhatsApp */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-primary" />
+              <CardTitle>WhatsApp — Evolution API</CardTitle>
+            </div>
+            <CardDescription>
+              Integração com Evolution API para envio de notificações via WhatsApp.
+              Configure sua instância em <a href="https://evolution-api.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">evolution-api.com</a>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>URL da Evolution API</Label>
+              <Input
+                value={form.evolutionUrl}
+                onChange={e => set("evolutionUrl", e.target.value)}
+                placeholder="https://evolution.seudominio.com.br"
+              />
+              <p className="text-xs text-muted-foreground">URL base da sua instância Evolution API.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>API Key</Label>
+              <MaskedInput value={form.evolutionApiKey} onChange={v => set("evolutionApiKey", v)} placeholder="Chave de autenticação da API" />
+            </div>
+            <div className="space-y-2">
+              <Label>Nome da Instância</Label>
+              <Input
+                value={form.evolutionInstance}
+                onChange={e => set("evolutionInstance", e.target.value)}
+                placeholder="lealcert"
+              />
+              <p className="text-xs text-muted-foreground">Nome da instância configurada na Evolution API.</p>
+            </div>
           </CardContent>
         </Card>
 

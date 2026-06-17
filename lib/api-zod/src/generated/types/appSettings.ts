@@ -41,5 +41,11 @@ export interface AppSettings {
   /** @nullable */
   safewebCnpjAr?: string | null;
   activeProvider?: string;
+  /** @nullable */
+  evolutionUrl?: string | null;
+  /** @nullable */
+  evolutionApiKey?: string | null;
+  /** @nullable */
+  evolutionInstance?: string | null;
   updatedAt?: string;
 }

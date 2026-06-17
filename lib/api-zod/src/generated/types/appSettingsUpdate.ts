@@ -28,4 +28,7 @@ export interface AppSettingsUpdate {
   safewebPassword?: string;
   safewebCnpjAr?: string;
   activeProvider?: string;
+  evolutionUrl?: string;
+  evolutionApiKey?: string;
+  evolutionInstance?: string;
 }

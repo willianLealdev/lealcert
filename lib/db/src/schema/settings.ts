@@ -28,6 +28,10 @@ export const settingsTable = pgTable("settings", {
   safewebCnpjAr: text("safeweb_cnpj_ar"),
   // Active provider
   activeProvider: text("active_provider").default("gestaoar"),
+  // Evolution API (WhatsApp)
+  evolutionUrl: text("evolution_url"),
+  evolutionApiKey: text("evolution_api_key"),
+  evolutionInstance: text("evolution_instance"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

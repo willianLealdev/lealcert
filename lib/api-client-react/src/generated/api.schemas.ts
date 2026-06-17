@@ -260,6 +260,10 @@ export interface Order {
   /** @nullable */
   customerPhone?: string | null;
   /** @nullable */
+  customerBirthDate?: string | null;
+  /** @nullable */
+  hasPsbio?: boolean | null;
+  /** @nullable */
   clientType?: string | null;
   /** @nullable */
   companyName?: string | null;
@@ -333,9 +337,10 @@ export interface OrderInput {
   customerCpfCnpj: string;
   customerEmail?: string;
   customerPhone?: string;
+  customerBirthDate?: string;
+  hasPsbio?: boolean;
   companyName?: string;
   inssNumber?: string;
-  scheduledAt: string;
   extendedWarranty?: boolean;
   addressZipcode?: string;
   addressStreet?: string;
@@ -367,6 +372,20 @@ export interface SyncProviderResult {
   ok: boolean;
   status?: string;
   error?: string;
+}
+
+export interface ConsultaPreviaInput {
+  cpf?: string;
+  cnpj?: string;
+  cpfResponsavel?: string;
+  dataNascimento: string;
+}
+
+export interface ConsultaPreviaResult {
+  ok: boolean;
+  hasPsbio: boolean;
+  mensagem: string;
+  requiresPresencial: boolean;
 }
 
 export interface PaymentPreference {
@@ -485,6 +504,12 @@ export interface AppSettings {
   /** @nullable */
   safewebCnpjAr?: string | null;
   activeProvider?: string;
+  /** @nullable */
+  evolutionUrl?: string | null;
+  /** @nullable */
+  evolutionApiKey?: string | null;
+  /** @nullable */
+  evolutionInstance?: string | null;
   updatedAt?: string;
 }
 
@@ -510,6 +535,9 @@ export interface AppSettingsUpdate {
   safewebPassword?: string;
   safewebCnpjAr?: string;
   activeProvider?: string;
+  evolutionUrl?: string;
+  evolutionApiKey?: string;
+  evolutionInstance?: string;
 }
 
 export interface GarProduto {

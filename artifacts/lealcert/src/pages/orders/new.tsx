@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
-import { useListCertificates, useListSlots, useCreateOrder } from "@workspace/api-client-react";
+import { useListCertificates, useCreateOrder, useConsultaPrevia } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,14 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Search, MapPin, Clock, CalendarDays, Upload, FileText, X, Info } from "lucide-react";
+import { ArrowLeft, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link } from "wouter";
-import { Calendar } from "@/components/ui/calendar";
-import { ptBR } from "date-fns/locale";
-
-const BRT = "America/Sao_Paulo";
-
 function maskCpfCnpj(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 14);
   if (d.length <= 11) {
@@ -45,32 +40,15 @@ function maskPhone(v: string) {
   );
 }
 
-function slotBRTDateKey(slotDatetime: string) {
-  return new Date(slotDatetime).toLocaleDateString("sv-SE", { timeZone: BRT });
-}
-function slotBRTTime(slotDatetime: string) {
-  return new Date(slotDatetime).toLocaleTimeString("pt-BR", { timeZone: BRT, hour: "2-digit", minute: "2-digit" });
-}
-function dateToBRTKey(d: Date) {
-  return d.toLocaleDateString("sv-SE", { timeZone: BRT });
-}
-
 function formatBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 }
-function formatSlotDateTime(d: string | Date) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit"
-  }).format(new Date(d));
-}
-
 export default function NewOrder() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
 
   const { data: certificates } = useListCertificates({ activeOnly: true });
-  const { data: slots } = useListSlots();
 
   function certPrice(c: NonNullable<typeof certificates>[number]) {
     if (user?.userType === "contador" && c.priceContador != null) return c.priceContador;
@@ -84,9 +62,9 @@ export default function NewOrder() {
     customerCpfCnpj: "",
     customerEmail: "",
     customerPhone: "",
+    customerBirthDate: "",
     companyName: "",
     inssNumber: "",
-    scheduledAt: "",
     extendedWarranty: false,
     addressZipcode: "",
     addressStreet: "",
@@ -99,10 +77,12 @@ export default function NewOrder() {
     repCpf: "",
   });
 
+  type PsbioStatus = null | "loading" | { hasPsbio: boolean; mensagem: string; requiresPresencial: boolean };
+  const [psbioStatus, setPsbioStatus] = useState<PsbioStatus>(null);
+
   const [warrantyInfoOpen, setWarrantyInfoOpen] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [cepFilled, setCepFilled] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [cnhFile, setCnhFile] = useState<File | null>(null);
   const [cnhUploading, setCnhUploading] = useState(false);
   const [cnhKey, setCnhKey] = useState<string | null>(null);
@@ -129,21 +109,38 @@ export default function NewOrder() {
     },
   });
 
+  const checkPsbio = useConsultaPrevia({
+    mutation: {
+      onSuccess: (data) => {
+        setPsbioStatus({ hasPsbio: data.hasPsbio, mensagem: data.mensagem, requiresPresencial: data.requiresPresencial });
+      },
+      onError: () => {
+        setPsbioStatus(null);
+      },
+    },
+  });
+
+  const triggerPsbioCheck = useCallback((cpfCnpj: string, birthDate: string, clientType: string, repCpf?: string, repBirthDate?: string) => {
+    const digits = cpfCnpj.replace(/\D/g, "");
+    const isCpf = clientType === "cpf" && digits.length === 11;
+    const isCnpj = clientType === "cnpj" && digits.length === 14;
+
+    if (isCpf && birthDate) {
+      setPsbioStatus("loading");
+      checkPsbio.mutate({ data: { cpf: digits, dataNascimento: birthDate } });
+    } else if (isCnpj && repCpf && repBirthDate) {
+      const repDigits = repCpf.replace(/\D/g, "");
+      if (repDigits.length === 11) {
+        setPsbioStatus("loading");
+        checkPsbio.mutate({ data: { cnpj: digits, cpfResponsavel: repDigits, dataNascimento: repBirthDate } });
+      }
+    } else {
+      setPsbioStatus(null);
+    }
+  }, [checkPsbio]);
+
   const selectedCert = certificates?.find(c => String(c.id) === form.certificateId);
   const total = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? 15 : 0);
-
-  // Build slot map keyed by BRT date (YYYY-MM-DD)
-  const slotsByBRTDate = new Map<string, typeof slots>();
-  for (const s of slots ?? []) {
-    const key = slotBRTDateKey(s.slotDatetime);
-    if (!slotsByBRTDate.has(key)) slotsByBRTDate.set(key, []);
-    slotsByBRTDate.get(key)!.push(s);
-  }
-  const datesWithSlots = Array.from(slotsByBRTDate.keys()).map(k => new Date(k + "T12:00:00"));
-  const slotsForSelectedDate = selectedDate
-    ? (slotsByBRTDate.get(dateToBRTKey(selectedDate)) ?? [])
-    : [];
-  const selectedSlot = slotsForSelectedDate.find(s => s.slotDatetime === form.scheduledAt);
 
   function set(field: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -236,10 +233,6 @@ export default function NewOrder() {
         return;
       }
     }
-    if (!form.scheduledAt) {
-      toast({ title: "Atenção", description: "Selecione um horário para o atendimento.", variant: "destructive" });
-      return;
-    }
 
     let uploadedKey = cnhKey;
     if (cnhFile && !cnhKey) {
@@ -257,6 +250,8 @@ export default function NewOrder() {
       }
     }
 
+    const hasPsbioValue = psbioStatus && psbioStatus !== "loading" ? psbioStatus.hasPsbio : undefined;
+
     createOrder.mutate({
       data: {
         certificateId: Number(form.certificateId),
@@ -265,9 +260,10 @@ export default function NewOrder() {
         customerCpfCnpj: form.customerCpfCnpj,
         customerEmail: form.customerEmail,
         customerPhone: form.customerPhone,
+        customerBirthDate: form.customerBirthDate || undefined,
+        hasPsbio: hasPsbioValue,
         companyName: form.companyName || undefined,
         inssNumber: form.inssNumber || undefined,
-        scheduledAt: form.scheduledAt,
         extendedWarranty: form.extendedWarranty,
         addressZipcode: form.addressZipcode || undefined,
         addressStreet: form.addressStreet || undefined,
@@ -407,8 +403,25 @@ export default function NewOrder() {
                   </div>
                   <div className="space-y-2">
                     <Label>{form.clientType === "cnpj" ? "CNPJ *" : "CPF *"}</Label>
-                    <Input value={form.customerCpfCnpj} onChange={e => set("customerCpfCnpj", maskCpfCnpj(e.target.value))} required placeholder={form.clientType === "cnpj" ? "00.000.000/0001-00" : "000.000.000-00"} />
+                    <Input value={form.customerCpfCnpj} onChange={e => {
+                      const v = maskCpfCnpj(e.target.value);
+                      set("customerCpfCnpj", v);
+                      triggerPsbioCheck(v, form.customerBirthDate, form.clientType, form.repCpf, form.repBirthDate);
+                    }} required placeholder={form.clientType === "cnpj" ? "00.000.000/0001-00" : "000.000.000-00"} />
                   </div>
+                  {form.clientType === "cpf" && (
+                    <div className="space-y-2">
+                      <Label>Data de Nascimento</Label>
+                      <Input
+                        type="date"
+                        value={form.customerBirthDate}
+                        onChange={e => {
+                          set("customerBirthDate", e.target.value);
+                          triggerPsbioCheck(form.customerCpfCnpj, e.target.value, form.clientType, form.repCpf, form.repBirthDate);
+                        }}
+                      />
+                    </div>
+                  )}
                   {form.clientType === "cnpj" && (
                     <div className="space-y-2 sm:col-span-2">
                       <Label>Razão Social</Label>
@@ -428,6 +441,38 @@ export default function NewOrder() {
                     <Input value={form.customerPhone} onChange={e => set("customerPhone", maskPhone(e.target.value))} required placeholder="(11) 99999-0000" />
                   </div>
                 </div>
+
+                {/* PSBio status indicator */}
+                {psbioStatus === "loading" && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Verificando validação biométrica...
+                  </div>
+                )}
+                {psbioStatus && psbioStatus !== "loading" && psbioStatus.hasPsbio && (
+                  <div className="flex items-start gap-2 text-sm bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-4 py-3">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-emerald-700 dark:text-emerald-400">Biometria PSBio disponível</p>
+                      <p className="text-emerald-600/80 dark:text-emerald-500 text-xs">{psbioStatus.mensagem} — atendimento pode ser realizado remotamente.</p>
+                    </div>
+                  </div>
+                )}
+                {psbioStatus && psbioStatus !== "loading" && !psbioStatus.hasPsbio && (
+                  <div className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3">
+                    <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-amber-700 dark:text-amber-400">Atendimento presencial obrigatório</p>
+                      <p className="text-amber-600/80 dark:text-amber-500 text-xs">{psbioStatus.mensagem} — o cliente deverá comparecer pessoalmente para validação.</p>
+                    </div>
+                  </div>
+                )}
+                {!psbioStatus && form.customerCpfCnpj.replace(/\D/g, "").length >= 11 && !form.customerBirthDate && form.clientType === "cpf" && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <ShieldQuestion className="h-4 w-4" />
+                    Informe a data de nascimento para verificar disponibilidade de biometria.
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -463,7 +508,10 @@ export default function NewOrder() {
                       <Input
                         type="date"
                         value={form.repBirthDate}
-                        onChange={e => set("repBirthDate", e.target.value)}
+                        onChange={e => {
+                          set("repBirthDate", e.target.value);
+                          triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, form.clientType, form.repCpf, e.target.value);
+                        }}
                         required={form.clientType === "cnpj"}
                       />
                     </div>
@@ -715,101 +763,15 @@ export default function NewOrder() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4 text-primary" />
-                  Agendamento *
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">Selecione uma data e depois escolha o horário disponível.</p>
-              </CardHeader>
-              <CardContent>
-                {!slots?.length ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CalendarDays className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                    <p className="font-medium">Nenhum horário disponível no momento.</p>
-                    <p className="text-sm">Entre em contato com o administrador.</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Calendário */}
-                    <div className="flex flex-col items-center">
-                      <Calendar
-                        mode="single"
-                        locale={ptBR}
-                        selected={selectedDate}
-                        onSelect={(d) => {
-                          setSelectedDate(d);
-                          set("scheduledAt", "");
-                        }}
-                        disabled={[
-                          { before: new Date() },
-                          (day: Date) => !slotsByBRTDate.has(dateToBRTKey(day)),
-                        ]}
-                        modifiers={{ hasSlot: datesWithSlots }}
-                        modifiersClassNames={{
-                          hasSlot: "font-bold underline decoration-primary decoration-2",
-                        }}
-                        captionLayout="label"
-                        className="rounded-xl border shadow-sm bg-card"
-                      />
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Datas <span className="font-bold underline decoration-primary decoration-2">sublinhadas</span> têm horários disponíveis
-                      </p>
-                    </div>
-
-                    {/* Horários do dia selecionado */}
-                    <div className="flex-1 min-w-0">
-                      {!selectedDate ? (
-                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground py-10 border-2 border-dashed rounded-xl">
-                          <CalendarDays className="h-10 w-10 mb-2 opacity-30" />
-                          <p className="font-medium">Clique em uma data no calendário</p>
-                          <p className="text-sm">para ver os horários disponíveis</p>
-                        </div>
-                      ) : slotsForSelectedDate.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground py-10 border-2 border-dashed rounded-xl">
-                          <Clock className="h-10 w-10 mb-2 opacity-30" />
-                          <p className="font-medium">Nenhum horário disponível nesta data</p>
-                          <p className="text-sm">Escolha outra data no calendário</p>
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="text-sm font-semibold mb-3 capitalize">
-                            {selectedDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: BRT })}
-                          </p>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {slotsForSelectedDate.map(slot => {
-                              const isSelected = form.scheduledAt === slot.slotDatetime;
-                              return (
-                                <button
-                                  key={slot.id}
-                                  type="button"
-                                  onClick={() => set("scheduledAt", slot.slotDatetime)}
-                                  className={[
-                                    "flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 text-sm font-medium transition-all cursor-pointer",
-                                    isSelected
-                                      ? "border-primary bg-primary text-primary-foreground shadow-md scale-105"
-                                      : "border-border hover:border-primary/50 hover:bg-primary/5",
-                                  ].join(" ")}
-                                >
-                                  <Clock className="h-3.5 w-3.5 shrink-0" />
-                                  {slotBRTTime(slot.slotDatetime)}
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          {form.scheduledAt && selectedSlot && (
-                            <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm text-primary font-medium flex items-center gap-2">
-                              <CalendarDays className="h-4 w-4 shrink-0" />
-                              Agendado para {selectedDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: BRT })} às {slotBRTTime(selectedSlot.slotDatetime)} (horário de Brasília)
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+            <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+              <CardContent className="pt-5">
+                <div className="flex items-start gap-3 text-sm text-blue-800 dark:text-blue-300">
+                  <Info className="h-4 w-4 shrink-0 mt-0.5 text-blue-600" />
+                  <p>
+                    <strong>Agendamento após pagamento.</strong> O horário de atendimento será selecionado na tela de detalhes do pedido,
+                    assim que o pagamento for confirmado e o certificado for registrado no provedor.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>

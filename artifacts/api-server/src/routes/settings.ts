@@ -36,6 +36,9 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     safewebPassword: s.safewebPassword,
     safewebCnpjAr: s.safewebCnpjAr,
     activeProvider: s.activeProvider ?? "gestaoar",
+    evolutionUrl: s.evolutionUrl,
+    evolutionApiKey: s.evolutionApiKey,
+    evolutionInstance: s.evolutionInstance,
     updatedAt: s.updatedAt,
   };
 }
@@ -52,6 +55,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     scheduleOpenDays, scheduleOpenHour, scheduleCloseHour, scheduleStepMin, scheduleClosedDates,
     garApiKey, garHashVendedor, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
     safewebUrl, safewebUsername, safewebPassword, safewebCnpjAr, activeProvider,
+    evolutionUrl, evolutionApiKey, evolutionInstance,
   } = req.body ?? {};
 
   const updates: Record<string, unknown> = {};
@@ -76,6 +80,9 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (safewebPassword !== undefined) updates.safewebPassword = safewebPassword;
   if (safewebCnpjAr !== undefined) updates.safewebCnpjAr = safewebCnpjAr;
   if (activeProvider !== undefined) updates.activeProvider = activeProvider;
+  if (evolutionUrl !== undefined) updates.evolutionUrl = evolutionUrl;
+  if (evolutionApiKey !== undefined) updates.evolutionApiKey = evolutionApiKey;
+  if (evolutionInstance !== undefined) updates.evolutionInstance = evolutionInstance;
 
   const [updated] = await db
     .update(settingsTable)
