@@ -92,9 +92,6 @@ export default function NewOrder() {
   const psbioContextRef = useRef<"customer" | "rep">("customer");
   // NF type (only for e-CPF certs): "fisica" | "juridica"
   const [nfType, setNfType] = useState<"fisica" | "juridica">("fisica");
-  const [nfCnpjToQuery, setNfCnpjToQuery] = useState("");
-  const [nfCnpjDisplay, setNfCnpjDisplay] = useState("");
-  const [autoFilledNfCompany, setAutoFilledNfCompany] = useState(false);
 
   const [warrantyInfoOpen, setWarrantyInfoOpen] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
@@ -196,6 +193,8 @@ export default function NewOrder() {
 
   // Derived: is the selected certificate an e-CNPJ type?
   const isCnpjCert = selectedCert ? /cnpj/i.test(selectedCert.name) : false;
+  // Show CNPJ/company fields either for e-CNPJ cert OR e-CPF cert with NF jurídica
+  const showCnpjFields = isCnpjCert || (!isCnpjCert && nfType === "juridica");
 
   // Auto-set clientType when certificate changes
   useEffect(() => {
@@ -204,26 +203,11 @@ export default function NewOrder() {
     setForm(prev => ({ ...prev, clientType: certIsCnpj ? "cnpj" : "cpf" }));
     if (!certIsCnpj) setNfType("fisica");
     setCnpjToQuery("");
-    setNfCnpjToQuery("");
-    setNfCnpjDisplay("");
     setAutoFilledCustomerName(false);
     setPsbioStatus(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.certificateId]);
 
-  // NF CNPJ lookup (for e-CPF + juridica)
-  const { data: nfCnpjData, isFetching: nfCnpjFetching } = useQuery({
-    ...getCnpjLookupQueryOptions({ cnpj: nfCnpjToQuery }),
-    enabled: nfCnpjToQuery.length === 14,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  });
-
-  useEffect(() => {
-    if (!nfCnpjData) return;
-    setForm(prev => ({ ...prev, companyName: prev.companyName || nfCnpjData.razaoSocial }));
-    if (nfCnpjData.razaoSocial) setAutoFilledNfCompany(true);
-  }, [nfCnpjData]);
 
   function set(field: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -479,7 +463,7 @@ export default function NewOrder() {
                 {!isCnpjCert && selectedCert && (
                   <div className="space-y-2 pb-2 border-b">
                     <Label className="text-sm font-medium">Nota fiscal do certificado em nome de:</Label>
-                    <RadioGroup value={nfType} onValueChange={v => { setNfType(v as "fisica" | "juridica"); setForm(prev => ({ ...prev, companyName: "" })); setNfCnpjToQuery(""); setNfCnpjDisplay(""); setAutoFilledNfCompany(false); }} className="flex gap-4 mt-1">
+                    <RadioGroup value={nfType} onValueChange={v => { setNfType(v as "fisica" | "juridica"); setForm(prev => ({ ...prev, companyName: "", customerName: "", customerCpfCnpj: "" })); setCnpjToQuery(""); setAutoFilledCustomerName(false); }} className="flex gap-4 mt-1">
                       <div className="flex items-center gap-2">
                         <RadioGroupItem value="fisica" id="nf-fisica" />
                         <Label htmlFor="nf-fisica" className="cursor-pointer font-normal flex items-center gap-1.5">
@@ -499,46 +483,47 @@ export default function NewOrder() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1">
-                      {isCnpjCert ? "Nome / Razão Social *" : "Nome Completo *"}
+                      {showCnpjFields ? "Nome / Razão Social *" : "Nome Completo *"}
                       {autoFilledCustomerName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                      {cnpjFetching && isCnpjCert && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                      {cnpjFetching && showCnpjFields && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                     </Label>
                     <Input
                       value={form.customerName}
                       onChange={e => { set("customerName", e.target.value); setAutoFilledCustomerName(false); }}
                       required
                       className={autoFilledCustomerName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                      placeholder={cnpjFetching && isCnpjCert ? "Buscando..." : ""}
+                      placeholder={cnpjFetching && showCnpjFields ? "Buscando..." : ""}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{isCnpjCert ? "CNPJ *" : "CPF *"}</Label>
+                    <Label>{showCnpjFields ? "CNPJ *" : "CPF *"}</Label>
                     <div className="relative">
                       <Input value={form.customerCpfCnpj} onChange={e => {
                         const v = maskCpfCnpj(e.target.value);
                         set("customerCpfCnpj", v);
                         const digits = v.replace(/\D/g, "");
-                        if (isCnpjCert) {
+                        if (showCnpjFields) {
                           if (digits.length === 14) setCnpjToQuery(digits);
                           else { setCnpjToQuery(""); setAutoFilledCustomerName(false); }
+                        } else {
+                          triggerPsbioCheck(v, form.customerBirthDate, "cpf", form.repCpf, form.repBirthDate);
                         }
-                        triggerPsbioCheck(v, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", form.repCpf, form.repBirthDate);
-                      }} required placeholder={isCnpjCert ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
-                      {cnpjFetching && isCnpjCert && (
+                      }} required placeholder={showCnpjFields ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
+                      {cnpjFetching && showCnpjFields && (
                         <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
                       )}
-                      {cnpjError && isCnpjCert && cnpjToQuery.length === 14 && (
+                      {cnpjError && showCnpjFields && cnpjToQuery.length === 14 && (
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-destructive">!</span>
                       )}
                     </div>
-                    {cnpjError && isCnpjCert && cnpjToQuery.length === 14 && (
+                    {cnpjError && showCnpjFields && cnpjToQuery.length === 14 && (
                       <p className="text-xs text-destructive">CNPJ não encontrado na Receita Federal.</p>
                     )}
-                    {cnpjData && isCnpjCert && cnpjData.situacao && cnpjData.situacao !== "ATIVA" && (
+                    {cnpjData && showCnpjFields && cnpjData.situacao && cnpjData.situacao !== "ATIVA" && (
                       <p className="text-xs text-amber-600">Situação: {cnpjData.situacao}</p>
                     )}
                   </div>
-                  {!isCnpjCert && (
+                  {!showCnpjFields && (
                     <div className="space-y-2">
                       <Label>Data de Nascimento</Label>
                       <Input
@@ -551,7 +536,7 @@ export default function NewOrder() {
                       />
                     </div>
                   )}
-                  {isCnpjCert && (
+                  {showCnpjFields && (
                     <div className="space-y-2 sm:col-span-2">
                       <Label className="flex items-center gap-1">
                         Razão Social
@@ -580,14 +565,14 @@ export default function NewOrder() {
                   </div>
                 </div>
 
-                {/* PSBio status indicator */}
-                {psbioStatus === "loading" && (
+                {/* PSBio status indicator — only relevant for CPF mode */}
+                {!showCnpjFields && psbioStatus === "loading" && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-3">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     Verificando validação biométrica...
                   </div>
                 )}
-                {psbioStatus && psbioStatus !== "loading" && psbioStatus.hasPsbio && (
+                {!showCnpjFields && psbioStatus && psbioStatus !== "loading" && psbioStatus.hasPsbio && (
                   <div className="flex items-start gap-2 text-sm bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-4 py-3">
                     <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
@@ -596,7 +581,7 @@ export default function NewOrder() {
                     </div>
                   </div>
                 )}
-                {psbioStatus && psbioStatus !== "loading" && !psbioStatus.hasPsbio && (
+                {!showCnpjFields && psbioStatus && psbioStatus !== "loading" && !psbioStatus.hasPsbio && (
                   <div className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3">
                     <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                     <div>
@@ -605,7 +590,7 @@ export default function NewOrder() {
                     </div>
                   </div>
                 )}
-                {!psbioStatus && form.customerCpfCnpj.replace(/\D/g, "").length >= 11 && !form.customerBirthDate && !isCnpjCert && (
+                {!showCnpjFields && !psbioStatus && form.customerCpfCnpj.replace(/\D/g, "").length >= 11 && !form.customerBirthDate && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <ShieldQuestion className="h-4 w-4" />
                     Informe a data de nascimento para verificar disponibilidade de biometria.
@@ -613,54 +598,6 @@ export default function NewOrder() {
                 )}
               </CardContent>
             </Card>
-
-            {/* Dados para Nota Fiscal — apenas e-CPF + juridica */}
-            {!isCnpjCert && nfType === "juridica" && (
-              <Card className="border-blue-200 dark:border-blue-800">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-primary" />
-                    Dados para Nota Fiscal
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">Empresa para emissão da nota fiscal do certificado. Não altera o titular do certificado.</p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>CNPJ da Empresa</Label>
-                      <div className="relative">
-                        <Input
-                          value={nfCnpjDisplay}
-                          onChange={e => {
-                            const v = maskCpfCnpj(e.target.value);
-                            setNfCnpjDisplay(v);
-                            const digits = v.replace(/\D/g, "");
-                            if (digits.length === 14) setNfCnpjToQuery(digits);
-                            else { setNfCnpjToQuery(""); setAutoFilledNfCompany(false); setForm(prev => ({ ...prev, companyName: "" })); }
-                          }}
-                          placeholder="00.000.000/0001-00"
-                          className="pr-8"
-                        />
-                        {nfCnpjFetching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1">
-                        Razão Social
-                        {autoFilledNfCompany && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                        {nfCnpjFetching && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                      </Label>
-                      <Input
-                        value={form.companyName}
-                        onChange={e => { set("companyName", e.target.value); setAutoFilledNfCompany(false); }}
-                        placeholder={nfCnpjFetching ? "Buscando..." : "Razão Social da empresa"}
-                        className={autoFilledNfCompany ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Dados do Representante Legal — sempre visível */}
             <Card>
