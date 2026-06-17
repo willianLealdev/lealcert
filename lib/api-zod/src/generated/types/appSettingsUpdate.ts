@@ -23,4 +23,9 @@ export interface AppSettingsUpdate {
   garHashTabela?: string;
   garFormaPagamento?: string;
   garPreferirVideoconferencia?: string;
+  safewebUrl?: string;
+  safewebUsername?: string;
+  safewebPassword?: string;
+  safewebCnpjAr?: string;
+  activeProvider?: string;
 }

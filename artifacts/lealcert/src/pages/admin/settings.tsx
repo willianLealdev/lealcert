@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, ShieldCheck, Globe, Mail, Link2 } from "lucide-react";
+import { Loader2, Eye, EyeOff, ShieldCheck, Globe, Mail, Link2, ToggleLeft, ToggleRight, CheckCircle2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function MaskedInput({ value, onChange, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> & { value: string; onChange: (v: string) => void }) {
@@ -26,9 +26,17 @@ function MaskedInput({ value, onChange, ...props }: Omit<React.InputHTMLAttribut
   );
 }
 
+function ProviderBadge({ active }: { active: boolean }) {
+  return active
+    ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full"><CheckCircle2 className="h-3 w-3" />Ativo</span>
+    : <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Inativo</span>;
+}
+
 export default function AdminSettings() {
   const { toast } = useToast();
   const { data: settings, isLoading, refetch } = useGetSettings();
+  const [testingAuth, setTestingAuth] = useState(false);
+
   const [form, setForm] = useState({
     appName: "",
     mpAccessToken: "",
@@ -41,6 +49,11 @@ export default function AdminSettings() {
     garHashTabela: "",
     garFormaPagamento: "11",
     garPreferirVideoconferencia: "1",
+    safewebUrl: "",
+    safewebUsername: "",
+    safewebPassword: "",
+    safewebCnpjAr: "",
+    activeProvider: "gestaoar",
   });
 
   useEffect(() => {
@@ -57,6 +70,11 @@ export default function AdminSettings() {
         garHashTabela: settings.garHashTabela ?? "",
         garFormaPagamento: settings.garFormaPagamento ?? "11",
         garPreferirVideoconferencia: settings.garPreferirVideoconferencia ?? "1",
+        safewebUrl: settings.safewebUrl ?? "",
+        safewebUsername: settings.safewebUsername ?? "",
+        safewebPassword: settings.safewebPassword ?? "",
+        safewebCnpjAr: settings.safewebCnpjAr ?? "",
+        activeProvider: settings.activeProvider ?? "gestaoar",
       });
     }
   }, [settings]);
@@ -75,7 +93,30 @@ export default function AdminSettings() {
     update.mutate({ data: form });
   }
 
+  function setActiveProvider(provider: string) {
+    const updated = { ...form, activeProvider: provider };
+    setForm(updated);
+    update.mutate({ data: updated });
+  }
+
+  async function testSafewebAuth() {
+    setTestingAuth(true);
+    try {
+      const resp = await fetch("/api/safeweb/test-auth", { method: "POST", credentials: "include" });
+      const data = await resp.json() as { ok?: boolean; error?: string };
+      if (data.ok) toast({ title: "Safeweb: autenticação OK!", description: "Conexão e credenciais validadas com sucesso." });
+      else toast({ title: "Safeweb: falha na autenticação", description: data.error ?? "Erro desconhecido.", variant: "destructive" });
+    } catch {
+      toast({ title: "Erro ao testar autenticação", variant: "destructive" });
+    } finally {
+      setTestingAuth(false);
+    }
+  }
+
   if (isLoading) return <div className="text-center py-20 text-muted-foreground">Carregando...</div>;
+
+  const isGarActive = form.activeProvider === "gestaoar";
+  const isSwActive = form.activeProvider === "safeweb";
 
   return (
     <div className="space-y-6">
@@ -83,6 +124,41 @@ export default function AdminSettings() {
         <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">Configure as integrações e dados gerais do sistema.</p>
       </div>
+
+      {/* Provider Toggle */}
+      <Card className="border-2 border-primary/20 bg-primary/5">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ToggleRight className="h-5 w-5 text-primary" />
+            <CardTitle>Provedor Ativo de Certificação</CardTitle>
+          </div>
+          <CardDescription>
+            Selecione qual sistema será usado para emissão e gestão de certificados digitais. Apenas um pode estar ativo por vez.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => setActiveProvider("gestaoar")}
+              className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isGarActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}
+            >
+              <Link2 className={`h-7 w-7 ${isGarActive ? "text-primary" : "text-muted-foreground"}`} />
+              <span className="font-semibold text-sm">Gestão AR</span>
+              <ProviderBadge active={isGarActive} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveProvider("safeweb")}
+              className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isSwActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}
+            >
+              <ShieldCheck className={`h-7 w-7 ${isSwActive ? "text-primary" : "text-muted-foreground"}`} />
+              <span className="font-semibold text-sm">Safeweb</span>
+              <ProviderBadge active={isSwActive} />
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
         {/* General */}
@@ -145,11 +221,14 @@ export default function AdminSettings() {
         </Card>
 
         {/* Gestão AR */}
-        <Card>
+        <Card className={isGarActive ? "ring-2 ring-primary/30" : ""}>
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <Link2 className="h-5 w-5 text-primary" />
-              <CardTitle>Gestão AR — Integração</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Link2 className="h-5 w-5 text-primary" />
+                <CardTitle>Gestão AR — Integração</CardTitle>
+              </div>
+              <ProviderBadge active={isGarActive} />
             </div>
             <CardDescription>
               Credenciais e preferências para integração com a plataforma Gestão AR.
@@ -173,9 +252,7 @@ export default function AdminSettings() {
             <div className="space-y-2">
               <Label>Forma de Pagamento Padrão</Label>
               <Select value={form.garFormaPagamento} onValueChange={v => set("garFormaPagamento", v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="11">11 — Pagamento no Local</SelectItem>
                   <SelectItem value="1">1 — Boleto Bancário</SelectItem>
@@ -183,21 +260,77 @@ export default function AdminSettings() {
                   <SelectItem value="3">3 — Transferência/PIX</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Forma de pagamento registrada no GAR ao criar a venda. "Pagamento no Local" (11) é o padrão pois o pagamento já é processado via MercadoPago.</p>
+              <p className="text-xs text-muted-foreground">"Pagamento no Local" (11) é o padrão pois o pagamento já é processado via MercadoPago.</p>
             </div>
             <div className="space-y-2">
               <Label>Preferir Videoconferência</Label>
               <Select value={form.garPreferirVideoconferencia} onValueChange={v => set("garPreferirVideoconferencia", v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1">Sim — priorizar agendamento por videoconferência</SelectItem>
                   <SelectItem value="0">Não — usar locais presenciais</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Quando ativado, o sistema busca locais de videoconferência disponíveis antes de oferecer opções presenciais.</p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Safeweb */}
+        <Card className={isSwActive ? "ring-2 ring-primary/30" : ""}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <CardTitle>Safeweb — Integração</CardTitle>
+              </div>
+              <ProviderBadge active={isSwActive} />
+            </div>
+            <CardDescription>
+              Credenciais para integração com a API Safeweb. Documentação em{" "}
+              <a href="https://developers.safeweb.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">developers.safeweb.com.br</a>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>URL da API</Label>
+              <Input
+                value={form.safewebUrl}
+                onChange={e => set("safewebUrl", e.target.value)}
+                placeholder="https://acsafeweb.safewebpss.com.br"
+              />
+              <p className="text-xs text-muted-foreground">URL base da API Safeweb fornecida pela AC.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Usuário</Label>
+              <Input
+                value={form.safewebUsername}
+                onChange={e => set("safewebUsername", e.target.value)}
+                placeholder="Usuário fornecido pela Safeweb"
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Senha</Label>
+              <MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Senha fornecida pela Safeweb" />
+            </div>
+            <div className="space-y-2">
+              <Label>CNPJ da AR</Label>
+              <Input
+                value={form.safewebCnpjAr}
+                onChange={e => set("safewebCnpjAr", e.target.value)}
+                placeholder="00000000000000"
+              />
+              <p className="text-xs text-muted-foreground">CNPJ da sua Autoridade de Registro cadastrada na Safeweb.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={testingAuth || !form.safewebUrl || !form.safewebUsername || !form.safewebPassword}
+              onClick={testSafewebAuth}
+            >
+              {testingAuth ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testando...</> : "Testar Conexão"}
+            </Button>
           </CardContent>
         </Card>
 

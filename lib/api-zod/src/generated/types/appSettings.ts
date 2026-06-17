@@ -32,5 +32,14 @@ export interface AppSettings {
   garHashTabela?: string | null;
   garFormaPagamento?: string;
   garPreferirVideoconferencia?: string;
+  /** @nullable */
+  safewebUrl?: string | null;
+  /** @nullable */
+  safewebUsername?: string | null;
+  /** @nullable */
+  safewebPassword?: string | null;
+  /** @nullable */
+  safewebCnpjAr?: string | null;
+  activeProvider?: string;
   updatedAt?: string;
 }

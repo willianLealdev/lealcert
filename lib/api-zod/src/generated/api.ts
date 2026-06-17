@@ -1121,6 +1121,11 @@ export const GetSettingsResponse = zod.object({
   "garHashTabela": zod.string().nullish(),
   "garFormaPagamento": zod.string().optional(),
   "garPreferirVideoconferencia": zod.string().optional(),
+  "safewebUrl": zod.string().nullish(),
+  "safewebUsername": zod.string().nullish(),
+  "safewebPassword": zod.string().nullish(),
+  "safewebCnpjAr": zod.string().nullish(),
+  "activeProvider": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
 
@@ -1144,7 +1149,12 @@ export const UpdateSettingsBody = zod.object({
   "garHashVendedor": zod.string().optional(),
   "garHashTabela": zod.string().optional(),
   "garFormaPagamento": zod.string().optional(),
-  "garPreferirVideoconferencia": zod.string().optional()
+  "garPreferirVideoconferencia": zod.string().optional(),
+  "safewebUrl": zod.string().optional(),
+  "safewebUsername": zod.string().optional(),
+  "safewebPassword": zod.string().optional(),
+  "safewebCnpjAr": zod.string().optional(),
+  "activeProvider": zod.string().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -1165,6 +1175,11 @@ export const UpdateSettingsResponse = zod.object({
   "garHashTabela": zod.string().nullish(),
   "garFormaPagamento": zod.string().optional(),
   "garPreferirVideoconferencia": zod.string().optional(),
+  "safewebUrl": zod.string().nullish(),
+  "safewebUsername": zod.string().nullish(),
+  "safewebPassword": zod.string().nullish(),
+  "safewebCnpjAr": zod.string().nullish(),
+  "activeProvider": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
 

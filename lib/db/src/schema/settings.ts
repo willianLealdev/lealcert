@@ -21,6 +21,13 @@ export const settingsTable = pgTable("settings", {
   garHashTabela: text("gar_hash_tabela"),
   garFormaPagamento: text("gar_forma_pagamento").default("11"),
   garPreferirVideoconferencia: text("gar_preferir_videoconferencia").default("1"),
+  // Safeweb integration
+  safewebUrl: text("safeweb_url"),
+  safewebUsername: text("safeweb_username"),
+  safewebPassword: text("safeweb_password"),
+  safewebCnpjAr: text("safeweb_cnpj_ar"),
+  // Active provider
+  activeProvider: text("active_provider").default("gestaoar"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

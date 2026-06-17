@@ -12,6 +12,7 @@ import uploadRouter from "./upload";
 import marketingRouter from "./marketing";
 import chatRouter from "./chat";
 import gestaoarRouter from "./gestaoar";
+import safewebRouter from "./safeweb";
 import mpWebhookRouter from "./mp-webhook";
 import renewalsRouter from "./renewals";
 
@@ -25,6 +26,7 @@ router.use(usersRouter);
 router.use(certificatesRouter);
 router.use(ordersRouter);
 router.use(gestaoarRouter);
+router.use(safewebRouter);
 router.use(slotsRouter);
 router.use(supportRouter);
 router.use(settingsRouter);

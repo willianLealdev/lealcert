@@ -31,6 +31,11 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     garHashTabela: s.garHashTabela,
     garFormaPagamento: s.garFormaPagamento ?? "11",
     garPreferirVideoconferencia: s.garPreferirVideoconferencia ?? "1",
+    safewebUrl: s.safewebUrl,
+    safewebUsername: s.safewebUsername,
+    safewebPassword: s.safewebPassword,
+    safewebCnpjAr: s.safewebCnpjAr,
+    activeProvider: s.activeProvider ?? "gestaoar",
     updatedAt: s.updatedAt,
   };
 }
@@ -46,6 +51,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     appName, mpAccessToken, mpPublicKey, webhookSecret, mailFrom, siteUrl,
     scheduleOpenDays, scheduleOpenHour, scheduleCloseHour, scheduleStepMin, scheduleClosedDates,
     garApiKey, garHashVendedor, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
+    safewebUrl, safewebUsername, safewebPassword, safewebCnpjAr, activeProvider,
   } = req.body ?? {};
 
   const updates: Record<string, unknown> = {};
@@ -65,6 +71,11 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (garHashTabela !== undefined) updates.garHashTabela = garHashTabela;
   if (garFormaPagamento !== undefined) updates.garFormaPagamento = garFormaPagamento;
   if (garPreferirVideoconferencia !== undefined) updates.garPreferirVideoconferencia = garPreferirVideoconferencia;
+  if (safewebUrl !== undefined) updates.safewebUrl = safewebUrl;
+  if (safewebUsername !== undefined) updates.safewebUsername = safewebUsername;
+  if (safewebPassword !== undefined) updates.safewebPassword = safewebPassword;
+  if (safewebCnpjAr !== undefined) updates.safewebCnpjAr = safewebCnpjAr;
+  if (activeProvider !== undefined) updates.activeProvider = activeProvider;
 
   const [updated] = await db
     .update(settingsTable)
