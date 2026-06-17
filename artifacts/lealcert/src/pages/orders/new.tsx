@@ -446,6 +446,14 @@ export default function NewOrder() {
               </CardContent>
             </Card>
 
+            {!selectedCert && (
+              <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+                <FileText className="h-8 w-8 opacity-40" />
+                <p className="text-sm">Selecione um certificado acima para preencher os dados do pedido.</p>
+              </div>
+            )}
+
+            {selectedCert && <>
             <Card>
               <CardHeader>
                 <CardTitle>Dados do Cliente</CardTitle>
@@ -907,6 +915,7 @@ export default function NewOrder() {
                 </div>
               </CardContent>
             </Card>
+            </>}
           </div>
 
           <div className="space-y-4">
