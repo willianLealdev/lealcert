@@ -21,9 +21,10 @@ type CertForm = {
   priceContador: string;
   active: boolean;
   garHashProduto: string;
+  safewebIdProduto: string;
 };
 
-const EMPTY: CertForm = { name: "", description: "", price: "", priceContador: "", active: true, garHashProduto: "" };
+const EMPTY: CertForm = { name: "", description: "", price: "", priceContador: "", active: true, garHashProduto: "", safewebIdProduto: "" };
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
@@ -55,6 +56,7 @@ export default function AdminCertificates() {
       priceContador: c.priceContador != null ? String(c.priceContador) : "",
       active: c.active,
       garHashProduto: c.garHashProduto ?? "",
+      safewebIdProduto: c.safewebIdProduto ?? "",
     });
     setEditId(c.id);
     setOpen(true);
@@ -70,6 +72,7 @@ export default function AdminCertificates() {
       priceContador: form.priceContador ? parseFloat(form.priceContador) : undefined,
       active: form.active,
       garHashProduto: form.garHashProduto || undefined,
+      safewebIdProduto: form.safewebIdProduto || undefined,
     };
     if (editId !== null) update.mutate({ id: editId, data });
     else create.mutate({ data });
@@ -109,18 +112,26 @@ export default function AdminCertificates() {
                   {c.active ? "Ativo" : "Inativo"}
                 </Badge>
               </div>
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 {c.garHashProduto ? (
                   <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                    <Link2 className="h-3 w-3" />Vinculado à GAR
+                    <Link2 className="h-3 w-3" />GAR
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
-                    <AlertCircle className="h-3 w-3" />Sem vínculo GAR
+                    <AlertCircle className="h-3 w-3" />Sem GAR
+                  </span>
+                )}
+                {c.safewebIdProduto ? (
+                  <span className="inline-flex items-center gap-1 text-xs text-blue-600 font-medium">
+                    <Link2 className="h-3 w-3" />Safeweb #{c.safewebIdProduto}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                    <AlertCircle className="h-3 w-3" />Sem Safeweb
                   </span>
                 )}
               </div>
-              {/* Price display: two rows if priceContador is set */}
               <div className="mt-3 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -159,7 +170,6 @@ export default function AdminCertificates() {
               <Textarea value={form.description} onChange={e => set("description", e.target.value)} rows={3} placeholder="Descrição do certificado..." />
             </div>
 
-            {/* Preços por tipo de usuário */}
             <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
               <p className="text-sm font-medium text-foreground mb-1">Preços por tipo de cliente</p>
               <div className="space-y-2">
@@ -167,15 +177,7 @@ export default function AdminCertificates() {
                   <User className="h-3.5 w-3.5 text-muted-foreground" />
                   Preço Cliente (R$) *
                 </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.price}
-                  onChange={e => set("price", e.target.value)}
-                  required
-                  placeholder="0,00"
-                />
+                <Input type="number" step="0.01" min="0" value={form.price} onChange={e => set("price", e.target.value)} required placeholder="0,00" />
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-1.5 text-sm">
@@ -183,17 +185,8 @@ export default function AdminCertificates() {
                   Preço Contador (R$)
                   <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
                 </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.priceContador}
-                  onChange={e => set("priceContador", e.target.value)}
-                  placeholder="Deixe vazio para usar preço cliente"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Se preenchido, contadores verão este valor. Clientes sempre veem o Preço Cliente.
-                </p>
+                <Input type="number" step="0.01" min="0" value={form.priceContador} onChange={e => set("priceContador", e.target.value)} placeholder="Deixe vazio para usar preço cliente" />
+                <p className="text-xs text-muted-foreground">Se preenchido, contadores verão este valor. Clientes sempre veem o Preço Cliente.</p>
               </div>
             </div>
 
@@ -214,18 +207,14 @@ export default function AdminCertificates() {
                 </div>
               ) : garLoading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Carregando produtos da Gestão AR...
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />Carregando produtos da Gestão AR...
                 </div>
               ) : !garProdutos.length ? (
                 <div className="text-xs text-muted-foreground bg-muted/50 border rounded-lg px-3 py-2">
                   Nenhum produto encontrado na GAR. Verifique as credenciais em Configurações.
                 </div>
               ) : (
-                <Select
-                  value={form.garHashProduto || NO_GAR}
-                  onValueChange={v => set("garHashProduto", v === NO_GAR ? "" : v)}
-                >
+                <Select value={form.garHashProduto || NO_GAR} onValueChange={v => set("garHashProduto", v === NO_GAR ? "" : v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o produto correspondente na GAR" />
                   </SelectTrigger>
@@ -247,7 +236,26 @@ export default function AdminCertificates() {
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Quando vinculado, o registro na Gestão AR é feito <strong>automaticamente</strong> logo após o pagamento — sem nenhuma intervenção manual.
+                Quando vinculado, o registro na Gestão AR é feito <strong>automaticamente</strong> após o pagamento.
+              </p>
+            </div>
+
+            {/* Vínculo Safeweb */}
+            <div className="space-y-2 border-t pt-4">
+              <Label className="flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-blue-600" />
+                ID do Produto na Safeweb
+              </Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={form.safewebIdProduto}
+                onChange={e => set("safewebIdProduto", e.target.value.replace(/\D/g, ""))}
+                placeholder="Ex: 42 (ID numérico na Safeweb)"
+              />
+              <p className="text-xs text-muted-foreground">
+                O ID do produto na Safeweb pode ser consultado pelo endpoint <strong>GET /safeweb/produtos</strong> ou no painel Safeweb.
+                Quando preenchido, a solicitação é criada <strong>automaticamente</strong> após o pagamento (provedor ativo: Safeweb).
               </p>
             </div>
 

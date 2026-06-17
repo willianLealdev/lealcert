@@ -562,6 +562,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/PaymentPreference"
 
+  /orders/{id}/sync-provider:
+    post:
+      operationId: syncProviderOrder
+      tags: [orders]
+      summary: Sync order status from active provider (Safeweb or Gestão AR)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncProviderResult"
+
   /slots:
     get:
       operationId: listSlots
@@ -1953,6 +1972,8 @@ components:
           type: boolean
         garHashProduto:
           type: ["string", "null"]
+        safewebIdProduto:
+          type: ["string", "null"]
         createdAt:
           type: string
 
@@ -1972,6 +1993,8 @@ components:
           type: boolean
         garHashProduto:
           type: string
+        safewebIdProduto:
+          type: string
 
     CertificateUpdate:
       type: object
@@ -1987,6 +2010,8 @@ components:
         active:
           type: boolean
         garHashProduto:
+          type: string
+        safewebIdProduto:
           type: string
 
     Order:
@@ -2048,6 +2073,32 @@ components:
           type: ["string", "null"]
         mpPaymentId:
           type: ["string", "null"]
+        garPedido:
+          type: ["string", "null"]
+        garProtocolo:
+          type: ["string", "null"]
+        garHashVenda:
+          type: ["string", "null"]
+        garStatus:
+          type: ["string", "null"]
+        garAgendamentoLink:
+          type: ["string", "null"]
+        garSyncedAt:
+          type: ["string", "null"]
+        garAgendamentoLocalNome:
+          type: ["string", "null"]
+        garAgendamentoLocalHash:
+          type: ["string", "null"]
+        garAgendamentoSlotHash:
+          type: ["string", "null"]
+        garAgendamentoDataHora:
+          type: ["string", "null"]
+        safewebSolicitacaoId:
+          type: ["string", "null"]
+        safewebStatus:
+          type: ["string", "null"]
+        safewebSyncedAt:
+          type: ["string", "null"]
         createdAt:
           type: string
         updatedAt:
@@ -2100,6 +2151,17 @@ components:
         protocolNumber:
           type: string
         scheduledAt:
+          type: string
+
+    SyncProviderResult:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        status:
+          type: string
+        error:
           type: string
 
     PaymentPreference:

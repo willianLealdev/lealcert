@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, desc, ilike, or, sql } from "drizzle-orm";
-import { db, ordersTable, usersTable, certificatesTable } from "@workspace/db";
+import { db, ordersTable, usersTable, certificatesTable, settingsTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { sendOrderStatusEmail } from "../lib/email";
 import { logger } from "../lib/logger";
@@ -36,6 +36,21 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     addressCity: o.addressCity,
     addressState: o.addressState,
     mpPaymentId: o.mpPaymentId,
+    // Gestão AR
+    garPedido: o.garPedido,
+    garProtocolo: o.garProtocolo,
+    garHashVenda: o.garHashVenda,
+    garStatus: o.garStatus,
+    garAgendamentoLink: o.garAgendamentoLink,
+    garSyncedAt: o.garSyncedAt,
+    garAgendamentoLocalNome: o.garAgendamentoLocalNome,
+    garAgendamentoLocalHash: o.garAgendamentoLocalHash,
+    garAgendamentoSlotHash: o.garAgendamentoSlotHash,
+    garAgendamentoDataHora: o.garAgendamentoDataHora,
+    // Safeweb
+    safewebSolicitacaoId: o.safewebSolicitacaoId,
+    safewebStatus: o.safewebStatus,
+    safewebSyncedAt: o.safewebSyncedAt,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
   };
@@ -207,8 +222,6 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
     return;
   }
 
-  // Get settings for MP token
-  const { settingsTable } = await import("@workspace/db");
   const [settings] = await db.select().from(settingsTable).limit(1);
   const mpToken = settings?.mpAccessToken || process.env.MP_ACCESS_TOKEN || "";
 
@@ -249,6 +262,26 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
     initPoint: data.init_point,
     sandboxInitPoint: data.sandbox_init_point ?? null,
   });
+});
+
+router.post("/orders/:id/sync-provider", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+
+  const [settings] = await db.select().from(settingsTable).limit(1);
+  const activeProvider = settings?.activeProvider ?? "gestaoar";
+
+  try {
+    if (activeProvider === "safeweb") {
+      const { swSyncStatus } = await import("../lib/sw-auto");
+      const result = await swSyncStatus(id);
+      if (!result.ok) { res.status(400).json({ ok: false, error: result.error }); return; }
+      res.json({ ok: true, status: result.status });
+    } else {
+      res.json({ ok: false, error: "Para Gestão AR, use o botão 'Sincronizar com GAR' na seção Gestão AR." });
+    }
+  } catch (err) {
+    res.status(500).json({ ok: false, error: (err as Error).message });
+  }
 });
 
 export default router;

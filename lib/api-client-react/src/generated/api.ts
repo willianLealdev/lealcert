@@ -105,6 +105,7 @@ import type {
   SendReplyInput,
   Slot,
   SlotInput,
+  SyncProviderResult,
   Ticket,
   TicketDetail,
   TicketInput,
@@ -2026,6 +2027,76 @@ export const useCreatePayment = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreatePaymentMutationOptions(options));
+    }
+
+export const getSyncProviderOrderUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/sync-provider`
+}
+
+/**
+ * @summary Sync order status from active provider (Safeweb or Gestão AR)
+ */
+export const syncProviderOrder = async (id: number, options?: RequestInit): Promise<SyncProviderResult> => {
+
+  return customFetch<SyncProviderResult>(getSyncProviderOrderUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSyncProviderOrderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncProviderOrder>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncProviderOrder>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['syncProviderOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncProviderOrder>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  syncProviderOrder(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncProviderOrderMutationResult = NonNullable<Awaited<ReturnType<typeof syncProviderOrder>>>
+
+    export type SyncProviderOrderMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Sync order status from active provider (Safeweb or Gestão AR)
+ */
+export const useSyncProviderOrder = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncProviderOrder>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncProviderOrder>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getSyncProviderOrderMutationOptions(options));
     }
 
 export const getListSlotsUrl = (params?: ListSlotsParams,) => {

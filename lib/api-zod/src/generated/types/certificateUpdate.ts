@@ -13,4 +13,5 @@ export interface CertificateUpdate {
   priceContador?: number;
   active?: boolean;
   garHashProduto?: string;
+  safewebIdProduto?: string;
 }

@@ -205,6 +205,8 @@ export interface Certificate {
   active: boolean;
   /** @nullable */
   garHashProduto?: string | null;
+  /** @nullable */
+  safewebIdProduto?: string | null;
   createdAt: string;
 }
 
@@ -215,6 +217,7 @@ export interface CertificateInput {
   priceContador?: number;
   active?: boolean;
   garHashProduto?: string;
+  safewebIdProduto?: string;
 }
 
 export interface CertificateUpdate {
@@ -224,6 +227,7 @@ export interface CertificateUpdate {
   priceContador?: number;
   active?: boolean;
   garHashProduto?: string;
+  safewebIdProduto?: string;
 }
 
 export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
@@ -284,6 +288,32 @@ export interface Order {
   addressState?: string | null;
   /** @nullable */
   mpPaymentId?: string | null;
+  /** @nullable */
+  garPedido?: string | null;
+  /** @nullable */
+  garProtocolo?: string | null;
+  /** @nullable */
+  garHashVenda?: string | null;
+  /** @nullable */
+  garStatus?: string | null;
+  /** @nullable */
+  garAgendamentoLink?: string | null;
+  /** @nullable */
+  garSyncedAt?: string | null;
+  /** @nullable */
+  garAgendamentoLocalNome?: string | null;
+  /** @nullable */
+  garAgendamentoLocalHash?: string | null;
+  /** @nullable */
+  garAgendamentoSlotHash?: string | null;
+  /** @nullable */
+  garAgendamentoDataHora?: string | null;
+  /** @nullable */
+  safewebSolicitacaoId?: string | null;
+  /** @nullable */
+  safewebStatus?: string | null;
+  /** @nullable */
+  safewebSyncedAt?: string | null;
   createdAt: string;
   updatedAt?: string;
 }
@@ -331,6 +361,12 @@ export interface OrderUpdate {
   status?: OrderUpdateStatus;
   protocolNumber?: string;
   scheduledAt?: string;
+}
+
+export interface SyncProviderResult {
+  ok: boolean;
+  status?: string;
+  error?: string;
 }
 
 export interface PaymentPreference {

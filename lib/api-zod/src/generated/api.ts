@@ -264,6 +264,7 @@ export const ListCertificatesResponseItem = zod.object({
   "priceContador": zod.number().nullish(),
   "active": zod.boolean(),
   "garHashProduto": zod.string().nullish(),
+  "safewebIdProduto": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListCertificatesResponse = zod.array(ListCertificatesResponseItem)
@@ -278,7 +279,8 @@ export const CreateCertificateBody = zod.object({
   "price": zod.number(),
   "priceContador": zod.number().optional(),
   "active": zod.boolean().optional(),
-  "garHashProduto": zod.string().optional()
+  "garHashProduto": zod.string().optional(),
+  "safewebIdProduto": zod.string().optional()
 })
 
 
@@ -295,7 +297,8 @@ export const UpdateCertificateBody = zod.object({
   "price": zod.number().optional(),
   "priceContador": zod.number().optional(),
   "active": zod.boolean().optional(),
-  "garHashProduto": zod.string().optional()
+  "garHashProduto": zod.string().optional(),
+  "safewebIdProduto": zod.string().optional()
 })
 
 export const UpdateCertificateResponse = zod.object({
@@ -306,6 +309,7 @@ export const UpdateCertificateResponse = zod.object({
   "priceContador": zod.number().nullish(),
   "active": zod.boolean(),
   "garHashProduto": zod.string().nullish(),
+  "safewebIdProduto": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -354,6 +358,19 @@ export const ListOrdersResponseItem = zod.object({
   "addressCity": zod.string().nullish(),
   "addressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullish(),
+  "garPedido": zod.string().nullish(),
+  "garProtocolo": zod.string().nullish(),
+  "garHashVenda": zod.string().nullish(),
+  "garStatus": zod.string().nullish(),
+  "garAgendamentoLink": zod.string().nullish(),
+  "garSyncedAt": zod.string().nullish(),
+  "garAgendamentoLocalNome": zod.string().nullish(),
+  "garAgendamentoLocalHash": zod.string().nullish(),
+  "garAgendamentoSlotHash": zod.string().nullish(),
+  "garAgendamentoDataHora": zod.string().nullish(),
+  "safewebSolicitacaoId": zod.string().nullish(),
+  "safewebStatus": zod.string().nullish(),
+  "safewebSyncedAt": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })
@@ -418,6 +435,19 @@ export const GetOrderResponse = zod.object({
   "addressCity": zod.string().nullish(),
   "addressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullish(),
+  "garPedido": zod.string().nullish(),
+  "garProtocolo": zod.string().nullish(),
+  "garHashVenda": zod.string().nullish(),
+  "garStatus": zod.string().nullish(),
+  "garAgendamentoLink": zod.string().nullish(),
+  "garSyncedAt": zod.string().nullish(),
+  "garAgendamentoLocalNome": zod.string().nullish(),
+  "garAgendamentoLocalHash": zod.string().nullish(),
+  "garAgendamentoSlotHash": zod.string().nullish(),
+  "garAgendamentoDataHora": zod.string().nullish(),
+  "safewebSolicitacaoId": zod.string().nullish(),
+  "safewebStatus": zod.string().nullish(),
+  "safewebSyncedAt": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })
@@ -464,6 +494,19 @@ export const UpdateOrderResponse = zod.object({
   "addressCity": zod.string().nullish(),
   "addressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullish(),
+  "garPedido": zod.string().nullish(),
+  "garProtocolo": zod.string().nullish(),
+  "garHashVenda": zod.string().nullish(),
+  "garStatus": zod.string().nullish(),
+  "garAgendamentoLink": zod.string().nullish(),
+  "garSyncedAt": zod.string().nullish(),
+  "garAgendamentoLocalNome": zod.string().nullish(),
+  "garAgendamentoLocalHash": zod.string().nullish(),
+  "garAgendamentoSlotHash": zod.string().nullish(),
+  "garAgendamentoDataHora": zod.string().nullish(),
+  "safewebSolicitacaoId": zod.string().nullish(),
+  "safewebStatus": zod.string().nullish(),
+  "safewebSyncedAt": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })
@@ -480,6 +523,20 @@ export const CreatePaymentResponse = zod.object({
   "preferenceId": zod.string(),
   "initPoint": zod.string(),
   "sandboxInitPoint": zod.string().nullish()
+})
+
+
+/**
+ * @summary Sync order status from active provider (Safeweb or Gestão AR)
+ */
+export const SyncProviderOrderParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SyncProviderOrderResponse = zod.object({
+  "ok": zod.boolean(),
+  "status": zod.string().optional(),
+  "error": zod.string().optional()
 })
 
 
@@ -1229,6 +1286,19 @@ export const GetRecentOrdersResponseItem = zod.object({
   "addressCity": zod.string().nullish(),
   "addressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullish(),
+  "garPedido": zod.string().nullish(),
+  "garProtocolo": zod.string().nullish(),
+  "garHashVenda": zod.string().nullish(),
+  "garStatus": zod.string().nullish(),
+  "garAgendamentoLink": zod.string().nullish(),
+  "garSyncedAt": zod.string().nullish(),
+  "garAgendamentoLocalNome": zod.string().nullish(),
+  "garAgendamentoLocalHash": zod.string().nullish(),
+  "garAgendamentoSlotHash": zod.string().nullish(),
+  "garAgendamentoDataHora": zod.string().nullish(),
+  "safewebSolicitacaoId": zod.string().nullish(),
+  "safewebStatus": zod.string().nullish(),
+  "safewebSyncedAt": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })

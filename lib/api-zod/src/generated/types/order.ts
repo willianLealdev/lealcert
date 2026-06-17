@@ -53,6 +53,32 @@ export interface Order {
   addressState?: string | null;
   /** @nullable */
   mpPaymentId?: string | null;
+  /** @nullable */
+  garPedido?: string | null;
+  /** @nullable */
+  garProtocolo?: string | null;
+  /** @nullable */
+  garHashVenda?: string | null;
+  /** @nullable */
+  garStatus?: string | null;
+  /** @nullable */
+  garAgendamentoLink?: string | null;
+  /** @nullable */
+  garSyncedAt?: string | null;
+  /** @nullable */
+  garAgendamentoLocalNome?: string | null;
+  /** @nullable */
+  garAgendamentoLocalHash?: string | null;
+  /** @nullable */
+  garAgendamentoSlotHash?: string | null;
+  /** @nullable */
+  garAgendamentoDataHora?: string | null;
+  /** @nullable */
+  safewebSolicitacaoId?: string | null;
+  /** @nullable */
+  safewebStatus?: string | null;
+  /** @nullable */
+  safewebSyncedAt?: string | null;
   createdAt: string;
   updatedAt?: string;
 }

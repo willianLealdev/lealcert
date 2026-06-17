@@ -54,6 +54,10 @@ export const ordersTable = pgTable("orders", {
   garAgendamentoLocalHash: text("gar_agendamento_local_hash"),
   garAgendamentoSlotHash: text("gar_agendamento_slot_hash"),
   garAgendamentoDataHora: text("gar_agendamento_data_hora"),
+  // Safeweb integration fields
+  safewebSolicitacaoId: text("safeweb_solicitacao_id"),
+  safewebStatus: text("safeweb_status"),
+  safewebSyncedAt: timestamp("safeweb_synced_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

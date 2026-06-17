@@ -17,5 +17,7 @@ export interface Certificate {
   active: boolean;
   /** @nullable */
   garHashProduto?: string | null;
+  /** @nullable */
+  safewebIdProduto?: string | null;
   createdAt: string;
 }

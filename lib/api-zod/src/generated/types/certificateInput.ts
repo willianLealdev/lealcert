@@ -13,4 +13,5 @@ export interface CertificateInput {
   priceContador?: number;
   active?: boolean;
   garHashProduto?: string;
+  safewebIdProduto?: string;
 }

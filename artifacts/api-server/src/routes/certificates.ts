@@ -14,6 +14,7 @@ function certRow(c: typeof certificatesTable.$inferSelect) {
     priceContador: c.priceContador != null ? parseFloat(c.priceContador) : null,
     active: c.active,
     garHashProduto: c.garHashProduto ?? null,
+    safewebIdProduto: c.safewebIdProduto ?? null,
     createdAt: c.createdAt,
   };
 }
@@ -26,7 +27,7 @@ router.get("/certificates", async (req, res): Promise<void> => {
 });
 
 router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {
-  const { name, description, price, priceContador, active, garHashProduto } = req.body ?? {};
+  const { name, description, price, priceContador, active, garHashProduto, safewebIdProduto } = req.body ?? {};
   if (!name || price === undefined) {
     res.status(400).json({ error: "Nome e preço são obrigatórios." });
     return;
@@ -38,13 +39,14 @@ router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {
     priceContador: priceContador != null ? String(priceContador) : null,
     active: active !== false,
     garHashProduto: garHashProduto || null,
+    safewebIdProduto: safewebIdProduto || null,
   }).returning();
   res.status(201).json(certRow(cert));
 });
 
 router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const { name, description, price, priceContador, active, garHashProduto } = req.body ?? {};
+  const { name, description, price, priceContador, active, garHashProduto, safewebIdProduto } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
   if (description !== undefined) updates.description = description;
@@ -52,6 +54,7 @@ router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> 
   if (priceContador !== undefined) updates.priceContador = priceContador != null ? String(priceContador) : null;
   if (active !== undefined) updates.active = active;
   if (garHashProduto !== undefined) updates.garHashProduto = garHashProduto || null;
+  if (safewebIdProduto !== undefined) updates.safewebIdProduto = safewebIdProduto || null;
 
   const [cert] = await db
     .update(certificatesTable)

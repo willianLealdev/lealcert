@@ -5,6 +5,7 @@ import {
   useCreatePayment,
   useGarComprarOrder,
   useSyncGarOrder,
+  useSyncProviderOrder,
   useGetOrderGarLocais,
   useGetOrderGarSlots,
   useAgendarOrder,
@@ -670,19 +671,53 @@ export default function OrderDetail() {
     },
   });
 
+  const syncProvider = useSyncProviderOrder({
+    mutation: {
+      onSuccess: (data) => {
+        if (data.ok) {
+          toast({ title: "Status sincronizado!", description: data.status ? `Status: ${data.status}` : undefined });
+        } else {
+          toast({ title: "Aviso", description: data.error ?? "Não foi possível sincronizar.", variant: "destructive" });
+        }
+        refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao sincronizar.";
+        toast({ title: "Erro", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
   if (isLoading) return <div className="text-center py-20 text-muted-foreground">Carregando...</div>;
   if (!order) return <div className="text-center py-20 text-muted-foreground">Pedido não encontrado.</div>;
 
   const isAdmin = user?.role === "admin";
   const isPayable = order.status === "pending_payment" || order.status === "created";
-  const orderAny = order as unknown as Record<string, unknown>;
-  const hasGar = !!orderAny.garPedido;
-  const garPedido = orderAny.garPedido as string | undefined;
-  const garProtocolo = orderAny.garProtocolo as string | undefined;
-  const garStatus = orderAny.garStatus as string | undefined;
-  const garSyncedAt = orderAny.garSyncedAt as string | undefined;
-  const garAgendamentoDataHora = orderAny.garAgendamentoDataHora as string | undefined;
-  const garAgendamentoLocalNome = orderAny.garAgendamentoLocalNome as string | undefined;
+
+  // GAR fields (now properly typed in the schema)
+  const orderExt = order as typeof order & {
+    garPedido?: string | null;
+    garProtocolo?: string | null;
+    garStatus?: string | null;
+    garSyncedAt?: string | null;
+    garAgendamentoDataHora?: string | null;
+    garAgendamentoLocalNome?: string | null;
+    safewebSolicitacaoId?: string | null;
+    safewebStatus?: string | null;
+    safewebSyncedAt?: string | null;
+  };
+  const hasGar = !!orderExt.garPedido;
+  const garPedido = orderExt.garPedido ?? undefined;
+  const garProtocolo = orderExt.garProtocolo ?? undefined;
+  const garStatus = orderExt.garStatus ?? undefined;
+  const garSyncedAt = orderExt.garSyncedAt ?? undefined;
+  const garAgendamentoDataHora = orderExt.garAgendamentoDataHora ?? undefined;
+  const garAgendamentoLocalNome = orderExt.garAgendamentoLocalNome ?? undefined;
+
+  const hasSafeweb = !!orderExt.safewebSolicitacaoId;
+  const safewebSolicitacaoId = orderExt.safewebSolicitacaoId ?? undefined;
+  const safewebStatus = orderExt.safewebStatus ?? undefined;
+  const safewebSyncedAt = orderExt.safewebSyncedAt ?? undefined;
 
   // Mostrar card de agendamento para o cliente quando protocolo está emitido
   const canSchedule = !!garProtocolo && (order.status === "protocol_assigned" || order.status === "paid");
@@ -742,6 +777,11 @@ export default function OrderDetail() {
             {hasGar && (
               <Badge variant="outline" className="border-blue-500 text-blue-600 bg-blue-50">
                 GAR
+              </Badge>
+            )}
+            {hasSafeweb && (
+              <Badge variant="outline" className="border-violet-500 text-violet-700 bg-violet-50">
+                Safeweb
               </Badge>
             )}
             {garAgendamentoDataHora && (
@@ -836,7 +876,7 @@ export default function OrderDetail() {
             </Card>
           )}
 
-          {/* Gestão AR — card para admin */}
+          {/* Provedor — GAR */}
           {isAdmin && (
             <Card>
               <CardHeader>
@@ -891,6 +931,40 @@ export default function OrderDetail() {
                     </Button>
                   </form>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Provedor — Safeweb */}
+          {isAdmin && hasSafeweb && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-violet-600" />
+                  Safeweb
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <InfoRow label="ID Solicitação" value={safewebSolicitacaoId} />
+                    <InfoRow label="Status Safeweb" value={safewebStatus} />
+                    <InfoRow label="Última sincronização" value={safewebSyncedAt ? formatDateTime(safewebSyncedAt) : "—"} />
+                  </div>
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncProvider.mutate({ id: Number(id) })}
+                      disabled={syncProvider.isPending}
+                    >
+                      {syncProvider.isPending
+                        ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        : <RefreshCw className="h-4 w-4 mr-2" />}
+                      Sincronizar com Safeweb
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}

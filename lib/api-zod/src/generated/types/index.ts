@@ -128,6 +128,7 @@ export * from './sendRenewalAlert200';
 export * from './sendReplyInput';
 export * from './slot';
 export * from './slotInput';
+export * from './syncProviderResult';
 export * from './ticket';
 export * from './ticketDetail';
 export * from './ticketDetailStatus';
