@@ -3,7 +3,7 @@ import type { Order } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Video, User, FileText, ArrowRight } from "lucide-react";
+import { Calendar, Clock, Video, FileText, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 
 const BRT = "America/Sao_Paulo";
@@ -76,12 +76,11 @@ export default function AdminSlots() {
 
   const now = new Date();
 
-  const scheduled = (allOrders ?? [])
-    .filter(o => o.garAgendamentoDataHora || o.scheduledAt);
-
-  const upcoming = scheduled
+  // Apenas agendamentos futuros — passados somem automaticamente
+  const upcoming = (allOrders ?? [])
     .filter(o => {
-      if (!o.scheduledAt) return true;
+      if (!o.garAgendamentoDataHora && !o.scheduledAt) return false;
+      if (!o.scheduledAt) return true; // garAgendamentoDataHora sem scheduledAt → sempre exibir
       return new Date(o.scheduledAt) >= now;
     })
     .sort((a, b) => {
@@ -89,10 +88,6 @@ export default function AdminSlots() {
       const bT = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
       return aT - bT;
     });
-
-  const past = scheduled
-    .filter(o => o.scheduledAt && new Date(o.scheduledAt) < now)
-    .sort((a, b) => new Date(b.scheduledAt!).getTime() - new Date(a.scheduledAt!).getTime());
 
   return (
     <div className="space-y-6">
@@ -108,46 +103,28 @@ export default function AdminSlots() {
           <Clock className="h-4 w-4 animate-spin" />
           Carregando agendamentos...
         </div>
-      ) : !scheduled.length ? (
+      ) : !upcoming.length ? (
         <Card>
           <CardContent className="py-16 text-center space-y-3">
             <Calendar className="h-12 w-12 mx-auto opacity-20" />
-            <p className="font-semibold text-muted-foreground">Nenhum agendamento realizado ainda</p>
+            <p className="font-semibold text-muted-foreground">Nenhum agendamento ativo</p>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               Após o pagamento ser confirmado e o protocolo emitido, o cliente escolhe o horário
-              de videoconferência diretamente na plataforma Gestão AR ou Safeweb.
-              Os agendamentos aparecem aqui automaticamente.
+              de videoconferência. Os próximos agendamentos aparecem aqui automaticamente.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <>
-          {upcoming.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-primary" />
-                <h2 className="font-semibold">
-                  Próximos agendamentos
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">({upcoming.length})</span>
-                </h2>
-              </div>
-              {upcoming.map(o => <AppointmentRow key={o.id} order={o} />)}
-            </section>
-          )}
-
-          {past.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <User className="h-4 w-4" />
-                <h2 className="font-semibold">
-                  Realizados
-                  <span className="ml-2 text-sm font-normal">({past.length})</span>
-                </h2>
-              </div>
-              {past.map(o => <AppointmentRow key={o.id} order={o} past />)}
-            </section>
-          )}
-        </>
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            <h2 className="font-semibold">
+              Próximos agendamentos
+              <span className="ml-2 text-sm font-normal text-muted-foreground">({upcoming.length})</span>
+            </h2>
+          </div>
+          {upcoming.map(o => <AppointmentRow key={o.id} order={o} />)}
+        </section>
       )}
     </div>
   );
