@@ -576,17 +576,10 @@ router.get("/orders/:id/gar-locais", requireAuth, async (req, res): Promise<void
 
   try {
     const locais = await garLocaisAgendamento(s.garApiKey!, uf, municipio);
-    // Priorizar videoconferência se configurado
-    const preferVideo = (s.garPreferirVideoconferencia ?? "1") === "1";
-    if (preferVideo) {
-      const isVideo = (l: { NomeLocalAgendamento: string }) =>
-        /video/i.test(l.NomeLocalAgendamento) || /videoconfer/i.test(l.NomeLocalAgendamento);
-      const video = locais.filter(isVideo);
-      const presencial = locais.filter(l => !isVideo(l));
-      res.json([...video, ...presencial]);
-    } else {
-      res.json(locais);
-    }
+    // Somente videoconferência — atendimento presencial nunca é exibido
+    const isVideo = (l: { NomeLocalAgendamento: string }) =>
+      /video/i.test(l.NomeLocalAgendamento) || /videoconfer/i.test(l.NomeLocalAgendamento);
+    res.json(locais.filter(isVideo));
   } catch (err) {
     logger.error({ err }, "GAR LocaisAgendamento error");
     res.status(502).json({ error: "Erro ao buscar locais de agendamento na Gestão AR." });

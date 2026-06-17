@@ -182,6 +182,8 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
   const locaisFiltrados = useMemo(() => {
     if (!locais) return [];
     return locais.filter(l => {
+      // Somente videoconferência — presencial nunca é exibido
+      if (!isVideo(l.NomeLocalAgendamento)) return false;
       const ufOk = !ufFiltro || l.UF?.toLowerCase() === ufFiltro.toLowerCase();
       const munOk = !municipioFiltro || l.NomeCidadeLocalAgendamento?.toLowerCase().includes(municipioFiltro.toLowerCase());
       return ufOk && munOk;

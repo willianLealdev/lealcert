@@ -1,378 +1,154 @@
-import { useState } from "react";
-import { useListSlots, useCreateSlot, useDeleteSlot, useGenerateSlots, useGetSettings, useUpdateSettings } from "@workspace/api-client-react";
+import { useListOrders } from "@workspace/api-client-react";
+import type { Order } from "@workspace/api-client-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Calendar, Clock, Settings2, Zap, Ban, X } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar, Clock, Video, User, FileText, ArrowRight } from "lucide-react";
+import { Link } from "wouter";
 
 const BRT = "America/Sao_Paulo";
 
-const WEEKDAYS = [
-  { iso: 1, label: "Segunda" },
-  { iso: 2, label: "Terça" },
-  { iso: 3, label: "Quarta" },
-  { iso: 4, label: "Quinta" },
-  { iso: 5, label: "Sexta" },
-  { iso: 6, label: "Sábado" },
-  { iso: 7, label: "Domingo" },
-];
-
-function groupByDate(slots: Array<{ id: number; slotDatetime: string; active: boolean }>) {
-  const map = new Map<string, typeof slots>();
-  for (const s of slots) {
-    const key = new Date(s.slotDatetime).toLocaleDateString("pt-BR", {
-      timeZone: BRT, weekday: "long", day: "2-digit", month: "long", year: "numeric",
-    });
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(s);
-  }
-  return Array.from(map.entries());
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    timeZone: BRT, weekday: "long", day: "2-digit", month: "long", year: "numeric",
+  });
 }
 
-function todayISO() {
-  return new Date().toLocaleDateString("sv-SE", { timeZone: BRT });
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    timeZone: BRT, hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function AppointmentRow({ order, past }: { order: Order; past?: boolean }) {
+  const dateLabel = order.garAgendamentoDataHora ?? (order.scheduledAt ? formatDate(order.scheduledAt) + " " + formatTime(order.scheduledAt) : "—");
+  const localNome = order.garAgendamentoLocalNome;
+
+  return (
+    <Card className={past ? "opacity-60" : ""}>
+      <CardContent className="py-4 px-5">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="mt-0.5 p-2 rounded-lg bg-primary/10 shrink-0">
+              <Video className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <span className="font-semibold text-sm truncate">{order.customerName}</span>
+                <Badge variant="outline" className="text-xs font-mono shrink-0">
+                  {order.customerCpfCnpj}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                  {order.certificateName ?? "—"}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  {dateLabel}
+                </span>
+              </div>
+              {localNome && (
+                <p className="text-xs text-emerald-700 mt-1 flex items-center gap-1">
+                  <Video className="h-3 w-3 shrink-0" />
+                  {localNome}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-muted-foreground font-mono">{order.orderNumber}</span>
+            <Link href={`/orders/${order.id}`}>
+              <Button variant="outline" size="sm">
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function AdminSlots() {
-  const { toast } = useToast();
-  const { data: slots, isLoading, refetch } = useListSlots();
-  const { data: settings, refetch: refetchSettings } = useGetSettings();
+  const { data: allOrders, isLoading } = useListOrders();
 
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [newDatetime, setNewDatetime] = useState("");
+  const now = new Date();
 
-  // Schedule config state
-  const [openDays, setOpenDays] = useState<number[] | null>(null);
-  const [openHour, setOpenHour] = useState<string | null>(null);
-  const [closeHour, setCloseHour] = useState<string | null>(null);
-  const [stepMin, setStepMin] = useState<string | null>(null);
-  const [closedDateInput, setClosedDateInput] = useState("");
+  const scheduled = (allOrders ?? [])
+    .filter(o => o.garAgendamentoDataHora || o.scheduledAt);
 
-  // Generate state
-  const [genFrom, setGenFrom] = useState(todayISO());
-  const [genTo, setGenTo] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return d.toLocaleDateString("sv-SE", { timeZone: BRT });
-  });
-
-  const create = useCreateSlot({ mutation: { onSuccess: () => { toast({ title: "Horário adicionado!" }); setNewDatetime(""); refetch(); } } });
-  const del = useDeleteSlot({ mutation: { onSuccess: () => { toast({ title: "Horário removido." }); setDeleteId(null); refetch(); } } });
-
-  const generateSlots = useGenerateSlots({
-    mutation: {
-      onSuccess: (data) => {
-        toast({ title: `Configuração salva! ${data.created} horários gerados para os próximos 60 dias.`, description: data.skipped > 0 ? `${data.skipped} horários já existiam e foram mantidos.` : undefined });
-        refetch();
-        refetchSettings();
-      },
-      onError: () => toast({ title: "Erro ao gerar horários", variant: "destructive" }),
-    },
-  });
-
-  const updateSettings = useUpdateSettings({
-    mutation: {
-      onSuccess: () => {
-        // After saving config, auto-generate slots for next 60 days
-        const from = todayISO();
-        const to = (() => { const d = new Date(); d.setDate(d.getDate() + 60); return d.toLocaleDateString("sv-SE", { timeZone: BRT }); })();
-        generateSlots.mutate({ data: { dateFrom: from, dateTo: to } });
-      },
-      onError: () => toast({ title: "Erro ao salvar", variant: "destructive" }),
-    },
-  });
-
-  const grouped = groupByDate(slots ?? []);
-
-  // Use settings as base, override with local state if changed
-  const effectiveOpenDays = openDays ?? (settings?.scheduleOpenDays ?? "1,2,3,4,5").split(",").map(Number);
-  const effectiveOpenHour = openHour ?? (settings?.scheduleOpenHour ?? "9");
-  const effectiveCloseHour = closeHour ?? (settings?.scheduleCloseHour ?? "18");
-  const effectiveStepMin = stepMin ?? (settings?.scheduleStepMin ?? "60");
-  const closedDates = (settings?.scheduleClosedDates ?? "").split(",").map(s => s.trim()).filter(Boolean);
-
-  function toggleDay(iso: number) {
-    const current = effectiveOpenDays;
-    if (current.includes(iso)) setOpenDays(current.filter(d => d !== iso));
-    else setOpenDays([...current, iso].sort());
-  }
-
-  function addClosedDate() {
-    if (!closedDateInput) return;
-    const updated = [...new Set([...closedDates, closedDateInput])].sort();
-    updateSettings.mutate({ data: { scheduleClosedDates: updated.join(",") } });
-    setClosedDateInput("");
-  }
-
-  function removeClosedDate(d: string) {
-    const updated = closedDates.filter(x => x !== d);
-    updateSettings.mutate({ data: { scheduleClosedDates: updated.join(",") } });
-  }
-
-  function saveScheduleConfig() {
-    updateSettings.mutate({
-      data: {
-        scheduleOpenDays: effectiveOpenDays.join(","),
-        scheduleOpenHour: effectiveOpenHour,
-        scheduleCloseHour: effectiveCloseHour,
-        scheduleStepMin: effectiveStepMin,
-      },
+  const upcoming = scheduled
+    .filter(o => {
+      if (!o.scheduledAt) return true;
+      return new Date(o.scheduledAt) >= now;
+    })
+    .sort((a, b) => {
+      const aT = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+      const bT = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+      return aT - bT;
     });
-  }
+
+  const past = scheduled
+    .filter(o => o.scheduledAt && new Date(o.scheduledAt) < now)
+    .sort((a, b) => new Date(b.scheduledAt!).getTime() - new Date(a.scheduledAt!).getTime());
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Agenda de Horários</h1>
-        <p className="text-muted-foreground text-sm sm:text-base">Configure dias e horários de atendimento.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Agenda de Atendimentos</h1>
+        <p className="text-muted-foreground text-sm sm:text-base">
+          Agendamentos por videoconferência realizados via Gestão AR / Safeweb.
+        </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Configuração de Horários */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
+          <Clock className="h-4 w-4 animate-spin" />
+          Carregando agendamentos...
+        </div>
+      ) : !scheduled.length ? (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings2 className="h-4 w-4 text-primary" />
-              Configuração de Horários
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Dias de Atendimento</Label>
-              <div className="flex flex-wrap gap-2">
-                {WEEKDAYS.map(d => (
-                  <label key={d.iso} className={[
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors",
-                    effectiveOpenDays.includes(d.iso)
-                      ? "border-primary bg-primary/10 text-primary font-medium"
-                      : "border-border text-muted-foreground hover:border-primary/40",
-                  ].join(" ")}>
-                    <Checkbox
-                      checked={effectiveOpenDays.includes(d.iso)}
-                      onCheckedChange={() => toggleDay(d.iso)}
-                      className="h-3.5 w-3.5"
-                    />
-                    {d.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Abertura (hora)</Label>
-                <Input
-                  type="number"
-                  min={0} max={23}
-                  value={effectiveOpenHour}
-                  onChange={e => setOpenHour(e.target.value)}
-                  className="text-center"
-                />
-                <p className="text-xs text-muted-foreground text-center">{effectiveOpenHour}:00</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Fechamento (hora)</Label>
-                <Input
-                  type="number"
-                  min={0} max={23}
-                  value={effectiveCloseHour}
-                  onChange={e => setCloseHour(e.target.value)}
-                  className="text-center"
-                />
-                <p className="text-xs text-muted-foreground text-center">{effectiveCloseHour}:00</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Intervalo (min)</Label>
-                <Input
-                  type="number"
-                  min={15} max={120} step={15}
-                  value={effectiveStepMin}
-                  onChange={e => setStepMin(e.target.value)}
-                  className="text-center"
-                />
-                <p className="text-xs text-muted-foreground text-center">a cada {effectiveStepMin}min</p>
-              </div>
-            </div>
-
-            <Button className="w-full" onClick={saveScheduleConfig} disabled={updateSettings.isPending || generateSlots.isPending}>
-              <Settings2 className="h-4 w-4 mr-2" />
-              {updateSettings.isPending ? "Salvando..." : generateSlots.isPending ? "Gerando horários..." : "Salvar Configuração"}
-            </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              Salva a configuração e gera automaticamente os horários dos próximos 60 dias.
+          <CardContent className="py-16 text-center space-y-3">
+            <Calendar className="h-12 w-12 mx-auto opacity-20" />
+            <p className="font-semibold text-muted-foreground">Nenhum agendamento realizado ainda</p>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              Após o pagamento ser confirmado e o protocolo emitido, o cliente escolhe o horário
+              de videoconferência diretamente na plataforma Gestão AR ou Safeweb.
+              Os agendamentos aparecem aqui automaticamente.
             </p>
           </CardContent>
         </Card>
-
-        {/* Datas Fechadas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Ban className="h-4 w-4 text-destructive" />
-              Dias Fechados / Feriados
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm">Adicionar data fechada</Label>
-              <div className="flex gap-2">
-                <Input
-                  type="date"
-                  value={closedDateInput}
-                  onChange={e => setClosedDateInput(e.target.value)}
-                  min={todayISO()}
-                  className="flex-1"
-                />
-                <Button onClick={addClosedDate} disabled={!closedDateInput || updateSettings.isPending} size="sm">
-                  <Plus className="h-4 w-4" />
-                </Button>
+      ) : (
+        <>
+          {upcoming.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-primary" />
+                <h2 className="font-semibold">
+                  Próximos agendamentos
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">({upcoming.length})</span>
+                </h2>
               </div>
-            </div>
+              {upcoming.map(o => <AppointmentRow key={o.id} order={o} />)}
+            </section>
+          )}
 
-            {closedDates.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhum dia fechado cadastrado.</p>
-            ) : (
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {closedDates.map(d => (
-                  <div key={d} className="flex items-center justify-between px-3 py-2 rounded-lg bg-destructive/5 border border-destructive/20">
-                    <span className="text-sm font-medium">
-                      {new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-                    </span>
-                    <button onClick={() => removeClosedDate(d)} className="text-destructive hover:text-destructive/70 transition-colors">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+          {past.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <User className="h-4 w-4" />
+                <h2 className="font-semibold">
+                  Realizados
+                  <span className="ml-2 text-sm font-normal">({past.length})</span>
+                </h2>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Gerar Slots */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-500" />
-            Gerar Horários Automaticamente
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="space-y-1.5 flex-1">
-              <Label className="text-sm">Data inicial</Label>
-              <Input type="date" value={genFrom} onChange={e => setGenFrom(e.target.value)} min={todayISO()} />
-            </div>
-            <div className="space-y-1.5 flex-1">
-              <Label className="text-sm">Data final</Label>
-              <Input type="date" value={genTo} onChange={e => setGenTo(e.target.value)} min={genFrom} />
-            </div>
-            <Button
-              onClick={() => generateSlots.mutate({ data: { dateFrom: genFrom, dateTo: genTo } })}
-              disabled={generateSlots.isPending || !genFrom || !genTo}
-              className="shrink-0"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              {generateSlots.isPending ? "Gerando..." : "Gerar Horários"}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            Gera horários conforme a configuração acima para o período selecionado. Slots já existentes são ignorados automaticamente.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Adicionar horário manualmente */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="h-4 w-4 text-primary" />
-            Adicionar Horário Avulso
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              type="datetime-local"
-              value={newDatetime}
-              onChange={e => setNewDatetime(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              onClick={() => { if (newDatetime) { create.mutate({ data: { slotDatetime: new Date(newDatetime).toISOString() } }); } }}
-              disabled={!newDatetime || create.isPending}
-            >
-              Adicionar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lista de slots agendados */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-primary" />
-          Horários Cadastrados ({slots?.length ?? 0})
-        </h2>
-        {isLoading ? (
-          <div className="text-center py-10 text-muted-foreground">Carregando...</div>
-        ) : !slots?.length ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-10 text-muted-foreground">
-                <Calendar className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">Nenhum horário cadastrado</p>
-                <p className="text-sm">Use o botão "Gerar Horários" para criar automaticamente.</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {grouped.map(([date, daySlots]) => (
-              <Card key={date}>
-                <CardHeader className="pb-2 pt-3">
-                  <CardTitle className="text-sm capitalize flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5 text-primary" />
-                    {date}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex flex-wrap gap-2">
-                    {daySlots.map(slot => (
-                      <div key={slot.id} className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg bg-muted/30 text-sm">
-                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>{new Date(slot.slotDatetime).toLocaleTimeString("pt-BR", { timeZone: BRT, hour: "2-digit", minute: "2-digit" })}</span>
-                        <button onClick={() => setDeleteId(slot.id)} className="ml-1 text-muted-foreground hover:text-destructive transition-colors">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover horário?</AlertDialogTitle>
-            <AlertDialogDescription>O horário será removido imediatamente.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteId !== null && del.mutate({ id: deleteId })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Remover
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              {past.map(o => <AppointmentRow key={o.id} order={o} past />)}
+            </section>
+          )}
+        </>
+      )}
     </div>
   );
 }
