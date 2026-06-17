@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
+import { ArrowLeft, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, ShieldQuestion, Building2, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link } from "wouter";
 function maskCpfCnpj(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 14);
@@ -90,6 +90,11 @@ export default function NewOrder() {
   const [autoFilledCustomerName, setAutoFilledCustomerName] = useState(false);
   const [autoFilledRepName, setAutoFilledRepName] = useState(false);
   const psbioContextRef = useRef<"customer" | "rep">("customer");
+  // NF type (only for e-CPF certs): "fisica" | "juridica"
+  const [nfType, setNfType] = useState<"fisica" | "juridica">("fisica");
+  const [nfCnpjToQuery, setNfCnpjToQuery] = useState("");
+  const [nfCnpjDisplay, setNfCnpjDisplay] = useState("");
+  const [autoFilledNfCompany, setAutoFilledNfCompany] = useState(false);
 
   const [warrantyInfoOpen, setWarrantyInfoOpen] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
@@ -189,6 +194,37 @@ export default function NewOrder() {
   const selectedCert = certificates?.find(c => String(c.id) === form.certificateId);
   const total = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? 15 : 0);
 
+  // Derived: is the selected certificate an e-CNPJ type?
+  const isCnpjCert = selectedCert ? /cnpj/i.test(selectedCert.name) : false;
+
+  // Auto-set clientType when certificate changes
+  useEffect(() => {
+    if (!selectedCert) return;
+    const certIsCnpj = /cnpj/i.test(selectedCert.name);
+    setForm(prev => ({ ...prev, clientType: certIsCnpj ? "cnpj" : "cpf" }));
+    if (!certIsCnpj) setNfType("fisica");
+    setCnpjToQuery("");
+    setNfCnpjToQuery("");
+    setNfCnpjDisplay("");
+    setAutoFilledCustomerName(false);
+    setPsbioStatus(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.certificateId]);
+
+  // NF CNPJ lookup (for e-CPF + juridica)
+  const { data: nfCnpjData, isFetching: nfCnpjFetching } = useQuery({
+    ...getCnpjLookupQueryOptions({ cnpj: nfCnpjToQuery }),
+    enabled: nfCnpjToQuery.length === 14,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!nfCnpjData) return;
+    setForm(prev => ({ ...prev, companyName: prev.companyName || nfCnpjData.razaoSocial }));
+    if (nfCnpjData.razaoSocial) setAutoFilledNfCompany(true);
+  }, [nfCnpjData]);
+
   function set(field: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }));
   }
@@ -266,7 +302,7 @@ export default function NewOrder() {
       toast({ title: "Atenção", description: "Envie uma foto ou cópia da CNH / RG.", variant: "destructive" });
       return;
     }
-    if (form.clientType === "cnpj") {
+    if (isCnpjCert) {
       if (!cartaoFile && !cartaoKey) {
         toast({ title: "Atenção", description: "Envie o Cartão CNPJ.", variant: "destructive" });
         return;
@@ -282,7 +318,7 @@ export default function NewOrder() {
       uploadedKey = await uploadDoc(cnhFile, "cnh", setCnhUploading, setCnhKey, "CNH/RG");
       if (!uploadedKey) return;
     }
-    if (form.clientType === "cnpj") {
+    if (isCnpjCert) {
       if (cartaoFile && !cartaoKey) {
         const k = await uploadDoc(cartaoFile, "cartao-cnpj", setCartaoUploading, setCartaoKey, "Cartão CNPJ");
         if (!k) return;
@@ -298,7 +334,7 @@ export default function NewOrder() {
     createOrder.mutate({
       data: {
         certificateId: Number(form.certificateId),
-        clientType: form.clientType as "cpf" | "cnpj",
+        clientType: isCnpjCert ? "cnpj" : "cpf",
         customerName: form.customerName,
         customerCpfCnpj: form.customerCpfCnpj,
         customerEmail: form.customerEmail,
@@ -427,61 +463,82 @@ export default function NewOrder() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Dados do Cliente</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle>Dados do Cliente</CardTitle>
+                {/* Cert type badge */}
+                {selectedCert && (
+                  <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full w-fit mt-1 ${isCnpjCert ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}>
+                    {isCnpjCert ? <Building2 className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                    {isCnpjCert ? "e-CNPJ — Pessoa Jurídica" : "e-CPF — Pessoa Física"}
+                  </div>
+                )}
+              </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Tipo de Pessoa *</Label>
-                  <Select value={form.clientType} onValueChange={(v) => set("clientType", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cpf">Pessoa Física (CPF)</SelectItem>
-                      <SelectItem value="cnpj">Pessoa Jurídica (CNPJ)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+
+                {/* NF type selector — only for e-CPF */}
+                {!isCnpjCert && selectedCert && (
+                  <div className="space-y-2 pb-2 border-b">
+                    <Label className="text-sm font-medium">Nota fiscal do certificado em nome de:</Label>
+                    <RadioGroup value={nfType} onValueChange={v => { setNfType(v as "fisica" | "juridica"); setForm(prev => ({ ...prev, companyName: "" })); setNfCnpjToQuery(""); setNfCnpjDisplay(""); setAutoFilledNfCompany(false); }} className="flex gap-4 mt-1">
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="fisica" id="nf-fisica" />
+                        <Label htmlFor="nf-fisica" className="cursor-pointer font-normal flex items-center gap-1.5">
+                          <User className="h-3.5 w-3.5" /> Pessoa Física
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="juridica" id="nf-juridica" />
+                        <Label htmlFor="nf-juridica" className="cursor-pointer font-normal flex items-center gap-1.5">
+                          <Building2 className="h-3.5 w-3.5" /> Pessoa Jurídica (empresa)
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1">
-                      Nome Completo *
+                      {isCnpjCert ? "Nome / Razão Social *" : "Nome Completo *"}
                       {autoFilledCustomerName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                      {cnpjFetching && form.clientType === "cnpj" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                      {cnpjFetching && isCnpjCert && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                     </Label>
                     <Input
                       value={form.customerName}
                       onChange={e => { set("customerName", e.target.value); setAutoFilledCustomerName(false); }}
                       required
                       className={autoFilledCustomerName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                      placeholder={cnpjFetching && form.clientType === "cnpj" ? "Buscando..." : ""}
+                      placeholder={cnpjFetching && isCnpjCert ? "Buscando..." : ""}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{form.clientType === "cnpj" ? "CNPJ *" : "CPF *"}</Label>
+                    <Label>{isCnpjCert ? "CNPJ *" : "CPF *"}</Label>
                     <div className="relative">
                       <Input value={form.customerCpfCnpj} onChange={e => {
                         const v = maskCpfCnpj(e.target.value);
                         set("customerCpfCnpj", v);
                         const digits = v.replace(/\D/g, "");
-                        if (form.clientType === "cnpj") {
+                        if (isCnpjCert) {
                           if (digits.length === 14) setCnpjToQuery(digits);
                           else { setCnpjToQuery(""); setAutoFilledCustomerName(false); }
                         }
-                        triggerPsbioCheck(v, form.customerBirthDate, form.clientType, form.repCpf, form.repBirthDate);
-                      }} required placeholder={form.clientType === "cnpj" ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
-                      {cnpjFetching && form.clientType === "cnpj" && (
+                        triggerPsbioCheck(v, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", form.repCpf, form.repBirthDate);
+                      }} required placeholder={isCnpjCert ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
+                      {cnpjFetching && isCnpjCert && (
                         <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
                       )}
-                      {cnpjError && form.clientType === "cnpj" && cnpjToQuery.length === 14 && (
+                      {cnpjError && isCnpjCert && cnpjToQuery.length === 14 && (
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-destructive">!</span>
                       )}
                     </div>
-                    {cnpjError && form.clientType === "cnpj" && cnpjToQuery.length === 14 && (
+                    {cnpjError && isCnpjCert && cnpjToQuery.length === 14 && (
                       <p className="text-xs text-destructive">CNPJ não encontrado na Receita Federal.</p>
                     )}
-                    {cnpjData && form.clientType === "cnpj" && cnpjData.situacao && cnpjData.situacao !== "ATIVA" && (
+                    {cnpjData && isCnpjCert && cnpjData.situacao && cnpjData.situacao !== "ATIVA" && (
                       <p className="text-xs text-amber-600">Situação: {cnpjData.situacao}</p>
                     )}
                   </div>
-                  {form.clientType === "cpf" && (
+                  {!isCnpjCert && (
                     <div className="space-y-2">
                       <Label>Data de Nascimento</Label>
                       <Input
@@ -489,12 +546,12 @@ export default function NewOrder() {
                         value={form.customerBirthDate}
                         onChange={e => {
                           set("customerBirthDate", e.target.value);
-                          triggerPsbioCheck(form.customerCpfCnpj, e.target.value, form.clientType, form.repCpf, form.repBirthDate);
+                          triggerPsbioCheck(form.customerCpfCnpj, e.target.value, "cpf", form.repCpf, form.repBirthDate);
                         }}
                       />
                     </div>
                   )}
-                  {form.clientType === "cnpj" && (
+                  {isCnpjCert && (
                     <div className="space-y-2 sm:col-span-2">
                       <Label className="flex items-center gap-1">
                         Razão Social
@@ -548,7 +605,7 @@ export default function NewOrder() {
                     </div>
                   </div>
                 )}
-                {!psbioStatus && form.customerCpfCnpj.replace(/\D/g, "").length >= 11 && !form.customerBirthDate && form.clientType === "cpf" && (
+                {!psbioStatus && form.customerCpfCnpj.replace(/\D/g, "").length >= 11 && !form.customerBirthDate && !isCnpjCert && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <ShieldQuestion className="h-4 w-4" />
                     Informe a data de nascimento para verificar disponibilidade de biometria.
@@ -557,57 +614,107 @@ export default function NewOrder() {
               </CardContent>
             </Card>
 
-            {/* Dados do Representante Legal — apenas CNPJ */}
-            {form.clientType === "cnpj" && (
-              <Card>
+            {/* Dados para Nota Fiscal — apenas e-CPF + juridica */}
+            {!isCnpjCert && nfType === "juridica" && (
+              <Card className="border-blue-200 dark:border-blue-800">
                 <CardHeader>
-                  <CardTitle>Dados do Representante Legal</CardTitle>
-                  <p className="text-sm text-muted-foreground">Pessoa física responsável pela empresa para emissão do certificado.</p>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    Dados para Nota Fiscal
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">Empresa para emissão da nota fiscal do certificado. Não altera o titular do certificado.</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2 sm:col-span-2">
+                    <div className="space-y-2">
+                      <Label>CNPJ da Empresa</Label>
+                      <div className="relative">
+                        <Input
+                          value={nfCnpjDisplay}
+                          onChange={e => {
+                            const v = maskCpfCnpj(e.target.value);
+                            setNfCnpjDisplay(v);
+                            const digits = v.replace(/\D/g, "");
+                            if (digits.length === 14) setNfCnpjToQuery(digits);
+                            else { setNfCnpjToQuery(""); setAutoFilledNfCompany(false); setForm(prev => ({ ...prev, companyName: "" })); }
+                          }}
+                          placeholder="00.000.000/0001-00"
+                          className="pr-8"
+                        />
+                        {nfCnpjFetching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
                       <Label className="flex items-center gap-1">
-                        Nome Completo do Representante *
-                        {autoFilledRepName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                        Razão Social
+                        {autoFilledNfCompany && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                        {nfCnpjFetching && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                       </Label>
                       <Input
-                        value={form.repName}
-                        onChange={e => { set("repName", e.target.value); setAutoFilledRepName(false); }}
-                        placeholder="Nome como consta no documento"
-                        required={form.clientType === "cnpj"}
-                        className={autoFilledRepName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>CPF do Representante *</Label>
-                      <Input
-                        value={form.repCpf}
-                        onChange={e => {
-                          const v = maskCpfCnpj(e.target.value);
-                          set("repCpf", v);
-                          triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, form.clientType, v, form.repBirthDate);
-                        }}
-                        placeholder="000.000.000-00"
-                        required={form.clientType === "cnpj"}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Data de Nascimento *</Label>
-                      <Input
-                        type="date"
-                        value={form.repBirthDate}
-                        onChange={e => {
-                          set("repBirthDate", e.target.value);
-                          triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, form.clientType, form.repCpf, e.target.value);
-                        }}
-                        required={form.clientType === "cnpj"}
+                        value={form.companyName}
+                        onChange={e => { set("companyName", e.target.value); setAutoFilledNfCompany(false); }}
+                        placeholder={nfCnpjFetching ? "Buscando..." : "Razão Social da empresa"}
+                        className={autoFilledNfCompany ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
                       />
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
+
+            {/* Dados do Representante Legal — sempre visível */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Dados do Representante Legal</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {isCnpjCert
+                    ? "Pessoa física responsável pela empresa para emissão do certificado."
+                    : "Responsável pela emissão do certificado digital."}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label className="flex items-center gap-1">
+                      Nome Completo do Representante *
+                      {autoFilledRepName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                    </Label>
+                    <Input
+                      value={form.repName}
+                      onChange={e => { set("repName", e.target.value); setAutoFilledRepName(false); }}
+                      placeholder="Nome como consta no documento"
+                      required
+                      className={autoFilledRepName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>CPF do Representante *</Label>
+                    <Input
+                      value={form.repCpf}
+                      onChange={e => {
+                        const v = maskCpfCnpj(e.target.value);
+                        set("repCpf", v);
+                        triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", v, form.repBirthDate);
+                      }}
+                      placeholder="000.000.000-00"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data de Nascimento *</Label>
+                    <Input
+                      type="date"
+                      value={form.repBirthDate}
+                      onChange={e => {
+                        set("repBirthDate", e.target.value);
+                        triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", form.repCpf, e.target.value);
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* CNH / RG Upload */}
             <Card>
