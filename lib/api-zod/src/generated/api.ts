@@ -404,6 +404,27 @@ export const CreateOrderBody = zod.object({
 
 
 /**
+ * @summary Consulta dados de CNPJ via Receita Federal (BrasilAPI)
+ */
+export const CnpjLookupQueryParams = zod.object({
+  "cnpj": zod.coerce.string()
+})
+
+export const CnpjLookupResponse = zod.object({
+  "razaoSocial": zod.string(),
+  "nomeFantasia": zod.string(),
+  "logradouro": zod.string(),
+  "numero": zod.string(),
+  "complemento": zod.string().optional(),
+  "bairro": zod.string(),
+  "municipio": zod.string(),
+  "uf": zod.string(),
+  "cep": zod.string(),
+  "situacao": zod.string()
+})
+
+
+/**
  * @summary Valida CPF/CNPJ e verifica PSBio antes de criar pedido
  */
 export const ConsultaPreviaBody = zod.object({
@@ -417,7 +438,8 @@ export const ConsultaPreviaResponse = zod.object({
   "ok": zod.boolean(),
   "hasPsbio": zod.boolean(),
   "mensagem": zod.string(),
-  "requiresPresencial": zod.boolean()
+  "requiresPresencial": zod.boolean(),
+  "customerName": zod.string().nullish()
 })
 
 

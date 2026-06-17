@@ -30,6 +30,8 @@ export * from './changePasswordInput';
 export * from './chatMessageInput';
 export * from './checkAlertsResult';
 export * from './checkAlertsResultResultsItem';
+export * from './cnpjLookupParams';
+export * from './cnpjLookupResult';
 export * from './consultaPreviaInput';
 export * from './consultaPreviaResult';
 export * from './createCampaignInput';

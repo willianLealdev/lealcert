@@ -35,6 +35,8 @@ import type {
   ChangePasswordInput,
   ChatMessageInput,
   CheckAlertsResult,
+  CnpjLookupParams,
+  CnpjLookupResult,
   ConsultaPreviaInput,
   ConsultaPreviaResult,
   CreateCampaignInput,
@@ -1811,6 +1813,90 @@ export const useCreateOrder = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateOrderMutationOptions(options));
     }
+
+export const getCnpjLookupUrl = (params: CnpjLookupParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cnpj-lookup?${stringifiedParams}` : `/api/cnpj-lookup`
+}
+
+/**
+ * @summary Consulta dados de CNPJ via Receita Federal (BrasilAPI)
+ */
+export const cnpjLookup = async (params: CnpjLookupParams, options?: RequestInit): Promise<CnpjLookupResult> => {
+
+  return customFetch<CnpjLookupResult>(getCnpjLookupUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCnpjLookupQueryKey = (params?: CnpjLookupParams,) => {
+    return [
+    `/api/cnpj-lookup`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getCnpjLookupQueryOptions = <TData = Awaited<ReturnType<typeof cnpjLookup>>, TError = ErrorType<unknown>>(params: CnpjLookupParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof cnpjLookup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCnpjLookupQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof cnpjLookup>>> = ({ signal }) => cnpjLookup(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof cnpjLookup>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CnpjLookupQueryResult = NonNullable<Awaited<ReturnType<typeof cnpjLookup>>>
+export type CnpjLookupQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Consulta dados de CNPJ via Receita Federal (BrasilAPI)
+ */
+
+export function useCnpjLookup<TData = Awaited<ReturnType<typeof cnpjLookup>>, TError = ErrorType<unknown>>(
+ params: CnpjLookupParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof cnpjLookup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCnpjLookupQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getConsultaPreviaUrl = () => {
 

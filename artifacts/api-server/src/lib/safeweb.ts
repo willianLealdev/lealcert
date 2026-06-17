@@ -136,7 +136,7 @@ export async function swListarProdutos(settings: SafewebSettings, idTipoEmissao:
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSULTA PRÉVIA
 // ═══════════════════════════════════════════════════════════════════════════════
-export interface SwConsultaResult { Codigo: number; Mensagem: string }
+export interface SwConsultaResult { Codigo: number; Mensagem: string; NomeCompleto?: string; [key: string]: unknown }
 
 export async function swConsultaCPF(settings: SafewebSettings, cpf: string, dataNascimento: string): Promise<SwConsultaResult> {
   return swPost<SwConsultaResult>(settings, CONSULTA_PATH, { CPF: cpf, DocumentoTipo: "1", DtNascimento: dataNascimento });

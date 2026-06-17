@@ -15,6 +15,7 @@ import gestaoarRouter from "./gestaoar";
 import safewebRouter from "./safeweb";
 import mpWebhookRouter from "./mp-webhook";
 import renewalsRouter from "./renewals";
+import cnpjLookupRouter from "./cnpj-lookup";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(dashboardRouter);
 router.use(uploadRouter);
 router.use(marketingRouter);
 router.use(renewalsRouter);
+router.use(cnpjLookupRouter);
 
 export default router;

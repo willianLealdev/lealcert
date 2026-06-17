@@ -111,9 +111,11 @@ router.post("/orders/consulta-previa", requireAuth, async (req, res): Promise<vo
         hasPsbio = psbioResult.sucesso === true;
       }
 
+      const customerName = typeof consultaResult.NomeCompleto === "string" ? consultaResult.NomeCompleto : undefined;
       res.json({
         ok: true,
         hasPsbio,
+        customerName,
         mensagem: hasPsbio
           ? "CPF com biometria (PSBio) cadastrada — emissão por videoconferência disponível"
           : "CPF sem biometria (PSBio) — atendimento presencial necessário",

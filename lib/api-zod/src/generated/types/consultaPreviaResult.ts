@@ -11,4 +11,5 @@ export interface ConsultaPreviaResult {
   hasPsbio: boolean;
   mensagem: string;
   requiresPresencial: boolean;
+  customerName?: string | null;
 }

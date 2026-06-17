@@ -1,6 +1,7 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useListCertificates, useCreateOrder, useConsultaPrevia } from "@workspace/api-client-react";
+import { useListCertificates, useCreateOrder, useConsultaPrevia, getCnpjLookupQueryOptions } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,12 @@ function maskPhone(v: string) {
   return d.replace(/(\d{2})(\d{5})(\d{0,4})/, (_, a, b, c) =>
     `(${a}) ${b}${c ? `-${c}` : ""}`
   );
+}
+
+function maskCepFn(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  if (d.length > 5) return d.slice(0, 5) + "-" + d.slice(5);
+  return d;
 }
 
 function formatBRL(v: number) {
@@ -79,6 +86,10 @@ export default function NewOrder() {
 
   type PsbioStatus = null | "loading" | { hasPsbio: boolean; mensagem: string; requiresPresencial: boolean };
   const [psbioStatus, setPsbioStatus] = useState<PsbioStatus>(null);
+  const [cnpjToQuery, setCnpjToQuery] = useState("");
+  const [autoFilledCustomerName, setAutoFilledCustomerName] = useState(false);
+  const [autoFilledRepName, setAutoFilledRepName] = useState(false);
+  const psbioContextRef = useRef<"customer" | "rep">("customer");
 
   const [warrantyInfoOpen, setWarrantyInfoOpen] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
@@ -113,6 +124,15 @@ export default function NewOrder() {
     mutation: {
       onSuccess: (data) => {
         setPsbioStatus({ hasPsbio: data.hasPsbio, mensagem: data.mensagem, requiresPresencial: data.requiresPresencial });
+        if (data.customerName) {
+          if (psbioContextRef.current === "rep") {
+            setForm(prev => ({ ...prev, repName: prev.repName || data.customerName! }));
+            setAutoFilledRepName(true);
+          } else {
+            setForm(prev => ({ ...prev, customerName: prev.customerName || data.customerName! }));
+            setAutoFilledCustomerName(true);
+          }
+        }
       },
       onError: () => {
         setPsbioStatus(null);
@@ -120,17 +140,44 @@ export default function NewOrder() {
     },
   });
 
+  const { data: cnpjData, isFetching: cnpjFetching, isError: cnpjError } = useQuery({
+    ...getCnpjLookupQueryOptions({ cnpj: cnpjToQuery }),
+    enabled: cnpjToQuery.length === 14,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!cnpjData) return;
+    const cepMasked = cnpjData.cep ? maskCepFn(cnpjData.cep.replace(/\D/g, "")) : "";
+    setForm(prev => ({
+      ...prev,
+      companyName: prev.companyName || cnpjData.razaoSocial,
+      customerName: prev.customerName || cnpjData.razaoSocial,
+      ...(cepMasked ? { addressZipcode: cepMasked } : {}),
+      ...(cnpjData.logradouro ? { addressStreet: cnpjData.logradouro } : {}),
+      ...(cnpjData.numero ? { addressNumber: cnpjData.numero } : {}),
+      ...(cnpjData.bairro ? { addressNeighborhood: cnpjData.bairro } : {}),
+      ...(cnpjData.municipio ? { addressCity: cnpjData.municipio } : {}),
+      ...(cnpjData.uf ? { addressState: cnpjData.uf } : {}),
+    }));
+    if (cnpjData.razaoSocial) setAutoFilledCustomerName(true);
+    if (cnpjData.logradouro || cnpjData.cep) setCepFilled(true);
+  }, [cnpjData]);
+
   const triggerPsbioCheck = useCallback((cpfCnpj: string, birthDate: string, clientType: string, repCpf?: string, repBirthDate?: string) => {
     const digits = cpfCnpj.replace(/\D/g, "");
     const isCpf = clientType === "cpf" && digits.length === 11;
     const isCnpj = clientType === "cnpj" && digits.length === 14;
 
     if (isCpf && birthDate) {
+      psbioContextRef.current = "customer";
       setPsbioStatus("loading");
       checkPsbio.mutate({ data: { cpf: digits, dataNascimento: birthDate } });
     } else if (isCnpj && repCpf && repBirthDate) {
       const repDigits = repCpf.replace(/\D/g, "");
       if (repDigits.length === 11) {
+        psbioContextRef.current = "rep";
         setPsbioStatus("loading");
         checkPsbio.mutate({ data: { cnpj: digits, cpfResponsavel: repDigits, dataNascimento: repBirthDate } });
       }
@@ -146,11 +193,7 @@ export default function NewOrder() {
     setForm(prev => ({ ...prev, [field]: value }));
   }
 
-  function maskCep(v: string) {
-    const d = v.replace(/\D/g, "").slice(0, 8);
-    if (d.length > 5) return d.slice(0, 5) + "-" + d.slice(5);
-    return d;
-  }
+  function maskCep(v: string) { return maskCepFn(v); }
 
   async function fetchCep(raw: string) {
     const digits = raw.replace(/\D/g, "");
@@ -398,16 +441,45 @@ export default function NewOrder() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Nome Completo *</Label>
-                    <Input value={form.customerName} onChange={e => set("customerName", e.target.value)} required />
+                    <Label className="flex items-center gap-1">
+                      Nome Completo *
+                      {autoFilledCustomerName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                      {cnpjFetching && form.clientType === "cnpj" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                    </Label>
+                    <Input
+                      value={form.customerName}
+                      onChange={e => { set("customerName", e.target.value); setAutoFilledCustomerName(false); }}
+                      required
+                      className={autoFilledCustomerName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                      placeholder={cnpjFetching && form.clientType === "cnpj" ? "Buscando..." : ""}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>{form.clientType === "cnpj" ? "CNPJ *" : "CPF *"}</Label>
-                    <Input value={form.customerCpfCnpj} onChange={e => {
-                      const v = maskCpfCnpj(e.target.value);
-                      set("customerCpfCnpj", v);
-                      triggerPsbioCheck(v, form.customerBirthDate, form.clientType, form.repCpf, form.repBirthDate);
-                    }} required placeholder={form.clientType === "cnpj" ? "00.000.000/0001-00" : "000.000.000-00"} />
+                    <div className="relative">
+                      <Input value={form.customerCpfCnpj} onChange={e => {
+                        const v = maskCpfCnpj(e.target.value);
+                        set("customerCpfCnpj", v);
+                        const digits = v.replace(/\D/g, "");
+                        if (form.clientType === "cnpj") {
+                          if (digits.length === 14) setCnpjToQuery(digits);
+                          else { setCnpjToQuery(""); setAutoFilledCustomerName(false); }
+                        }
+                        triggerPsbioCheck(v, form.customerBirthDate, form.clientType, form.repCpf, form.repBirthDate);
+                      }} required placeholder={form.clientType === "cnpj" ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
+                      {cnpjFetching && form.clientType === "cnpj" && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
+                      )}
+                      {cnpjError && form.clientType === "cnpj" && cnpjToQuery.length === 14 && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-destructive">!</span>
+                      )}
+                    </div>
+                    {cnpjError && form.clientType === "cnpj" && cnpjToQuery.length === 14 && (
+                      <p className="text-xs text-destructive">CNPJ não encontrado na Receita Federal.</p>
+                    )}
+                    {cnpjData && form.clientType === "cnpj" && cnpjData.situacao && cnpjData.situacao !== "ATIVA" && (
+                      <p className="text-xs text-amber-600">Situação: {cnpjData.situacao}</p>
+                    )}
                   </div>
                   {form.clientType === "cpf" && (
                     <div className="space-y-2">
@@ -424,8 +496,17 @@ export default function NewOrder() {
                   )}
                   {form.clientType === "cnpj" && (
                     <div className="space-y-2 sm:col-span-2">
-                      <Label>Razão Social</Label>
-                      <Input value={form.companyName} onChange={e => set("companyName", e.target.value)} />
+                      <Label className="flex items-center gap-1">
+                        Razão Social
+                        {cnpjData && form.companyName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                        {cnpjFetching && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                      </Label>
+                      <Input
+                        value={form.companyName}
+                        onChange={e => set("companyName", e.target.value)}
+                        className={cnpjData && form.companyName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                        placeholder={cnpjFetching ? "Buscando..." : ""}
+                      />
                     </div>
                   )}
                   <div className="space-y-2">
@@ -486,19 +567,27 @@ export default function NewOrder() {
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2 sm:col-span-2">
-                      <Label>Nome Completo do Representante *</Label>
+                      <Label className="flex items-center gap-1">
+                        Nome Completo do Representante *
+                        {autoFilledRepName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                      </Label>
                       <Input
                         value={form.repName}
-                        onChange={e => set("repName", e.target.value)}
+                        onChange={e => { set("repName", e.target.value); setAutoFilledRepName(false); }}
                         placeholder="Nome como consta no documento"
                         required={form.clientType === "cnpj"}
+                        className={autoFilledRepName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>CPF do Representante *</Label>
                       <Input
                         value={form.repCpf}
-                        onChange={e => set("repCpf", e.target.value)}
+                        onChange={e => {
+                          const v = maskCpfCnpj(e.target.value);
+                          set("repCpf", v);
+                          triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, form.clientType, v, form.repBirthDate);
+                        }}
                         placeholder="000.000.000-00"
                         required={form.clientType === "cnpj"}
                       />

@@ -386,6 +386,20 @@ export interface ConsultaPreviaResult {
   hasPsbio: boolean;
   mensagem: string;
   requiresPresencial: boolean;
+  customerName?: string | null;
+}
+
+export interface CnpjLookupResult {
+  razaoSocial: string;
+  nomeFantasia: string;
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  municipio: string;
+  uf: string;
+  cep: string;
+  situacao: string;
 }
 
 export interface PaymentPreference {
@@ -1112,6 +1126,10 @@ activeOnly?: boolean;
 export type ListOrdersParams = {
 status?: string;
 search?: string;
+};
+
+export type CnpjLookupParams = {
+cnpj: string;
 };
 
 export type ListSlotsParams = {
