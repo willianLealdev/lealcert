@@ -47,6 +47,21 @@ function maskCepFn(v: string) {
   return d;
 }
 
+function maskDate(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  if (d.length > 4) return d.slice(0, 2) + "/" + d.slice(2, 4) + "/" + d.slice(4);
+  if (d.length > 2) return d.slice(0, 2) + "/" + d.slice(2);
+  return d;
+}
+
+function parseBrDate(v: string): string {
+  const parts = v.split("/");
+  if (parts.length === 3 && parts[2].length === 4) {
+    return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+  }
+  return v;
+}
+
 function formatBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 }
@@ -182,10 +197,11 @@ export default function NewOrder() {
       checkPsbio.mutate({ data: { cpf: digits, dataNascimento: birthDate } });
     } else if (isCnpj && repCpf && repBirthDate) {
       const repDigits = repCpf.replace(/\D/g, "");
-      if (repDigits.length === 11) {
+      const repDateIso = repBirthDate.includes("/") ? parseBrDate(repBirthDate) : repBirthDate;
+      if (repDigits.length === 11 && repDateIso.length === 10) {
         psbioContextRef.current = "rep";
         setPsbioStatus("loading");
-        checkPsbio.mutate({ data: { cnpj: digits, cpfResponsavel: repDigits, dataNascimento: repBirthDate } });
+        checkPsbio.mutate({ data: { cnpj: digits, cpfResponsavel: repDigits, dataNascimento: repDateIso } });
       }
     } else {
       setPsbioStatus(null);
@@ -639,20 +655,8 @@ export default function NewOrder() {
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* CPF + Data — topo, disparam consulta automática */}
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label className="flex items-center gap-1">
-                      Nome Completo do Representante *
-                      {autoFilledRepName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                    </Label>
-                    <Input
-                      value={form.repName}
-                      onChange={e => { set("repName", e.target.value); setAutoFilledRepName(false); }}
-                      placeholder="Nome como consta no documento"
-                      required
-                      className={autoFilledRepName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label>CPF do Representante *</Label>
                     <Input
@@ -660,7 +664,9 @@ export default function NewOrder() {
                       onChange={e => {
                         const v = maskCpfCnpj(e.target.value);
                         set("repCpf", v);
-                        triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", v, form.repBirthDate);
+                        if (v.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
+                          triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", v, form.repBirthDate);
+                        }
                       }}
                       placeholder="000.000.000-00"
                       required
@@ -669,19 +675,83 @@ export default function NewOrder() {
                   <div className="space-y-2">
                     <Label>Data de Nascimento *</Label>
                     <Input
-                      type="date"
                       value={form.repBirthDate}
                       onChange={e => {
-                        set("repBirthDate", e.target.value);
-                        triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", form.repCpf, e.target.value);
+                        const v = maskDate(e.target.value);
+                        set("repBirthDate", v);
+                        if (form.repCpf.replace(/\D/g, "").length === 11 && v.length === 10) {
+                          triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", form.repCpf, v);
+                        }
                       }}
+                      placeholder="dd/mm/aaaa"
+                      maxLength={10}
                       required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>PIS / IMEI <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-                    <Input value={form.inssNumber} onChange={e => set("inssNumber", e.target.value)} placeholder="Opcional" />
+                </div>
+
+                {/* Botão Consultar — fallback manual */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={form.repCpf.replace(/\D/g, "").length < 11 || form.repBirthDate.length < 10 || psbioStatus === "loading"}
+                  onClick={() => triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", form.repCpf, form.repBirthDate)}
+                >
+                  {psbioStatus === "loading" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                  Consultar biometria
+                </Button>
+
+                {/* Status PSBio — para certificados de CNPJ */}
+                {showCnpjFields && psbioStatus === "loading" && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Verificando validação biométrica...
                   </div>
+                )}
+                {showCnpjFields && psbioStatus && psbioStatus !== "loading" && psbioStatus.hasPsbio && (
+                  <div className="flex items-start gap-2 text-sm bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-4 py-3">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-emerald-700 dark:text-emerald-400">Biometria PSBio disponível</p>
+                      <p className="text-emerald-600/80 dark:text-emerald-500 text-xs">{psbioStatus.mensagem} — atendimento pode ser realizado remotamente.</p>
+                    </div>
+                  </div>
+                )}
+                {showCnpjFields && psbioStatus && psbioStatus !== "loading" && !psbioStatus.hasPsbio && (
+                  <div className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3">
+                    <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-amber-700 dark:text-amber-400">Atendimento presencial obrigatório</p>
+                      <p className="text-amber-600/80 dark:text-amber-500 text-xs">{psbioStatus.mensagem} — o cliente deverá comparecer pessoalmente para validação.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Nome — somente leitura, preenchido pela consulta */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    Nome Completo do Representante
+                    {autoFilledRepName && (
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-normal">
+                        <CheckCircle className="h-3 w-3" /> preenchido automaticamente
+                      </span>
+                    )}
+                  </Label>
+                  <Input
+                    value={form.repName}
+                    readOnly
+                    placeholder="Preenchido automaticamente após consulta"
+                    className={autoFilledRepName
+                      ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 text-foreground"
+                      : "bg-muted/40 text-muted-foreground cursor-not-allowed"}
+                  />
+                </div>
+
+                {/* PIS / IMEI */}
+                <div className="space-y-2">
+                  <Label>PIS / IMEI <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                  <Input value={form.inssNumber} onChange={e => set("inssNumber", e.target.value)} placeholder="Opcional" />
                 </div>
               </CardContent>
             </Card>
