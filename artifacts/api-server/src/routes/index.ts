@@ -16,6 +16,7 @@ import safewebRouter from "./safeweb";
 import mpWebhookRouter from "./mp-webhook";
 import renewalsRouter from "./renewals";
 import cnpjLookupRouter from "./cnpj-lookup";
+import couponsRouter from "./coupons";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(uploadRouter);
 router.use(marketingRouter);
 router.use(renewalsRouter);
 router.use(cnpjLookupRouter);
+router.use(couponsRouter);
 
 export default router;

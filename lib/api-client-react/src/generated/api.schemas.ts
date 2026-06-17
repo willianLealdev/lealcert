@@ -1080,6 +1080,67 @@ export interface InboundWebhookInput {
   html?: string;
 }
 
+export type CouponType = typeof CouponType[keyof typeof CouponType];
+
+
+export const CouponType = {
+  percent: 'percent',
+  fixed: 'fixed',
+} as const;
+
+export type CouponTarget = typeof CouponTarget[keyof typeof CouponTarget];
+
+
+export const CouponTarget = {
+  all: 'all',
+  cliente: 'cliente',
+  contador: 'contador',
+} as const;
+
+export interface Coupon {
+  id: number;
+  code: string;
+  type: CouponType;
+  value: number;
+  target: CouponTarget;
+  expiresAt: string | null;
+  active: boolean;
+  usageLimit: number | null;
+  usageCount: number;
+  createdAt: string;
+}
+
+export interface CouponValidateInput {
+  code: string;
+}
+
+export type CouponInputType = typeof CouponInputType[keyof typeof CouponInputType];
+
+
+export const CouponInputType = {
+  percent: 'percent',
+  fixed: 'fixed',
+} as const;
+
+export type CouponInputTarget = typeof CouponInputTarget[keyof typeof CouponInputTarget];
+
+
+export const CouponInputTarget = {
+  all: 'all',
+  cliente: 'cliente',
+  contador: 'contador',
+} as const;
+
+export interface CouponInput {
+  code: string;
+  type: CouponInputType;
+  value: number;
+  target: CouponInputTarget;
+  expiresAt?: string | null;
+  active?: boolean;
+  usageLimit?: number | null;
+}
+
 export interface OpenaiConversation {
   id: number;
   title: string;

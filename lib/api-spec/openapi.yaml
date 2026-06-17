@@ -8,6 +8,8 @@ servers:
   - url: /api
     description: Base API path
 tags:
+  - name: coupons
+    description: Discount coupons
   - name: health
     description: Health operations
   - name: auth
@@ -34,6 +36,113 @@ tags:
     description: Gestão AR integration — produtos, vendas, protocolo e agenda
 
 paths:
+  /coupons:
+    get:
+      operationId: listCoupons
+      tags: [coupons]
+      summary: List all coupons (admin)
+      responses:
+        "200":
+          description: List of coupons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Coupon"
+    post:
+      operationId: createCoupon
+      tags: [coupons]
+      summary: Create a new coupon (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CouponInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coupon"
+
+  /coupons/validate:
+    post:
+      operationId: validateCoupon
+      tags: [coupons]
+      summary: Validate a coupon code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CouponValidateInput"
+      responses:
+        "200":
+          description: Valid coupon
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coupon"
+        "404":
+          description: Invalid or inactive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Expired or exhausted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not allowed for this user role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /coupons/{id}:
+    patch:
+      operationId: updateCoupon
+      tags: [coupons]
+      summary: Update a coupon (admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CouponInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Coupon"
+    delete:
+      operationId: deleteCoupon
+      tags: [coupons]
+      summary: Delete a coupon (admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   /openai/chat/session:
     post:
       operationId: createChatSession
@@ -3186,6 +3295,68 @@ components:
           type: string
         html:
           type: string
+
+    Coupon:
+      type: object
+      required: [id, code, type, value, target, expiresAt, active, usageLimit, usageCount, createdAt]
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        type:
+          type: string
+          enum: [percent, fixed]
+        value:
+          type: number
+        target:
+          type: string
+          enum: [all, cliente, contador]
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        active:
+          type: boolean
+        usageLimit:
+          type: integer
+          nullable: true
+        usageCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    CouponValidateInput:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+
+    CouponInput:
+      type: object
+      required: [code, type, value, target]
+      properties:
+        code:
+          type: string
+        type:
+          type: string
+          enum: [percent, fixed]
+        value:
+          type: number
+        target:
+          type: string
+          enum: [all, cliente, contador]
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        active:
+          type: boolean
+        usageLimit:
+          type: integer
+          nullable: true
 
     OpenaiConversation:
       type: object

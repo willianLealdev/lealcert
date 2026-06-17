@@ -6,6 +6,7 @@ export * from "./order-events";
 export * from "./certificate-renewals";
 export * from "./tickets";
 export * from "./settings";
+export * from "./coupons";
 export * from "./marketing";
 export * from "./conversations";
 export * from "./messages";

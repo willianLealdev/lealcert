@@ -9,6 +9,98 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary List all coupons (admin)
+ */
+export const ListCouponsResponseItem = zod.object({
+  "id": zod.number(),
+  "code": zod.string(),
+  "type": zod.enum(['percent', 'fixed']),
+  "value": zod.number(),
+  "target": zod.enum(['all', 'cliente', 'contador']),
+  "expiresAt": zod.coerce.date().nullable(),
+  "active": zod.boolean(),
+  "usageLimit": zod.number().nullable(),
+  "usageCount": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+export const ListCouponsResponse = zod.array(ListCouponsResponseItem)
+
+
+/**
+ * @summary Create a new coupon (admin)
+ */
+export const CreateCouponBody = zod.object({
+  "code": zod.string(),
+  "type": zod.enum(['percent', 'fixed']),
+  "value": zod.number(),
+  "target": zod.enum(['all', 'cliente', 'contador']),
+  "expiresAt": zod.coerce.date().nullish(),
+  "active": zod.boolean().optional(),
+  "usageLimit": zod.number().nullish()
+})
+
+
+/**
+ * @summary Validate a coupon code
+ */
+export const ValidateCouponBody = zod.object({
+  "code": zod.string()
+})
+
+export const ValidateCouponResponse = zod.object({
+  "id": zod.number(),
+  "code": zod.string(),
+  "type": zod.enum(['percent', 'fixed']),
+  "value": zod.number(),
+  "target": zod.enum(['all', 'cliente', 'contador']),
+  "expiresAt": zod.coerce.date().nullable(),
+  "active": zod.boolean(),
+  "usageLimit": zod.number().nullable(),
+  "usageCount": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a coupon (admin)
+ */
+export const UpdateCouponParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateCouponBody = zod.object({
+  "code": zod.string(),
+  "type": zod.enum(['percent', 'fixed']),
+  "value": zod.number(),
+  "target": zod.enum(['all', 'cliente', 'contador']),
+  "expiresAt": zod.coerce.date().nullish(),
+  "active": zod.boolean().optional(),
+  "usageLimit": zod.number().nullish()
+})
+
+export const UpdateCouponResponse = zod.object({
+  "id": zod.number(),
+  "code": zod.string(),
+  "type": zod.enum(['percent', 'fixed']),
+  "value": zod.number(),
+  "target": zod.enum(['all', 'cliente', 'contador']),
+  "expiresAt": zod.coerce.date().nullable(),
+  "active": zod.boolean(),
+  "usageLimit": zod.number().nullable(),
+  "usageCount": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a coupon (admin)
+ */
+export const DeleteCouponParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary Send message to the AI sales chat (SSE stream)
  */
 export const SendChatMessageBody = zod.object({

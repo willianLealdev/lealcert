@@ -19,6 +19,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
+  Tag,
 } from "lucide-react";
 
 const navigation = [
@@ -32,6 +33,7 @@ const adminNav = [
   { name: "Catálogo", href: "/admin/certificates", icon: FileBadge },
   { name: "Agenda", href: "/admin/slots", icon: CalendarDays },
   { name: "Renovações", href: "/admin/renovacoes", icon: RefreshCw },
+  { name: "Descontos", href: "/admin/coupons", icon: Tag },
   { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];

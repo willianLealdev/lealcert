@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useListCertificates, useCreateOrder, useConsultaPrevia, getCnpjLookupQueryOptions } from "@workspace/api-client-react";
+import { useListCertificates, useCreateOrder, useConsultaPrevia, getCnpjLookupQueryOptions, useValidateCoupon } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, ShieldQuestion, Building2, User } from "lucide-react";
+import { ArrowLeft, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, ShieldQuestion, Building2, User, Tag, CheckCircle, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Link } from "wouter";
@@ -92,6 +92,10 @@ export default function NewOrder() {
   const psbioContextRef = useRef<"customer" | "rep">("customer");
   // NF type (only for e-CPF certs): "fisica" | "juridica"
   const [nfType, setNfType] = useState<"fisica" | "juridica">("fisica");
+
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; type: string; value: number } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   const [warrantyInfoOpen, setWarrantyInfoOpen] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
@@ -188,8 +192,29 @@ export default function NewOrder() {
     }
   }, [checkPsbio]);
 
+  const validateCouponMutation = useValidateCoupon({
+    mutation: {
+      onSuccess: (data) => {
+        setAppliedCoupon({ code: data.code, type: data.type, value: data.value });
+        setCouponError(null);
+        toast({ title: "Cupom aplicado!", description: `Desconto de ${data.type === "percent" ? data.value + "%" : formatBRL(data.value)} aplicado.` });
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? "Cupom inválido.";
+        setCouponError(msg);
+        setAppliedCoupon(null);
+      },
+    },
+  });
+
   const selectedCert = certificates?.find(c => String(c.id) === form.certificateId);
-  const total = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? 15 : 0);
+  const subtotal = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? 15 : 0);
+  const discount = appliedCoupon
+    ? appliedCoupon.type === "percent"
+      ? Math.round(subtotal * appliedCoupon.value) / 100
+      : Math.min(appliedCoupon.value, subtotal)
+    : 0;
+  const total = Math.max(0, subtotal - discount);
 
   // Derived: is the selected certificate an e-CNPJ type?
   const isCnpjCert = selectedCert ? /cnpj/i.test(selectedCert.name) : false;
@@ -934,9 +959,66 @@ export default function NewOrder() {
                         <span>{formatBRL(15)}</span>
                       </div>
                     )}
+                    {appliedCoupon && (
+                      <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                        <span className="flex items-center gap-1">
+                          <Tag className="h-3.5 w-3.5" />
+                          Cupom {appliedCoupon.code}
+                        </span>
+                        <span>- {formatBRL(discount)}</span>
+                      </div>
+                    )}
                     <div className="border-t pt-4 flex justify-between font-bold">
                       <span>Total</span>
                       <span className="text-primary text-lg">{formatBRL(total)}</span>
+                    </div>
+
+                    {/* Coupon input */}
+                    <div className="space-y-2 pt-1">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Tag className="h-3.5 w-3.5" /> Cupom de desconto
+                      </Label>
+                      {appliedCoupon ? (
+                        <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
+                          <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span className="flex-1 text-sm font-mono font-semibold text-emerald-700 dark:text-emerald-400">{appliedCoupon.code}</span>
+                          <button
+                            type="button"
+                            onClick={() => { setAppliedCoupon(null); setCouponCode(""); setCouponError(null); }}
+                            className="text-emerald-600 hover:text-emerald-800 transition-colors"
+                            title="Remover cupom"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex gap-2">
+                            <Input
+                              value={couponCode}
+                              onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null); }}
+                              placeholder="CÓDIGO"
+                              className={`font-mono uppercase text-sm ${couponError ? "border-destructive" : ""}`}
+                              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); if (couponCode.trim()) validateCouponMutation.mutate({ data: { code: couponCode.trim() } }); } }}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="shrink-0"
+                              disabled={!couponCode.trim() || validateCouponMutation.isPending}
+                              onClick={() => validateCouponMutation.mutate({ data: { code: couponCode.trim() } })}
+                            >
+                              {validateCouponMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
+                            </Button>
+                          </div>
+                          {couponError && (
+                            <p className="flex items-center gap-1.5 text-xs text-destructive">
+                              <XCircle className="h-3.5 w-3.5 shrink-0" /> {couponError}
+                            </p>
+                          )}
+                        </>
+                      )}
                     </div>
                   </>
                 ) : (
