@@ -22,9 +22,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, CreditCard, Loader2, FileText, Download, RefreshCw,
+  ArrowLeft, QrCode, Loader2, FileText, Download, RefreshCw,
   ShoppingBag, CheckCircle2, Calendar, MapPin, Video, Clock, ChevronRight, Check,
-  Activity, CreditCard as PayIcon, Package, Shield, AlertCircle, Tag,
+  Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useMemo } from "react";
@@ -757,8 +757,8 @@ export default function OrderDetail() {
           >
             {createPayment.isPending
               ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              : <CreditCard className="h-4 w-4 mr-2" />}
-            Pagar com MercadoPago
+              : <QrCode className="h-4 w-4 mr-2" />}
+            Pagamento com PIX
           </Button>
         </div>
       )}
@@ -805,8 +805,8 @@ export default function OrderDetail() {
           >
             {createPayment.isPending
               ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              : <CreditCard className="h-4 w-4 mr-2" />}
-            Pagar com MercadoPago
+              : <QrCode className="h-4 w-4 mr-2" />}
+            Pagamento com PIX
           </Button>
         )}
       </div>
