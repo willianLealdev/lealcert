@@ -585,10 +585,6 @@ export default function NewOrder() {
                     </div>
                   )}
                   <div className="space-y-2">
-                    <Label>Número INSS</Label>
-                    <Input value={form.inssNumber} onChange={e => set("inssNumber", e.target.value)} placeholder="Opcional" />
-                  </div>
-                  <div className="space-y-2">
                     <Label>E-mail *</Label>
                     <Input type="email" value={form.customerEmail} onChange={e => set("customerEmail", e.target.value)} required placeholder="cliente@email.com" />
                   </div>
@@ -681,6 +677,10 @@ export default function NewOrder() {
                       }}
                       required
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>PIS / IMEI <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                    <Input value={form.inssNumber} onChange={e => set("inssNumber", e.target.value)} placeholder="Opcional" />
                   </div>
                 </div>
               </CardContent>
