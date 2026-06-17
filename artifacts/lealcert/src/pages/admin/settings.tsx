@@ -227,7 +227,7 @@ export default function AdminSettings() {
         </Card>
 
         {/* Gestão AR */}
-        <Card className={isGarActive ? "ring-2 ring-primary/30" : ""}>
+        {isGarActive && <Card className="ring-2 ring-primary/30">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -279,10 +279,10 @@ export default function AdminSettings() {
               </Select>
             </div>
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Safeweb */}
-        <Card className={isSwActive ? "ring-2 ring-primary/30" : ""}>
+        {isSwActive && <Card className="ring-2 ring-primary/30">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -338,7 +338,7 @@ export default function AdminSettings() {
               {testingAuth ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testando...</> : "Testar Conexão"}
             </Button>
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Evolution API — WhatsApp */}
         <Card>
