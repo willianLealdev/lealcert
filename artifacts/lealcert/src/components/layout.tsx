@@ -21,7 +21,12 @@ import {
   PanelLeftOpen,
   RefreshCw,
   Tag,
+  Bell,
+  BellOff,
+  BellRing,
+  Loader2,
 } from "lucide-react";
+import { usePush } from "@/lib/use-push";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -66,6 +71,49 @@ function NavItem({
         {!collapsed && <span className="truncate">{name}</span>}
       </div>
     </Link>
+  );
+}
+
+function PushBellButton({ collapsed }: { collapsed: boolean }) {
+  const push = usePush();
+
+  if (!push.supported) return null;
+
+  let icon: React.ReactNode;
+  let title: string;
+  let cls = "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent";
+
+  if (push.loading) {
+    icon = <Loader2 className="h-4 w-4 animate-spin" />;
+    title = "Processando...";
+  } else if (push.permission === "denied") {
+    icon = <BellOff className="h-4 w-4" />;
+    title = "Notificações bloqueadas pelo navegador";
+    cls = "text-sidebar-foreground/30 cursor-not-allowed";
+  } else if (push.subscribed) {
+    icon = <BellRing className="h-4 w-4 text-emerald-400" />;
+    title = "Notificações ativas — clique para desativar";
+    cls = "text-emerald-400 hover:text-emerald-300 hover:bg-sidebar-accent";
+  } else {
+    icon = <Bell className="h-4 w-4" />;
+    title = "Ativar notificações push";
+  }
+
+  return (
+    <button
+      type="button"
+      title={title}
+      disabled={push.loading || push.permission === "denied"}
+      onClick={() => push.subscribed ? push.unsubscribe() : push.subscribe()}
+      className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all select-none ${cls} ${collapsed ? "justify-center px-0" : ""}`}
+    >
+      {icon}
+      {!collapsed && (
+        <span className="truncate text-xs">
+          {push.subscribed ? "Notificações ativas" : "Ativar notificações"}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -200,6 +248,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* User footer */}
         <div className="p-2 border-t border-sidebar-border/50 space-y-0.5">
+          <PushBellButton collapsed={collapsed} />
           <Link href="/profile">
             <div
               onClick={close}

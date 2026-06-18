@@ -12,7 +12,7 @@ import { logger } from "../lib/logger";
 import { garAutoComprar } from "../lib/gar-auto";
 import { swAutoComprar } from "../lib/sw-auto";
 import { notifyOrderStatus } from "../lib/notify";
-import { sendPushToUser } from "../lib/push";
+import { sendPushToUser, sendPushToAdmins } from "../lib/push";
 
 const router = Router();
 
@@ -73,15 +73,23 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
 
     logger.info({ orderId: order.id, orderNumber }, "mp/webhook: pedido marcado como PAGO");
 
-    // 2a. Push notification (se app instalado)
+    // 2a. Push notification ao cliente (se app instalado)
     if (order.userId) {
       sendPushToUser(order.userId, {
         title: "💳 Pagamento confirmado!",
         body: `Pedido ${order.orderNumber} foi pago. Aguarde a emissão do certificado.`,
         tag: `order-paid-${order.id}`,
         url: `/orders/${order.id}`,
-      }).catch((err: unknown) => logger.error({ err }, "mp/webhook: erro ao enviar push"));
+      }).catch((err: unknown) => logger.error({ err }, "mp/webhook: erro ao enviar push ao cliente"));
     }
+
+    // 2b. Push notification aos admins — alerta de nova venda
+    sendPushToAdmins({
+      title: "🛒 Nova venda realizada!",
+      body: `Pedido ${order.orderNumber} — ${order.customerName} — R$ ${parseFloat(order.total).toFixed(2).replace(".", ",")}`,
+      tag: `sale-${order.id}`,
+      url: `/admin/orders/${order.id}`,
+    }).catch((err: unknown) => logger.error({ err }, "mp/webhook: erro ao enviar push aos admins"));
 
     // 2b. Notificar cliente
     notifyOrderStatus({
