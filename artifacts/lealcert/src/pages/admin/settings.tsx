@@ -1,25 +1,22 @@
 import { useState, useEffect } from "react";
-import { useGetSettings, useUpdateSettings } from "@workspace/api-client-react";
+import { useGetSettings, useUpdateSettings, useSendTestEmail } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight, CheckCircle2, MessageCircle, CreditCard } from "lucide-react";
+import {
+  Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight,
+  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send,
+} from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function MaskedInput({ value, onChange, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> & { value: string; onChange: (v: string) => void }) {
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
-      <Input
-        {...props}
-        type={show ? "text" : "password"}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="pr-10"
-      />
+      <Input {...props} type={show ? "text" : "password"} value={value} onChange={e => onChange(e.target.value)} className="pr-10" />
       <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -33,18 +30,38 @@ function ProviderBadge({ active }: { active: boolean }) {
     : <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Inativo</span>;
 }
 
+const PRESET_COLORS = [
+  { label: "Azul Cobalto", value: "#2563eb" },
+  { label: "Azul Royal", value: "#1d4ed8" },
+  { label: "Verde Esmeralda", value: "#059669" },
+  { label: "Verde Lima", value: "#16a34a" },
+  { label: "Roxo", value: "#7c3aed" },
+  { label: "Rosa", value: "#db2777" },
+  { label: "Laranja", value: "#ea580c" },
+  { label: "Âmbar", value: "#d97706" },
+  { label: "Cinza Ardósia", value: "#475569" },
+  { label: "Preto", value: "#0f172a" },
+];
+
 export default function AdminSettings() {
   const { toast } = useToast();
   const { data: settings, isLoading, refetch } = useGetSettings();
   const [testingAuth, setTestingAuth] = useState(false);
+  const [testEmailTo, setTestEmailTo] = useState("");
 
   const [form, setForm] = useState({
     appName: "",
+    siteUrl: "",
+    mailFrom: "",
+    logoUrl: "",
+    primaryColor: "#2563eb",
+    contactPhone: "",
+    contactWhatsapp: "",
+    contactEmailSupport: "",
+    contactAddress: "",
     mpAccessToken: "",
     mpPublicKey: "",
     webhookSecret: "",
-    mailFrom: "",
-    siteUrl: "",
     garApiKey: "",
     garHashVendedor: "",
     garHashTabela: "",
@@ -61,33 +78,56 @@ export default function AdminSettings() {
     evolutionUrl: "",
     evolutionApiKey: "",
     evolutionInstance: "",
+    smtpHostDb: "",
+    smtpPortDb: "587",
+    smtpUserDb: "",
+    smtpPassDb: "",
   });
 
   useEffect(() => {
     if (settings) {
+      const s = settings as typeof settings & {
+        logoUrl?: string; primaryColor?: string;
+        contactPhone?: string; contactWhatsapp?: string;
+        contactEmailSupport?: string; contactAddress?: string;
+        safewebUrlHomologacao?: string; safewebAmbiente?: string;
+        safewebCodigoParceiro?: string;
+        evolutionUrl?: string; evolutionApiKey?: string; evolutionInstance?: string;
+        smtpHostDb?: string; smtpPortDb?: string; smtpUserDb?: string; smtpPassDb?: string;
+      };
       setForm({
-        appName: settings.appName ?? "",
-        mpAccessToken: settings.mpAccessToken ?? "",
-        mpPublicKey: settings.mpPublicKey ?? "",
-        webhookSecret: settings.webhookSecret ?? "",
-        mailFrom: settings.mailFrom ?? "",
-        siteUrl: settings.siteUrl ?? "",
-        garApiKey: settings.garApiKey ?? "",
-        garHashVendedor: settings.garHashVendedor ?? "",
-        garHashTabela: settings.garHashTabela ?? "",
-        garFormaPagamento: settings.garFormaPagamento ?? "11",
-        garPreferirVideoconferencia: settings.garPreferirVideoconferencia ?? "1",
-        safewebUrl: settings.safewebUrl ?? "",
-        safewebUrlHomologacao: (settings as typeof settings & { safewebUrlHomologacao?: string }).safewebUrlHomologacao ?? "",
-        safewebAmbiente: (settings as typeof settings & { safewebAmbiente?: string }).safewebAmbiente ?? "producao",
-        safewebUsername: settings.safewebUsername ?? "",
-        safewebPassword: settings.safewebPassword ?? "",
-        safewebCnpjAr: settings.safewebCnpjAr ?? "",
-        safewebCodigoParceiro: (settings as typeof settings & { safewebCodigoParceiro?: string }).safewebCodigoParceiro ?? "",
-        activeProvider: settings.activeProvider ?? "gestaoar",
-        evolutionUrl: (settings as typeof settings & { evolutionUrl?: string }).evolutionUrl ?? "",
-        evolutionApiKey: (settings as typeof settings & { evolutionApiKey?: string }).evolutionApiKey ?? "",
-        evolutionInstance: (settings as typeof settings & { evolutionInstance?: string }).evolutionInstance ?? "",
+        appName: s.appName ?? "",
+        siteUrl: s.siteUrl ?? "",
+        mailFrom: s.mailFrom ?? "",
+        logoUrl: s.logoUrl ?? "",
+        primaryColor: s.primaryColor ?? "#2563eb",
+        contactPhone: s.contactPhone ?? "",
+        contactWhatsapp: s.contactWhatsapp ?? "",
+        contactEmailSupport: s.contactEmailSupport ?? "",
+        contactAddress: s.contactAddress ?? "",
+        mpAccessToken: s.mpAccessToken ?? "",
+        mpPublicKey: s.mpPublicKey ?? "",
+        webhookSecret: s.webhookSecret ?? "",
+        garApiKey: s.garApiKey ?? "",
+        garHashVendedor: s.garHashVendedor ?? "",
+        garHashTabela: s.garHashTabela ?? "",
+        garFormaPagamento: s.garFormaPagamento ?? "11",
+        garPreferirVideoconferencia: s.garPreferirVideoconferencia ?? "1",
+        safewebUrl: s.safewebUrl ?? "",
+        safewebUrlHomologacao: s.safewebUrlHomologacao ?? "",
+        safewebAmbiente: s.safewebAmbiente ?? "producao",
+        safewebUsername: s.safewebUsername ?? "",
+        safewebPassword: s.safewebPassword ?? "",
+        safewebCnpjAr: s.safewebCnpjAr ?? "",
+        safewebCodigoParceiro: s.safewebCodigoParceiro ?? "",
+        activeProvider: s.activeProvider ?? "gestaoar",
+        evolutionUrl: s.evolutionUrl ?? "",
+        evolutionApiKey: s.evolutionApiKey ?? "",
+        evolutionInstance: s.evolutionInstance ?? "",
+        smtpHostDb: s.smtpHostDb ?? "",
+        smtpPortDb: s.smtpPortDb ?? "587",
+        smtpUserDb: s.smtpUserDb ?? "",
+        smtpPassDb: s.smtpPassDb ?? "",
       });
     }
   }, [settings]);
@@ -99,12 +139,19 @@ export default function AdminSettings() {
     },
   });
 
-  function set(k: keyof typeof form, v: string) { setForm(p => ({ ...p, [k]: v })); }
+  const testEmailMutation = useSendTestEmail({
+    mutation: {
+      onSuccess: (data) => {
+        const d = data as { ok?: boolean; error?: string };
+        if (d.ok) toast({ title: "✅ E-mail de teste enviado!", description: `Verifique a caixa de entrada de ${testEmailTo}.` });
+        else toast({ title: "Falha no envio", description: d.error ?? "Erro desconhecido.", variant: "destructive" });
+      },
+      onError: (e: unknown) => toast({ title: "Erro no SMTP", description: (e as { data?: { error?: string } })?.data?.error ?? (e as Error)?.message, variant: "destructive" }),
+    },
+  });
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    update.mutate({ data: form });
-  }
+  function set(k: keyof typeof form, v: string) { setForm(p => ({ ...p, [k]: v })); }
+  function handleSubmit(e: React.FormEvent) { e.preventDefault(); update.mutate({ data: form }); }
 
   function setActiveProvider(provider: string) {
     const updated = { ...form, activeProvider: provider };
@@ -117,8 +164,8 @@ export default function AdminSettings() {
     try {
       const resp = await fetch("/api/safeweb/test-auth", { method: "POST", credentials: "include" });
       const data = await resp.json() as { ok?: boolean; error?: string };
-      if (data.ok) toast({ title: "Safeweb: autenticação OK!", description: "Conexão e credenciais validadas com sucesso." });
-      else toast({ title: "Safeweb: falha na autenticação", description: data.error ?? "Erro desconhecido.", variant: "destructive" });
+      if (data.ok) toast({ title: "Safeweb: autenticação OK!" });
+      else toast({ title: "Safeweb: falha", description: data.error ?? "Erro desconhecido.", variant: "destructive" });
     } catch {
       toast({ title: "Erro ao testar autenticação", variant: "destructive" });
     } finally {
@@ -137,6 +184,13 @@ export default function AdminSettings() {
     </Button>
   );
 
+  // Derive domain from mailFrom or smtpUserDb for DNS instructions
+  const emailDomain = (() => {
+    const src = form.mailFrom || form.smtpUserDb;
+    const match = src.match(/@([\w.-]+)/);
+    return match ? match[1] : "seudominio.com.br";
+  })();
+
   return (
     <div className="space-y-6">
       <div>
@@ -144,50 +198,109 @@ export default function AdminSettings() {
         <p className="text-muted-foreground">Configure as integrações e dados gerais do sistema.</p>
       </div>
 
-      <Tabs defaultValue="site" className="space-y-6">
-        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
-          <TabsTrigger value="site" className="flex items-center gap-1.5">
-            <Globe className="h-4 w-4" />
-            <span className="hidden sm:inline">Site</span>
+      <Tabs defaultValue="identidade" className="space-y-6">
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1 max-w-3xl">
+          <TabsTrigger value="identidade" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Palette className="h-4 w-4" /><span>Identidade</span>
           </TabsTrigger>
-          <TabsTrigger value="certificado" className="flex items-center gap-1.5">
-            <ShieldCheck className="h-4 w-4" />
-            <span className="hidden sm:inline">Certificado</span>
+          <TabsTrigger value="contato" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Phone className="h-4 w-4" /><span>Contato</span>
           </TabsTrigger>
-          <TabsTrigger value="pagamento" className="flex items-center gap-1.5">
-            <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">Pagamento</span>
+          <TabsTrigger value="email" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Mail className="h-4 w-4" /><span>E-mail</span>
           </TabsTrigger>
-          <TabsTrigger value="whatsapp" className="flex items-center gap-1.5">
-            <MessageCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">WhatsApp</span>
+          <TabsTrigger value="certificado" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <ShieldCheck className="h-4 w-4" /><span>Certificado</span>
+          </TabsTrigger>
+          <TabsTrigger value="pagamento" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <CreditCard className="h-4 w-4" /><span>Pagamento</span>
+          </TabsTrigger>
+          <TabsTrigger value="whatsapp" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <MessageCircle className="h-4 w-4" /><span>WhatsApp</span>
           </TabsTrigger>
         </TabsList>
 
-        {/* ── ABA: SITE ───────────────────────────────────────────────────────── */}
-        <TabsContent value="site">
+        {/* ── IDENTIDADE ──────────────────────────────────────────────────── */}
+        <TabsContent value="identidade">
           <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Globe className="h-5 w-5 text-primary" />
-                  <CardTitle>Configurações do Site</CardTitle>
+                  <CardTitle>Identidade da Plataforma</CardTitle>
                 </div>
-                <CardDescription>Informações básicas da plataforma e dados de contato.</CardDescription>
+                <CardDescription>Nome, logo e cores que aparecem para todos os usuários.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nome da Plataforma</Label>
-                  <Input value={form.appName} onChange={e => set("appName", e.target.value)} placeholder="LealCert" />
+              <CardContent className="space-y-6">
+                {/* Nome + URL */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nome da Plataforma</Label>
+                    <Input value={form.appName} onChange={e => set("appName", e.target.value)} placeholder="LealCert" />
+                    <p className="text-xs text-muted-foreground">Aparece no título do navegador e nos e-mails.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>URL do Site</Label>
+                    <Input type="url" value={form.siteUrl} onChange={e => set("siteUrl", e.target.value)} placeholder="https://lealcert.com.br" />
+                    <p className="text-xs text-muted-foreground">Usada em links nos e-mails e webhooks.</p>
+                  </div>
                 </div>
+
+                {/* Logo */}
                 <div className="space-y-2">
-                  <Label>URL do Site</Label>
-                  <Input type="url" value={form.siteUrl} onChange={e => set("siteUrl", e.target.value)} placeholder="https://lealcert.com.br" />
-                  <p className="text-xs text-muted-foreground">Usada para redirects de pagamento e callbacks de webhook.</p>
+                  <Label>URL do Logotipo</Label>
+                  <Input type="url" value={form.logoUrl} onChange={e => set("logoUrl", e.target.value)} placeholder="https://seusite.com.br/logo.png" />
+                  <p className="text-xs text-muted-foreground">
+                    Cole a URL pública da imagem do logotipo (PNG, SVG ou WebP). Recomendado: fundo transparente, pelo menos 300px de largura.
+                  </p>
+                  {form.logoUrl && (
+                    <div className="mt-2 p-3 bg-muted rounded-lg inline-flex items-center gap-3">
+                      <img
+                        src={form.logoUrl}
+                        alt="Pré-visualização do logo"
+                        className="h-12 w-auto object-contain max-w-[160px]"
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                      <span className="text-xs text-muted-foreground">Pré-visualização</span>
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label>E-mail de envio</Label>
-                  <Input type="email" value={form.mailFrom} onChange={e => set("mailFrom", e.target.value)} placeholder="noreply@lealcert.com.br" />
+
+                {/* Cor principal */}
+                <div className="space-y-3">
+                  <Label>Cor Principal</Label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={form.primaryColor}
+                      onChange={e => set("primaryColor", e.target.value)}
+                      className="h-10 w-14 rounded-md border border-input cursor-pointer bg-transparent p-0.5"
+                    />
+                    <Input
+                      value={form.primaryColor}
+                      onChange={e => set("primaryColor", e.target.value)}
+                      placeholder="#2563eb"
+                      className="w-32 font-mono text-sm"
+                      maxLength={7}
+                    />
+                    <div
+                      className="h-10 w-10 rounded-md border border-input shrink-0"
+                      style={{ background: form.primaryColor }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Aplicada em botões, links, badges e ícones. Exemplos de combinações:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PRESET_COLORS.map(c => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        title={c.label}
+                        onClick={() => set("primaryColor", c.value)}
+                        className={`h-8 w-8 rounded-full border-2 transition-all ${form.primaryColor === c.value ? "border-foreground scale-110 shadow" : "border-transparent hover:scale-105"}`}
+                        style={{ background: c.value }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -195,36 +308,201 @@ export default function AdminSettings() {
           </form>
         </TabsContent>
 
-        {/* ── ABA: CERTIFICADO ────────────────────────────────────────────────── */}
+        {/* ── CONTATO ─────────────────────────────────────────────────────── */}
+        <TabsContent value="contato">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Phone className="h-5 w-5 text-primary" />
+                  <CardTitle>Fale Conosco</CardTitle>
+                </div>
+                <CardDescription>
+                  Informações de contato exibidas na página de login e em e-mails enviados aos clientes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Telefone / Fixo</Label>
+                    <Input value={form.contactPhone} onChange={e => set("contactPhone", e.target.value)} placeholder="(11) 3000-0000" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>WhatsApp</Label>
+                    <Input value={form.contactWhatsapp} onChange={e => set("contactWhatsapp", e.target.value)} placeholder="(11) 99999-0000" />
+                    <p className="text-xs text-muted-foreground">Número com DDD, sem formatação especial.</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>E-mail de Suporte</Label>
+                  <Input type="email" value={form.contactEmailSupport} onChange={e => set("contactEmailSupport", e.target.value)} placeholder="suporte@seusite.com.br" />
+                  <p className="text-xs text-muted-foreground">Mostrado na página de login e em rodapés de e-mail.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Endereço</Label>
+                  <Input value={form.contactAddress} onChange={e => set("contactAddress", e.target.value)} placeholder="Rua Exemplo, 123 — Bairro, Cidade/UF" />
+                  <p className="text-xs text-muted-foreground">Endereço físico da AR, opcional.</p>
+                </div>
+              </CardContent>
+            </Card>
+            <SaveButton />
+          </form>
+        </TabsContent>
+
+        {/* ── E-MAIL ──────────────────────────────────────────────────────── */}
+        <TabsContent value="email">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-primary" />
+                  <CardTitle>Configurações de E-mail</CardTitle>
+                </div>
+                <CardDescription>
+                  Configure o servidor SMTP para que os e-mails saiam pelo domínio do seu cliente.
+                  Quando preenchido aqui, substitui as variáveis de ambiente do servidor.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Servidor SMTP (Host)</Label>
+                    <Input value={form.smtpHostDb} onChange={e => set("smtpHostDb", e.target.value)} placeholder="smtp.seudominio.com.br" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Porta</Label>
+                    <Select value={form.smtpPortDb} onValueChange={v => set("smtpPortDb", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="587">587 — STARTTLS (recomendado)</SelectItem>
+                        <SelectItem value="465">465 — SSL/TLS</SelectItem>
+                        <SelectItem value="25">25 — Sem criptografia</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Usuário SMTP</Label>
+                    <Input value={form.smtpUserDb} onChange={e => set("smtpUserDb", e.target.value)} placeholder="naoresponda@seudominio.com.br" autoComplete="off" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Senha SMTP</Label>
+                    <MaskedInput value={form.smtpPassDb} onChange={v => set("smtpPassDb", v)} placeholder="Senha do servidor de e-mail" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>E-mail remetente (From)</Label>
+                  <Input value={form.mailFrom} onChange={e => set("mailFrom", e.target.value)} placeholder='Nome AR <naoresponda@seudominio.com.br>' />
+                  <p className="text-xs text-muted-foreground">Formato: <code>Nome Exibido &lt;email@dominio.com&gt;</code></p>
+                </div>
+
+                {/* Test Email */}
+                <div className="flex items-end gap-2 pt-2">
+                  <div className="space-y-2 flex-1">
+                    <Label>Testar envio</Label>
+                    <Input value={testEmailTo} onChange={e => setTestEmailTo(e.target.value)} placeholder="seu@email.com" type="email" />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={testEmailMutation.isPending || !testEmailTo || !form.smtpHostDb}
+                    onClick={() => testEmailMutation.mutate({ data: { to: testEmailTo } })}
+                  >
+                    {testEmailMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-2" />Enviar teste</>}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* DNS Records Card */}
+            <Card className="border-amber-200 bg-amber-50/50">
+              <CardHeader>
+                <CardTitle className="text-base text-amber-900">Registros DNS — Guia para o cliente</CardTitle>
+                <CardDescription className="text-amber-700">
+                  Para que os e-mails enviados pelo domínio <strong>{emailDomain}</strong> não caiam no spam,
+                  o cliente precisa adicionar estes registros no painel DNS do seu provedor (Registro.br, Cloudflare, etc.):
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* SPF */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded">TXT</span>
+                    <span className="text-sm font-semibold">SPF — Autorizar envios</span>
+                  </div>
+                  <div className="bg-white border rounded p-3 font-mono text-xs space-y-1">
+                    <div className="grid grid-cols-[80px_1fr] gap-2 text-muted-foreground">
+                      <span>Nome:</span><code className="text-foreground">@</code>
+                    </div>
+                    <div className="grid grid-cols-[80px_1fr] gap-2 text-muted-foreground">
+                      <span>Valor:</span><code className="text-foreground select-all">v=spf1 include:{form.smtpHostDb || "smtp.seudominio.com.br"} ~all</code>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Se já existe um registro SPF, apenas adicione <code>include:{form.smtpHostDb || "smtp.seudominio.com.br"}</code> antes do <code>~all</code>.</p>
+                </div>
+
+                {/* DKIM */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded">TXT</span>
+                    <span className="text-sm font-semibold">DKIM — Assinatura digital</span>
+                  </div>
+                  <div className="bg-white border rounded p-3 font-mono text-xs space-y-1">
+                    <div className="grid grid-cols-[80px_1fr] gap-2 text-muted-foreground">
+                      <span>Nome:</span><code className="text-foreground">mail._domainkey.{emailDomain}</code>
+                    </div>
+                    <div className="grid grid-cols-[80px_1fr] gap-2 text-muted-foreground">
+                      <span>Valor:</span><code className="text-foreground">v=DKIM1; k=rsa; p=<em>[chave pública gerada no seu servidor SMTP]</em></code>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">A chave DKIM é gerada pelo servidor SMTP. Consulte a documentação do provedor de e-mail utilizado (Mailgun, SendGrid, Brevo, Zoho, etc.).</p>
+                </div>
+
+                {/* DMARC */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded">TXT</span>
+                    <span className="text-sm font-semibold">DMARC — Política de rejeição</span>
+                  </div>
+                  <div className="bg-white border rounded p-3 font-mono text-xs space-y-1">
+                    <div className="grid grid-cols-[80px_1fr] gap-2 text-muted-foreground">
+                      <span>Nome:</span><code className="text-foreground">_dmarc.{emailDomain}</code>
+                    </div>
+                    <div className="grid grid-cols-[80px_1fr] gap-2 text-muted-foreground">
+                      <span>Valor:</span><code className="text-foreground select-all">v=DMARC1; p=none; rua=mailto:dmarc@{emailDomain}</code>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Comece com <code>p=none</code> para monitorar. Após confirmar que tudo funciona, mude para <code>p=quarantine</code> ou <code>p=reject</code>.</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <SaveButton />
+          </form>
+        </TabsContent>
+
+        {/* ── CERTIFICADO ─────────────────────────────────────────────────── */}
         <TabsContent value="certificado">
           <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
-            {/* Seletor de Provedor */}
             <Card className="border-2 border-primary/20 bg-primary/5">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <ToggleRight className="h-5 w-5 text-primary" />
                   <CardTitle>Provedor Ativo de Certificação</CardTitle>
                 </div>
-                <CardDescription>
-                  Selecione qual sistema será usado para emissão e gestão de certificados digitais. Apenas um pode estar ativo por vez.
-                </CardDescription>
+                <CardDescription>Selecione qual sistema será usado para emissão e gestão de certificados digitais. Apenas um pode estar ativo por vez.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setActiveProvider("gestaoar")}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isGarActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}
-                  >
+                  <button type="button" onClick={() => setActiveProvider("gestaoar")}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isGarActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}>
                     <Link2 className={`h-7 w-7 ${isGarActive ? "text-primary" : "text-muted-foreground"}`} />
                     <span className="font-semibold text-sm">Gestão AR</span>
                     <ProviderBadge active={isGarActive} />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveProvider("safeweb")}
-                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isSwActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}
-                  >
+                  <button type="button" onClick={() => setActiveProvider("safeweb")}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isSwActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}>
                     <ShieldCheck className={`h-7 w-7 ${isSwActive ? "text-primary" : "text-muted-foreground"}`} />
                     <span className="font-semibold text-sm">Safeweb</span>
                     <ProviderBadge active={isSwActive} />
@@ -233,36 +511,19 @@ export default function AdminSettings() {
               </CardContent>
             </Card>
 
-            {/* Gestão AR */}
             {isGarActive && (
               <Card className="ring-2 ring-primary/30">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Link2 className="h-5 w-5 text-primary" />
-                      <CardTitle>Gestão AR — Integração</CardTitle>
-                    </div>
-                    <ProviderBadge active={isGarActive} />
+                    <div className="flex items-center gap-2"><Link2 className="h-5 w-5 text-primary" /><CardTitle>Gestão AR — Integração</CardTitle></div>
+                    <ProviderBadge active />
                   </div>
-                  <CardDescription>
-                    Credenciais e preferências para integração com a plataforma Gestão AR.
-                    Obtenha suas chaves em <a href="https://gestaoar.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">gestaoar.com.br</a>.
-                  </CardDescription>
+                  <CardDescription>Credenciais para integração com a plataforma Gestão AR. Acesse <a href="https://gestaoar.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">gestaoar.com.br</a>.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>API Key</Label>
-                    <MaskedInput value={form.garApiKey} onChange={v => set("garApiKey", v)} placeholder="Chave de API fornecida pela Gestão AR" />
-                    <p className="text-xs text-muted-foreground">Enviada em todas as requisições à API GAR.</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Hash do Vendedor</Label>
-                    <MaskedInput value={form.garHashVendedor} onChange={v => set("garHashVendedor", v)} placeholder="Hash do vendedor/AR na plataforma GAR" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Hash da Tabela de Preços</Label>
-                    <MaskedInput value={form.garHashTabela} onChange={v => set("garHashTabela", v)} placeholder="Hash da tabela de preços configurada no GAR" />
-                  </div>
+                  <div className="space-y-2"><Label>API Key</Label><MaskedInput value={form.garApiKey} onChange={v => set("garApiKey", v)} placeholder="Chave de API fornecida pela Gestão AR" /></div>
+                  <div className="space-y-2"><Label>Hash do Vendedor</Label><MaskedInput value={form.garHashVendedor} onChange={v => set("garHashVendedor", v)} placeholder="Hash do vendedor/AR" /></div>
+                  <div className="space-y-2"><Label>Hash da Tabela de Preços</Label><MaskedInput value={form.garHashTabela} onChange={v => set("garHashTabela", v)} placeholder="Hash da tabela configurada no GAR" /></div>
                   <div className="space-y-2">
                     <Label>Forma de Pagamento Padrão</Label>
                     <Select value={form.garFormaPagamento} onValueChange={v => set("garFormaPagamento", v)}>
@@ -274,14 +535,13 @@ export default function AdminSettings() {
                         <SelectItem value="3">3 — Transferência/PIX</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">"Pagamento no Local" (11) é o padrão pois o pagamento já é processado via MercadoPago.</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Preferir Videoconferência</Label>
                     <Select value={form.garPreferirVideoconferencia} onValueChange={v => set("garPreferirVideoconferencia", v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">Sim — priorizar agendamento por videoconferência</SelectItem>
+                        <SelectItem value="1">Sim — priorizar videoconferência</SelectItem>
                         <SelectItem value="0">Não — usar locais presenciais</SelectItem>
                       </SelectContent>
                     </Select>
@@ -290,21 +550,14 @@ export default function AdminSettings() {
               </Card>
             )}
 
-            {/* Safeweb */}
             {isSwActive && (
               <Card className="ring-2 ring-primary/30">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-5 w-5 text-primary" />
-                      <CardTitle>Safeweb — Integração</CardTitle>
-                    </div>
-                    <ProviderBadge active={isSwActive} />
+                    <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /><CardTitle>Safeweb — Integração</CardTitle></div>
+                    <ProviderBadge active />
                   </div>
-                  <CardDescription>
-                    Credenciais para integração com a API Safeweb. Documentação em{" "}
-                    <a href="https://developers.safeweb.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">developers.safeweb.com.br</a>.
-                  </CardDescription>
+                  <CardDescription>Credenciais para integração com a API Safeweb. Documentação em <a href="https://developers.safeweb.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">developers.safeweb.com.br</a>.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -312,68 +565,39 @@ export default function AdminSettings() {
                     <Select value={form.safewebAmbiente} onValueChange={v => set("safewebAmbiente", v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="producao">Produção — developers.safeweb.com.br</SelectItem>
-                        <SelectItem value="homologacao">Homologação — h-acsafeweb.safewebpss.com.br</SelectItem>
+                        <SelectItem value="producao">Produção</SelectItem>
+                        <SelectItem value="homologacao">Homologação</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">O sistema usará automaticamente a URL correspondente ao ambiente selecionado.</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>URL — Produção</Label>
-                    <Input value={form.safewebUrl} onChange={e => set("safewebUrl", e.target.value)} placeholder="https://acsafeweb.safewebpss.com.br" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>URL — Homologação</Label>
-                    <Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://h-acsafeweb.safewebpss.com.br" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Usuário</Label>
-                    <Input value={form.safewebUsername} onChange={e => set("safewebUsername", e.target.value)} placeholder="Usuário fornecido pela Safeweb" autoComplete="off" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Senha</Label>
-                    <MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Senha fornecida pela Safeweb" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>CNPJ da AR</Label>
-                    <Input value={form.safewebCnpjAr} onChange={e => set("safewebCnpjAr", e.target.value)} placeholder="00000000000000" />
-                    <p className="text-xs text-muted-foreground">CNPJ da sua Autoridade de Registro cadastrada na Safeweb.</p>
-                  </div>
+                  <div className="space-y-2"><Label>URL — Produção</Label><Input value={form.safewebUrl} onChange={e => set("safewebUrl", e.target.value)} placeholder="https://acsafeweb.safewebpss.com.br" /></div>
+                  <div className="space-y-2"><Label>URL — Homologação</Label><Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://h-acsafeweb.safewebpss.com.br" /></div>
+                  <div className="space-y-2"><Label>Usuário</Label><Input value={form.safewebUsername} onChange={e => set("safewebUsername", e.target.value)} autoComplete="off" /></div>
+                  <div className="space-y-2"><Label>Senha</Label><MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} /></div>
+                  <div className="space-y-2"><Label>CNPJ da AR</Label><Input value={form.safewebCnpjAr} onChange={e => set("safewebCnpjAr", e.target.value)} placeholder="00000000000000" /></div>
                   <div className="space-y-2">
                     <Label>Código do Parceiro <span className="text-destructive font-semibold">*</span></Label>
-                    <Input value={form.safewebCodigoParceiro} onChange={e => set("safewebCodigoParceiro", e.target.value)} placeholder="Código fornecido pela Safeweb ao cadastrar como parceiro integrador" />
-                    <p className="text-xs text-muted-foreground">Campo <strong>obrigatório</strong> pela API Safeweb (<code>CodigoParceiro</code>). Obtido no contrato de parceria.</p>
+                    <Input value={form.safewebCodigoParceiro} onChange={e => set("safewebCodigoParceiro", e.target.value)} placeholder="Código fornecido pela Safeweb" />
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
+                  <Button type="button" variant="outline" size="sm"
                     disabled={testingAuth || !(form.safewebAmbiente === "homologacao" ? form.safewebUrlHomologacao : form.safewebUrl) || !form.safewebUsername || !form.safewebPassword}
-                    onClick={testSafewebAuth}
-                  >
+                    onClick={testSafewebAuth}>
                     {testingAuth ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testando...</> : `Testar Conexão (${form.safewebAmbiente === "homologacao" ? "Homologação" : "Produção"})`}
                   </Button>
                 </CardContent>
               </Card>
             )}
-
             <SaveButton />
           </form>
         </TabsContent>
 
-        {/* ── ABA: PAGAMENTO ──────────────────────────────────────────────────── */}
+        {/* ── PAGAMENTO ───────────────────────────────────────────────────── */}
         <TabsContent value="pagamento">
           <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-primary" />
-                  <CardTitle>MercadoPago</CardTitle>
-                </div>
-                <CardDescription>
-                  Credenciais para processamento de pagamentos via MercadoPago.
-                  Acesse <a href="https://www.mercadopago.com.br/developers/pt/docs" target="_blank" rel="noopener noreferrer" className="text-primary underline">mercadopago.com.br/developers</a> para obter suas chaves.
-                </CardDescription>
+                <div className="flex items-center gap-2"><CreditCard className="h-5 w-5 text-primary" /><CardTitle>MercadoPago</CardTitle></div>
+                <CardDescription>Credenciais para processamento de pagamentos. Acesse <a href="https://www.mercadopago.com.br/developers/pt/docs" target="_blank" rel="noopener noreferrer" className="text-primary underline">mercadopago.com.br/developers</a>.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -390,7 +614,7 @@ export default function AdminSettings() {
                   <Label>Webhook Secret</Label>
                   <MaskedInput value={form.webhookSecret} onChange={v => set("webhookSecret", v)} placeholder="Chave secreta para verificar notificações" />
                   <p className="text-xs text-muted-foreground">
-                    Configure o webhook no painel do MercadoPago apontando para:{" "}
+                    Configure o webhook no painel do MercadoPago para:{" "}
                     <code className="bg-muted px-1 rounded text-xs">{form.siteUrl || "[siteUrl]"}/api/mp/webhook</code>
                   </p>
                 </div>
@@ -400,25 +624,18 @@ export default function AdminSettings() {
           </form>
         </TabsContent>
 
-        {/* ── ABA: WHATSAPP ───────────────────────────────────────────────────── */}
+        {/* ── WHATSAPP ────────────────────────────────────────────────────── */}
         <TabsContent value="whatsapp">
           <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5 text-primary" />
-                  <CardTitle>WhatsApp — Evolution API</CardTitle>
-                </div>
-                <CardDescription>
-                  Integração com Evolution API para envio de notificações via WhatsApp.
-                  Configure sua instância em <a href="https://evolution-api.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">evolution-api.com</a>.
-                </CardDescription>
+                <div className="flex items-center gap-2"><MessageCircle className="h-5 w-5 text-primary" /><CardTitle>WhatsApp — Evolution API</CardTitle></div>
+                <CardDescription>Integração com Evolution API para envio de notificações via WhatsApp. Configure em <a href="https://evolution-api.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">evolution-api.com</a>.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>URL da Evolution API</Label>
                   <Input value={form.evolutionUrl} onChange={e => set("evolutionUrl", e.target.value)} placeholder="https://evolution.seudominio.com.br" />
-                  <p className="text-xs text-muted-foreground">URL base da sua instância Evolution API.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>API Key</Label>
@@ -427,7 +644,6 @@ export default function AdminSettings() {
                 <div className="space-y-2">
                   <Label>Nome da Instância</Label>
                   <Input value={form.evolutionInstance} onChange={e => set("evolutionInstance", e.target.value)} placeholder="lealcert" />
-                  <p className="text-xs text-muted-foreground">Nome da instância configurada na Evolution API.</p>
                 </div>
               </CardContent>
             </Card>

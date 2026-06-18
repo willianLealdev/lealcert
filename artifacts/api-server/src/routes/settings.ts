@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, settingsTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
+import nodemailer from "nodemailer";
 
 const router = Router();
 
@@ -42,61 +43,126 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     evolutionUrl: s.evolutionUrl,
     evolutionApiKey: s.evolutionApiKey,
     evolutionInstance: s.evolutionInstance,
+    logoUrl: s.logoUrl,
+    primaryColor: s.primaryColor ?? "#2563eb",
+    contactPhone: s.contactPhone,
+    contactWhatsapp: s.contactWhatsapp,
+    contactEmailSupport: s.contactEmailSupport,
+    contactAddress: s.contactAddress,
+    smtpHostDb: s.smtpHostDb,
+    smtpPortDb: s.smtpPortDb ?? "587",
+    smtpUserDb: s.smtpUserDb,
+    smtpPassDb: s.smtpPassDb,
     updatedAt: s.updatedAt,
   };
 }
 
+// ── GET /settings (admin) ──────────────────────────────────────────────────
 router.get("/settings", requireAdmin, async (_req, res): Promise<void> => {
   const s = await getOrCreateSettings();
   res.json(serializeSettings(s));
 });
 
+// ── PATCH /settings (admin) ────────────────────────────────────────────────
 router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   const s = await getOrCreateSettings();
   const {
     appName, mpAccessToken, mpPublicKey, webhookSecret, mailFrom, siteUrl,
     scheduleOpenDays, scheduleOpenHour, scheduleCloseHour, scheduleStepMin, scheduleClosedDates,
     garApiKey, garHashVendedor, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
-    safewebUrl, safewebUrlHomologacao, safewebAmbiente, safewebUsername, safewebPassword, safewebCnpjAr, safewebCodigoParceiro, activeProvider,
+    safewebUrl, safewebUrlHomologacao, safewebAmbiente, safewebUsername, safewebPassword,
+    safewebCnpjAr, safewebCodigoParceiro, activeProvider,
     evolutionUrl, evolutionApiKey, evolutionInstance,
+    logoUrl, primaryColor,
+    contactPhone, contactWhatsapp, contactEmailSupport, contactAddress,
+    smtpHostDb, smtpPortDb, smtpUserDb, smtpPassDb,
   } = req.body ?? {};
 
-  const updates: Record<string, unknown> = {};
-  if (appName !== undefined) updates.appName = appName;
-  if (mpAccessToken !== undefined) updates.mpAccessToken = mpAccessToken;
-  if (mpPublicKey !== undefined) updates.mpPublicKey = mpPublicKey;
-  if (webhookSecret !== undefined) updates.webhookSecret = webhookSecret;
-  if (mailFrom !== undefined) updates.mailFrom = mailFrom;
-  if (siteUrl !== undefined) updates.siteUrl = siteUrl;
-  if (scheduleOpenDays !== undefined) updates.scheduleOpenDays = scheduleOpenDays;
-  if (scheduleOpenHour !== undefined) updates.scheduleOpenHour = scheduleOpenHour;
-  if (scheduleCloseHour !== undefined) updates.scheduleCloseHour = scheduleCloseHour;
-  if (scheduleStepMin !== undefined) updates.scheduleStepMin = scheduleStepMin;
-  if (scheduleClosedDates !== undefined) updates.scheduleClosedDates = scheduleClosedDates;
-  if (garApiKey !== undefined) updates.garApiKey = garApiKey;
-  if (garHashVendedor !== undefined) updates.garHashVendedor = garHashVendedor;
-  if (garHashTabela !== undefined) updates.garHashTabela = garHashTabela;
-  if (garFormaPagamento !== undefined) updates.garFormaPagamento = garFormaPagamento;
-  if (garPreferirVideoconferencia !== undefined) updates.garPreferirVideoconferencia = garPreferirVideoconferencia;
-  if (safewebUrl !== undefined) updates.safewebUrl = safewebUrl;
-  if (safewebUrlHomologacao !== undefined) updates.safewebUrlHomologacao = safewebUrlHomologacao;
-  if (safewebAmbiente !== undefined) updates.safewebAmbiente = safewebAmbiente;
-  if (safewebUsername !== undefined) updates.safewebUsername = safewebUsername;
-  if (safewebPassword !== undefined) updates.safewebPassword = safewebPassword;
-  if (safewebCnpjAr !== undefined) updates.safewebCnpjAr = safewebCnpjAr;
-  if (safewebCodigoParceiro !== undefined) updates.safewebCodigoParceiro = safewebCodigoParceiro;
-  if (activeProvider !== undefined) updates.activeProvider = activeProvider;
-  if (evolutionUrl !== undefined) updates.evolutionUrl = evolutionUrl;
-  if (evolutionApiKey !== undefined) updates.evolutionApiKey = evolutionApiKey;
-  if (evolutionInstance !== undefined) updates.evolutionInstance = evolutionInstance;
+  const u: Record<string, unknown> = {};
+  if (appName !== undefined) u.appName = appName;
+  if (mpAccessToken !== undefined) u.mpAccessToken = mpAccessToken;
+  if (mpPublicKey !== undefined) u.mpPublicKey = mpPublicKey;
+  if (webhookSecret !== undefined) u.webhookSecret = webhookSecret;
+  if (mailFrom !== undefined) u.mailFrom = mailFrom;
+  if (siteUrl !== undefined) u.siteUrl = siteUrl;
+  if (scheduleOpenDays !== undefined) u.scheduleOpenDays = scheduleOpenDays;
+  if (scheduleOpenHour !== undefined) u.scheduleOpenHour = scheduleOpenHour;
+  if (scheduleCloseHour !== undefined) u.scheduleCloseHour = scheduleCloseHour;
+  if (scheduleStepMin !== undefined) u.scheduleStepMin = scheduleStepMin;
+  if (scheduleClosedDates !== undefined) u.scheduleClosedDates = scheduleClosedDates;
+  if (garApiKey !== undefined) u.garApiKey = garApiKey;
+  if (garHashVendedor !== undefined) u.garHashVendedor = garHashVendedor;
+  if (garHashTabela !== undefined) u.garHashTabela = garHashTabela;
+  if (garFormaPagamento !== undefined) u.garFormaPagamento = garFormaPagamento;
+  if (garPreferirVideoconferencia !== undefined) u.garPreferirVideoconferencia = garPreferirVideoconferencia;
+  if (safewebUrl !== undefined) u.safewebUrl = safewebUrl;
+  if (safewebUrlHomologacao !== undefined) u.safewebUrlHomologacao = safewebUrlHomologacao;
+  if (safewebAmbiente !== undefined) u.safewebAmbiente = safewebAmbiente;
+  if (safewebUsername !== undefined) u.safewebUsername = safewebUsername;
+  if (safewebPassword !== undefined) u.safewebPassword = safewebPassword;
+  if (safewebCnpjAr !== undefined) u.safewebCnpjAr = safewebCnpjAr;
+  if (safewebCodigoParceiro !== undefined) u.safewebCodigoParceiro = safewebCodigoParceiro;
+  if (activeProvider !== undefined) u.activeProvider = activeProvider;
+  if (evolutionUrl !== undefined) u.evolutionUrl = evolutionUrl;
+  if (evolutionApiKey !== undefined) u.evolutionApiKey = evolutionApiKey;
+  if (evolutionInstance !== undefined) u.evolutionInstance = evolutionInstance;
+  if (logoUrl !== undefined) u.logoUrl = logoUrl;
+  if (primaryColor !== undefined) u.primaryColor = primaryColor;
+  if (contactPhone !== undefined) u.contactPhone = contactPhone;
+  if (contactWhatsapp !== undefined) u.contactWhatsapp = contactWhatsapp;
+  if (contactEmailSupport !== undefined) u.contactEmailSupport = contactEmailSupport;
+  if (contactAddress !== undefined) u.contactAddress = contactAddress;
+  if (smtpHostDb !== undefined) u.smtpHostDb = smtpHostDb;
+  if (smtpPortDb !== undefined) u.smtpPortDb = smtpPortDb;
+  if (smtpUserDb !== undefined) u.smtpUserDb = smtpUserDb;
+  if (smtpPassDb !== undefined) u.smtpPassDb = smtpPassDb;
 
   const [updated] = await db
     .update(settingsTable)
-    .set(updates as Parameters<typeof db.update>[0] extends infer T ? Record<string, unknown> : never)
+    .set(u as Parameters<typeof db.update>[0] extends infer T ? Record<string, unknown> : never)
     .where(eq(settingsTable.id, s.id))
     .returning();
 
   res.json(serializeSettings(updated));
+});
+
+// ── POST /settings/test-email ──────────────────────────────────────────────
+router.post("/settings/test-email", requireAdmin, async (req, res): Promise<void> => {
+  const s = await getOrCreateSettings();
+  const host = s.smtpHostDb || process.env.SMTP_HOST;
+  const port = parseInt(s.smtpPortDb ?? process.env.SMTP_PORT ?? "587", 10);
+  const user = s.smtpUserDb || process.env.SMTP_USER;
+  const pass = s.smtpPassDb || process.env.SMTP_PASS;
+  const from = s.mailFrom || process.env.SMTP_FROM || `${s.appName} <naoresponda@lealcert.com.br>`;
+  const to = (req.body as { to?: string })?.to ?? (req.session as { user?: { email?: string } })?.user?.email;
+
+  if (!host || !user || !pass) {
+    res.status(400).json({ ok: false, error: "SMTP não configurado. Preencha Host, Usuário e Senha." });
+    return;
+  }
+  if (!to) {
+    res.status(400).json({ ok: false, error: "Informe um endereço de e-mail para o teste." });
+    return;
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host, port, secure: port === 465,
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false },
+    });
+    await transporter.verify();
+    await transporter.sendMail({
+      from,
+      to,
+      subject: `✅ Teste de e-mail — ${s.appName}`,
+      text: `Este é um e-mail de teste enviado pelo painel de configurações do ${s.appName}. Se você recebeu, o SMTP está funcionando corretamente.`,
+      html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f8fafc;border-radius:12px;"><h2 style="color:#0f172a;">✅ SMTP funcionando!</h2><p style="color:#475569;">Este e-mail confirma que as configurações de envio do <strong>${s.appName}</strong> estão corretas.</p><p style="color:#94a3b8;font-size:12px;">Enviado pelo painel de configurações.</p></div>`,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: (err as Error).message });
+  }
 });
 
 export default router;

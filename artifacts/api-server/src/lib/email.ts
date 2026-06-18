@@ -1,55 +1,72 @@
 import path from "path";
 import nodemailer from "nodemailer";
 import { logger } from "./logger";
+import { db, settingsTable } from "@workspace/db";
 
-function createTransporter() {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT ?? "587", 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+// Fetch SMTP + branding from DB (with env-var fallback)
+async function getEmailConfig() {
+  const rows = await db.select({
+    appName: settingsTable.appName,
+    siteUrl: settingsTable.siteUrl,
+    mailFrom: settingsTable.mailFrom,
+    smtpHostDb: settingsTable.smtpHostDb,
+    smtpPortDb: settingsTable.smtpPortDb,
+    smtpUserDb: settingsTable.smtpUserDb,
+    smtpPassDb: settingsTable.smtpPassDb,
+    logoUrl: settingsTable.logoUrl,
+  }).from(settingsTable).limit(1);
 
-  if (!host || !user || !pass) {
-    logger.warn("SMTP not configured — emails will be logged only (set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS)");
+  const s = rows[0];
+  const appName = s?.appName ?? "LealCert";
+  const siteUrl = s?.siteUrl ?? "https://lealcert.com.br";
+  const host = s?.smtpHostDb || process.env.SMTP_HOST;
+  const port = parseInt(s?.smtpPortDb ?? process.env.SMTP_PORT ?? "587", 10);
+  const user = s?.smtpUserDb || process.env.SMTP_USER;
+  const pass = s?.smtpPassDb || process.env.SMTP_PASS;
+  const from = s?.mailFrom || process.env.SMTP_FROM || `${appName} <naoresponda@lealcert.com.br>`;
+  const logoUrl = s?.logoUrl ?? null;
+
+  return { appName, siteUrl, host, port, user, pass, from, logoUrl };
+}
+
+function createTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
+  if (!cfg.host || !cfg.user || !cfg.pass) {
+    logger.warn("SMTP not configured — emails will be logged only");
     return null;
   }
-
   return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
+    host: cfg.host,
+    port: cfg.port,
+    secure: cfg.port === 465,
+    auth: { user: cfg.user, pass: cfg.pass },
     tls: { rejectUnauthorized: false },
   });
 }
 
-const FROM = process.env.SMTP_FROM ?? "LealCert <naoresponda@lealcert.com.br>";
-const SITE_URL = "https://lealcert.com.br";
-const LOGO_CID = "logo@lealcert";
+const LOGO_CID = "logo@app";
 const LOGO_PATH = path.join(__dirname, "logo-email.png");
 
-function logoAttachment() {
-  return {
-    filename: "logo.png",
-    path: LOGO_PATH,
-    cid: LOGO_CID,
-  };
+function logoAttachment(logoUrl: string | null) {
+  if (logoUrl) return null; // use URL in <img src> directly
+  return { filename: "logo.png", path: LOGO_PATH, cid: LOGO_CID };
 }
 
-function emailHeader(): string {
+function emailHeader(appName: string, logoUrl: string | null): string {
+  const imgSrc = logoUrl ? logoUrl : `cid:${LOGO_CID}`;
   return `
     <div style="text-align:center;margin-bottom:24px;padding:20px 0 0;">
-      <img src="cid:${LOGO_CID}" alt="LealCert" style="height:64px;width:auto;max-width:240px;" />
+      <img src="${imgSrc}" alt="${appName}" style="height:64px;width:auto;max-width:240px;" />
     </div>
   `;
 }
 
-function emailWrapper(content: string): string {
+function emailWrapper(content: string, appName: string, logoUrl: string | null): string {
   return `
     <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#f8fafc;padding:32px 24px;border-radius:12px;">
-      ${emailHeader()}
+      ${emailHeader(appName, logoUrl)}
       ${content}
       <p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:20px;">
-        LealCert — Certificados Digitais ICP-Brasil
+        ${appName} — Certificados Digitais ICP-Brasil
       </p>
     </div>
   `;
@@ -73,8 +90,9 @@ export async function sendOrderStatusEmail(opts: {
   certName?: string;
   protocolNumber?: string;
 }): Promise<void> {
+  const cfg = await getEmailConfig();
   const statusLabel = STATUS_LABELS[opts.status] ?? opts.status;
-  const subject = `Pedido #${opts.orderNumber} — ${statusLabel} | LealCert`;
+  const subject = `Pedido #${opts.orderNumber} — ${statusLabel} | ${cfg.appName}`;
 
   const statusColor: Record<string, string> = {
     pending_payment: "#f59e0b",
@@ -104,20 +122,24 @@ export async function sendOrderStatusEmail(opts: {
       ${opts.status === "completed" ? `<div style="margin-top:20px;padding:14px;background:#dcfce7;border-radius:8px;font-size:13px;color:#166534;">🎉 <strong>Certificado emitido com sucesso!</strong> Você já pode utilizá-lo.</div>` : ""}
     </div>
     <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:16px;">
-      Para acompanhar seu pedido, acesse <a href="${SITE_URL}/entrar" style="color:#2563eb;">lealcert.com.br</a><br>
+      Para acompanhar seu pedido, acesse <a href="${cfg.siteUrl}/entrar" style="color:#2563eb;">${cfg.siteUrl.replace(/^https?:\/\//, "")}</a><br>
       Dúvidas? Responda este e-mail ou fale conosco pelo WhatsApp.
     </p>
-  `);
+  `, cfg.appName, cfg.logoUrl);
 
-  const text = `Olá, ${opts.customerName}!\n\nSeu pedido #${opts.orderNumber} foi atualizado para: ${statusLabel}\n${opts.certName ? `Certificado: ${opts.certName}\n` : ""}${opts.total !== undefined ? `Total: R$ ${opts.total.toFixed(2)}\n` : ""}${opts.protocolNumber ? `Protocolo: ${opts.protocolNumber}\n` : ""}\nLealCert — Certificados Digitais`;
+  const text = `Olá, ${opts.customerName}!\n\nSeu pedido #${opts.orderNumber} foi atualizado para: ${statusLabel}\n${opts.certName ? `Certificado: ${opts.certName}\n` : ""}${opts.total !== undefined ? `Total: R$ ${opts.total.toFixed(2)}\n` : ""}${opts.protocolNumber ? `Protocolo: ${opts.protocolNumber}\n` : ""}\n${cfg.appName} — Certificados Digitais`;
 
-  const transporter = createTransporter();
+  const transporter = createTransporter(cfg);
   if (!transporter) {
     logger.info({ to: opts.to, orderNumber: opts.orderNumber, status: opts.status }, "📧 [DEV] Order status email (SMTP not configured)");
     return;
   }
 
-  await transporter.sendMail({ from: FROM, to: opts.to, subject, html, text, attachments: [logoAttachment()] });
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to: opts.to, subject, html, text,
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
   logger.info({ to: opts.to, orderNumber: opts.orderNumber, status: opts.status }, "Order status email sent");
 }
 
@@ -130,7 +152,9 @@ export async function sendSchedulingEmail(opts: {
   dataHora: string;
   siteUrl?: string;
 }): Promise<void> {
-  const subject = `Agendamento confirmado — Pedido #${opts.orderNumber} | LealCert`;
+  const cfg = await getEmailConfig();
+  const siteUrl = opts.siteUrl ?? cfg.siteUrl;
+  const subject = `Agendamento confirmado — Pedido #${opts.orderNumber} | ${cfg.appName}`;
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:24px;border:1px solid #e2e8f0;">
       <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">🗓 Agendamento confirmado!</h2>
@@ -148,19 +172,23 @@ export async function sendSchedulingEmail(opts: {
       </div>
       <p style="font-size:13px;color:#475569;margin:0;">
         Para reagendar ou verificar seu pedido, acesse
-        <a href="${opts.siteUrl || SITE_URL}/entrar" style="color:#2563eb;">lealcert.com.br</a>.
+        <a href="${siteUrl}/entrar" style="color:#2563eb;">${siteUrl.replace(/^https?:\/\//, "")}</a>.
       </p>
     </div>
-  `);
-  const text = `Agendamento confirmado!\n\nOlá, ${opts.customerName}!\n\nPedido: #${opts.orderNumber}\nProtocolo: ${opts.protocolo}\nLocal: ${opts.localNome}\nData e hora: ${opts.dataHora}\n\nApresente documento de identificação original.\n\nLealCert — Certificados Digitais`;
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Agendamento confirmado!\n\nOlá, ${opts.customerName}!\n\nPedido: #${opts.orderNumber}\nProtocolo: ${opts.protocolo}\nLocal: ${opts.localNome}\nData e hora: ${opts.dataHora}\n\nApresente documento de identificação original.\n\n${cfg.appName} — Certificados Digitais`;
 
-  const transporter = createTransporter();
+  const transporter = createTransporter(cfg);
   if (!transporter) {
-    logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "📧 [DEV] Scheduling confirmation email (SMTP not configured)");
+    logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "📧 [DEV] Scheduling email (SMTP not configured)");
     return;
   }
-  await transporter.sendMail({ from: FROM, to: opts.to, subject, html, text, attachments: [logoAttachment()] });
-  logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "Scheduling confirmation email sent");
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to: opts.to, subject, html, text,
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
+  logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "Scheduling email sent");
 }
 
 export async function sendRenewalAlertEmail(opts: {
@@ -172,9 +200,11 @@ export async function sendRenewalAlertEmail(opts: {
   daysLeft: number;
   siteUrl?: string;
 }): Promise<void> {
+  const cfg = await getEmailConfig();
+  const siteUrl = opts.siteUrl ?? cfg.siteUrl;
   const daysText = opts.daysLeft === 1 ? "amanhã" : `em ${opts.daysLeft} dias`;
   const urgency = opts.daysLeft <= 7 ? "#ef4444" : opts.daysLeft <= 30 ? "#f59e0b" : "#2563eb";
-  const subject = `⚠️ Seu certificado digital vence ${daysText} | LealCert`;
+  const subject = `⚠️ Seu certificado digital vence ${daysText} | ${cfg.appName}`;
   const expiresFormatted = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(opts.expiresAt);
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:24px;border:1px solid #e2e8f0;">
@@ -189,29 +219,31 @@ export async function sendRenewalAlertEmail(opts: {
         ${opts.protocolo ? `<tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;color:#0f172a;">${opts.protocolo}</td></tr>` : ""}
       </table>
       <div style="text-align:center;">
-        <a href="${opts.siteUrl || SITE_URL}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+        <a href="${siteUrl}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
           Renovar Certificado
         </a>
       </div>
-      <p style="font-size:13px;color:#94a3b8;margin-top:20px;text-align:center;">
-        Não perca o prazo — a renovação garante continuidade nas suas operações digitais.
-      </p>
     </div>
-  `);
-  const text = `Atenção, ${opts.customerName}!\n\nSeu certificado ${opts.certificateName} vence ${daysText} (${expiresFormatted}).\n\nAcesse lealcert.com.br para renovar.\n\nLealCert — Certificados Digitais`;
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Atenção, ${opts.customerName}!\n\nSeu certificado ${opts.certificateName} vence ${daysText} (${expiresFormatted}).\n\nAcesse para renovar: ${siteUrl}/entrar\n\n${cfg.appName} — Certificados Digitais`;
 
-  const transporter = createTransporter();
+  const transporter = createTransporter(cfg);
   if (!transporter) {
-    logger.info({ to: opts.to, certificateName: opts.certificateName, daysLeft: opts.daysLeft }, "📧 [DEV] Renewal alert email (SMTP not configured)");
+    logger.info({ to: opts.to, daysLeft: opts.daysLeft }, "📧 [DEV] Renewal alert email (SMTP not configured)");
     return;
   }
-  await transporter.sendMail({ from: FROM, to: opts.to, subject, html, text, attachments: [logoAttachment()] });
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to: opts.to, subject, html, text,
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
   logger.info({ to: opts.to, daysLeft: opts.daysLeft }, "Renewal alert email sent");
 }
 
 export async function sendWelcomeEmail(to: string, name: string, userType: string): Promise<void> {
+  const cfg = await getEmailConfig();
   const typeLabel = userType === "contador" ? "Contador" : "Cliente";
-  const subject = "Bem-vindo à LealCert!";
+  const subject = `Bem-vindo à ${cfg.appName}!`;
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
       <h2 style="color:#0f172a;margin:0 0 8px;font-size:20px;">Olá, ${name}! 👋</h2>
@@ -221,25 +253,30 @@ export async function sendWelcomeEmail(to: string, name: string, userType: strin
       </div>
       <p style="color:#475569;font-size:14px;margin:0 0 20px;">Agora você pode acessar a plataforma e adquirir seus certificados digitais com praticidade e segurança.</p>
       <div style="text-align:center;">
-        <a href="${SITE_URL}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+        <a href="${cfg.siteUrl}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
           Acessar minha conta
         </a>
       </div>
     </div>
-  `);
-  const text = `Olá, ${name}!\n\nSua conta LealCert foi ativada com sucesso. Acesse: lealcert.com.br/entrar\n\nLealCert — Certificados Digitais`;
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Olá, ${name}!\n\nSua conta ${cfg.appName} foi ativada com sucesso. Acesse: ${cfg.siteUrl}/entrar\n\n${cfg.appName} — Certificados Digitais`;
 
-  const transporter = createTransporter();
+  const transporter = createTransporter(cfg);
   if (!transporter) {
     logger.info({ to, userType }, "📧 [DEV] Welcome email (SMTP not configured)");
     return;
   }
-  await transporter.sendMail({ from: FROM, to, subject, html, text, attachments: [logoAttachment()] });
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to, subject, html, text,
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
   logger.info({ to }, "Welcome email sent");
 }
 
 export async function sendTempPasswordEmail(to: string, name: string, tempPassword: string): Promise<void> {
-  const subject = "Sua senha temporária — LealCert";
+  const cfg = await getEmailConfig();
+  const subject = `Sua senha temporária — ${cfg.appName}`;
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
       <h2 style="color:#0f172a;margin:0 0 8px;">Olá, ${name}!</h2>
@@ -252,26 +289,30 @@ export async function sendTempPasswordEmail(to: string, name: string, tempPasswo
         <p style="color:#92400e;font-size:13px;margin:0;">⚠️ Ao fazer login com essa senha, você será solicitado a cadastrar uma nova senha permanente.</p>
       </div>
       <div style="text-align:center;">
-        <a href="${SITE_URL}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+        <a href="${cfg.siteUrl}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
           Acessar e redefinir senha
         </a>
       </div>
-      <p style="font-size:13px;color:#94a3b8;margin-top:20px;text-align:center;">Se não foi você, ignore este e-mail. Sua senha não foi alterada.</p>
     </div>
-  `);
-  const text = `Olá, ${name}!\n\nSua senha temporária LealCert: ${tempPassword}\n\nAo fazer login, você deverá cadastrar uma nova senha.\n\nAcesse: lealcert.com.br/entrar`;
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Olá, ${name}!\n\nSua senha temporária ${cfg.appName}: ${tempPassword}\n\nAo fazer login, você deverá cadastrar uma nova senha.\n\nAcesse: ${cfg.siteUrl}/entrar`;
 
-  const transporter = createTransporter();
+  const transporter = createTransporter(cfg);
   if (!transporter) {
     logger.info({ to, tempPassword }, "📧 [DEV] Temp password email (SMTP not configured)");
     return;
   }
-  await transporter.sendMail({ from: FROM, to, subject, html, text, attachments: [logoAttachment()] });
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to, subject, html, text,
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
   logger.info({ to }, "Temp password email sent");
 }
 
 export async function sendVerificationEmail(to: string, name: string, code: string): Promise<void> {
-  const subject = "Código de verificação — LealCert";
+  const cfg = await getEmailConfig();
+  const subject = `Código de verificação — ${cfg.appName}`;
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
       <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">Olá, ${name}!</h2>
@@ -282,15 +323,18 @@ export async function sendVerificationEmail(to: string, name: string, code: stri
       </div>
       <p style="color:#94a3b8;font-size:13px;margin:0;text-align:center;">Este código expira em <strong>30 minutos</strong>. Se não foi você, ignore este e-mail.</p>
     </div>
-  `);
-  const text = `Olá, ${name}!\n\nSeu código de verificação LealCert: ${code}\n\nVálido por 30 minutos.`;
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Olá, ${name}!\n\nSeu código de verificação ${cfg.appName}: ${code}\n\nVálido por 30 minutos.`;
 
-  const transporter = createTransporter();
+  const transporter = createTransporter(cfg);
   if (!transporter) {
     logger.info({ to, code }, "📧 [DEV] Verification email (SMTP not configured)");
     return;
   }
-
-  await transporter.sendMail({ from: FROM, to, subject, html, text, attachments: [logoAttachment()] });
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to, subject, html, text,
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
   logger.info({ to }, "Verification email sent");
 }

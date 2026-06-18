@@ -1339,6 +1339,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/GarComprarResult"
 
+  /branding:
+    get:
+      operationId: getBranding
+      tags: [settings]
+      summary: Get public branding info (no auth required)
+      responses:
+        "200":
+          description: Branding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingInfo"
+
+  /settings/test-email:
+    post:
+      operationId: sendTestEmail
+      tags: [settings]
+      summary: Send a test email using current SMTP settings
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestEmailRequest"
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestEmailResult"
+
   /settings:
     get:
       operationId: getSettings
@@ -2483,6 +2515,40 @@ components:
         content:
           type: string
 
+    TestEmailRequest:
+      type: object
+      properties:
+        to:
+          type: string
+    TestEmailResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        error:
+          type: string
+
+    BrandingInfo:
+      type: object
+      required: [appName, primaryColor]
+      properties:
+        appName:
+          type: string
+        logoUrl:
+          type: ["string", "null"]
+        primaryColor:
+          type: string
+        siteUrl:
+          type: ["string", "null"]
+        contactPhone:
+          type: ["string", "null"]
+        contactWhatsapp:
+          type: ["string", "null"]
+        contactEmailSupport:
+          type: ["string", "null"]
+        contactAddress:
+          type: ["string", "null"]
+
     AppSettings:
       type: object
       required: [id]
@@ -2543,6 +2609,26 @@ components:
           type: ["string", "null"]
         evolutionInstance:
           type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        primaryColor:
+          type: ["string", "null"]
+        contactPhone:
+          type: ["string", "null"]
+        contactWhatsapp:
+          type: ["string", "null"]
+        contactEmailSupport:
+          type: ["string", "null"]
+        contactAddress:
+          type: ["string", "null"]
+        smtpHostDb:
+          type: ["string", "null"]
+        smtpPortDb:
+          type: ["string", "null"]
+        smtpUserDb:
+          type: ["string", "null"]
+        smtpPassDb:
+          type: ["string", "null"]
         updatedAt:
           type: string
 
@@ -2602,6 +2688,26 @@ components:
         evolutionApiKey:
           type: string
         evolutionInstance:
+          type: string
+        logoUrl:
+          type: string
+        primaryColor:
+          type: string
+        contactPhone:
+          type: string
+        contactWhatsapp:
+          type: string
+        contactEmailSupport:
+          type: string
+        contactAddress:
+          type: string
+        smtpHostDb:
+          type: string
+        smtpPortDb:
+          type: string
+        smtpUserDb:
+          type: string
+        smtpPassDb:
           type: string
 
     GarProduto:

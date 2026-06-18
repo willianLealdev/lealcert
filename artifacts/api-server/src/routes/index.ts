@@ -17,9 +17,11 @@ import mpWebhookRouter from "./mp-webhook";
 import renewalsRouter from "./renewals";
 import cnpjLookupRouter from "./cnpj-lookup";
 import couponsRouter from "./coupons";
+import brandingRouter from "./branding";
 
 const router: IRouter = Router();
 
+router.use(brandingRouter);
 router.use(healthRouter);
 router.use(mpWebhookRouter);
 router.use(chatRouter);

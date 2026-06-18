@@ -1,19 +1,21 @@
 import { useState } from "react";
 import { useLogin, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useBranding } from "@/lib/branding";
 import { useLocation, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { Loader2, ShieldCheck, Eye, EyeOff, Phone, MessageCircle, Mail, MapPin } from "lucide-react";
 
 export default function Login() {
   const [cpfCnpj, setCpfCnpj] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { user } = useAuth();
+  const branding = useBranding();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -72,8 +74,8 @@ export default function Login() {
       <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden">
         <div className="relative z-10 flex flex-col items-center text-center space-y-8">
           <img
-            src="/logo.png"
-            alt="LealCert"
+            src={branding.logoUrl ?? "/logo.png"}
+            alt={branding.appName}
             className="h-56 w-auto object-contain drop-shadow-2xl"
           />
           <p className="text-blue-200/80 text-lg max-w-sm leading-relaxed">
@@ -95,6 +97,36 @@ export default function Login() {
               <span>ICP-Brasil</span>
             </div>
           </div>
+
+          {/* Contact info */}
+          {(branding.contactPhone || branding.contactWhatsapp || branding.contactEmailSupport || branding.contactAddress) && (
+            <div className="mt-4 space-y-2 text-blue-200/50 text-sm text-left w-full max-w-xs">
+              {branding.contactPhone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5 shrink-0" />
+                  <span>{branding.contactPhone}</span>
+                </div>
+              )}
+              {branding.contactWhatsapp && (
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>{branding.contactWhatsapp}</span>
+                </div>
+              )}
+              {branding.contactEmailSupport && (
+                <div className="flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5 shrink-0" />
+                  <span>{branding.contactEmailSupport}</span>
+                </div>
+              )}
+              {branding.contactAddress && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                  <span>{branding.contactAddress}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -103,7 +135,7 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex justify-center mb-8">
-            <img src="/logo.png" alt="LealCert" className="h-24 w-auto object-contain" />
+            <img src={branding.logoUrl ?? "/logo.png"} alt={branding.appName} className="h-24 w-auto object-contain" />
           </div>
 
           <div

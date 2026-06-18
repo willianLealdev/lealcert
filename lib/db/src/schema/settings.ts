@@ -35,6 +35,19 @@ export const settingsTable = pgTable("settings", {
   evolutionUrl: text("evolution_url"),
   evolutionApiKey: text("evolution_api_key"),
   evolutionInstance: text("evolution_instance"),
+  // White-label branding
+  logoUrl: text("logo_url"),
+  primaryColor: text("primary_color").default("#2563eb"),
+  // Contact info (shown on login page / "fale conosco")
+  contactPhone: text("contact_phone"),
+  contactWhatsapp: text("contact_whatsapp"),
+  contactEmailSupport: text("contact_email_support"),
+  contactAddress: text("contact_address"),
+  // SMTP (per-installation email config — overrides env vars when set)
+  smtpHostDb: text("smtp_host_db"),
+  smtpPortDb: text("smtp_port_db").default("587"),
+  smtpUserDb: text("smtp_user_db"),
+  smtpPassDb: text("smtp_pass_db"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

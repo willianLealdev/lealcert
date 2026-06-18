@@ -483,6 +483,32 @@ export interface MessageInput {
   content: string;
 }
 
+export interface TestEmailRequest {
+  to?: string;
+}
+
+export interface TestEmailResult {
+  ok?: boolean;
+  error?: string;
+}
+
+export interface BrandingInfo {
+  appName: string;
+  /** @nullable */
+  logoUrl?: string | null;
+  primaryColor: string;
+  /** @nullable */
+  siteUrl?: string | null;
+  /** @nullable */
+  contactPhone?: string | null;
+  /** @nullable */
+  contactWhatsapp?: string | null;
+  /** @nullable */
+  contactEmailSupport?: string | null;
+  /** @nullable */
+  contactAddress?: string | null;
+}
+
 export interface AppSettings {
   id: number;
   appName?: string;
@@ -529,6 +555,26 @@ export interface AppSettings {
   evolutionApiKey?: string | null;
   /** @nullable */
   evolutionInstance?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  primaryColor?: string | null;
+  /** @nullable */
+  contactPhone?: string | null;
+  /** @nullable */
+  contactWhatsapp?: string | null;
+  /** @nullable */
+  contactEmailSupport?: string | null;
+  /** @nullable */
+  contactAddress?: string | null;
+  /** @nullable */
+  smtpHostDb?: string | null;
+  /** @nullable */
+  smtpPortDb?: string | null;
+  /** @nullable */
+  smtpUserDb?: string | null;
+  /** @nullable */
+  smtpPassDb?: string | null;
   updatedAt?: string;
 }
 
@@ -560,6 +606,16 @@ export interface AppSettingsUpdate {
   evolutionUrl?: string;
   evolutionApiKey?: string;
   evolutionInstance?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  contactPhone?: string;
+  contactWhatsapp?: string;
+  contactEmailSupport?: string;
+  contactAddress?: string;
+  smtpHostDb?: string;
+  smtpPortDb?: string;
+  smtpUserDb?: string;
+  smtpPassDb?: string;
 }
 
 export interface GarProduto {

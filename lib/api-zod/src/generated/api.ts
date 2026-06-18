@@ -1297,6 +1297,34 @@ export const GarComprarOrderResponse = zod.object({
 
 
 /**
+ * @summary Get public branding info (no auth required)
+ */
+export const GetBrandingResponse = zod.object({
+  "appName": zod.string(),
+  "logoUrl": zod.string().nullish(),
+  "primaryColor": zod.string(),
+  "siteUrl": zod.string().nullish(),
+  "contactPhone": zod.string().nullish(),
+  "contactWhatsapp": zod.string().nullish(),
+  "contactEmailSupport": zod.string().nullish(),
+  "contactAddress": zod.string().nullish()
+})
+
+
+/**
+ * @summary Send a test email using current SMTP settings
+ */
+export const SendTestEmailBody = zod.object({
+  "to": zod.string().optional()
+})
+
+export const SendTestEmailResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "error": zod.string().optional()
+})
+
+
+/**
  * @summary Get app settings (admin only)
  */
 export const GetSettingsResponse = zod.object({
@@ -1328,6 +1356,16 @@ export const GetSettingsResponse = zod.object({
   "evolutionUrl": zod.string().nullish(),
   "evolutionApiKey": zod.string().nullish(),
   "evolutionInstance": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "primaryColor": zod.string().nullish(),
+  "contactPhone": zod.string().nullish(),
+  "contactWhatsapp": zod.string().nullish(),
+  "contactEmailSupport": zod.string().nullish(),
+  "contactAddress": zod.string().nullish(),
+  "smtpHostDb": zod.string().nullish(),
+  "smtpPortDb": zod.string().nullish(),
+  "smtpUserDb": zod.string().nullish(),
+  "smtpPassDb": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 
@@ -1362,7 +1400,17 @@ export const UpdateSettingsBody = zod.object({
   "activeProvider": zod.string().optional(),
   "evolutionUrl": zod.string().optional(),
   "evolutionApiKey": zod.string().optional(),
-  "evolutionInstance": zod.string().optional()
+  "evolutionInstance": zod.string().optional(),
+  "logoUrl": zod.string().optional(),
+  "primaryColor": zod.string().optional(),
+  "contactPhone": zod.string().optional(),
+  "contactWhatsapp": zod.string().optional(),
+  "contactEmailSupport": zod.string().optional(),
+  "contactAddress": zod.string().optional(),
+  "smtpHostDb": zod.string().optional(),
+  "smtpPortDb": zod.string().optional(),
+  "smtpUserDb": zod.string().optional(),
+  "smtpPassDb": zod.string().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -1394,6 +1442,16 @@ export const UpdateSettingsResponse = zod.object({
   "evolutionUrl": zod.string().nullish(),
   "evolutionApiKey": zod.string().nullish(),
   "evolutionInstance": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "primaryColor": zod.string().nullish(),
+  "contactPhone": zod.string().nullish(),
+  "contactWhatsapp": zod.string().nullish(),
+  "contactEmailSupport": zod.string().nullish(),
+  "contactAddress": zod.string().nullish(),
+  "smtpHostDb": zod.string().nullish(),
+  "smtpPortDb": zod.string().nullish(),
+  "smtpUserDb": zod.string().nullish(),
+  "smtpPassDb": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 

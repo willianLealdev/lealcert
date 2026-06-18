@@ -34,4 +34,14 @@ export interface AppSettingsUpdate {
   evolutionUrl?: string;
   evolutionApiKey?: string;
   evolutionInstance?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  contactPhone?: string;
+  contactWhatsapp?: string;
+  contactEmailSupport?: string;
+  contactAddress?: string;
+  smtpHostDb?: string;
+  smtpPortDb?: string;
+  smtpUserDb?: string;
+  smtpPassDb?: string;
 }

@@ -26,6 +26,7 @@ import type {
   AppSettings,
   AppSettingsUpdate,
   AuthUser,
+  BrandingInfo,
   BulkDeleteContactsInput,
   BulkDeleteContactsResult,
   Certificate,
@@ -113,6 +114,8 @@ import type {
   Slot,
   SlotInput,
   SyncProviderResult,
+  TestEmailRequest,
+  TestEmailResult,
   Ticket,
   TicketDetail,
   TicketInput,
@@ -5297,6 +5300,154 @@ export const useGarComprarOrder = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getGarComprarOrderMutationOptions(options));
+    }
+
+export const getGetBrandingUrl = () => {
+
+
+
+
+  return `/api/branding`
+}
+
+/**
+ * @summary Get public branding info (no auth required)
+ */
+export const getBranding = async ( options?: RequestInit): Promise<BrandingInfo> => {
+
+  return customFetch<BrandingInfo>(getGetBrandingUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBrandingQueryKey = () => {
+    return [
+    `/api/branding`
+    ] as const;
+    }
+
+
+export const getGetBrandingQueryOptions = <TData = Awaited<ReturnType<typeof getBranding>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBranding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBrandingQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBranding>>> = ({ signal }) => getBranding({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBranding>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBrandingQueryResult = NonNullable<Awaited<ReturnType<typeof getBranding>>>
+export type GetBrandingQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get public branding info (no auth required)
+ */
+
+export function useGetBranding<TData = Awaited<ReturnType<typeof getBranding>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBranding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBrandingQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSendTestEmailUrl = () => {
+
+
+
+
+  return `/api/settings/test-email`
+}
+
+/**
+ * @summary Send a test email using current SMTP settings
+ */
+export const sendTestEmail = async (testEmailRequest?: TestEmailRequest, options?: RequestInit): Promise<TestEmailResult> => {
+
+  return customFetch<TestEmailResult>(getSendTestEmailUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      testEmailRequest,)
+  }
+);}
+
+
+
+
+export const getSendTestEmailMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTestEmail>>, TError,{data?: BodyType<TestEmailRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendTestEmail>>, TError,{data?: BodyType<TestEmailRequest>}, TContext> => {
+
+const mutationKey = ['sendTestEmail'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendTestEmail>>, {data?: BodyType<TestEmailRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendTestEmail(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendTestEmailMutationResult = NonNullable<Awaited<ReturnType<typeof sendTestEmail>>>
+    export type SendTestEmailMutationBody = BodyType<TestEmailRequest> | undefined
+    export type SendTestEmailMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Send a test email using current SMTP settings
+ */
+export const useSendTestEmail = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTestEmail>>, TError,{data?: BodyType<TestEmailRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendTestEmail>>,
+        TError,
+        {data?: BodyType<TestEmailRequest>},
+        TContext
+      > => {
+      return useMutation(getSendTestEmailMutationOptions(options));
     }
 
 export const getGetSettingsUrl = () => {

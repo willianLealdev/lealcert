@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
+import { useBranding } from "@/lib/branding";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import {
@@ -70,6 +71,7 @@ function NavItem({
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
+  const branding = useBranding();
   const [location] = useLocation();
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -113,7 +115,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className={`px-3 pt-5 pb-4 border-b border-sidebar-border/50 flex items-center ${collapsed ? "justify-center" : "justify-between gap-2"}`}>
           {!collapsed ? (
             <>
-              <img src="/logo.png" alt="LealCert" className="h-16 w-auto object-contain" />
+              <img src={branding.logoUrl ?? "/logo.png"} alt={branding.appName} className="h-16 w-auto object-contain" />
               <button
                 onClick={() => setCollapsed(true)}
                 className="hidden md:flex p-1.5 rounded-lg text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors shrink-0"
@@ -133,7 +135,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
           {/* Mobile: show logo always */}
           {collapsed && (
-            <img src="/logo.png" alt="LealCert" className="h-8 w-8 object-contain md:hidden" />
+            <img src={branding.logoUrl ?? "/logo.png"} alt={branding.appName} className="h-8 w-8 object-contain md:hidden" />
           )}
         </div>
 
@@ -227,7 +229,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <img src="/logo.png" alt="LealCert" className="h-9 w-auto object-contain" />
+          <img src={branding.logoUrl ?? "/logo.png"} alt={branding.appName} className="h-9 w-auto object-contain" />
         </header>
 
         <main className="flex-1 overflow-auto">

@@ -52,5 +52,25 @@ export interface AppSettings {
   evolutionApiKey?: string | null;
   /** @nullable */
   evolutionInstance?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  primaryColor?: string | null;
+  /** @nullable */
+  contactPhone?: string | null;
+  /** @nullable */
+  contactWhatsapp?: string | null;
+  /** @nullable */
+  contactEmailSupport?: string | null;
+  /** @nullable */
+  contactAddress?: string | null;
+  /** @nullable */
+  smtpHostDb?: string | null;
+  /** @nullable */
+  smtpPortDb?: string | null;
+  /** @nullable */
+  smtpUserDb?: string | null;
+  /** @nullable */
+  smtpPassDb?: string | null;
   updatedAt?: string;
 }
