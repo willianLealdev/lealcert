@@ -41,8 +41,16 @@ const router = Router();
 // ── Helpers ───────────────────────────────────────────────────────────────────
 async function getSwSettings(): Promise<SafewebSettings | null> {
   const [s] = await db.select().from(settingsTable).limit(1);
-  if (!s?.safewebUrl || !s?.safewebUsername || !s?.safewebPassword) return null;
-  return { url: s.safewebUrl, username: s.safewebUsername, password: s.safewebPassword, cnpjAr: s.safewebCnpjAr ?? undefined };
+  if (!s?.safewebUsername || !s?.safewebPassword) return null;
+  const url = (s.safewebAmbiente === "homologacao" ? s.safewebUrlHomologacao : s.safewebUrl) ?? s.safewebUrl;
+  if (!url) return null;
+  return {
+    url,
+    username: s.safewebUsername,
+    password: s.safewebPassword,
+    cnpjAr: s.safewebCnpjAr ?? undefined,
+    codigoParceiro: s.safewebCodigoParceiro ?? undefined,
+  };
 }
 
 type Res = Parameters<Parameters<typeof router.get>[1]>[1];

@@ -39,6 +39,7 @@ export interface SafewebSettings {
   username: string;
   password: string;
   cnpjAr?: string;
+  codigoParceiro?: string;
 }
 
 // ── Token cache ───────────────────────────────────────────────────────────────

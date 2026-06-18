@@ -35,11 +35,16 @@ export interface AppSettings {
   /** @nullable */
   safewebUrl?: string | null;
   /** @nullable */
+  safewebUrlHomologacao?: string | null;
+  safewebAmbiente?: string;
+  /** @nullable */
   safewebUsername?: string | null;
   /** @nullable */
   safewebPassword?: string | null;
   /** @nullable */
   safewebCnpjAr?: string | null;
+  /** @nullable */
+  safewebCodigoParceiro?: string | null;
   activeProvider?: string;
   /** @nullable */
   evolutionUrl?: string | null;

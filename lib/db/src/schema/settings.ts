@@ -23,9 +23,12 @@ export const settingsTable = pgTable("settings", {
   garPreferirVideoconferencia: text("gar_preferir_videoconferencia").default("1"),
   // Safeweb integration
   safewebUrl: text("safeweb_url"),
+  safewebUrlHomologacao: text("safeweb_url_homologacao"),
+  safewebAmbiente: text("safeweb_ambiente").notNull().default("producao"),
   safewebUsername: text("safeweb_username"),
   safewebPassword: text("safeweb_password"),
   safewebCnpjAr: text("safeweb_cnpj_ar"),
+  safewebCodigoParceiro: text("safeweb_codigo_parceiro"),
   // Active provider
   activeProvider: text("active_provider").default("gestaoar"),
   // Evolution API (WhatsApp)

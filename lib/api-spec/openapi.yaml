@@ -2523,11 +2523,17 @@ components:
           type: string
         safewebUrl:
           type: ["string", "null"]
+        safewebUrlHomologacao:
+          type: ["string", "null"]
+        safewebAmbiente:
+          type: string
         safewebUsername:
           type: ["string", "null"]
         safewebPassword:
           type: ["string", "null"]
         safewebCnpjAr:
+          type: ["string", "null"]
+        safewebCodigoParceiro:
           type: ["string", "null"]
         activeProvider:
           type: string
@@ -2577,11 +2583,17 @@ components:
           type: string
         safewebUrl:
           type: string
+        safewebUrlHomologacao:
+          type: string
+        safewebAmbiente:
+          type: string
         safewebUsername:
           type: string
         safewebPassword:
           type: string
         safewebCnpjAr:
+          type: string
+        safewebCodigoParceiro:
           type: string
         activeProvider:
           type: string

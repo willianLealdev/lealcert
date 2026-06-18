@@ -50,9 +50,12 @@ export default function AdminSettings() {
     garFormaPagamento: "11",
     garPreferirVideoconferencia: "1",
     safewebUrl: "",
+    safewebUrlHomologacao: "",
+    safewebAmbiente: "producao",
     safewebUsername: "",
     safewebPassword: "",
     safewebCnpjAr: "",
+    safewebCodigoParceiro: "",
     activeProvider: "gestaoar",
     evolutionUrl: "",
     evolutionApiKey: "",
@@ -74,9 +77,12 @@ export default function AdminSettings() {
         garFormaPagamento: settings.garFormaPagamento ?? "11",
         garPreferirVideoconferencia: settings.garPreferirVideoconferencia ?? "1",
         safewebUrl: settings.safewebUrl ?? "",
+        safewebUrlHomologacao: (settings as typeof settings & { safewebUrlHomologacao?: string }).safewebUrlHomologacao ?? "",
+        safewebAmbiente: (settings as typeof settings & { safewebAmbiente?: string }).safewebAmbiente ?? "producao",
         safewebUsername: settings.safewebUsername ?? "",
         safewebPassword: settings.safewebPassword ?? "",
         safewebCnpjAr: settings.safewebCnpjAr ?? "",
+        safewebCodigoParceiro: (settings as typeof settings & { safewebCodigoParceiro?: string }).safewebCodigoParceiro ?? "",
         activeProvider: settings.activeProvider ?? "gestaoar",
         evolutionUrl: (settings as typeof settings & { evolutionUrl?: string }).evolutionUrl ?? "",
         evolutionApiKey: (settings as typeof settings & { evolutionApiKey?: string }).evolutionApiKey ?? "",
@@ -297,15 +303,50 @@ export default function AdminSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Ambiente */}
             <div className="space-y-2">
-              <Label>URL da API</Label>
+              <Label>Ambiente</Label>
+              <Select value={form.safewebAmbiente} onValueChange={v => set("safewebAmbiente", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="producao">Produção — developers.safeweb.com.br</SelectItem>
+                  <SelectItem value="homologacao">Homologação — h-acsafeweb.safewebpss.com.br</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Selecione o ambiente ativo. O sistema usará automaticamente a URL correspondente.
+              </p>
+            </div>
+
+            {/* URL Produção */}
+            <div className="space-y-2">
+              <Label>URL — Produção</Label>
               <Input
                 value={form.safewebUrl}
                 onChange={e => set("safewebUrl", e.target.value)}
                 placeholder="https://acsafeweb.safewebpss.com.br"
               />
-              <p className="text-xs text-muted-foreground">URL base da API Safeweb fornecida pela AC.</p>
+              <p className="text-xs text-muted-foreground">
+                URL fornecida pela Safeweb para o ambiente de produção.
+                Documentação: <a href="https://developers.safeweb.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">developers.safeweb.com.br</a>
+              </p>
             </div>
+
+            {/* URL Homologação */}
+            <div className="space-y-2">
+              <Label>URL — Homologação</Label>
+              <Input
+                value={form.safewebUrlHomologacao}
+                onChange={e => set("safewebUrlHomologacao", e.target.value)}
+                placeholder="https://h-acsafeweb.safewebpss.com.br"
+              />
+              <p className="text-xs text-muted-foreground">
+                URL do ambiente de testes/homologação.
+                Documentação: <a href="https://h-acsafeweb.safewebpss.com.br/hotsite/documentacao-safeweb/home" target="_blank" rel="noopener noreferrer" className="text-primary underline">documentação de homologação</a>
+              </p>
+            </div>
+
+            {/* Usuário */}
             <div className="space-y-2">
               <Label>Usuário</Label>
               <Input
@@ -315,10 +356,14 @@ export default function AdminSettings() {
                 autoComplete="off"
               />
             </div>
+
+            {/* Senha */}
             <div className="space-y-2">
               <Label>Senha</Label>
               <MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Senha fornecida pela Safeweb" />
             </div>
+
+            {/* CNPJ AR */}
             <div className="space-y-2">
               <Label>CNPJ da AR</Label>
               <Input
@@ -328,14 +373,28 @@ export default function AdminSettings() {
               />
               <p className="text-xs text-muted-foreground">CNPJ da sua Autoridade de Registro cadastrada na Safeweb.</p>
             </div>
+
+            {/* Código do Parceiro */}
+            <div className="space-y-2">
+              <Label>Código do Parceiro <span className="text-destructive font-semibold">*</span></Label>
+              <Input
+                value={form.safewebCodigoParceiro}
+                onChange={e => set("safewebCodigoParceiro", e.target.value)}
+                placeholder="Código fornecido pela Safeweb ao cadastrar como parceiro integrador"
+              />
+              <p className="text-xs text-muted-foreground">
+                Campo <strong>obrigatório</strong> pela API Safeweb (campo <code>CodigoParceiro</code>). Obtido no contrato de parceria com a Safeweb.
+              </p>
+            </div>
+
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={testingAuth || !form.safewebUrl || !form.safewebUsername || !form.safewebPassword}
+              disabled={testingAuth || !(form.safewebAmbiente === "homologacao" ? form.safewebUrlHomologacao : form.safewebUrl) || !form.safewebUsername || !form.safewebPassword}
               onClick={testSafewebAuth}
             >
-              {testingAuth ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testando...</> : "Testar Conexão"}
+              {testingAuth ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testando...</> : `Testar Conexão (${form.safewebAmbiente === "homologacao" ? "Homologação" : "Produção"})`}
             </Button>
           </CardContent>
         </Card>}

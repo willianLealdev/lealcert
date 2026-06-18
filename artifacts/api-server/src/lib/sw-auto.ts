@@ -10,10 +10,20 @@ import { logger } from "./logger";
 import { logEvent } from "./order-events";
 import { notifyProviderRegistered } from "./notify";
 
-async function getSwSettings(): Promise<SafewebSettings | null> {
+async function getSwSettings(): Promise<(SafewebSettings & { siteUrl?: string }) | null> {
   const [s] = await db.select().from(settingsTable).limit(1);
-  if (!s?.safewebUrl || !s?.safewebUsername || !s?.safewebPassword) return null;
-  return { url: s.safewebUrl, username: s.safewebUsername, password: s.safewebPassword, cnpjAr: s.safewebCnpjAr ?? undefined };
+  if (!s?.safewebUsername || !s?.safewebPassword) return null;
+  // Use homologation URL when ambiente = "homologacao", otherwise production URL
+  const url = (s.safewebAmbiente === "homologacao" ? s.safewebUrlHomologacao : s.safewebUrl) ?? s.safewebUrl;
+  if (!url) return null;
+  return {
+    url,
+    username: s.safewebUsername,
+    password: s.safewebPassword,
+    cnpjAr: s.safewebCnpjAr ?? undefined,
+    codigoParceiro: s.safewebCodigoParceiro ?? undefined,
+    siteUrl: s.siteUrl ?? undefined,
+  };
 }
 
 export async function swAutoComprar(orderId: number): Promise<void> {
@@ -69,11 +79,19 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     CEP: (order.addressZipcode ?? "").replace(/\D/g, ""),
   };
 
+  // UrlSolicitacao — URL para receber notificações de eventos da Safeweb
+  // A Safeweb fará POST para esta URL quando o status da solicitação mudar
+  const urlSolicitacao = sw.siteUrl
+    ? `${sw.siteUrl.replace(/\/$/, "")}/api/safeweb/eventos/webhook`
+    : undefined;
+
   const body: Record<string, unknown> = {
     CnpjAR: sw.cnpjAr ?? "",
     idProduto: safewebIdProduto,
     Contato: contato,
     Endereco: endereco,
+    ...(sw.codigoParceiro ? { CodigoParceiro: sw.codigoParceiro } : {}),
+    ...(urlSolicitacao ? { UrlSolicitacao: urlSolicitacao } : {}),
   };
 
   if (isCnpj) {
@@ -81,10 +99,14 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     body.RazaoSocial = order.companyName ?? order.customerName;
     body.NomeFantasia = order.companyName ? order.customerName : "";
     body.Nome = order.customerName;
-    body.CPF = ""; // será preenchido pelo operador se necessário
+    // CPF do responsável pode ser preenchido pelo operador se necessário
   } else {
     body.Nome = order.customerName;
     body.CPF = order.customerCpfCnpj;
+    // DataNascimento obrigatória para e-CPF (PF)
+    if (order.customerBirthDate) {
+      body.DataNascimento = order.customerBirthDate; // ISO format: YYYY-MM-DD
+    }
   }
 
   try {

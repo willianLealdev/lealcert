@@ -32,9 +32,12 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     garFormaPagamento: s.garFormaPagamento ?? "11",
     garPreferirVideoconferencia: s.garPreferirVideoconferencia ?? "1",
     safewebUrl: s.safewebUrl,
+    safewebUrlHomologacao: s.safewebUrlHomologacao,
+    safewebAmbiente: s.safewebAmbiente ?? "producao",
     safewebUsername: s.safewebUsername,
     safewebPassword: s.safewebPassword,
     safewebCnpjAr: s.safewebCnpjAr,
+    safewebCodigoParceiro: s.safewebCodigoParceiro,
     activeProvider: s.activeProvider ?? "gestaoar",
     evolutionUrl: s.evolutionUrl,
     evolutionApiKey: s.evolutionApiKey,
@@ -54,7 +57,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     appName, mpAccessToken, mpPublicKey, webhookSecret, mailFrom, siteUrl,
     scheduleOpenDays, scheduleOpenHour, scheduleCloseHour, scheduleStepMin, scheduleClosedDates,
     garApiKey, garHashVendedor, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
-    safewebUrl, safewebUsername, safewebPassword, safewebCnpjAr, activeProvider,
+    safewebUrl, safewebUrlHomologacao, safewebAmbiente, safewebUsername, safewebPassword, safewebCnpjAr, safewebCodigoParceiro, activeProvider,
     evolutionUrl, evolutionApiKey, evolutionInstance,
   } = req.body ?? {};
 
@@ -76,9 +79,12 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (garFormaPagamento !== undefined) updates.garFormaPagamento = garFormaPagamento;
   if (garPreferirVideoconferencia !== undefined) updates.garPreferirVideoconferencia = garPreferirVideoconferencia;
   if (safewebUrl !== undefined) updates.safewebUrl = safewebUrl;
+  if (safewebUrlHomologacao !== undefined) updates.safewebUrlHomologacao = safewebUrlHomologacao;
+  if (safewebAmbiente !== undefined) updates.safewebAmbiente = safewebAmbiente;
   if (safewebUsername !== undefined) updates.safewebUsername = safewebUsername;
   if (safewebPassword !== undefined) updates.safewebPassword = safewebPassword;
   if (safewebCnpjAr !== undefined) updates.safewebCnpjAr = safewebCnpjAr;
+  if (safewebCodigoParceiro !== undefined) updates.safewebCodigoParceiro = safewebCodigoParceiro;
   if (activeProvider !== undefined) updates.activeProvider = activeProvider;
   if (evolutionUrl !== undefined) updates.evolutionUrl = evolutionUrl;
   if (evolutionApiKey !== undefined) updates.evolutionApiKey = evolutionApiKey;
