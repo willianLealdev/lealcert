@@ -673,17 +673,35 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#0f172a] text-white py-10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="LealCert" className="h-10 w-auto object-contain brightness-0 invert" />
-            <span className="text-gray-400 text-sm">— Certificados Digitais ICP-Brasil</span>
+      <footer className="bg-[#0f172a] text-white pt-10 pb-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="LealCert" className="h-10 w-auto object-contain brightness-0 invert" />
+              <span className="text-gray-400 text-sm">— Certificados Digitais ICP-Brasil</span>
+            </div>
+            <div className="flex items-center gap-6 text-sm text-gray-400">
+              <Link href="/entrar"><span className="hover:text-white transition-colors cursor-pointer">Área do Cliente</span></Link>
+              <a href="mailto:contato@lealcert.com.br" className="hover:text-white transition-colors">Contato</a>
+            </div>
           </div>
-          <div className="flex items-center gap-6 text-sm text-gray-400">
-            <Link href="/entrar"><span className="hover:text-white transition-colors cursor-pointer">Área do Cliente</span></Link>
-            <a href="mailto:contato@lealcert.com.br" className="hover:text-white transition-colors">Contato</a>
+
+          {/* Certifier badge */}
+          <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-gray-500 text-xs order-2 sm:order-1">
+              © {new Date().getFullYear()} LealCert. Todos os direitos reservados.
+            </p>
+            <div className="flex items-center gap-3 order-1 sm:order-2">
+              <span className="text-gray-500 text-xs uppercase tracking-wider">Certificado por</span>
+              <div className="bg-white/5 hover:bg-white/10 transition-colors rounded-lg px-4 py-2 border border-white/10">
+                <img
+                  src="/safeweb-logo.png"
+                  alt="Safeweb — Segurança da Informação"
+                  className="h-7 w-auto object-contain brightness-0 invert opacity-80 hover:opacity-100 transition-opacity"
+                />
+              </div>
+            </div>
           </div>
-          <p className="text-gray-500 text-xs">© {new Date().getFullYear()} LealCert. Todos os direitos reservados.</p>
         </div>
       </footer>
 

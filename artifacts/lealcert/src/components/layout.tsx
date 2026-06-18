@@ -184,6 +184,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
+        {/* Safeweb certifier badge */}
+        {!collapsed && (
+          <div className="px-3 py-2 border-t border-sidebar-border/30">
+            <div className="flex items-center gap-2">
+              <span className="text-sidebar-foreground/30 text-[10px] uppercase tracking-wider whitespace-nowrap">Certificado por</span>
+              <img
+                src="/safeweb-logo.png"
+                alt="Safeweb"
+                className="h-5 w-auto object-contain brightness-0 invert opacity-40"
+              />
+            </div>
+          </div>
+        )}
+
         {/* User footer */}
         <div className="p-2 border-t border-sidebar-border/50 space-y-0.5">
           <Link href="/profile">
