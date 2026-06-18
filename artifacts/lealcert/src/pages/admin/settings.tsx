@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight, CheckCircle2, MessageCircle } from "lucide-react";
+import { Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight, CheckCircle2, MessageCircle, CreditCard } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function MaskedInput({ value, onChange, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> & { value: string; onChange: (v: string) => void }) {
@@ -130,6 +131,12 @@ export default function AdminSettings() {
   const isGarActive = form.activeProvider === "gestaoar";
   const isSwActive = form.activeProvider === "safeweb";
 
+  const SaveButton = () => (
+    <Button type="submit" disabled={update.isPending} size="lg" className="mt-2">
+      {update.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : "Salvar Configurações"}
+    </Button>
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -137,310 +144,297 @@ export default function AdminSettings() {
         <p className="text-muted-foreground">Configure as integrações e dados gerais do sistema.</p>
       </div>
 
-      {/* Provider Toggle */}
-      <Card className="border-2 border-primary/20 bg-primary/5">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <ToggleRight className="h-5 w-5 text-primary" />
-            <CardTitle>Provedor Ativo de Certificação</CardTitle>
-          </div>
-          <CardDescription>
-            Selecione qual sistema será usado para emissão e gestão de certificados digitais. Apenas um pode estar ativo por vez.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => setActiveProvider("gestaoar")}
-              className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isGarActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}
-            >
-              <Link2 className={`h-7 w-7 ${isGarActive ? "text-primary" : "text-muted-foreground"}`} />
-              <span className="font-semibold text-sm">Gestão AR</span>
-              <ProviderBadge active={isGarActive} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveProvider("safeweb")}
-              className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isSwActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}
-            >
-              <ShieldCheck className={`h-7 w-7 ${isSwActive ? "text-primary" : "text-muted-foreground"}`} />
-              <span className="font-semibold text-sm">Safeweb</span>
-              <ProviderBadge active={isSwActive} />
-            </button>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="site" className="space-y-6">
+        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+          <TabsTrigger value="site" className="flex items-center gap-1.5">
+            <Globe className="h-4 w-4" />
+            <span className="hidden sm:inline">Site</span>
+          </TabsTrigger>
+          <TabsTrigger value="certificado" className="flex items-center gap-1.5">
+            <ShieldCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Certificado</span>
+          </TabsTrigger>
+          <TabsTrigger value="pagamento" className="flex items-center gap-1.5">
+            <CreditCard className="h-4 w-4" />
+            <span className="hidden sm:inline">Pagamento</span>
+          </TabsTrigger>
+          <TabsTrigger value="whatsapp" className="flex items-center gap-1.5">
+            <MessageCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">WhatsApp</span>
+          </TabsTrigger>
+        </TabsList>
 
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
-        {/* General */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-primary" />
-              <CardTitle>Configurações Gerais</CardTitle>
-            </div>
-            <CardDescription>Informações básicas da plataforma.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nome da Plataforma</Label>
-              <Input value={form.appName} onChange={e => set("appName", e.target.value)} placeholder="LealCert" />
-            </div>
-            <div className="space-y-2">
-              <Label>URL do Site (para redirects de pagamento)</Label>
-              <Input type="url" value={form.siteUrl} onChange={e => set("siteUrl", e.target.value)} placeholder="https://lealcert.com.br" />
-            </div>
-            <div className="space-y-2">
-              <Label>E-mail de envio</Label>
-              <Input type="email" value={form.mailFrom} onChange={e => set("mailFrom", e.target.value)} placeholder="noreply@lealcert.com.br" />
-            </div>
-          </CardContent>
-        </Card>
+        {/* ── ABA: SITE ───────────────────────────────────────────────────────── */}
+        <TabsContent value="site">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-primary" />
+                  <CardTitle>Configurações do Site</CardTitle>
+                </div>
+                <CardDescription>Informações básicas da plataforma e dados de contato.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Nome da Plataforma</Label>
+                  <Input value={form.appName} onChange={e => set("appName", e.target.value)} placeholder="LealCert" />
+                </div>
+                <div className="space-y-2">
+                  <Label>URL do Site</Label>
+                  <Input type="url" value={form.siteUrl} onChange={e => set("siteUrl", e.target.value)} placeholder="https://lealcert.com.br" />
+                  <p className="text-xs text-muted-foreground">Usada para redirects de pagamento e callbacks de webhook.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>E-mail de envio</Label>
+                  <Input type="email" value={form.mailFrom} onChange={e => set("mailFrom", e.target.value)} placeholder="noreply@lealcert.com.br" />
+                </div>
+              </CardContent>
+            </Card>
+            <SaveButton />
+          </form>
+        </TabsContent>
 
-        {/* MercadoPago */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              <CardTitle>MercadoPago</CardTitle>
-            </div>
-            <CardDescription>
-              Credenciais para processamento de pagamentos via MercadoPago.
-              Acesse <a href="https://www.mercadopago.com.br/developers/pt/docs" target="_blank" rel="noopener noreferrer" className="text-primary underline">mercadopago.com.br/developers</a> para obter suas chaves.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Access Token</Label>
-              <MaskedInput value={form.mpAccessToken} onChange={v => set("mpAccessToken", v)} placeholder="APP_USR-..." />
-              <p className="text-xs text-muted-foreground">Usado para criar preferências de pagamento no servidor.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Public Key</Label>
-              <MaskedInput value={form.mpPublicKey} onChange={v => set("mpPublicKey", v)} placeholder="APP_USR-..." />
-              <p className="text-xs text-muted-foreground">Usado no checkout do lado do cliente.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Webhook Secret</Label>
-              <MaskedInput value={form.webhookSecret} onChange={v => set("webhookSecret", v)} placeholder="Chave secreta para verificar notificações" />
-              <p className="text-xs text-muted-foreground">
-                Configure o webhook no painel do MercadoPago apontando para:{" "}
-                <code className="bg-muted px-1 rounded text-xs">{form.siteUrl || "[siteUrl]"}/api/mp/webhook</code>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* ── ABA: CERTIFICADO ────────────────────────────────────────────────── */}
+        <TabsContent value="certificado">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+            {/* Seletor de Provedor */}
+            <Card className="border-2 border-primary/20 bg-primary/5">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <ToggleRight className="h-5 w-5 text-primary" />
+                  <CardTitle>Provedor Ativo de Certificação</CardTitle>
+                </div>
+                <CardDescription>
+                  Selecione qual sistema será usado para emissão e gestão de certificados digitais. Apenas um pode estar ativo por vez.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveProvider("gestaoar")}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isGarActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}
+                  >
+                    <Link2 className={`h-7 w-7 ${isGarActive ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className="font-semibold text-sm">Gestão AR</span>
+                    <ProviderBadge active={isGarActive} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveProvider("safeweb")}
+                    className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isSwActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}
+                  >
+                    <ShieldCheck className={`h-7 w-7 ${isSwActive ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className="font-semibold text-sm">Safeweb</span>
+                    <ProviderBadge active={isSwActive} />
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Gestão AR */}
-        {isGarActive && <Card className="ring-2 ring-primary/30">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Link2 className="h-5 w-5 text-primary" />
-                <CardTitle>Gestão AR — Integração</CardTitle>
-              </div>
-              <ProviderBadge active={isGarActive} />
-            </div>
-            <CardDescription>
-              Credenciais e preferências para integração com a plataforma Gestão AR.
-              Obtenha suas chaves em <a href="https://gestaoar.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">gestaoar.com.br</a>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>API Key</Label>
-              <MaskedInput value={form.garApiKey} onChange={v => set("garApiKey", v)} placeholder="Chave de API fornecida pela Gestão AR" />
-              <p className="text-xs text-muted-foreground">Enviada em todas as requisições à API GAR.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Hash do Vendedor</Label>
-              <MaskedInput value={form.garHashVendedor} onChange={v => set("garHashVendedor", v)} placeholder="Hash do vendedor/AR na plataforma GAR" />
-            </div>
-            <div className="space-y-2">
-              <Label>Hash da Tabela de Preços</Label>
-              <MaskedInput value={form.garHashTabela} onChange={v => set("garHashTabela", v)} placeholder="Hash da tabela de preços configurada no GAR" />
-            </div>
-            <div className="space-y-2">
-              <Label>Forma de Pagamento Padrão</Label>
-              <Select value={form.garFormaPagamento} onValueChange={v => set("garFormaPagamento", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="11">11 — Pagamento no Local</SelectItem>
-                  <SelectItem value="1">1 — Boleto Bancário</SelectItem>
-                  <SelectItem value="2">2 — Cartão de Crédito</SelectItem>
-                  <SelectItem value="3">3 — Transferência/PIX</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">"Pagamento no Local" (11) é o padrão pois o pagamento já é processado via MercadoPago.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Preferir Videoconferência</Label>
-              <Select value={form.garPreferirVideoconferencia} onValueChange={v => set("garPreferirVideoconferencia", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Sim — priorizar agendamento por videoconferência</SelectItem>
-                  <SelectItem value="0">Não — usar locais presenciais</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>}
+            {/* Gestão AR */}
+            {isGarActive && (
+              <Card className="ring-2 ring-primary/30">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Link2 className="h-5 w-5 text-primary" />
+                      <CardTitle>Gestão AR — Integração</CardTitle>
+                    </div>
+                    <ProviderBadge active={isGarActive} />
+                  </div>
+                  <CardDescription>
+                    Credenciais e preferências para integração com a plataforma Gestão AR.
+                    Obtenha suas chaves em <a href="https://gestaoar.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">gestaoar.com.br</a>.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>API Key</Label>
+                    <MaskedInput value={form.garApiKey} onChange={v => set("garApiKey", v)} placeholder="Chave de API fornecida pela Gestão AR" />
+                    <p className="text-xs text-muted-foreground">Enviada em todas as requisições à API GAR.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Hash do Vendedor</Label>
+                    <MaskedInput value={form.garHashVendedor} onChange={v => set("garHashVendedor", v)} placeholder="Hash do vendedor/AR na plataforma GAR" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Hash da Tabela de Preços</Label>
+                    <MaskedInput value={form.garHashTabela} onChange={v => set("garHashTabela", v)} placeholder="Hash da tabela de preços configurada no GAR" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Forma de Pagamento Padrão</Label>
+                    <Select value={form.garFormaPagamento} onValueChange={v => set("garFormaPagamento", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="11">11 — Pagamento no Local</SelectItem>
+                        <SelectItem value="1">1 — Boleto Bancário</SelectItem>
+                        <SelectItem value="2">2 — Cartão de Crédito</SelectItem>
+                        <SelectItem value="3">3 — Transferência/PIX</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">"Pagamento no Local" (11) é o padrão pois o pagamento já é processado via MercadoPago.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Preferir Videoconferência</Label>
+                    <Select value={form.garPreferirVideoconferencia} onValueChange={v => set("garPreferirVideoconferencia", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Sim — priorizar agendamento por videoconferência</SelectItem>
+                        <SelectItem value="0">Não — usar locais presenciais</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Safeweb */}
-        {isSwActive && <Card className="ring-2 ring-primary/30">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-primary" />
-                <CardTitle>Safeweb — Integração</CardTitle>
-              </div>
-              <ProviderBadge active={isSwActive} />
-            </div>
-            <CardDescription>
-              Credenciais para integração com a API Safeweb. Documentação em{" "}
-              <a href="https://developers.safeweb.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">developers.safeweb.com.br</a>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Ambiente */}
-            <div className="space-y-2">
-              <Label>Ambiente</Label>
-              <Select value={form.safewebAmbiente} onValueChange={v => set("safewebAmbiente", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="producao">Produção — developers.safeweb.com.br</SelectItem>
-                  <SelectItem value="homologacao">Homologação — h-acsafeweb.safewebpss.com.br</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Selecione o ambiente ativo. O sistema usará automaticamente a URL correspondente.
-              </p>
-            </div>
+            {/* Safeweb */}
+            {isSwActive && (
+              <Card className="ring-2 ring-primary/30">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-5 w-5 text-primary" />
+                      <CardTitle>Safeweb — Integração</CardTitle>
+                    </div>
+                    <ProviderBadge active={isSwActive} />
+                  </div>
+                  <CardDescription>
+                    Credenciais para integração com a API Safeweb. Documentação em{" "}
+                    <a href="https://developers.safeweb.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">developers.safeweb.com.br</a>.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Ambiente</Label>
+                    <Select value={form.safewebAmbiente} onValueChange={v => set("safewebAmbiente", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="producao">Produção — developers.safeweb.com.br</SelectItem>
+                        <SelectItem value="homologacao">Homologação — h-acsafeweb.safewebpss.com.br</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">O sistema usará automaticamente a URL correspondente ao ambiente selecionado.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>URL — Produção</Label>
+                    <Input value={form.safewebUrl} onChange={e => set("safewebUrl", e.target.value)} placeholder="https://acsafeweb.safewebpss.com.br" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>URL — Homologação</Label>
+                    <Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://h-acsafeweb.safewebpss.com.br" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Usuário</Label>
+                    <Input value={form.safewebUsername} onChange={e => set("safewebUsername", e.target.value)} placeholder="Usuário fornecido pela Safeweb" autoComplete="off" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Senha</Label>
+                    <MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Senha fornecida pela Safeweb" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>CNPJ da AR</Label>
+                    <Input value={form.safewebCnpjAr} onChange={e => set("safewebCnpjAr", e.target.value)} placeholder="00000000000000" />
+                    <p className="text-xs text-muted-foreground">CNPJ da sua Autoridade de Registro cadastrada na Safeweb.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Código do Parceiro <span className="text-destructive font-semibold">*</span></Label>
+                    <Input value={form.safewebCodigoParceiro} onChange={e => set("safewebCodigoParceiro", e.target.value)} placeholder="Código fornecido pela Safeweb ao cadastrar como parceiro integrador" />
+                    <p className="text-xs text-muted-foreground">Campo <strong>obrigatório</strong> pela API Safeweb (<code>CodigoParceiro</code>). Obtido no contrato de parceria.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={testingAuth || !(form.safewebAmbiente === "homologacao" ? form.safewebUrlHomologacao : form.safewebUrl) || !form.safewebUsername || !form.safewebPassword}
+                    onClick={testSafewebAuth}
+                  >
+                    {testingAuth ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testando...</> : `Testar Conexão (${form.safewebAmbiente === "homologacao" ? "Homologação" : "Produção"})`}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
-            {/* URL Produção */}
-            <div className="space-y-2">
-              <Label>URL — Produção</Label>
-              <Input
-                value={form.safewebUrl}
-                onChange={e => set("safewebUrl", e.target.value)}
-                placeholder="https://acsafeweb.safewebpss.com.br"
-              />
-              <p className="text-xs text-muted-foreground">
-                URL fornecida pela Safeweb para o ambiente de produção.
-                Documentação: <a href="https://developers.safeweb.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">developers.safeweb.com.br</a>
-              </p>
-            </div>
+            <SaveButton />
+          </form>
+        </TabsContent>
 
-            {/* URL Homologação */}
-            <div className="space-y-2">
-              <Label>URL — Homologação</Label>
-              <Input
-                value={form.safewebUrlHomologacao}
-                onChange={e => set("safewebUrlHomologacao", e.target.value)}
-                placeholder="https://h-acsafeweb.safewebpss.com.br"
-              />
-              <p className="text-xs text-muted-foreground">
-                URL do ambiente de testes/homologação.
-                Documentação: <a href="https://h-acsafeweb.safewebpss.com.br/hotsite/documentacao-safeweb/home" target="_blank" rel="noopener noreferrer" className="text-primary underline">documentação de homologação</a>
-              </p>
-            </div>
+        {/* ── ABA: PAGAMENTO ──────────────────────────────────────────────────── */}
+        <TabsContent value="pagamento">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-primary" />
+                  <CardTitle>MercadoPago</CardTitle>
+                </div>
+                <CardDescription>
+                  Credenciais para processamento de pagamentos via MercadoPago.
+                  Acesse <a href="https://www.mercadopago.com.br/developers/pt/docs" target="_blank" rel="noopener noreferrer" className="text-primary underline">mercadopago.com.br/developers</a> para obter suas chaves.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Access Token</Label>
+                  <MaskedInput value={form.mpAccessToken} onChange={v => set("mpAccessToken", v)} placeholder="APP_USR-..." />
+                  <p className="text-xs text-muted-foreground">Usado para criar preferências de pagamento no servidor.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Public Key</Label>
+                  <MaskedInput value={form.mpPublicKey} onChange={v => set("mpPublicKey", v)} placeholder="APP_USR-..." />
+                  <p className="text-xs text-muted-foreground">Usado no checkout do lado do cliente.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Webhook Secret</Label>
+                  <MaskedInput value={form.webhookSecret} onChange={v => set("webhookSecret", v)} placeholder="Chave secreta para verificar notificações" />
+                  <p className="text-xs text-muted-foreground">
+                    Configure o webhook no painel do MercadoPago apontando para:{" "}
+                    <code className="bg-muted px-1 rounded text-xs">{form.siteUrl || "[siteUrl]"}/api/mp/webhook</code>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            <SaveButton />
+          </form>
+        </TabsContent>
 
-            {/* Usuário */}
-            <div className="space-y-2">
-              <Label>Usuário</Label>
-              <Input
-                value={form.safewebUsername}
-                onChange={e => set("safewebUsername", e.target.value)}
-                placeholder="Usuário fornecido pela Safeweb"
-                autoComplete="off"
-              />
-            </div>
-
-            {/* Senha */}
-            <div className="space-y-2">
-              <Label>Senha</Label>
-              <MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Senha fornecida pela Safeweb" />
-            </div>
-
-            {/* CNPJ AR */}
-            <div className="space-y-2">
-              <Label>CNPJ da AR</Label>
-              <Input
-                value={form.safewebCnpjAr}
-                onChange={e => set("safewebCnpjAr", e.target.value)}
-                placeholder="00000000000000"
-              />
-              <p className="text-xs text-muted-foreground">CNPJ da sua Autoridade de Registro cadastrada na Safeweb.</p>
-            </div>
-
-            {/* Código do Parceiro */}
-            <div className="space-y-2">
-              <Label>Código do Parceiro <span className="text-destructive font-semibold">*</span></Label>
-              <Input
-                value={form.safewebCodigoParceiro}
-                onChange={e => set("safewebCodigoParceiro", e.target.value)}
-                placeholder="Código fornecido pela Safeweb ao cadastrar como parceiro integrador"
-              />
-              <p className="text-xs text-muted-foreground">
-                Campo <strong>obrigatório</strong> pela API Safeweb (campo <code>CodigoParceiro</code>). Obtido no contrato de parceria com a Safeweb.
-              </p>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={testingAuth || !(form.safewebAmbiente === "homologacao" ? form.safewebUrlHomologacao : form.safewebUrl) || !form.safewebUsername || !form.safewebPassword}
-              onClick={testSafewebAuth}
-            >
-              {testingAuth ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testando...</> : `Testar Conexão (${form.safewebAmbiente === "homologacao" ? "Homologação" : "Produção"})`}
-            </Button>
-          </CardContent>
-        </Card>}
-
-        {/* Evolution API — WhatsApp */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5 text-primary" />
-              <CardTitle>WhatsApp — Evolution API</CardTitle>
-            </div>
-            <CardDescription>
-              Integração com Evolution API para envio de notificações via WhatsApp.
-              Configure sua instância em <a href="https://evolution-api.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">evolution-api.com</a>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>URL da Evolution API</Label>
-              <Input
-                value={form.evolutionUrl}
-                onChange={e => set("evolutionUrl", e.target.value)}
-                placeholder="https://evolution.seudominio.com.br"
-              />
-              <p className="text-xs text-muted-foreground">URL base da sua instância Evolution API.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>API Key</Label>
-              <MaskedInput value={form.evolutionApiKey} onChange={v => set("evolutionApiKey", v)} placeholder="Chave de autenticação da API" />
-            </div>
-            <div className="space-y-2">
-              <Label>Nome da Instância</Label>
-              <Input
-                value={form.evolutionInstance}
-                onChange={e => set("evolutionInstance", e.target.value)}
-                placeholder="lealcert"
-              />
-              <p className="text-xs text-muted-foreground">Nome da instância configurada na Evolution API.</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Button type="submit" disabled={update.isPending} size="lg">
-          {update.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : "Salvar Configurações"}
-        </Button>
-      </form>
+        {/* ── ABA: WHATSAPP ───────────────────────────────────────────────────── */}
+        <TabsContent value="whatsapp">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                  <CardTitle>WhatsApp — Evolution API</CardTitle>
+                </div>
+                <CardDescription>
+                  Integração com Evolution API para envio de notificações via WhatsApp.
+                  Configure sua instância em <a href="https://evolution-api.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">evolution-api.com</a>.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>URL da Evolution API</Label>
+                  <Input value={form.evolutionUrl} onChange={e => set("evolutionUrl", e.target.value)} placeholder="https://evolution.seudominio.com.br" />
+                  <p className="text-xs text-muted-foreground">URL base da sua instância Evolution API.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>API Key</Label>
+                  <MaskedInput value={form.evolutionApiKey} onChange={v => set("evolutionApiKey", v)} placeholder="Chave de autenticação da API" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nome da Instância</Label>
+                  <Input value={form.evolutionInstance} onChange={e => set("evolutionInstance", e.target.value)} placeholder="lealcert" />
+                  <p className="text-xs text-muted-foreground">Nome da instância configurada na Evolution API.</p>
+                </div>
+              </CardContent>
+            </Card>
+            <SaveButton />
+          </form>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
