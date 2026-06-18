@@ -18,10 +18,12 @@ import renewalsRouter from "./renewals";
 import cnpjLookupRouter from "./cnpj-lookup";
 import couponsRouter from "./coupons";
 import brandingRouter from "./branding";
+import pushRouter from "./push";
 
 const router: IRouter = Router();
 
 router.use(brandingRouter);
+router.use(pushRouter);
 router.use(healthRouter);
 router.use(mpWebhookRouter);
 router.use(chatRouter);

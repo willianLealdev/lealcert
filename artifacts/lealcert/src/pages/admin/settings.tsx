@@ -8,8 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight,
-  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send,
+  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff,
 } from "lucide-react";
+import { useSendTestPush } from "@workspace/api-client-react";
+import { usePush } from "@/lib/use-push";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function MaskedInput({ value, onChange, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> & { value: string; onChange: (v: string) => void }) {
@@ -49,6 +51,19 @@ export default function AdminSettings() {
   const [testingAuth, setTestingAuth] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState("");
 
+  const push = usePush();
+
+  const testPushMutation = useSendTestPush({
+    mutation: {
+      onSuccess: (d) => {
+        const data = d as { ok?: boolean; error?: string };
+        if (data.ok) toast({ title: "✅ Notificação de teste enviada!" });
+        else toast({ title: "Falha", description: data.error, variant: "destructive" });
+      },
+      onError: (e: unknown) => toast({ title: "Erro", description: (e as Error)?.message, variant: "destructive" }),
+    },
+  });
+
   const [form, setForm] = useState({
     appName: "",
     siteUrl: "",
@@ -82,6 +97,9 @@ export default function AdminSettings() {
     smtpPortDb: "587",
     smtpUserDb: "",
     smtpPassDb: "",
+    vapidSubject: "mailto:contato@lealcert.com.br",
+    vapidPublicKey: "",
+    vapidPrivateKey: "",
   });
 
   useEffect(() => {
@@ -94,6 +112,7 @@ export default function AdminSettings() {
         safewebCodigoParceiro?: string;
         evolutionUrl?: string; evolutionApiKey?: string; evolutionInstance?: string;
         smtpHostDb?: string; smtpPortDb?: string; smtpUserDb?: string; smtpPassDb?: string;
+        vapidSubject?: string; vapidPublicKey?: string; vapidPrivateKey?: string;
       };
       setForm({
         appName: s.appName ?? "",
@@ -128,6 +147,9 @@ export default function AdminSettings() {
         smtpPortDb: s.smtpPortDb ?? "587",
         smtpUserDb: s.smtpUserDb ?? "",
         smtpPassDb: s.smtpPassDb ?? "",
+        vapidSubject: s.vapidSubject ?? "mailto:contato@lealcert.com.br",
+        vapidPublicKey: s.vapidPublicKey ?? "",
+        vapidPrivateKey: s.vapidPrivateKey ?? "",
       });
     }
   }, [settings]);
@@ -217,6 +239,9 @@ export default function AdminSettings() {
           </TabsTrigger>
           <TabsTrigger value="whatsapp" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <MessageCircle className="h-4 w-4" /><span>WhatsApp</span>
+          </TabsTrigger>
+          <TabsTrigger value="notificacoes" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Bell className="h-4 w-4" /><span>Notificações</span>
           </TabsTrigger>
         </TabsList>
 
@@ -649,6 +674,145 @@ export default function AdminSettings() {
             </Card>
             <SaveButton />
           </form>
+        </TabsContent>
+
+        {/* ── NOTIFICAÇÕES ────────────────────────────────────────────────── */}
+        <TabsContent value="notificacoes">
+          <div className="space-y-6 max-w-2xl">
+            {/* VAPID Keys form */}
+            <form onSubmit={handleSubmit}>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-primary" />
+                    <CardTitle>Web Push — Chaves VAPID</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Credenciais VAPID para envio de notificações push quando o app está instalado no celular ou computador do cliente.
+                    Cada instalação (cliente) deve ter suas próprias chaves.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Subject (contato)</Label>
+                    <Input value={form.vapidSubject} onChange={e => set("vapidSubject", e.target.value)} placeholder="mailto:contato@seudominio.com.br" />
+                    <p className="text-xs text-muted-foreground">Endereço de e-mail ou URL para contato sobre este servidor VAPID.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Chave Pública (Public Key)</Label>
+                    <Input
+                      value={form.vapidPublicKey}
+                      onChange={e => set("vapidPublicKey", e.target.value)}
+                      placeholder="BO--ilvprE2wgaeL..."
+                      className="font-mono text-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">Chave pública VAPID — usada no frontend para criar a inscrição push.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Chave Privada (Private Key)</Label>
+                    <MaskedInput
+                      value={form.vapidPrivateKey}
+                      onChange={v => set("vapidPrivateKey", v)}
+                      placeholder="asu5usN0r9cxl..."
+                    />
+                    <p className="text-xs text-muted-foreground">Chave privada VAPID — mantida em segredo no servidor, nunca exposta ao cliente.</p>
+                  </div>
+
+                  <div className="rounded-lg bg-muted/50 border p-4 text-sm space-y-2">
+                    <p className="font-semibold text-sm">Como gerar novas chaves VAPID</p>
+                    <p className="text-muted-foreground text-xs">Execute no terminal do servidor:</p>
+                    <code className="block bg-background border rounded p-2 text-xs font-mono select-all">
+                      npx web-push generate-vapid-keys
+                    </code>
+                    <p className="text-xs text-muted-foreground">
+                      Cole as chaves geradas nos campos acima. Cada cliente AR deve ter seu próprio par de chaves.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Button type="submit" disabled={update.isPending} size="lg" className="mt-4">
+                {update.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : "Salvar Chaves VAPID"}
+              </Button>
+            </form>
+
+            {/* Push permission + test */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Testar Notificações neste Dispositivo</CardTitle>
+                <CardDescription>
+                  Ative as notificações neste navegador/app e envie uma mensagem de teste para verificar se tudo está funcionando.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!push.supported && (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                    ⚠️ Este navegador não suporta notificações push. Tente no Chrome, Edge ou Safari (iOS 16.4+).
+                  </div>
+                )}
+                {push.supported && (
+                  <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="flex items-center gap-3">
+                      {push.subscribed
+                        ? <Bell className="h-5 w-5 text-emerald-600" />
+                        : <BellOff className="h-5 w-5 text-muted-foreground" />
+                      }
+                      <div>
+                        <p className="font-medium text-sm">
+                          {push.subscribed ? "Notificações ativas neste dispositivo" : "Notificações desativadas"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {push.permission === "denied"
+                            ? "Permissão bloqueada pelo navegador. Altere nas configurações do site."
+                            : push.subscribed
+                            ? "Você receberá alertas mesmo com o app fechado."
+                            : "Clique para ativar e receber alertas de pagamento."}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant={push.subscribed ? "outline" : "default"}
+                      size="sm"
+                      disabled={push.loading || push.permission === "denied"}
+                      onClick={() => push.subscribed ? push.unsubscribe() : push.subscribe()}
+                    >
+                      {push.loading
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : push.subscribed ? "Desativar" : "Ativar"}
+                    </Button>
+                  </div>
+                )}
+                {push.error && (
+                  <p className="text-sm text-destructive">{push.error}</p>
+                )}
+                {push.subscribed && form.vapidPublicKey && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={testPushMutation.isPending}
+                    onClick={() => testPushMutation.mutate({ data: { title: "Teste LealCert 🔔", body: "Notificações push estão funcionando corretamente!" } })}
+                  >
+                    {testPushMutation.isPending
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</>
+                      : <><Send className="h-4 w-4 mr-2" />Enviar notificação de teste</>}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* How it works */}
+            <Card className="border-blue-200 bg-blue-50/50">
+              <CardHeader>
+                <CardTitle className="text-base text-blue-900">Como funciona</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-blue-800 space-y-2">
+                <div className="flex gap-2"><span className="font-bold shrink-0">1.</span><span>O cliente instala o app (botão "Adicionar à tela inicial" no celular) e aceita as notificações.</span></div>
+                <div className="flex gap-2"><span className="font-bold shrink-0">2.</span><span>Quando o pagamento é confirmado no MercadoPago, o sistema dispara automaticamente uma notificação push para o celular do cliente.</span></div>
+                <div className="flex gap-2"><span className="font-bold shrink-0">3.</span><span>O cliente toca na notificação e é levado diretamente para o pedido no app.</span></div>
+                <div className="flex gap-2"><span className="font-bold shrink-0">4.</span><span>Para personalizar com as chaves do seu cliente AR, gere um novo par VAPID e salve acima.</span></div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

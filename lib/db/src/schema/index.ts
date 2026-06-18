@@ -10,3 +10,4 @@ export * from "./coupons";
 export * from "./marketing";
 export * from "./conversations";
 export * from "./messages";
+export * from "./push-subscriptions";

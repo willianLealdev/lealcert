@@ -1339,6 +1339,85 @@ paths:
               schema:
                 $ref: "#/components/schemas/GarComprarResult"
 
+  /push/public-key:
+    get:
+      operationId: getPushPublicKey
+      tags: [settings]
+      summary: Get VAPID public key for push subscription
+      responses:
+        "200":
+          description: Public key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushVapidPublicKey"
+
+  /push/subscribe:
+    post:
+      operationId: subscribePush
+      tags: [settings]
+      summary: Save a push subscription (authenticated)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscribeBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /push/unsubscribe:
+    post:
+      operationId: unsubscribePush
+      tags: [settings]
+      summary: Remove a push subscription (authenticated)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushUnsubscribeBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /push/test:
+    post:
+      operationId: sendTestPush
+      tags: [settings]
+      summary: Send a test push notification (admin only)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTestBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
   /branding:
     get:
       operationId: getBranding
@@ -2629,6 +2708,12 @@ components:
           type: ["string", "null"]
         smtpPassDb:
           type: ["string", "null"]
+        vapidSubject:
+          type: ["string", "null"]
+        vapidPublicKey:
+          type: ["string", "null"]
+        vapidPrivateKey:
+          type: ["string", "null"]
         updatedAt:
           type: string
 
@@ -2708,6 +2793,49 @@ components:
         smtpUserDb:
           type: string
         smtpPassDb:
+          type: string
+        vapidSubject:
+          type: string
+        vapidPublicKey:
+          type: string
+        vapidPrivateKey:
+          type: string
+
+    PushSubscribeBody:
+      type: object
+      required: [endpoint, keys]
+      properties:
+        endpoint:
+          type: string
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh:
+              type: string
+            auth:
+              type: string
+
+    PushVapidPublicKey:
+      type: object
+      required: [publicKey]
+      properties:
+        publicKey:
+          type: string
+
+    PushUnsubscribeBody:
+      type: object
+      required: [endpoint]
+      properties:
+        endpoint:
+          type: string
+
+    PushTestBody:
+      type: object
+      properties:
+        title:
+          type: string
+        body:
           type: string
 
     GarProduto:

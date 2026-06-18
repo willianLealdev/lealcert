@@ -1297,6 +1297,55 @@ export const GarComprarOrderResponse = zod.object({
 
 
 /**
+ * @summary Get VAPID public key for push subscription
+ */
+export const GetPushPublicKeyResponse = zod.object({
+  "publicKey": zod.string()
+})
+
+
+/**
+ * @summary Save a push subscription (authenticated)
+ */
+export const SubscribePushBody = zod.object({
+  "endpoint": zod.string(),
+  "keys": zod.object({
+  "p256dh": zod.string(),
+  "auth": zod.string()
+})
+})
+
+export const SubscribePushResponse = zod.object({
+  "ok": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Remove a push subscription (authenticated)
+ */
+export const UnsubscribePushBody = zod.object({
+  "endpoint": zod.string()
+})
+
+export const UnsubscribePushResponse = zod.object({
+  "ok": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Send a test push notification (admin only)
+ */
+export const SendTestPushBody = zod.object({
+  "title": zod.string().optional(),
+  "body": zod.string().optional()
+})
+
+export const SendTestPushResponse = zod.object({
+  "ok": zod.boolean().optional()
+})
+
+
+/**
  * @summary Get public branding info (no auth required)
  */
 export const GetBrandingResponse = zod.object({
@@ -1366,6 +1415,9 @@ export const GetSettingsResponse = zod.object({
   "smtpPortDb": zod.string().nullish(),
   "smtpUserDb": zod.string().nullish(),
   "smtpPassDb": zod.string().nullish(),
+  "vapidSubject": zod.string().nullish(),
+  "vapidPublicKey": zod.string().nullish(),
+  "vapidPrivateKey": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 
@@ -1410,7 +1462,10 @@ export const UpdateSettingsBody = zod.object({
   "smtpHostDb": zod.string().optional(),
   "smtpPortDb": zod.string().optional(),
   "smtpUserDb": zod.string().optional(),
-  "smtpPassDb": zod.string().optional()
+  "smtpPassDb": zod.string().optional(),
+  "vapidSubject": zod.string().optional(),
+  "vapidPublicKey": zod.string().optional(),
+  "vapidPrivateKey": zod.string().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -1452,6 +1507,9 @@ export const UpdateSettingsResponse = zod.object({
   "smtpPortDb": zod.string().nullish(),
   "smtpUserDb": zod.string().nullish(),
   "smtpPassDb": zod.string().nullish(),
+  "vapidSubject": zod.string().nullish(),
+  "vapidPublicKey": zod.string().nullish(),
+  "vapidPrivateKey": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 

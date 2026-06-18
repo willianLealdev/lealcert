@@ -72,5 +72,11 @@ export interface AppSettings {
   smtpUserDb?: string | null;
   /** @nullable */
   smtpPassDb?: string | null;
+  /** @nullable */
+  vapidSubject?: string | null;
+  /** @nullable */
+  vapidPublicKey?: string | null;
+  /** @nullable */
+  vapidPrivateKey?: string | null;
   updatedAt?: string;
 }

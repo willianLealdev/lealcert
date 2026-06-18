@@ -575,6 +575,12 @@ export interface AppSettings {
   smtpUserDb?: string | null;
   /** @nullable */
   smtpPassDb?: string | null;
+  /** @nullable */
+  vapidSubject?: string | null;
+  /** @nullable */
+  vapidPublicKey?: string | null;
+  /** @nullable */
+  vapidPrivateKey?: string | null;
   updatedAt?: string;
 }
 
@@ -616,6 +622,32 @@ export interface AppSettingsUpdate {
   smtpPortDb?: string;
   smtpUserDb?: string;
   smtpPassDb?: string;
+  vapidSubject?: string;
+  vapidPublicKey?: string;
+  vapidPrivateKey?: string;
+}
+
+export type PushSubscribeBodyKeys = {
+  p256dh: string;
+  auth: string;
+};
+
+export interface PushSubscribeBody {
+  endpoint: string;
+  keys: PushSubscribeBodyKeys;
+}
+
+export interface PushVapidPublicKey {
+  publicKey: string;
+}
+
+export interface PushUnsubscribeBody {
+  endpoint: string;
+}
+
+export interface PushTestBody {
+  title?: string;
+  body?: string;
 }
 
 export interface GarProduto {
@@ -1307,6 +1339,18 @@ export type GetGarPedidosContador200 = { [key: string]: unknown };
 export type SendRenewalAlert200 = {
   ok?: boolean;
   daysLeft?: number;
+};
+
+export type SubscribePush200 = {
+  ok?: boolean;
+};
+
+export type UnsubscribePush200 = {
+  ok?: boolean;
+};
+
+export type SendTestPush200 = {
+  ok?: boolean;
 };
 
 export type GetAdminStatsParams = {

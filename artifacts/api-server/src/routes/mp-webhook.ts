@@ -12,6 +12,7 @@ import { logger } from "../lib/logger";
 import { garAutoComprar } from "../lib/gar-auto";
 import { swAutoComprar } from "../lib/sw-auto";
 import { notifyOrderStatus } from "../lib/notify";
+import { sendPushToUser } from "../lib/push";
 
 const router = Router();
 
@@ -72,7 +73,17 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
 
     logger.info({ orderId: order.id, orderNumber }, "mp/webhook: pedido marcado como PAGO");
 
-    // 2. Notificar cliente
+    // 2a. Push notification (se app instalado)
+    if (order.userId) {
+      sendPushToUser(order.userId, {
+        title: "💳 Pagamento confirmado!",
+        body: `Pedido ${order.orderNumber} foi pago. Aguarde a emissão do certificado.`,
+        tag: `order-paid-${order.id}`,
+        url: `/orders/${order.id}`,
+      }).catch((err: unknown) => logger.error({ err }, "mp/webhook: erro ao enviar push"));
+    }
+
+    // 2b. Notificar cliente
     notifyOrderStatus({
       to: order.customerEmail,
       phone: order.customerPhone,

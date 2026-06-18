@@ -53,6 +53,9 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     smtpPortDb: s.smtpPortDb ?? "587",
     smtpUserDb: s.smtpUserDb,
     smtpPassDb: s.smtpPassDb,
+    vapidSubject: s.vapidSubject,
+    vapidPublicKey: s.vapidPublicKey,
+    vapidPrivateKey: s.vapidPrivateKey,
     updatedAt: s.updatedAt,
   };
 }
@@ -76,6 +79,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     logoUrl, primaryColor,
     contactPhone, contactWhatsapp, contactEmailSupport, contactAddress,
     smtpHostDb, smtpPortDb, smtpUserDb, smtpPassDb,
+    vapidSubject, vapidPublicKey, vapidPrivateKey,
   } = req.body ?? {};
 
   const u: Record<string, unknown> = {};
@@ -116,6 +120,9 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (smtpPortDb !== undefined) u.smtpPortDb = smtpPortDb;
   if (smtpUserDb !== undefined) u.smtpUserDb = smtpUserDb;
   if (smtpPassDb !== undefined) u.smtpPassDb = smtpPassDb;
+  if (vapidSubject !== undefined) u.vapidSubject = vapidSubject;
+  if (vapidPublicKey !== undefined) u.vapidPublicKey = vapidPublicKey;
+  if (vapidPrivateKey !== undefined) u.vapidPrivateKey = vapidPrivateKey;
 
   const [updated] = await db
     .update(settingsTable)

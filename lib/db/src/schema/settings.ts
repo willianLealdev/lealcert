@@ -48,6 +48,10 @@ export const settingsTable = pgTable("settings", {
   smtpPortDb: text("smtp_port_db").default("587"),
   smtpUserDb: text("smtp_user_db"),
   smtpPassDb: text("smtp_pass_db"),
+  // VAPID (Web Push notifications)
+  vapidSubject: text("vapid_subject"),
+  vapidPublicKey: text("vapid_public_key"),
+  vapidPrivateKey: text("vapid_private_key"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
