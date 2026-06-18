@@ -92,8 +92,8 @@ export default function Orders() {
               <p className="text-sm mt-1">Crie seu primeiro pedido clicando em "Novo Pedido".</p>
             </div>
           ) : (
-            <div className="rounded-md border overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="rounded-md border overflow-hidden overflow-x-auto">
+              <table className="w-full text-sm min-w-[520px]">
                 <thead>
                   <tr className="border-b bg-muted/30">
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Número</th>

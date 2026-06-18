@@ -72,8 +72,8 @@ export default function AdminUsers() {
           {isLoading ? (
             <div className="text-center py-10 text-muted-foreground">Carregando...</div>
           ) : (
-            <div className="rounded-md border overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="rounded-md border overflow-hidden overflow-x-auto">
+              <table className="w-full text-sm min-w-[600px]">
                 <thead>
                   <tr className="border-b bg-muted/30">
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome</th>
