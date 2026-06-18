@@ -51,8 +51,13 @@ app.use(
 
 // ── CORS — only allow known origins ──────────────────────────────────────────
 const allowedOrigins = new Set<string>(["http://localhost:80", "http://localhost:3000"]);
+// Replit deployments
 (process.env.REPLIT_DOMAINS ?? "").split(",").map(d => d.trim()).filter(Boolean).forEach(d => {
   allowedOrigins.add(`https://${d}`);
+});
+// Self-hosted: ALLOWED_ORIGINS=https://lealcert.seudominio.com.br (vírgula para múltiplos)
+(process.env.ALLOWED_ORIGINS ?? "").split(",").map(d => d.trim()).filter(Boolean).forEach(d => {
+  allowedOrigins.add(d);
 });
 
 app.use(

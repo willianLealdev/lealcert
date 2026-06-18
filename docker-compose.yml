@@ -1,0 +1,56 @@
+services:
+
+  # ── Banco de dados PostgreSQL ─────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB:       lealcert
+      POSTGRES_USER:     lealcert
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD é obrigatório}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lealcert"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── API Node.js ───────────────────────────────────────────
+  api:
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV:        production
+      PORT:            8080
+      DATABASE_URL:    postgresql://lealcert:${DB_PASSWORD}@db:5432/lealcert
+      SESSION_SECRET:  ${SESSION_SECRET:?SESSION_SECRET é obrigatório}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
+      # E-mail (opcional — pode configurar no painel admin)
+      SMTP_HOST:       ${SMTP_HOST:-}
+      SMTP_PORT:       ${SMTP_PORT:-587}
+      SMTP_USER:       ${SMTP_USER:-}
+      SMTP_PASS:       ${SMTP_PASS:-}
+      SMTP_FROM:       ${SMTP_FROM:-}
+    volumes:
+      - uploads:/app/artifacts/api-server/uploads
+
+  # ── Nginx (frontend + reverse proxy /api) ─────────────────
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  db_data:
+  uploads:
