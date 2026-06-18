@@ -255,8 +255,14 @@ router.post("/auth/change-password", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/logout", (req, res): void => {
-  req.session.destroy(() => {});
-  res.json({ ok: true });
+  req.session.destroy((err) => {
+    if (err) {
+      res.status(500).json({ error: "Erro ao encerrar sessão." });
+      return;
+    }
+    res.clearCookie("sess");
+    res.json({ ok: true });
+  });
 });
 
 router.get("/auth/me", async (req, res): Promise<void> => {

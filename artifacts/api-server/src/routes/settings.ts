@@ -13,13 +13,25 @@ async function getOrCreateSettings() {
   return s;
 }
 
+/** Mask a secret field: return "***" if set, "" if empty. Never returns actual value. */
+const mask = (v: string | null | undefined) => (v ? "***" : "");
+
 function serializeSettings(s: typeof settingsTable.$inferSelect) {
   return {
     id: s.id,
     appName: s.appName,
-    mpAccessToken: s.mpAccessToken,
-    mpPublicKey: s.mpPublicKey,
-    webhookSecret: s.webhookSecret,
+    // Secrets — masked: show "***" if configured, "" if not
+    mpAccessToken: mask(s.mpAccessToken),
+    mpPublicKey: s.mpPublicKey,                           // public key — safe to expose
+    webhookSecret: mask(s.webhookSecret),
+    garApiKey: mask(s.garApiKey),
+    garHashVendedor: mask(s.garHashVendedor),
+    garHashTabela: mask(s.garHashTabela),
+    safewebPassword: mask(s.safewebPassword),
+    evolutionApiKey: mask(s.evolutionApiKey),
+    smtpPassDb: mask(s.smtpPassDb),
+    vapidPrivateKey: mask(s.vapidPrivateKey),             // crypto private key — never expose
+    // Non-secret fields
     mailFrom: s.mailFrom,
     siteUrl: s.siteUrl,
     scheduleOpenDays: s.scheduleOpenDays ?? "1,2,3,4,5",
@@ -27,21 +39,16 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     scheduleCloseHour: s.scheduleCloseHour ?? "18",
     scheduleStepMin: s.scheduleStepMin ?? "60",
     scheduleClosedDates: s.scheduleClosedDates ?? "",
-    garApiKey: s.garApiKey,
-    garHashVendedor: s.garHashVendedor,
-    garHashTabela: s.garHashTabela,
     garFormaPagamento: s.garFormaPagamento ?? "11",
     garPreferirVideoconferencia: s.garPreferirVideoconferencia ?? "1",
     safewebUrl: s.safewebUrl,
     safewebUrlHomologacao: s.safewebUrlHomologacao,
     safewebAmbiente: s.safewebAmbiente ?? "producao",
     safewebUsername: s.safewebUsername,
-    safewebPassword: s.safewebPassword,
     safewebCnpjAr: s.safewebCnpjAr,
     safewebCodigoParceiro: s.safewebCodigoParceiro,
     activeProvider: s.activeProvider ?? "gestaoar",
     evolutionUrl: s.evolutionUrl,
-    evolutionApiKey: s.evolutionApiKey,
     evolutionInstance: s.evolutionInstance,
     logoUrl: s.logoUrl,
     primaryColor: s.primaryColor ?? "#2563eb",
@@ -52,10 +59,8 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     smtpHostDb: s.smtpHostDb,
     smtpPortDb: s.smtpPortDb ?? "587",
     smtpUserDb: s.smtpUserDb,
-    smtpPassDb: s.smtpPassDb,
     vapidSubject: s.vapidSubject,
     vapidPublicKey: s.vapidPublicKey,
-    vapidPrivateKey: s.vapidPrivateKey,
     updatedAt: s.updatedAt,
   };
 }
@@ -82,11 +87,14 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     vapidSubject, vapidPublicKey, vapidPrivateKey,
   } = req.body ?? {};
 
+  // Helper: skip masked sentinel value (never overwrite a real secret with "***")
+  const set = (key: string, val: unknown) => {
+    if (val !== undefined && val !== "***") u[key] = val;
+  };
+
   const u: Record<string, unknown> = {};
   if (appName !== undefined) u.appName = appName;
-  if (mpAccessToken !== undefined) u.mpAccessToken = mpAccessToken;
   if (mpPublicKey !== undefined) u.mpPublicKey = mpPublicKey;
-  if (webhookSecret !== undefined) u.webhookSecret = webhookSecret;
   if (mailFrom !== undefined) u.mailFrom = mailFrom;
   if (siteUrl !== undefined) u.siteUrl = siteUrl;
   if (scheduleOpenDays !== undefined) u.scheduleOpenDays = scheduleOpenDays;
@@ -94,21 +102,16 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (scheduleCloseHour !== undefined) u.scheduleCloseHour = scheduleCloseHour;
   if (scheduleStepMin !== undefined) u.scheduleStepMin = scheduleStepMin;
   if (scheduleClosedDates !== undefined) u.scheduleClosedDates = scheduleClosedDates;
-  if (garApiKey !== undefined) u.garApiKey = garApiKey;
-  if (garHashVendedor !== undefined) u.garHashVendedor = garHashVendedor;
-  if (garHashTabela !== undefined) u.garHashTabela = garHashTabela;
   if (garFormaPagamento !== undefined) u.garFormaPagamento = garFormaPagamento;
   if (garPreferirVideoconferencia !== undefined) u.garPreferirVideoconferencia = garPreferirVideoconferencia;
   if (safewebUrl !== undefined) u.safewebUrl = safewebUrl;
   if (safewebUrlHomologacao !== undefined) u.safewebUrlHomologacao = safewebUrlHomologacao;
   if (safewebAmbiente !== undefined) u.safewebAmbiente = safewebAmbiente;
   if (safewebUsername !== undefined) u.safewebUsername = safewebUsername;
-  if (safewebPassword !== undefined) u.safewebPassword = safewebPassword;
   if (safewebCnpjAr !== undefined) u.safewebCnpjAr = safewebCnpjAr;
   if (safewebCodigoParceiro !== undefined) u.safewebCodigoParceiro = safewebCodigoParceiro;
   if (activeProvider !== undefined) u.activeProvider = activeProvider;
   if (evolutionUrl !== undefined) u.evolutionUrl = evolutionUrl;
-  if (evolutionApiKey !== undefined) u.evolutionApiKey = evolutionApiKey;
   if (evolutionInstance !== undefined) u.evolutionInstance = evolutionInstance;
   if (logoUrl !== undefined) u.logoUrl = logoUrl;
   if (primaryColor !== undefined) u.primaryColor = primaryColor;
@@ -119,10 +122,18 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (smtpHostDb !== undefined) u.smtpHostDb = smtpHostDb;
   if (smtpPortDb !== undefined) u.smtpPortDb = smtpPortDb;
   if (smtpUserDb !== undefined) u.smtpUserDb = smtpUserDb;
-  if (smtpPassDb !== undefined) u.smtpPassDb = smtpPassDb;
   if (vapidSubject !== undefined) u.vapidSubject = vapidSubject;
   if (vapidPublicKey !== undefined) u.vapidPublicKey = vapidPublicKey;
-  if (vapidPrivateKey !== undefined) u.vapidPrivateKey = vapidPrivateKey;
+  // Sensitive secrets — only update if non-empty and not the masked sentinel "***"
+  set("mpAccessToken", mpAccessToken);
+  set("webhookSecret", webhookSecret);
+  set("garApiKey", garApiKey);
+  set("garHashVendedor", garHashVendedor);
+  set("garHashTabela", garHashTabela);
+  set("safewebPassword", safewebPassword);
+  set("evolutionApiKey", evolutionApiKey);
+  set("smtpPassDb", smtpPassDb);
+  set("vapidPrivateKey", vapidPrivateKey);
 
   const [updated] = await db
     .update(settingsTable)
@@ -156,7 +167,7 @@ router.post("/settings/test-email", requireAdmin, async (req, res): Promise<void
     const transporter = nodemailer.createTransport({
       host, port, secure: port === 465,
       auth: { user, pass },
-      tls: { rejectUnauthorized: false },
+      tls: { rejectUnauthorized: process.env.NODE_ENV === "production" },
     });
     await transporter.verify();
     await transporter.sendMail({

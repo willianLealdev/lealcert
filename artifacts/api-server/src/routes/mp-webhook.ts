@@ -31,7 +31,7 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
       body.id ??
       (req.query.id as string | undefined);
 
-    if (!paymentId) { logger.warn({ body }, "mp/webhook: sem paymentId"); return; }
+    if (!paymentId) { logger.warn("mp/webhook: sem paymentId"); return; }
 
     const [settings] = await db.select().from(settingsTable).limit(1);
     const mpToken = settings?.mpAccessToken || process.env.MP_ACCESS_TOKEN || "";

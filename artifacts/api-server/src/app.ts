@@ -3,11 +3,29 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// ── Session secret guard ────────────────────────────────────────────────────
+const INSECURE_DEFAULT = "lealcert-dev-secret-change-me";
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret || sessionSecret === INSECURE_DEFAULT) {
+  if (process.env.NODE_ENV === "production") {
+    logger.error("SESSION_SECRET ausente ou padrão inseguro — encerrando em produção");
+    process.exit(1);
+  }
+  logger.warn("SESSION_SECRET não definido — usando padrão inseguro (só desenvolvimento)");
+}
+const secret = sessionSecret ?? INSECURE_DEFAULT;
+
+// ── Trust Replit's reverse proxy (HTTPS forwarding) ─────────────────────────
+app.set("trust proxy", 1);
+
+// ── Logging (omit query strings and body) ───────────────────────────────────
 app.use(
   pinoHttp({
     logger,
@@ -22,11 +40,63 @@ app.use(
   }),
 );
 
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ── Security headers ─────────────────────────────────────────────────────────
+app.use(
+  helmet({
+    contentSecurityPolicy: false,       // CSP handled by Vite on the frontend
+    crossOriginEmbedderPolicy: false,   // Needed for embedded payment iframes
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  }),
+);
 
-const sessionSecret = process.env.SESSION_SECRET ?? "lealcert-dev-secret-change-me";
+// ── CORS — only allow known origins ──────────────────────────────────────────
+const allowedOrigins = new Set<string>(["http://localhost:80", "http://localhost:3000"]);
+(process.env.REPLIT_DOMAINS ?? "").split(",").map(d => d.trim()).filter(Boolean).forEach(d => {
+  allowedOrigins.add(`https://${d}`);
+});
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin) return cb(null, true);                           // server-to-server / mobile
+      if (allowedOrigins.has(origin)) return cb(null, true);
+      if (process.env.NODE_ENV !== "production") return cb(null, true); // permissive in dev
+      cb(new Error(`CORS: origem não permitida: ${origin}`));
+    },
+    credentials: true,
+  }),
+);
+
+// ── Body parsing (with size limit) ───────────────────────────────────────────
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+// General: 200 req / 15 min per IP (webhooks and push subscribe exempt)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path === "/api/mp/webhook" || req.path.startsWith("/api/push"),
+  message: { error: "Muitas requisições. Tente novamente em alguns minutos." },
+});
+
+// Strict: 10 attempts / 15 min per IP for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas tentativas. Aguarde 15 minutos antes de tentar novamente." },
+});
+
+app.use("/api", generalLimiter);
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
+app.use("/api/auth/forgot-password", authLimiter);
+
+// ── Session (session-only cookie — expires when browser closes) ──────────────
 const PgSession = connectPgSimple(session);
 
 app.use(
@@ -36,14 +106,15 @@ app.use(
       tableName: "session",
       createTableIfMissing: false,
     }),
-    secret: sessionSecret,
+    secret,
     resave: false,
     saveUninitialized: false,
+    name: "sess",                          // avoid default "connect.sid" fingerprinting
     cookie: {
-      secure: false,
+      secure: process.env.NODE_ENV === "production", // HTTPS-only in prod (Replit proxy)
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      // No maxAge → session cookie: deleted when browser tab/window closes
     },
   }),
 );
