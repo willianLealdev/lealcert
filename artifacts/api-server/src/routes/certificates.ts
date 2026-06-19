@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, certificatesTable, settingsTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { swListarProdutos, type SafewebSettings } from "../lib/safeweb";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -66,6 +67,11 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
     return;
   }
 
+  if (!swSettings.cnpjAr) {
+    res.status(400).json({ error: "CNPJ AR não configurado. Acesse Configurações → Safeweb e preencha o campo 'CNPJ AR'." });
+    return;
+  }
+
   // Busca produtos para todos os tipos de emissão disponíveis
   const TIPOS_EMISSAO = [1, 2, 3, 5];
   const allProdutos: Awaited<ReturnType<typeof swListarProdutos>> = [];
@@ -90,9 +96,13 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
       }
       allProdutos.push(...lista);
     } catch (err) {
-      erros.push(`Tipo ${tipo}: ${err instanceof Error ? err.message : String(err)}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      erros.push(`Tipo ${tipo}: ${msg}`);
+      logger.warn({ tipo, err: msg }, "import-safeweb: erro ao buscar produtos");
     }
   }
+
+  logger.info({ total: allProdutos.length, erros }, "import-safeweb: coleta concluída");
 
   // Deduplica por idProduto
   const seen = new Set<number>();
@@ -103,7 +113,7 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
   });
 
   if (!unique.length) {
-    const detail = erros.length ? ` Detalhes: ${erros.slice(0, 2).join("; ")}` : "";
+    const detail = erros.length ? ` Detalhes: ${erros.join("; ")}` : "";
     res.status(400).json({ error: `Nenhum produto retornado pela Safeweb. Verifique as credenciais e o CNPJ AR.${detail}` });
     return;
   }
