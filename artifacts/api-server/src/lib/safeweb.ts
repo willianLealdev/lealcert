@@ -14,8 +14,8 @@ const ADD_SOLICITACAO_PATH = "/Service/Microservice/Shared/Partner/api/Add";
 // Tipos de solicitação: 1=Presencial, 2=Renovação/RenovaçãoOutraAC, 3=Videoconferência, 5=EmissãoOnline
 const CANCELAR_PATH = "/Service/Microservice/Shared/Partner/api/Cancel"; // [INFERRED]
 const BIOMETRY_VALIDATE_PATH = "/Service/Microservice/Shared/Partner/api/ValidateBiometry";
-const BIOMETRY_PSBIO_LOCAL_PATH = "/Service/Microservice/Shared/Partner/api/ConsultPSBioLocal"; // [INFERRED]
-const BIOMETRY_PSBIO_GLOBAL_PATH = "/Service/Microservice/Shared/Partner/api/ConsultPSBioGlobal"; // [INFERRED]
+const BIOMETRY_PSBIO_LOCAL_PATH = "/Service/Microservice/Shared/Partner/api/psbio/consulta/biometria/local";
+const BIOMETRY_PSBIO_GLOBAL_PATH = "/Service/Microservice/Shared/Partner/api/psbio/consulta/biometria/global";
 const RENEWAL_GET_PATH = "/Service/Microservice/Shared/Renewal/api/GetRenewal"; // [INFERRED]
 const RENEWAL_OTHER_AC_PATH = "/Service/Microservice/Shared/Renewal/api/AddOtherAC"; // [INFERRED]
 const RENEWAL_RELEASE_PATH = "/Service/Microservice/Shared/Renewal/api/Release"; // [INFERRED]
@@ -74,7 +74,7 @@ async function swGet<T>(settings: SafewebSettings, path: string): Promise<T> {
   const token = await swGetToken(settings);
   const resp = await fetch(`${settings.url}${path}`, {
     method: "GET",
-    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: { "Authorization": token, "Content-Type": "application/json" },
   });
   if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb GET ${path} HTTP ${resp.status}: ${text}`); }
   return resp.json() as Promise<T>;
@@ -82,10 +82,11 @@ async function swGet<T>(settings: SafewebSettings, path: string): Promise<T> {
 
 async function swPost<T>(settings: SafewebSettings, path: string, body: unknown): Promise<T> {
   const token = await swGetToken(settings);
+  const bodyStr = JSON.stringify(body);
   const resp = await fetch(`${settings.url}${path}`, {
     method: "POST",
-    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers: { "Authorization": token, "Content-Type": "application/json" },
+    body: bodyStr,
   });
   if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb POST ${path} HTTP ${resp.status}: ${text}`); }
   return resp.json() as Promise<T>;
@@ -95,7 +96,7 @@ async function swDelete<T>(settings: SafewebSettings, path: string, body?: unkno
   const token = await swGetToken(settings);
   const resp = await fetch(`${settings.url}${path}`, {
     method: "DELETE",
-    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: { "Authorization": token, "Content-Type": "application/json" },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb DELETE ${path} HTTP ${resp.status}: ${text}`); }
@@ -273,9 +274,10 @@ export async function swHopePrimeiraEmissao(settings: SafewebSettings, data: Rec
 export async function swBiometriaValidar(settings: SafewebSettings, cpf: string): Promise<SwResult> {
   return swGet<SwResult>(settings, `${BIOMETRY_VALIDATE_PATH}/${cpf}`);
 }
-export async function swBiometriaPSBioLocal(settings: SafewebSettings, data: Record<string, unknown>): Promise<SwResult> {
-  return swPost<SwResult>(settings, BIOMETRY_PSBIO_LOCAL_PATH, data);
+export interface SwPSBioResult { encontrado?: boolean; mensagem?: string; [key: string]: unknown }
+export async function swBiometriaPSBioLocal(settings: SafewebSettings, cpf: string): Promise<SwPSBioResult> {
+  return swPost<SwPSBioResult>(settings, BIOMETRY_PSBIO_LOCAL_PATH, { cpf });
 }
-export async function swBiometriaPSBioGlobal(settings: SafewebSettings, data: Record<string, unknown>): Promise<SwResult> {
-  return swPost<SwResult>(settings, BIOMETRY_PSBIO_GLOBAL_PATH, data);
+export async function swBiometriaPSBioGlobal(settings: SafewebSettings, cpf: string): Promise<SwPSBioResult> {
+  return swPost<SwPSBioResult>(settings, BIOMETRY_PSBIO_GLOBAL_PATH, { cpf });
 }

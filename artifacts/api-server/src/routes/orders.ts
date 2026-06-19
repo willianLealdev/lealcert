@@ -90,28 +90,35 @@ router.post("/orders/consulta-previa", requireAuth, async (req, res): Promise<vo
         cnpjAr: s.safewebCnpjAr ?? undefined,
       };
 
-      // Consulta prévia
-      let consultaResult;
-      if (cnpj) {
-        consultaResult = await swConsultaCNPJ(sw, cnpj.replace(/\D/g, ""), (cpfResponsavel ?? "").replace(/\D/g, ""), dataNascimento);
-      } else {
-        consultaResult = await swConsultaCPF(sw, cpf.replace(/\D/g, ""), dataNascimento);
-      }
-
-      if (consultaResult.Codigo !== 0) {
-        res.json({ ok: false, hasPsbio: false, mensagem: consultaResult.Mensagem, requiresPresencial: true });
+      // PSBio Global (principal — busca em todos os sistemas)
+      const cpfParaPsbio = (cpf ?? cpfResponsavel ?? "").replace(/\D/g, "");
+      if (!cpfParaPsbio) {
+        res.status(400).json({ error: "CPF obrigatório para consulta PSBio." });
         return;
       }
+      const psbioResult = await swBiometriaPSBioGlobal(sw, cpfParaPsbio);
+      const hasPsbio = psbioResult.encontrado === true;
 
-      // PSBio check (usa CPF do titular ou do responsável)
-      const cpfParaPsbio = (cpf ?? cpfResponsavel ?? "").replace(/\D/g, "");
-      let hasPsbio = false;
-      if (cpfParaPsbio) {
-        const psbioResult = await swBiometriaPSBioGlobal(sw, { CPF: cpfParaPsbio });
-        hasPsbio = psbioResult.sucesso === true;
+      // Consulta prévia (best-effort — para obter nome do titular)
+      let customerName: string | undefined;
+      try {
+        let consultaResult;
+        if (cnpj) {
+          consultaResult = await swConsultaCNPJ(sw, cnpj.replace(/\D/g, ""), (cpfResponsavel ?? "").replace(/\D/g, ""), dataNascimento);
+        } else {
+          consultaResult = await swConsultaCPF(sw, cpf.replace(/\D/g, ""), dataNascimento);
+        }
+        if (consultaResult.Codigo === 0 && typeof consultaResult.Mensagem === "string" && consultaResult.Mensagem.length > 2) {
+          customerName = consultaResult.Mensagem;
+        }
+        if (typeof consultaResult.NomeCompleto === "string") {
+          customerName = consultaResult.NomeCompleto;
+        }
+      } catch {
+        // ConsultaPrevia falhou — não é crítico, PSBio foi feito com sucesso
+        logger.warn("ConsultaPrevia falhou (best-effort), PSBio OK");
       }
 
-      const customerName = typeof consultaResult.NomeCompleto === "string" ? consultaResult.NomeCompleto : undefined;
       res.json({
         ok: true,
         hasPsbio,
@@ -141,8 +148,8 @@ router.post("/orders/consulta-previa", requireAuth, async (req, res): Promise<vo
     }
   } catch (err) {
     logger.error({ err }, "Consulta prévia error");
-    // Fail open — permite continuar mesmo se consulta falhar
-    res.json({ ok: true, hasPsbio: true, mensagem: "Não foi possível validar — prossiga com o cadastro manual", requiresPresencial: false });
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(422).json({ ok: false, hasPsbio: false, mensagem: `Erro ao consultar: ${msg}`, requiresPresencial: true });
   }
 });
 

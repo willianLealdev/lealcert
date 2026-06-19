@@ -155,8 +155,9 @@ export default function NewOrder() {
           }
         }
       },
-      onError: () => {
-        setPsbioStatus(null);
+      onError: (err: unknown) => {
+        const msg = (err as { message?: string })?.message ?? "Erro ao consultar biometria";
+        setPsbioStatus({ hasPsbio: false, mensagem: msg, requiresPresencial: true });
       },
     },
   });
@@ -662,34 +663,44 @@ export default function NewOrder() {
                   variant="outline"
                   size="sm"
                   disabled={form.repCpf.replace(/\D/g, "").length < 11 || form.repBirthDate.length < 10 || psbioStatus === "loading"}
-                  onClick={() => triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", form.repCpf, form.repBirthDate)}
+                  onClick={() => {
+                    psbioContextRef.current = "rep";
+                    setPsbioStatus("loading");
+                    const repDigits = form.repCpf.replace(/\D/g, "");
+                    const repDateIso = form.repBirthDate.includes("/") ? parseBrDate(form.repBirthDate) : form.repBirthDate;
+                    if (isCnpjCert) {
+                      checkPsbio.mutate({ data: { cnpj: form.customerCpfCnpj.replace(/\D/g, ""), cpfResponsavel: repDigits, dataNascimento: repDateIso } });
+                    } else {
+                      checkPsbio.mutate({ data: { cpf: repDigits, dataNascimento: repDateIso } });
+                    }
+                  }}
                 >
                   {psbioStatus === "loading" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
                   Consultar biometria
                 </Button>
 
-                {/* Status PSBio — para certificados de CNPJ */}
-                {showCnpjFields && psbioStatus === "loading" && (
+                {/* Status PSBio */}
+                {psbioStatus === "loading" && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-3">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     Verificando validação biométrica...
                   </div>
                 )}
-                {showCnpjFields && psbioStatus && psbioStatus !== "loading" && psbioStatus.hasPsbio && (
+                {psbioStatus && psbioStatus !== "loading" && psbioStatus.hasPsbio && (
                   <div className="flex items-start gap-2 text-sm bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-4 py-3">
                     <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium text-emerald-700 dark:text-emerald-400">Biometria PSBio disponível</p>
-                      <p className="text-emerald-600/80 dark:text-emerald-500 text-xs">{psbioStatus.mensagem} — atendimento pode ser realizado remotamente.</p>
+                      <p className="text-emerald-600/80 dark:text-emerald-500 text-xs">{psbioStatus.mensagem}</p>
                     </div>
                   </div>
                 )}
-                {showCnpjFields && psbioStatus && psbioStatus !== "loading" && !psbioStatus.hasPsbio && (
+                {psbioStatus && psbioStatus !== "loading" && !psbioStatus.hasPsbio && (
                   <div className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3">
                     <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium text-amber-700 dark:text-amber-400">Atendimento presencial obrigatório</p>
-                      <p className="text-amber-600/80 dark:text-amber-500 text-xs">{psbioStatus.mensagem} — o cliente deverá comparecer pessoalmente para validação.</p>
+                      <p className="text-amber-600/80 dark:text-amber-500 text-xs">{psbioStatus.mensagem}</p>
                     </div>
                   </div>
                 )}
