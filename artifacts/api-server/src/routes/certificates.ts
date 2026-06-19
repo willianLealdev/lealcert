@@ -69,12 +69,28 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
   // Busca produtos para todos os tipos de emissão disponíveis
   const TIPOS_EMISSAO = [1, 2, 3, 5];
   const allProdutos: Awaited<ReturnType<typeof swListarProdutos>> = [];
+  const erros: string[] = [];
+
   for (const tipo of TIPOS_EMISSAO) {
     try {
-      const produtos = await swListarProdutos(swSettings, tipo);
-      if (Array.isArray(produtos)) allProdutos.push(...produtos);
-    } catch {
-      // tipo pode não existir para essa AR — ignora
+      const raw = await swListarProdutos(swSettings, tipo);
+      // A Safeweb pode retornar array direto OU objeto wrapper
+      let lista: typeof allProdutos = [];
+      if (Array.isArray(raw)) {
+        lista = raw;
+      } else if (raw && typeof raw === "object") {
+        const obj = raw as Record<string, unknown>;
+        // Tenta campos comuns de wrapper
+        const inner = obj["Produtos"] ?? obj["produtos"] ?? obj["data"] ?? obj["Data"] ?? obj["items"];
+        if (Array.isArray(inner)) lista = inner as typeof allProdutos;
+        // Se veio sucesso=false, captura mensagem
+        if (obj["sucesso"] === false || obj["Sucesso"] === false) {
+          erros.push(`Tipo ${tipo}: ${String(obj["mensagem"] ?? obj["Mensagem"] ?? "sem produtos")}`);
+        }
+      }
+      allProdutos.push(...lista);
+    } catch (err) {
+      erros.push(`Tipo ${tipo}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -87,7 +103,8 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
   });
 
   if (!unique.length) {
-    res.status(400).json({ error: "Nenhum produto retornado pela Safeweb. Verifique as credenciais e o CNPJ AR." });
+    const detail = erros.length ? ` Detalhes: ${erros.slice(0, 2).join("; ")}` : "";
+    res.status(400).json({ error: `Nenhum produto retornado pela Safeweb. Verifique as credenciais e o CNPJ AR.${detail}` });
     return;
   }
 
