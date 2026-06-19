@@ -147,8 +147,9 @@ export default function NewOrder() {
         setPsbioStatus({ hasPsbio: data.hasPsbio, mensagem: data.mensagem, requiresPresencial: data.requiresPresencial });
         if (data.customerName) {
           if (psbioContextRef.current === "rep") {
-            setForm(prev => ({ ...prev, repName: prev.repName || data.customerName! }));
+            setForm(prev => ({ ...prev, repName: data.customerName!, customerName: prev.customerName || data.customerName! }));
             setAutoFilledRepName(true);
+            setAutoFilledCustomerName(true);
           } else {
             setForm(prev => ({ ...prev, customerName: prev.customerName || data.customerName! }));
             setAutoFilledCustomerName(true);
@@ -187,13 +188,13 @@ export default function NewOrder() {
     if (cnpjData.logradouro || cnpjData.cep) setCepFilled(true);
   }, [cnpjData]);
 
-  const triggerPsbioCheck = useCallback((cpfCnpj: string, birthDate: string, clientType: string, repCpf?: string, repBirthDate?: string) => {
+  const triggerPsbioCheck = useCallback((cpfCnpj: string, birthDate: string, clientType: string, repCpf?: string, repBirthDate?: string, context?: "customer" | "rep") => {
     const digits = cpfCnpj.replace(/\D/g, "");
     const isCpf = clientType === "cpf" && digits.length === 11;
     const isCnpj = clientType === "cnpj" && digits.length === 14;
 
     if (isCpf && birthDate) {
-      psbioContextRef.current = "customer";
+      psbioContextRef.current = context ?? "customer";
       setPsbioStatus("loading");
       const dateIso = birthDate.includes("/") ? parseBrDate(birthDate) : birthDate;
       checkPsbio.mutate({ data: { cpf: digits, dataNascimento: dateIso } });
@@ -535,38 +536,7 @@ export default function NewOrder() {
                 )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {/* PJ: Razão Social + CNPJ em linha única — sem campo "Nome" duplicado */}
-                  {showCnpjFields && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1">
-                        Razão Social *
-                        {cnpjData && form.companyName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                        {cnpjFetching && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                      </Label>
-                      <Input
-                        value={form.companyName}
-                        onChange={e => set("companyName", e.target.value)}
-                        required
-                        className={cnpjData && form.companyName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                        placeholder={cnpjFetching ? "Buscando..." : ""}
-                      />
-                    </div>
-                  )}
-                  {/* PF: Nome Completo */}
-                  {!showCnpjFields && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-1">
-                        Nome Completo *
-                        {autoFilledCustomerName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                      </Label>
-                      <Input
-                        value={form.customerName}
-                        onChange={e => { set("customerName", e.target.value); setAutoFilledCustomerName(false); }}
-                        required
-                        className={autoFilledCustomerName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                      />
-                    </div>
-                  )}
+                  {/* CNPJ/CPF — sempre o primeiro campo */}
                   <div className="space-y-2">
                     <Label>{showCnpjFields ? "CNPJ *" : "CPF *"}</Label>
                     <div className="relative">
@@ -577,8 +547,6 @@ export default function NewOrder() {
                         if (showCnpjFields) {
                           if (digits.length === 14) setCnpjToQuery(digits);
                           else { setCnpjToQuery(""); setAutoFilledCustomerName(false); }
-                        } else if (digits.length === 11 && form.customerBirthDate.length === 10) {
-                          triggerPsbioCheck(v, form.customerBirthDate, "cpf");
                         }
                       }} required placeholder={showCnpjFields ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
                       {cnpjFetching && showCnpjFields && (
@@ -595,23 +563,54 @@ export default function NewOrder() {
                       <p className="text-xs text-amber-600">Situação: {cnpjData.situacao}</p>
                     )}
                   </div>
+
+                  {/* PF: Data de Nascimento — ao lado do CPF */}
                   {!showCnpjFields && (
                     <div className="space-y-2">
                       <Label>Data de Nascimento</Label>
                       <Input
                         value={form.customerBirthDate}
-                        onChange={e => {
-                          const v = maskDate(e.target.value);
-                          set("customerBirthDate", v);
-                          if (form.customerCpfCnpj.replace(/\D/g, "").length === 11 && v.length === 10) {
-                            triggerPsbioCheck(form.customerCpfCnpj, v, "cpf");
-                          }
-                        }}
+                        onChange={e => { set("customerBirthDate", maskDate(e.target.value)); }}
                         placeholder="dd/mm/aaaa"
                         maxLength={10}
                       />
                     </div>
                   )}
+
+                  {/* PJ: Razão Social — ao lado do CNPJ, auto-preenchida */}
+                  {showCnpjFields && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        Razão Social *
+                        {cnpjData && form.companyName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                        {cnpjFetching && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                      </Label>
+                      <Input
+                        value={form.companyName}
+                        onChange={e => set("companyName", e.target.value)}
+                        required
+                        className={cnpjData && form.companyName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                        placeholder={cnpjFetching ? "Buscando..." : ""}
+                      />
+                    </div>
+                  )}
+
+                  {/* PF: Nome Completo — linha inteira, auto-preenchido pelo PSBio do representante */}
+                  {!showCnpjFields && (
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label className="flex items-center gap-1">
+                        Nome Completo *
+                        {autoFilledCustomerName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                      </Label>
+                      <Input
+                        value={form.customerName}
+                        onChange={e => { set("customerName", e.target.value); setAutoFilledCustomerName(false); }}
+                        required
+                        className={autoFilledCustomerName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                      />
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label>E-mail *</Label>
                     <Input type="email" value={form.customerEmail} onChange={e => set("customerEmail", e.target.value)} required placeholder="cliente@email.com" />
@@ -649,7 +648,7 @@ export default function NewOrder() {
                           if (isCnpjCert) {
                             triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, "cnpj", v, form.repBirthDate);
                           } else {
-                            triggerPsbioCheck(v, form.repBirthDate, "cpf");
+                            triggerPsbioCheck(v, form.repBirthDate, "cpf", undefined, undefined, "rep");
                           }
                         }
                       }}
@@ -668,7 +667,7 @@ export default function NewOrder() {
                           if (isCnpjCert) {
                             triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, "cnpj", form.repCpf, v);
                           } else {
-                            triggerPsbioCheck(form.repCpf, v, "cpf");
+                            triggerPsbioCheck(form.repCpf, v, "cpf", undefined, undefined, "rep");
                           }
                         }
                       }}
@@ -678,6 +677,30 @@ export default function NewOrder() {
                     />
                   </div>
                 </div>
+
+                {/* Botão manual de consulta PSBio */}
+                {form.repCpf.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10 && (
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={psbioStatus === "loading"}
+                      onClick={() => {
+                        if (isCnpjCert) {
+                          triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, "cnpj", form.repCpf, form.repBirthDate);
+                        } else {
+                          triggerPsbioCheck(form.repCpf, form.repBirthDate, "cpf", undefined, undefined, "rep");
+                        }
+                      }}
+                    >
+                      {psbioStatus === "loading"
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                        : <Search className="h-3.5 w-3.5 mr-1.5" />}
+                      Consultar Biometria
+                    </Button>
+                  </div>
+                )}
 
                 {/* Status PSBio — consulta automática ao preencher os campos */}
                 {psbioStatus === "loading" && (
