@@ -598,12 +598,12 @@ export default function AdminSettings() {
                   <div className="space-y-2">
                     <Label>URL Base — Produção</Label>
                     <Input value={form.safewebUrl} onChange={e => set("safewebUrl", e.target.value)} placeholder="https://pss.safewebpss.com.br" />
-                    <p className="text-xs text-muted-foreground">Apenas o domínio base, sem barra no final. Ex: <code>https://pss.safewebpss.com.br</code></p>
+                    <p className="text-xs text-muted-foreground">URL padrão Safeweb: <code className="text-primary">https://pss.safewebpss.com.br</code></p>
                   </div>
                   <div className="space-y-2">
                     <Label>URL Base — Homologação</Label>
-                    <Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://pss.safewebpss.com.br" />
-                    <p className="text-xs text-muted-foreground">Apenas o domínio base, sem barra no final. Ex: <code>https://pss.safewebpss.com.br</code></p>
+                    <Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://h-pss.safewebpss.com.br" />
+                    <p className="text-xs text-muted-foreground">URL padrão Safeweb (homologação): <code className="text-primary">https://h-pss.safewebpss.com.br</code></p>
                   </div>
                   <div className="space-y-2"><Label>Identificador</Label><Input value={form.safewebUsername} onChange={e => set("safewebUsername", e.target.value)} placeholder="Identificador fornecido pela Safeweb" autoComplete="off" /></div>
                   <div className="space-y-2"><Label>Segredo</Label><MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Segredo fornecido pela Safeweb" /></div>

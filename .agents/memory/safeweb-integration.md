@@ -20,6 +20,13 @@ description: How the Safeweb provider is wired into the order flow alongside Ges
 - `POST /orders/:id/sync-provider` → if Safeweb active, calls `swSyncStatus(id)` (inferred endpoint: `GET /Service/Microservice/Shared/Partner/api/GetStatus/{id}`)
 - For GAR, use existing `/gestaoar/sync-order/:orderId` route
 
+## Safeweb API URLs (confirmed working)
+- Produção: `https://pss.safewebpss.com.br`
+- Homologação: `https://h-pss.safewebpss.com.br`
+- The docs site (`h-acsafeweb.safewebpss.com.br`) is NOT the API server — never use it as URL base.
+- The URL fields accept full URLs (path included) — `normalizeSwUrl()` in both `safeweb.ts` route and `sw-auto.ts` strips to origin automatically.
+- Auth: `Identificador` + `Segredo` → Basic Auth → POST /Service/Microservice/Shared/HubAutenticacao/Autenticacoes/api/autorizacao/token
+
 ## DB columns added
 - `certificates.safeweb_id_produto` (text, nullable)
 - `orders.safeweb_solicitacao_id` (text, nullable)
