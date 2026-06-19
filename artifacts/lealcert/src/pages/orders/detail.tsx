@@ -27,7 +27,7 @@ import {
   Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag, Copy,
 } from "lucide-react";
 import { Link } from "wouter";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 
 type PixData = { paymentId: string; pixQrCode: string; pixQrCodeBase64: string };
 
@@ -82,8 +82,14 @@ const EVENT_ICONS: Record<string, React.ReactNode> = {
   sync_performed:       <RefreshCw className="h-4 w-4 text-muted-foreground" />,
 };
 
-function OrderTimeline({ orderId }: { orderId: number }) {
-  const { data: events, isLoading } = useGetOrderEvents(orderId);
+function OrderTimeline({ orderId, isPendingPayment }: { orderId: number; isPendingPayment: boolean }) {
+  const { data: events, isLoading, refetch: refetchEvents } = useGetOrderEvents(orderId);
+
+  useEffect(() => {
+    if (!isPendingPayment) return;
+    const timer = setInterval(() => { refetchEvents(); }, 5000);
+    return () => clearInterval(timer);
+  }, [isPendingPayment]);
 
   if (isLoading) {
     return (
@@ -623,7 +629,35 @@ export default function OrderDetail() {
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
 
+  const prevStatusRef = useRef<string | undefined>(undefined);
+
   const { data: order, isLoading, refetch } = useGetOrder(Number(id));
+
+  // Polling a cada 5 s enquanto pagamento pendente; para automaticamente ao confirmar
+  useEffect(() => {
+    if (!order) return;
+    const isPending = order.status === "pending_payment" || order.status === "created";
+    if (!isPending) return;
+    const timer = setInterval(() => { refetch(); }, 5000);
+    return () => clearInterval(timer);
+  }, [order?.status]);
+
+  // Detecta transição de pendente → pago e notifica o usuário
+  useEffect(() => {
+    if (!order) return;
+    const prev = prevStatusRef.current;
+    if (
+      (prev === "pending_payment" || prev === "created") &&
+      (order.status === "paid" || order.status === "protocol_assigned" || order.status === "completed")
+    ) {
+      setPixData(null);
+      toast({
+        title: "✅ Pagamento confirmado!",
+        description: "Seu pedido foi atualizado automaticamente.",
+      });
+    }
+    prevStatusRef.current = order.status;
+  }, [order?.status]);
 
   const updateOrder = useUpdateOrder({
     mutation: {
@@ -1095,7 +1129,7 @@ export default function OrderDetail() {
             </Card>
           )}
 
-          <OrderTimeline orderId={Number(id)} />
+          <OrderTimeline orderId={Number(id)} isPendingPayment={order.status === "pending_payment" || order.status === "created"} />
         </div>
       </div>
     </div>
