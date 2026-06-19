@@ -28,6 +28,8 @@ export interface AppSettingsUpdate {
   safewebAmbiente?: string;
   safewebUsername?: string;
   safewebPassword?: string;
+  safewebUsernameHomologacao?: string;
+  safewebPasswordHomologacao?: string;
   safewebCnpjAr?: string;
   safewebCodigoParceiro?: string;
   activeProvider?: string;

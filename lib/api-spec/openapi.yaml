@@ -2676,6 +2676,10 @@ components:
           type: ["string", "null"]
         safewebPassword:
           type: ["string", "null"]
+        safewebUsernameHomologacao:
+          type: ["string", "null"]
+        safewebPasswordHomologacao:
+          type: ["string", "null"]
         safewebCnpjAr:
           type: ["string", "null"]
         safewebCodigoParceiro:
@@ -2761,6 +2765,10 @@ components:
         safewebUsername:
           type: string
         safewebPassword:
+          type: string
+        safewebUsernameHomologacao:
+          type: string
+        safewebPasswordHomologacao:
           type: string
         safewebCnpjAr:
           type: string

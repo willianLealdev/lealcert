@@ -545,6 +545,10 @@ export interface AppSettings {
   /** @nullable */
   safewebPassword?: string | null;
   /** @nullable */
+  safewebUsernameHomologacao?: string | null;
+  /** @nullable */
+  safewebPasswordHomologacao?: string | null;
+  /** @nullable */
   safewebCnpjAr?: string | null;
   /** @nullable */
   safewebCodigoParceiro?: string | null;
@@ -606,6 +610,8 @@ export interface AppSettingsUpdate {
   safewebAmbiente?: string;
   safewebUsername?: string;
   safewebPassword?: string;
+  safewebUsernameHomologacao?: string;
+  safewebPasswordHomologacao?: string;
   safewebCnpjAr?: string;
   safewebCodigoParceiro?: string;
   activeProvider?: string;

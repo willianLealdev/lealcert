@@ -17,17 +17,19 @@ function normalizeSwUrl(raw: string): string {
 
 async function getSwSettings(): Promise<(SafewebSettings & { siteUrl?: string }) | null> {
   const [s] = await db.select().from(settingsTable).limit(1);
-  if (!s?.safewebUsername || !s?.safewebPassword) return null;
-  // Use homologation URL when ambiente = "homologacao", otherwise production URL
-  const rawUrl = (s.safewebAmbiente === "homologacao" ? s.safewebUrlHomologacao : s.safewebUrl) ?? s.safewebUrl;
+  const isHomol = s?.safewebAmbiente === "homologacao";
+  const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
+  const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
+  if (!username || !password) return null;
+  const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
   if (!rawUrl) return null;
   return {
     url: normalizeSwUrl(rawUrl),
-    username: s.safewebUsername,
-    password: s.safewebPassword,
-    cnpjAr: s.safewebCnpjAr ?? undefined,
-    codigoParceiro: s.safewebCodigoParceiro ?? undefined,
-    siteUrl: s.siteUrl ?? undefined,
+    username,
+    password,
+    cnpjAr: s?.safewebCnpjAr ?? undefined,
+    codigoParceiro: s?.safewebCodigoParceiro ?? undefined,
+    siteUrl: s?.siteUrl ?? undefined,
   };
 }
 

@@ -28,6 +28,7 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     garHashVendedor: mask(s.garHashVendedor),
     garHashTabela: mask(s.garHashTabela),
     safewebPassword: mask(s.safewebPassword),
+    safewebPasswordHomologacao: mask(s.safewebPasswordHomologacao),
     evolutionApiKey: mask(s.evolutionApiKey),
     smtpPassDb: mask(s.smtpPassDb),
     vapidPrivateKey: mask(s.vapidPrivateKey),             // crypto private key — never expose
@@ -45,6 +46,7 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     safewebUrlHomologacao: s.safewebUrlHomologacao,
     safewebAmbiente: s.safewebAmbiente ?? "producao",
     safewebUsername: s.safewebUsername,
+    safewebUsernameHomologacao: s.safewebUsernameHomologacao,
     safewebCnpjAr: s.safewebCnpjAr,
     safewebCodigoParceiro: s.safewebCodigoParceiro,
     activeProvider: s.activeProvider ?? "gestaoar",
@@ -79,6 +81,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     scheduleOpenDays, scheduleOpenHour, scheduleCloseHour, scheduleStepMin, scheduleClosedDates,
     garApiKey, garHashVendedor, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
     safewebUrl, safewebUrlHomologacao, safewebAmbiente, safewebUsername, safewebPassword,
+    safewebUsernameHomologacao, safewebPasswordHomologacao,
     safewebCnpjAr, safewebCodigoParceiro, activeProvider,
     evolutionUrl, evolutionApiKey, evolutionInstance,
     logoUrl, primaryColor,
@@ -108,6 +111,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (safewebUrlHomologacao !== undefined) u.safewebUrlHomologacao = safewebUrlHomologacao;
   if (safewebAmbiente !== undefined) u.safewebAmbiente = safewebAmbiente;
   if (safewebUsername !== undefined) u.safewebUsername = safewebUsername;
+  if (safewebUsernameHomologacao !== undefined) u.safewebUsernameHomologacao = safewebUsernameHomologacao;
   if (safewebCnpjAr !== undefined) u.safewebCnpjAr = safewebCnpjAr;
   if (safewebCodigoParceiro !== undefined) u.safewebCodigoParceiro = safewebCodigoParceiro;
   if (activeProvider !== undefined) u.activeProvider = activeProvider;
@@ -131,6 +135,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("garHashVendedor", garHashVendedor);
   set("garHashTabela", garHashTabela);
   set("safewebPassword", safewebPassword);
+  set("safewebPasswordHomologacao", safewebPasswordHomologacao);
   set("evolutionApiKey", evolutionApiKey);
   set("smtpPassDb", smtpPassDb);
   set("vapidPrivateKey", vapidPrivateKey);

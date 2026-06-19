@@ -27,6 +27,8 @@ export const settingsTable = pgTable("settings", {
   safewebAmbiente: text("safeweb_ambiente").notNull().default("producao"),
   safewebUsername: text("safeweb_username"),
   safewebPassword: text("safeweb_password"),
+  safewebUsernameHomologacao: text("safeweb_username_homologacao"),
+  safewebPasswordHomologacao: text("safeweb_password_homologacao"),
   safewebCnpjAr: text("safeweb_cnpj_ar"),
   safewebCodigoParceiro: text("safeweb_codigo_parceiro"),
   // Active provider

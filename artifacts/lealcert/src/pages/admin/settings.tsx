@@ -87,6 +87,8 @@ export default function AdminSettings() {
     safewebAmbiente: "producao",
     safewebUsername: "",
     safewebPassword: "",
+    safewebUsernameHomologacao: "",
+    safewebPasswordHomologacao: "",
     safewebCnpjAr: "",
     safewebCodigoParceiro: "",
     activeProvider: "gestaoar",
@@ -110,6 +112,7 @@ export default function AdminSettings() {
         contactEmailSupport?: string; contactAddress?: string;
         safewebUrlHomologacao?: string; safewebAmbiente?: string;
         safewebCodigoParceiro?: string;
+        safewebUsernameHomologacao?: string; safewebPasswordHomologacao?: string;
         evolutionUrl?: string; evolutionApiKey?: string; evolutionInstance?: string;
         smtpHostDb?: string; smtpPortDb?: string; smtpUserDb?: string; smtpPassDb?: string;
         vapidSubject?: string; vapidPublicKey?: string; vapidPrivateKey?: string;
@@ -137,6 +140,8 @@ export default function AdminSettings() {
         safewebAmbiente: s.safewebAmbiente ?? "producao",
         safewebUsername: s.safewebUsername ?? "",
         safewebPassword: s.safewebPassword ?? "",
+        safewebUsernameHomologacao: s.safewebUsernameHomologacao ?? "",
+        safewebPasswordHomologacao: s.safewebPasswordHomologacao ?? "",
         safewebCnpjAr: s.safewebCnpjAr ?? "",
         safewebCodigoParceiro: s.safewebCodigoParceiro ?? "",
         activeProvider: s.activeProvider ?? "gestaoar",
@@ -586,7 +591,7 @@ export default function AdminSettings() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Ambiente</Label>
+                    <Label>Ambiente ativo</Label>
                     <Select value={form.safewebAmbiente} onValueChange={v => set("safewebAmbiente", v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -594,19 +599,45 @@ export default function AdminSettings() {
                         <SelectItem value="homologacao">Homologação</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">Define qual ambiente será usado nas emissões de certificados.</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>URL Base — Produção</Label>
-                    <Input value={form.safewebUrl} onChange={e => set("safewebUrl", e.target.value)} placeholder="https://pss.safewebpss.com.br" />
-                    <p className="text-xs text-muted-foreground">URL padrão Safeweb: <code className="text-primary">https://pss.safewebpss.com.br</code></p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>URL Base — Homologação</Label>
-                    <Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://h-pss.safewebpss.com.br" />
-                    <p className="text-xs text-muted-foreground">URL padrão Safeweb (homologação): <code className="text-primary">https://h-pss.safewebpss.com.br</code></p>
-                  </div>
-                  <div className="space-y-2"><Label>Identificador</Label><Input value={form.safewebUsername} onChange={e => set("safewebUsername", e.target.value)} placeholder="Identificador fornecido pela Safeweb" autoComplete="off" /></div>
-                  <div className="space-y-2"><Label>Segredo</Label><MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Segredo fornecido pela Safeweb" /></div>
+
+                  {form.safewebAmbiente === "producao" ? (
+                    <div className="space-y-4 rounded-lg border border-border p-4">
+                      <p className="text-sm font-medium text-foreground">Credenciais — Produção</p>
+                      <div className="space-y-2">
+                        <Label>URL Base</Label>
+                        <Input value={form.safewebUrl} onChange={e => set("safewebUrl", e.target.value)} placeholder="https://pss.safewebpss.com.br" />
+                        <p className="text-xs text-muted-foreground">Padrão: <code className="text-primary">https://pss.safewebpss.com.br</code></p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Identificador</Label>
+                        <Input value={form.safewebUsername} onChange={e => set("safewebUsername", e.target.value)} placeholder="Identificador fornecido pela Safeweb" autoComplete="off" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Segredo</Label>
+                        <MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Segredo fornecido pela Safeweb" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-4">
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Credenciais — Homologação</p>
+                      <div className="space-y-2">
+                        <Label>URL Base</Label>
+                        <Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://h-pss.safewebpss.com.br" />
+                        <p className="text-xs text-muted-foreground">Padrão: <code className="text-primary">https://h-pss.safewebpss.com.br</code></p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Identificador</Label>
+                        <Input value={form.safewebUsernameHomologacao} onChange={e => set("safewebUsernameHomologacao", e.target.value)} placeholder="Identificador de homologação" autoComplete="off" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Segredo</Label>
+                        <MaskedInput value={form.safewebPasswordHomologacao} onChange={v => set("safewebPasswordHomologacao", v)} placeholder="Segredo de homologação" />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label>CNPJ da AR <span className="text-muted-foreground font-normal text-xs">(fornecido pela Safeweb no onboarding)</span></Label>
                     <Input value={form.safewebCnpjAr} onChange={e => set("safewebCnpjAr", e.target.value)} placeholder="00000000000000" />
@@ -618,7 +649,12 @@ export default function AdminSettings() {
                     <p className="text-xs text-muted-foreground">Incluso nas solicitações apenas se preenchido. Deixe em branco se não tiver sido fornecido.</p>
                   </div>
                   <Button type="button" variant="outline" size="sm"
-                    disabled={testingAuth || !(form.safewebAmbiente === "homologacao" ? form.safewebUrlHomologacao : form.safewebUrl) || !form.safewebUsername || !form.safewebPassword}
+                    disabled={
+                      testingAuth ||
+                      !(form.safewebAmbiente === "homologacao" ? form.safewebUrlHomologacao : form.safewebUrl) ||
+                      !(form.safewebAmbiente === "homologacao" ? form.safewebUsernameHomologacao : form.safewebUsername) ||
+                      !(form.safewebAmbiente === "homologacao" ? form.safewebPasswordHomologacao : form.safewebPassword)
+                    }
                     onClick={testSafewebAuth}>
                     {testingAuth ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testando...</> : `Testar Conexão (${form.safewebAmbiente === "homologacao" ? "Homologação" : "Produção"})`}
                   </Button>
