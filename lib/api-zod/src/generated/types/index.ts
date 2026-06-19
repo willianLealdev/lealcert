@@ -90,6 +90,7 @@ export * from './getMeStatsParams';
 export * from './getMeStatsRange';
 export * from './healthStatus';
 export * from './importContactsResult';
+export * from './importSafewebCertificates200';
 export * from './inboundWebhookInput';
 export * from './labelSeries';
 export * from './listCertificatesParams';

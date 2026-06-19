@@ -1286,6 +1286,12 @@ export type ListCertificatesParams = {
 activeOnly?: boolean;
 };
 
+export type ImportSafewebCertificates200 = {
+  imported: number;
+  skipped: number;
+  total: number;
+};
+
 export type ListOrdersParams = {
 status?: string;
 search?: string;

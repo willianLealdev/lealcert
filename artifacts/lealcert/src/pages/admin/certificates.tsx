@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListCertificates, useCreateCertificate, useUpdateCertificate, useDeleteCertificate, useGetGarProdutos } from "@workspace/api-client-react";
+import { useListCertificates, useCreateCertificate, useUpdateCertificate, useDeleteCertificate, useGetGarProdutos, useImportSafewebCertificates } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Loader2, Link2, AlertCircle, Users, User } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Link2, AlertCircle, Users, User, Download } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
 type CertForm = {
@@ -46,6 +46,18 @@ export default function AdminCertificates() {
   const create = useCreateCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo criado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const update = useUpdateCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo atualizado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const del = useDeleteCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo removido." }); setDeleteId(null); refetch(); } } });
+  const importSafeweb = useImportSafewebCertificates({
+    mutation: {
+      onSuccess: (data) => {
+        toast({
+          title: `Importação concluída`,
+          description: `${data.imported} novos produtos importados, ${data.skipped} já existentes (total Safeweb: ${data.total}).`,
+        });
+        refetch();
+      },
+      onError: e => toast({ title: "Erro ao importar", description: getApiError(e), variant: "destructive" }),
+    },
+  });
 
   function openCreate() { setForm(EMPTY); setEditId(null); setOpen(true); }
   function openEdit(c: NonNullable<typeof certs>[number]) {
@@ -88,11 +100,25 @@ export default function AdminCertificates() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Catálogo</h1>
           <p className="text-muted-foreground text-sm sm:text-base">Modelos e preços dos certificados.</p>
         </div>
-        <Button className="shrink-0" onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          <span className="hidden sm:inline">Novo Modelo</span>
-          <span className="sm:hidden">Novo</span>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={() => importSafeweb.mutate()}
+            disabled={importSafeweb.isPending}
+            title="Importar produtos do catálogo Safeweb"
+          >
+            {importSafeweb.isPending
+              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              : <Download className="h-4 w-4 mr-2" />}
+            <span className="hidden sm:inline">Importar Safeweb</span>
+            <span className="sm:hidden">Safeweb</span>
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Novo Modelo</span>
+            <span className="sm:hidden">Novo</span>
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
-import { db, certificatesTable } from "@workspace/db";
+import { db, certificatesTable, settingsTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
+import { swListarProdutos, type SafewebSettings } from "../lib/safeweb";
 
 const router = Router();
 
@@ -42,6 +43,78 @@ router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {
     safewebIdProduto: safewebIdProduto || null,
   }).returning();
   res.status(201).json(certRow(cert));
+});
+
+router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Promise<void> => {
+  const [settings] = await db.select().from(settingsTable).limit(1);
+  if (!settings) {
+    res.status(400).json({ error: "Configurações não encontradas." });
+    return;
+  }
+
+  const isHomologacao = settings.safewebAmbiente === "homologacao";
+  const swSettings: SafewebSettings = {
+    url: (isHomologacao ? settings.safewebUrlHomologacao : settings.safewebUrl) ?? "",
+    username: (isHomologacao ? settings.safewebUsernameHomologacao : settings.safewebUsername) ?? "",
+    password: (isHomologacao ? settings.safewebPasswordHomologacao : settings.safewebPassword) ?? "",
+    cnpjAr: settings.safewebCnpjAr ?? undefined,
+    codigoParceiro: settings.safewebCodigoParceiro ?? undefined,
+  };
+
+  if (!swSettings.url || !swSettings.username) {
+    res.status(400).json({ error: "Credenciais da Safeweb não configuradas. Acesse Configurações primeiro." });
+    return;
+  }
+
+  // Busca produtos para todos os tipos de emissão disponíveis
+  const TIPOS_EMISSAO = [1, 2, 3, 5];
+  const allProdutos: Awaited<ReturnType<typeof swListarProdutos>> = [];
+  for (const tipo of TIPOS_EMISSAO) {
+    try {
+      const produtos = await swListarProdutos(swSettings, tipo);
+      if (Array.isArray(produtos)) allProdutos.push(...produtos);
+    } catch {
+      // tipo pode não existir para essa AR — ignora
+    }
+  }
+
+  // Deduplica por idProduto
+  const seen = new Set<number>();
+  const unique = allProdutos.filter(p => {
+    if (seen.has(p.idProduto)) return false;
+    seen.add(p.idProduto);
+    return true;
+  });
+
+  if (!unique.length) {
+    res.status(400).json({ error: "Nenhum produto retornado pela Safeweb. Verifique as credenciais e o CNPJ AR." });
+    return;
+  }
+
+  // Busca IDs já importados
+  const existing = await db.select({ safewebIdProduto: certificatesTable.safewebIdProduto }).from(certificatesTable);
+  const existingIds = new Set(existing.map(e => e.safewebIdProduto).filter(Boolean));
+
+  // Insere os novos
+  let imported = 0;
+  let skipped = 0;
+  for (const p of unique) {
+    const idStr = String(p.idProduto);
+    if (existingIds.has(idStr)) { skipped++; continue; }
+    const descParts = [p.TipoEmissao, p.ProdutoModelo].filter(Boolean);
+    await db.insert(certificatesTable).values({
+      name: p.Nome,
+      description: descParts.length ? descParts.join(" · ") : null,
+      price: "0.00",
+      active: true,
+      safewebIdProduto: idStr,
+      validityMonths: p.Validade || 12,
+      garHashProduto: null,
+    });
+    imported++;
+  }
+
+  res.json({ imported, skipped, total: unique.length });
 });
 
 router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {

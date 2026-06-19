@@ -82,6 +82,7 @@ import type {
   GetGarValidadesParams,
   GetMeStatsParams,
   HealthStatus,
+  ImportSafewebCertificates200,
   InboundWebhookInput,
   ListCertificatesParams,
   ListMarketingContacts200,
@@ -1889,6 +1890,76 @@ export const useCreateCertificate = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateCertificateMutationOptions(options));
+    }
+
+export const getImportSafewebCertificatesUrl = () => {
+
+
+
+
+  return `/api/certificates/import-safeweb`
+}
+
+/**
+ * @summary Import certificate models from Safeweb API (admin only)
+ */
+export const importSafewebCertificates = async ( options?: RequestInit): Promise<ImportSafewebCertificates200> => {
+
+  return customFetch<ImportSafewebCertificates200>(getImportSafewebCertificatesUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getImportSafewebCertificatesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importSafewebCertificates>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importSafewebCertificates>>, TError,void, TContext> => {
+
+const mutationKey = ['importSafewebCertificates'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importSafewebCertificates>>, void> = () => {
+
+
+          return  importSafewebCertificates(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportSafewebCertificatesMutationResult = NonNullable<Awaited<ReturnType<typeof importSafewebCertificates>>>
+
+    export type ImportSafewebCertificatesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Import certificate models from Safeweb API (admin only)
+ */
+export const useImportSafewebCertificates = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importSafewebCertificates>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importSafewebCertificates>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getImportSafewebCertificatesMutationOptions(options));
     }
 
 export const getUpdateCertificateUrl = (id: number,) => {

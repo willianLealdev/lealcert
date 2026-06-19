@@ -525,6 +525,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/Certificate"
 
+  /certificates/import-safeweb:
+    post:
+      operationId: importSafewebCertificates
+      tags: [certificates]
+      summary: Import certificate models from Safeweb API (admin only)
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [imported, skipped, total]
+                properties:
+                  imported:
+                    type: integer
+                  skipped:
+                    type: integer
+                  total:
+                    type: integer
+
   /certificates/{id}:
     patch:
       operationId: updateCertificate

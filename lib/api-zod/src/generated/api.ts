@@ -377,6 +377,16 @@ export const CreateCertificateBody = zod.object({
 
 
 /**
+ * @summary Import certificate models from Safeweb API (admin only)
+ */
+export const ImportSafewebCertificatesResponse = zod.object({
+  "imported": zod.number(),
+  "skipped": zod.number(),
+  "total": zod.number()
+})
+
+
+/**
  * @summary Update certificate model (admin only)
  */
 export const UpdateCertificateParams = zod.object({
