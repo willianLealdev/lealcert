@@ -582,7 +582,7 @@ export default function AdminSettings() {
                     <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /><CardTitle>Safeweb — Integração</CardTitle></div>
                     <ProviderBadge active />
                   </div>
-                  <CardDescription>Credenciais para integração com a API Safeweb. Documentação em <a href="https://developers.safeweb.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">developers.safeweb.com.br</a>.</CardDescription>
+                  <CardDescription>Credenciais para integração com a API Safeweb (Identificador e Segredo são fornecidos pela Safeweb). Documentação: <a href="https://developers.safewebpss.com.br" target="_blank" rel="noopener noreferrer" className="text-primary underline">Produção</a> · <a href="https://h-acsafeweb.safewebpss.com.br/hotsite/documentacao-safewebpss/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Homologação</a></CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -597,8 +597,8 @@ export default function AdminSettings() {
                   </div>
                   <div className="space-y-2"><Label>URL — Produção</Label><Input value={form.safewebUrl} onChange={e => set("safewebUrl", e.target.value)} placeholder="https://acsafeweb.safewebpss.com.br" /></div>
                   <div className="space-y-2"><Label>URL — Homologação</Label><Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://h-acsafeweb.safewebpss.com.br" /></div>
-                  <div className="space-y-2"><Label>Usuário</Label><Input value={form.safewebUsername} onChange={e => set("safewebUsername", e.target.value)} autoComplete="off" /></div>
-                  <div className="space-y-2"><Label>Senha</Label><MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} /></div>
+                  <div className="space-y-2"><Label>Identificador</Label><Input value={form.safewebUsername} onChange={e => set("safewebUsername", e.target.value)} placeholder="Identificador fornecido pela Safeweb" autoComplete="off" /></div>
+                  <div className="space-y-2"><Label>Segredo</Label><MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Segredo fornecido pela Safeweb" /></div>
                   <div className="space-y-2"><Label>CNPJ da AR</Label><Input value={form.safewebCnpjAr} onChange={e => set("safewebCnpjAr", e.target.value)} placeholder="00000000000000" /></div>
                   <div className="space-y-2">
                     <Label>Código do Parceiro <span className="text-destructive font-semibold">*</span></Label>
