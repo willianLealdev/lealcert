@@ -194,7 +194,8 @@ export default function NewOrder() {
     if (isCpf && birthDate) {
       psbioContextRef.current = "customer";
       setPsbioStatus("loading");
-      checkPsbio.mutate({ data: { cpf: digits, dataNascimento: birthDate } });
+      const dateIso = birthDate.includes("/") ? parseBrDate(birthDate) : birthDate;
+      checkPsbio.mutate({ data: { cpf: digits, dataNascimento: dateIso } });
     } else if (isCnpj && repCpf && repBirthDate) {
       const repDigits = repCpf.replace(/\D/g, "");
       const repDateIso = repBirthDate.includes("/") ? parseBrDate(repBirthDate) : repBirthDate;
@@ -364,7 +365,7 @@ export default function NewOrder() {
         customerCpfCnpj: form.customerCpfCnpj,
         customerEmail: form.customerEmail,
         customerPhone: form.customerPhone,
-        customerBirthDate: form.customerBirthDate || undefined,
+        customerBirthDate: form.customerBirthDate ? parseBrDate(form.customerBirthDate) : undefined,
         hasPsbio: hasPsbioValue,
         companyName: form.companyName || undefined,
         inssNumber: form.inssNumber || undefined,
@@ -554,8 +555,6 @@ export default function NewOrder() {
                         if (showCnpjFields) {
                           if (digits.length === 14) setCnpjToQuery(digits);
                           else { setCnpjToQuery(""); setAutoFilledCustomerName(false); }
-                        } else {
-                          triggerPsbioCheck(v, form.customerBirthDate, "cpf", form.repCpf, form.repBirthDate);
                         }
                       }} required placeholder={showCnpjFields ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
                       {cnpjFetching && showCnpjFields && (
@@ -576,12 +575,10 @@ export default function NewOrder() {
                     <div className="space-y-2">
                       <Label>Data de Nascimento</Label>
                       <Input
-                        type="date"
                         value={form.customerBirthDate}
-                        onChange={e => {
-                          set("customerBirthDate", e.target.value);
-                          triggerPsbioCheck(form.customerCpfCnpj, e.target.value, "cpf", form.repCpf, form.repBirthDate);
-                        }}
+                        onChange={e => set("customerBirthDate", maskDate(e.target.value))}
+                        placeholder="dd/mm/aaaa"
+                        maxLength={10}
                       />
                     </div>
                   )}
@@ -610,37 +607,6 @@ export default function NewOrder() {
                   </div>
                 </div>
 
-                {/* PSBio status indicator — only relevant for CPF mode */}
-                {!showCnpjFields && psbioStatus === "loading" && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    Verificando validação biométrica...
-                  </div>
-                )}
-                {!showCnpjFields && psbioStatus && psbioStatus !== "loading" && psbioStatus.hasPsbio && (
-                  <div className="flex items-start gap-2 text-sm bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-4 py-3">
-                    <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-emerald-700 dark:text-emerald-400">Biometria PSBio disponível</p>
-                      <p className="text-emerald-600/80 dark:text-emerald-500 text-xs">{psbioStatus.mensagem} — atendimento pode ser realizado remotamente.</p>
-                    </div>
-                  </div>
-                )}
-                {!showCnpjFields && psbioStatus && psbioStatus !== "loading" && !psbioStatus.hasPsbio && (
-                  <div className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3">
-                    <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-amber-700 dark:text-amber-400">Atendimento presencial obrigatório</p>
-                      <p className="text-amber-600/80 dark:text-amber-500 text-xs">{psbioStatus.mensagem} — o cliente deverá comparecer pessoalmente para validação.</p>
-                    </div>
-                  </div>
-                )}
-                {!showCnpjFields && !psbioStatus && form.customerCpfCnpj.replace(/\D/g, "").length >= 11 && !form.customerBirthDate && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <ShieldQuestion className="h-4 w-4" />
-                    Informe a data de nascimento para verificar disponibilidade de biometria.
-                  </div>
-                )}
               </CardContent>
             </Card>
 
