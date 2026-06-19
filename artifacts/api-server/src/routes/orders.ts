@@ -503,6 +503,62 @@ router.post("/orders/:id/sync-provider", requireAdmin, async (req, res): Promise
   }
 });
 
+// ── POST /orders/:id/safeweb-cancelar — cancela solicitação na Safeweb ───────
+router.post("/orders/:id/safeweb-cancelar", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+
+  if (!order.safewebSolicitacaoId) {
+    res.status(400).json({ error: "Pedido não possui solicitação Safeweb registrada" }); return;
+  }
+
+  // Só pode cancelar se status for aguardando_validacao
+  if (order.status !== "aguardando_validacao") {
+    res.status(400).json({
+      error: `Cancelamento não permitido: o pedido está com status "${order.status}". Só é possível cancelar solicitações com status "Aguardando Validação".`,
+    }); return;
+  }
+
+  const [s] = await db.select().from(settingsTable).limit(1);
+  const isHomol = s?.safewebAmbiente === "homologacao";
+  const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
+  const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
+  const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
+
+  if (!username || !password || !rawUrl) {
+    res.status(503).json({ error: "Credenciais Safeweb não configuradas" }); return;
+  }
+
+  const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
+  const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined };
+  const { motivo } = req.body ?? {};
+
+  try {
+    const { swCancelarSolicitacao } = await import("../lib/safeweb");
+    const result = await swCancelarSolicitacao(sw, Number(order.safewebSolicitacaoId), motivo ?? "Cancelado pelo administrador");
+    req.log.info({ orderId: id, result }, "safeweb-cancelar: resposta da API");
+
+    // Atualiza status do pedido para cancelled
+    await db.update(ordersTable).set({
+      status: "cancelled",
+      safewebStatus: "Cancelada",
+      safewebSyncedAt: new Date(),
+    }).where(eq(ordersTable.id, id));
+
+    const { logEvent } = await import("../lib/order-events");
+    await logEvent(id, "gar_status_updated", `Solicitação Safeweb cancelada. Motivo: ${motivo ?? "Cancelado pelo administrador"}`, { result });
+
+    res.json({ ok: true, message: "Solicitação cancelada com sucesso" });
+  } catch (err) {
+    const msg = (err as Error).message ?? "";
+    req.log.error({ err, orderId: id }, "safeweb-cancelar: erro ao cancelar solicitação");
+    res.status(502).json({ error: `Erro ao cancelar na Safeweb: ${msg}` });
+  }
+});
+
 // ── POST /orders/:id/safeweb-agendar — agenda atendimento via Safeweb ────────
 router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);

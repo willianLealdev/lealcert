@@ -141,6 +141,8 @@ export * from './registerInputUserType';
 export * from './resendVerificationInput';
 export * from './safewebAgendarInput';
 export * from './safewebAgendarResult';
+export * from './safewebCancelarInput';
+export * from './safewebCancelarResult';
 export * from './safewebSlotsResult';
 export * from './safewebSlotsResultRaw';
 export * from './safewebSlotsResultSlotsItem';

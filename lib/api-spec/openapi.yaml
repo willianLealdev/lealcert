@@ -801,6 +801,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/SafewebAgendarResult"
 
+  /orders/{id}/safeweb-cancelar:
+    post:
+      operationId: cancelarSafewebOrder
+      tags: [orders]
+      summary: Cancela a solicitação Safeweb (somente admin, status aguardando_validacao)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SafewebCancelarInput"
+      responses:
+        "200":
+          description: Solicitação cancelada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafewebCancelarResult"
+
   /orders/{id}/sync-provider:
     post:
       operationId: syncProviderOrder
@@ -3196,6 +3220,21 @@ components:
         raw:
           type: object
           additionalProperties: true
+
+    SafewebCancelarInput:
+      type: object
+      properties:
+        motivo:
+          type: string
+
+    SafewebCancelarResult:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
 
     SafewebAgendarInput:
       type: object

@@ -11,6 +11,7 @@ import {
   useGetOrderGarSlots,
   useAgendarOrder,
   useAgendarSafewebOrder,
+  useCancelarSafewebOrder,
   useGetSafewebSlots,
   useGetOrderEvents,
 } from "@workspace/api-client-react";
@@ -22,12 +23,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, QrCode, Loader2, FileText, Download, RefreshCw,
   ShoppingBag, CheckCircle2, Calendar, MapPin, Video, Clock, ChevronRight, Check,
-  Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag, Copy,
+  Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag, Copy, Ban,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -983,6 +985,19 @@ export default function OrderDetail() {
     },
   });
 
+  const cancelarSafeweb = useCancelarSafewebOrder({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Solicitação cancelada", description: "O certificado foi cancelado na Safeweb." });
+        refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao cancelar.";
+        toast({ title: "Erro ao cancelar", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
   const syncProvider = useSyncProviderOrder({
     mutation: {
       onSuccess: (data) => {
@@ -1391,7 +1406,7 @@ export default function OrderDetail() {
                     <InfoRow label="Status Safeweb" value={safewebStatus} />
                     <InfoRow label="Última sincronização" value={safewebSyncedAt ? formatDateTime(safewebSyncedAt) : "—"} />
                   </div>
-                  <div className="pt-2">
+                  <div className="pt-2 flex flex-wrap gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -1403,6 +1418,40 @@ export default function OrderDetail() {
                         : <RefreshCw className="h-4 w-4 mr-2" />}
                       Sincronizar com Safeweb
                     </Button>
+
+                    {order.status === "aguardando_validacao" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={cancelarSafeweb.isPending}
+                          >
+                            {cancelarSafeweb.isPending
+                              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              : <Ban className="h-4 w-4 mr-2" />}
+                            Cancelar Solicitação
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Cancelar solicitação na Safeweb?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação irá cancelar a solicitação do certificado na Safeweb e alterar o status do pedido para <strong>Cancelado</strong>. Esta operação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Voltar</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={() => cancelarSafeweb.mutate({ id: Number(id), data: { motivo: "Cancelado pelo administrador" } })}
+                            >
+                              Confirmar Cancelamento
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </div>
               </CardContent>

@@ -749,6 +749,23 @@ export const AgendarSafewebOrderResponse = zod.object({
 
 
 /**
+ * @summary Cancela a solicitação Safeweb (somente admin, status aguardando_validacao)
+ */
+export const CancelarSafewebOrderParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CancelarSafewebOrderBody = zod.object({
+  "motivo": zod.string().optional()
+})
+
+export const CancelarSafewebOrderResponse = zod.object({
+  "ok": zod.boolean(),
+  "message": zod.string().optional()
+})
+
+
+/**
  * @summary Sync order status from active provider (Safeweb or Gestão AR)
  */
 export const SyncProviderOrderParams = zod.object({

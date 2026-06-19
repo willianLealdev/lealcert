@@ -860,6 +860,15 @@ export interface SafewebSlotsResult {
   raw?: SafewebSlotsResultRaw;
 }
 
+export interface SafewebCancelarInput {
+  motivo?: string;
+}
+
+export interface SafewebCancelarResult {
+  ok: boolean;
+  message?: string;
+}
+
 export interface SafewebAgendarInput {
   dataHora: string;
   localNome?: string;

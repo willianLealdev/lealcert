@@ -115,6 +115,8 @@ import type {
   ResendVerificationInput,
   SafewebAgendarInput,
   SafewebAgendarResult,
+  SafewebCancelarInput,
+  SafewebCancelarResult,
   SafewebSlotsResult,
   SendCampaignInput,
   SendRenewalAlert200,
@@ -2854,6 +2856,78 @@ export const useAgendarSafewebOrder = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAgendarSafewebOrderMutationOptions(options));
+    }
+
+export const getCancelarSafewebOrderUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/safeweb-cancelar`
+}
+
+/**
+ * @summary Cancela a solicitação Safeweb (somente admin, status aguardando_validacao)
+ */
+export const cancelarSafewebOrder = async (id: number,
+    safewebCancelarInput?: SafewebCancelarInput, options?: RequestInit): Promise<SafewebCancelarResult> => {
+
+  return customFetch<SafewebCancelarResult>(getCancelarSafewebOrderUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      safewebCancelarInput,)
+  }
+);}
+
+
+
+
+export const getCancelarSafewebOrderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelarSafewebOrder>>, TError,{id: number;data?: BodyType<SafewebCancelarInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelarSafewebOrder>>, TError,{id: number;data?: BodyType<SafewebCancelarInput>}, TContext> => {
+
+const mutationKey = ['cancelarSafewebOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelarSafewebOrder>>, {id: number;data?: BodyType<SafewebCancelarInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  cancelarSafewebOrder(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelarSafewebOrderMutationResult = NonNullable<Awaited<ReturnType<typeof cancelarSafewebOrder>>>
+    export type CancelarSafewebOrderMutationBody = BodyType<SafewebCancelarInput> | undefined
+    export type CancelarSafewebOrderMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Cancela a solicitação Safeweb (somente admin, status aguardando_validacao)
+ */
+export const useCancelarSafewebOrder = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelarSafewebOrder>>, TError,{id: number;data?: BodyType<SafewebCancelarInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelarSafewebOrder>>,
+        TError,
+        {id: number;data?: BodyType<SafewebCancelarInput>},
+        TContext
+      > => {
+      return useMutation(getCancelarSafewebOrderMutationOptions(options));
     }
 
 export const getSyncProviderOrderUrl = (id: number,) => {
