@@ -103,6 +103,7 @@ export default function NewOrder() {
     repDocUf: "",
     customerCei: "",
     customerNis: "",
+    repNumeroTipo: "" as "" | "cei" | "nis" | "pis",
   });
 
   type PsbioStatus = null | "loading" | { hasPsbio: boolean; mensagem: string; requiresPresencial: boolean; apiError?: boolean };
@@ -670,26 +671,6 @@ export default function NewOrder() {
                     </div>
                   )}
 
-                  {/* CEI / NIS — opcionais para e-CPF e e-CNPJ */}
-                  <div className="space-y-2">
-                    <Label>CEI <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-                    <Input
-                      value={form.customerCei}
-                      onChange={e => set("customerCei", e.target.value.replace(/\D/g, "").slice(0, isCnpjCert ? 11 : 12))}
-                      placeholder={isCnpjCert ? "11 dígitos" : "Até 12 dígitos"}
-                      maxLength={isCnpjCert ? 11 : 12}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>NIS <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-                    <Input
-                      value={form.customerNis}
-                      onChange={e => set("customerNis", e.target.value.replace(/\D/g, "").slice(0, isCnpjCert ? 9 : 11))}
-                      placeholder={isCnpjCert ? "9 dígitos" : "Até 11 dígitos"}
-                      maxLength={isCnpjCert ? 9 : 11}
-                    />
-                  </div>
-
                   <div className="space-y-2">
                     <Label>E-mail *</Label>
                     <Input type="email" value={form.customerEmail} onChange={e => set("customerEmail", e.target.value)} required placeholder="cliente@email.com" />
@@ -968,10 +949,62 @@ export default function NewOrder() {
                   />
                 </div>
 
-                {/* PIS / IMEI */}
-                <div className="space-y-2">
-                  <Label>PIS / IMEI <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-                  <Input value={form.inssNumber} onChange={e => set("inssNumber", e.target.value)} placeholder="Opcional" />
+                {/* CEI / NIS / PIS-IMEI — exclusivos */}
+                <div className="space-y-3 pt-1">
+                  <p className="text-sm font-medium text-foreground">Número Adicional <span className="text-muted-foreground font-normal text-xs">(opcional — escolha apenas um)</span></p>
+                  <div className="flex flex-wrap gap-4">
+                    {(["cei", "nis", "pis"] as const).map(tipo => (
+                      <label key={tipo} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="repNumeroTipo"
+                          value={tipo}
+                          checked={form.repNumeroTipo === tipo}
+                          onChange={() => setForm(f => ({
+                            ...f,
+                            repNumeroTipo: tipo,
+                            customerCei: tipo === "cei" ? f.customerCei : "",
+                            customerNis: tipo === "nis" ? f.customerNis : "",
+                            inssNumber: tipo === "pis" ? f.inssNumber : "",
+                          }))}
+                          className="accent-primary"
+                        />
+                        <span className="text-sm font-medium">{tipo === "pis" ? "PIS / IMEI" : tipo.toUpperCase()}</span>
+                      </label>
+                    ))}
+                    {form.repNumeroTipo && (
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, repNumeroTipo: "", customerCei: "", customerNis: "", inssNumber: "" }))}
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        limpar
+                      </button>
+                    )}
+                  </div>
+                  {form.repNumeroTipo === "cei" && (
+                    <Input
+                      value={form.customerCei}
+                      onChange={e => set("customerCei", e.target.value.replace(/\D/g, "").slice(0, 12))}
+                      placeholder="CEI — até 12 dígitos"
+                      maxLength={12}
+                    />
+                  )}
+                  {form.repNumeroTipo === "nis" && (
+                    <Input
+                      value={form.customerNis}
+                      onChange={e => set("customerNis", e.target.value.replace(/\D/g, "").slice(0, 11))}
+                      placeholder="NIS — até 11 dígitos"
+                      maxLength={11}
+                    />
+                  )}
+                  {form.repNumeroTipo === "pis" && (
+                    <Input
+                      value={form.inssNumber}
+                      onChange={e => set("inssNumber", e.target.value)}
+                      placeholder="PIS / IMEI"
+                    />
+                  )}
                 </div>
 
                 {/* Documento de identificação do representante — obrigatório */}
