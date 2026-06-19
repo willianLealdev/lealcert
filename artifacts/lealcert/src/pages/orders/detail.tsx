@@ -627,6 +627,43 @@ function SchedulingDialog({
   );
 }
 
+// ── ManualSlotInput — fallback quando a Safeweb não retorna horários ──────────
+function ManualSlotInput({ selected, onSelect }: {
+  selected: { idAgendamento: string | number | null; dataHora: string; local: string } | null;
+  onSelect: (slot: { idAgendamento: string | number | null; dataHora: string; local: string }) => void;
+}) {
+  const [dataHora, setDataHora] = useState(selected?.dataHora ? new Date(selected.dataHora).toISOString().slice(0, 16) : "");
+  const [local, setLocal] = useState(selected?.local ?? "Videoconferência");
+
+  const handleChange = (dh: string, loc: string) => {
+    if (dh) onSelect({ idAgendamento: null, dataHora: new Date(dh).toISOString(), local: loc });
+  };
+
+  return (
+    <div className="space-y-4 py-2">
+      <p className="text-sm text-muted-foreground">
+        Informe a data, horário e modalidade combinados para o atendimento.
+      </p>
+      <div className="space-y-2">
+        <Label>Data e Horário</Label>
+        <Input
+          type="datetime-local"
+          value={dataHora}
+          onChange={e => { setDataHora(e.target.value); handleChange(e.target.value, local); }}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Modalidade / Local</Label>
+        <Input
+          value={local}
+          onChange={e => { setLocal(e.target.value); handleChange(dataHora, e.target.value); }}
+          placeholder="Ex: Videoconferência"
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── SlotsDialogBody — montado só quando o dialog está aberto ─────────────────
 function SlotsDialogBody({ orderId, onSelect, selected }: {
   orderId: number;
@@ -662,9 +699,7 @@ function SlotsDialogBody({ orderId, onSelect, selected }: {
   );
 
   if (slots.length === 0) return (
-    <p className="text-sm text-muted-foreground text-center py-6">
-      Nenhum horário disponível no momento. Tente novamente mais tarde.
-    </p>
+    <ManualSlotInput selected={selected} onSelect={onSelect} />
   );
 
   return (
@@ -1297,7 +1332,7 @@ export default function OrderDetail() {
                       <InfoRow label="Pedido GAR" value={garPedido} />
                       <InfoRow label="Protocolo" value={garProtocolo} />
                       <InfoRow label="Status GAR" value={garStatus} />
-                      <InfoRow label="Última sincronização" value={garSyncedAt ? formatDateTime(garSyncedAt) : "—"} />
+                      <InfoRow label="Última sincronização" value={garSyncedAt ? formatDateTime(garSyncedAt ?? null) : "—"} />
                       {garAgendamentoLocalNome && <InfoRow label="Local agendado" value={garAgendamentoLocalNome} />}
                       {garAgendamentoDataHora && <InfoRow label="Data/hora agendada" value={garAgendamentoDataHora} />}
                     </div>

@@ -614,8 +614,16 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
 
     res.json({ slots, raw: result });
   } catch (err) {
+    const msg = (err as Error).message ?? "";
+    // Se o endpoint não existe na Safeweb (404) retorna lista vazia sem erro —
+    // o agendamento manual continua disponível via input de data/hora.
+    if (msg.includes("404") || msg.includes("Not Found")) {
+      req.log.warn({ orderId: id }, "safeweb-slots: endpoint GetAvailableSchedules não disponível — retornando lista vazia");
+      res.json({ slots: [] });
+      return;
+    }
     req.log.error({ err, orderId: id }, "safeweb-slots: erro ao listar horários");
-    res.status(502).json({ error: `Erro ao consultar horários: ${(err as Error).message}` });
+    res.status(502).json({ error: `Erro ao consultar horários: ${msg}` });
   }
 });
 
