@@ -87,15 +87,22 @@ async function syncSafewebStatuses() {
     for (const { order } of pendingOrders) {
       if (!order.safewebSolicitacaoId) continue;
       try {
-        const token = await swGetToken(sw);
-        const resp = await fetch(
-          `${sw.url}/Service/Microservice/Shared/Partner/api/GetStatus/${order.safewebSolicitacaoId}`,
-          { headers: { "Authorization": token, "Content-Type": "application/json" } },
-        );
-        if (!resp.ok) continue;
+        // A Safeweb não tem endpoint GET de status por solicitação — status chega via webhook.
+        // O sync periódico apenas tenta GetInformation do agendamento (se disponível).
+        if (!order.safewebAgendamentoId) continue;
 
-        const data = await resp.json() as Record<string, unknown>;
-        const statusLabel = String(data.Status ?? data.Situacao ?? data.status ?? "");
+        const agendId = parseInt(order.safewebAgendamentoId, 10);
+        if (isNaN(agendId)) continue;
+
+        const { swAgendaInformacoes } = await import("./safeweb");
+        let info: Record<string, unknown>;
+        try {
+          info = await swAgendaInformacoes(sw, agendId) as Record<string, unknown>;
+        } catch {
+          continue; // endpoint falhou — aguarda próximo ciclo
+        }
+
+        const statusLabel = String(info?.Status ?? info?.Situacao ?? info?.status ?? "");
         if (!statusLabel) continue;
 
         const newStatus = STATUS_MAP[statusLabel];
@@ -105,7 +112,7 @@ async function syncSafewebStatuses() {
         };
         if (newStatus && order.status !== newStatus) {
           updates.status = newStatus;
-          await logEvent(order.id, "gar_status_updated", `Status Safeweb atualizado: ${statusLabel}`, { safewebStatus: statusLabel });
+          await logEvent(order.id, "gar_status_updated", `Status Safeweb atualizado (sync): ${statusLabel}`, { safewebStatus: statusLabel });
           logger.info({ orderId: order.id, statusLabel, newStatus }, "Safeweb sync: status atualizado");
         }
 

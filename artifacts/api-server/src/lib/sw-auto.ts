@@ -202,6 +202,10 @@ export async function swAutoComprar(orderId: number): Promise<void> {
 }
 
 // ── Consultar status de uma solicitação Safeweb ───────────────────────────────
+// A Safeweb não possui endpoint dedicado de consulta de status por solicitação —
+// o status é atualizado via webhooks de eventos (POST /api/safeweb/eventos/:tipo).
+// Esta função tenta obter info via GetInformation do agendamento (se houver),
+// e caso contrário apenas atualiza safewebSyncedAt e retorna o status atual do banco.
 export async function swSyncStatus(orderId: number): Promise<{ ok: boolean; status?: string; error?: string }> {
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId)).limit(1);
   if (!order) return { ok: false, error: "Pedido não encontrado" };
@@ -210,47 +214,38 @@ export async function swSyncStatus(orderId: number): Promise<{ ok: boolean; stat
   const sw = await getSwSettings();
   if (!sw) return { ok: false, error: "Credenciais Safeweb não configuradas" };
 
-  try {
-    // [INFERRED] Endpoint de status da solicitação Safeweb
-    const token = await swGetToken(sw);
-    const resp = await fetch(
-      `${sw.url}/Service/Microservice/Shared/Partner/api/GetStatus/${order.safewebSolicitacaoId}`,
-      { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } },
-    );
+  // Status atual salvo no banco (atualizado pelos webhooks de eventos)
+  const currentStatus = order.safewebStatus ?? "Solicitação criada";
 
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => "");
-      return { ok: false, error: `Safeweb HTTP ${resp.status}: ${text}` };
+  try {
+    // Tenta GetInformation do agendamento se houver idAgendamento salvo
+    if (order.safewebAgendamentoId) {
+      const agendId = parseInt(order.safewebAgendamentoId, 10);
+      if (!isNaN(agendId)) {
+        const { swAgendaInformacoes } = await import("./safeweb");
+        try {
+          const info = await swAgendaInformacoes(sw, agendId) as Record<string, unknown>;
+          const statusLabel = String(
+            info?.Status ?? info?.status ?? info?.Situacao ?? info?.situacao ?? currentStatus
+          );
+          await db.update(ordersTable).set({
+            safewebStatus: statusLabel,
+            safewebSyncedAt: new Date(),
+          }).where(eq(ordersTable.id, orderId));
+          await logEvent(orderId, "gar_status_updated", `Sync Safeweb (agendamento): ${statusLabel}`, { info });
+          return { ok: true, status: statusLabel };
+        } catch {
+          // GetInformation falhou — segue para retornar status do banco
+        }
+      }
     }
 
-    const data = await resp.json() as Record<string, unknown>;
-    const statusLabel = String(data.Status ?? data.status ?? data.StatusDescricao ?? data.Situacao ?? "Desconhecido");
-    const statusMap: Record<string, string> = {
-      "Aguardando": "Aguardando",
-      "Pendente": "Aguardando",
-      "Validada": "Validada",
-      "Emitida": "Emitida",
-      "Cancelada": "Cancelada",
-      "Revogada": "Revogada",
-      "Aprovada": "Aprovada",
-    };
-    const friendlyStatus = statusMap[statusLabel] ?? statusLabel;
+    // Sem endpoint de status por solicitação na Safeweb — atualiza timestamp e retorna status atual do banco
+    // O status real é propagado pelos webhooks de eventos configurados no painel Safeweb.
+    await db.update(ordersTable).set({ safewebSyncedAt: new Date() }).where(eq(ordersTable.id, orderId));
+    logger.info({ orderId, safewebSolicitacaoId: order.safewebSolicitacaoId }, "swSyncStatus: status mantido (Safeweb envia atualizações por webhook)");
 
-    // Mapear status Safeweb para status interno
-    let internalStatus = order.status;
-    if (friendlyStatus === "Emitida") internalStatus = "completed";
-    else if (friendlyStatus === "Cancelada" || friendlyStatus === "Revogada") internalStatus = "cancelled";
-    else if (friendlyStatus === "Validada" || friendlyStatus === "Aprovada") internalStatus = "protocol_assigned";
-
-    await db.update(ordersTable).set({
-      safewebStatus: friendlyStatus,
-      safewebSyncedAt: new Date(),
-      ...(internalStatus !== order.status ? { status: internalStatus as typeof order.status } : {}),
-    }).where(eq(ordersTable.id, orderId));
-
-    await logEvent(orderId, "gar_status_updated", `Status Safeweb atualizado: ${friendlyStatus}`, { statusRaw: data });
-
-    return { ok: true, status: friendlyStatus };
+    return { ok: true, status: currentStatus };
   } catch (err) {
     return { ok: false, error: (err as Error).message };
   }
