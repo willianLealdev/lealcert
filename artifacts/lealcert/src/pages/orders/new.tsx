@@ -391,7 +391,7 @@ export default function NewOrder() {
         addressState: form.addressState || undefined,
         representanteCpf: isCnpjCert && form.repCpf ? form.repCpf : undefined,
         representanteNascimento: isCnpjCert && form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
-        representanteDocTipo: form.repDocTipo !== "0" ? form.repDocTipo as "1" | "2" | "3" : undefined,
+        representanteDocTipo: form.repDocTipo !== "0" ? form.repDocTipo as "1" | "2" | "3" | "4" : undefined,
         representanteDocNumero: form.repDocTipo !== "0" && form.repDocNumero ? form.repDocNumero : undefined,
         representanteDocEmissor: form.repDocTipo !== "0" && form.repDocOrgan && form.repDocUf
           ? (form.repDocOrgan + form.repDocUf).toUpperCase()
@@ -670,6 +670,7 @@ export default function NewOrder() {
                           <option value="1">RG</option>
                           <option value="2">RNE</option>
                           <option value="3">Passaporte</option>
+                          <option value="4">CNH</option>
                         </select>
                       </div>
                       {form.repDocTipo !== "0" && (
@@ -1009,6 +1010,7 @@ export default function NewOrder() {
                       <option value="1">RG</option>
                       <option value="2">RNE</option>
                       <option value="3">Passaporte</option>
+                      <option value="4">CNH</option>
                     </select>
                   </div>
                   {form.repDocTipo !== "0" && (
