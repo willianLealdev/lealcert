@@ -1244,7 +1244,8 @@ export default function OrderDetail() {
             />
           )}
 
-          {isAdmin && (
+          {/* Bloco oculto — manter no código para uso futuro */}
+          {false && isAdmin && (
             <Card>
               <CardHeader><CardTitle>Atualizar Pedido</CardTitle></CardHeader>
               <CardContent>
@@ -1280,8 +1281,8 @@ export default function OrderDetail() {
             </Card>
           )}
 
-          {/* Provedor — GAR */}
-          {isAdmin && (
+          {/* Provedor — GAR — bloco oculto, manter no código para uso futuro */}
+          {false && isAdmin && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
