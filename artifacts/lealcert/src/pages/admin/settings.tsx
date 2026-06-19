@@ -595,8 +595,8 @@ export default function AdminSettings() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2"><Label>URL — Produção</Label><Input value={form.safewebUrl} onChange={e => set("safewebUrl", e.target.value)} placeholder="https://acsafeweb.safewebpss.com.br" /></div>
-                  <div className="space-y-2"><Label>URL — Homologação</Label><Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://h-acsafeweb.safewebpss.com.br" /></div>
+                  <div className="space-y-2"><Label>URL — Produção</Label><Input value={form.safewebUrl} onChange={e => set("safewebUrl", e.target.value)} placeholder="https://pss.safewebpss.com.br" /></div>
+                  <div className="space-y-2"><Label>URL — Homologação</Label><Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://pss.safewebpss.com.br" /></div>
                   <div className="space-y-2"><Label>Identificador</Label><Input value={form.safewebUsername} onChange={e => set("safewebUsername", e.target.value)} placeholder="Identificador fornecido pela Safeweb" autoComplete="off" /></div>
                   <div className="space-y-2"><Label>Segredo</Label><MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Segredo fornecido pela Safeweb" /></div>
                   <div className="space-y-2">
