@@ -599,10 +599,15 @@ export default function AdminSettings() {
                   <div className="space-y-2"><Label>URL — Homologação</Label><Input value={form.safewebUrlHomologacao} onChange={e => set("safewebUrlHomologacao", e.target.value)} placeholder="https://h-acsafeweb.safewebpss.com.br" /></div>
                   <div className="space-y-2"><Label>Identificador</Label><Input value={form.safewebUsername} onChange={e => set("safewebUsername", e.target.value)} placeholder="Identificador fornecido pela Safeweb" autoComplete="off" /></div>
                   <div className="space-y-2"><Label>Segredo</Label><MaskedInput value={form.safewebPassword} onChange={v => set("safewebPassword", v)} placeholder="Segredo fornecido pela Safeweb" /></div>
-                  <div className="space-y-2"><Label>CNPJ da AR</Label><Input value={form.safewebCnpjAr} onChange={e => set("safewebCnpjAr", e.target.value)} placeholder="00000000000000" /></div>
                   <div className="space-y-2">
-                    <Label>Código do Parceiro <span className="text-destructive font-semibold">*</span></Label>
-                    <Input value={form.safewebCodigoParceiro} onChange={e => set("safewebCodigoParceiro", e.target.value)} placeholder="Código fornecido pela Safeweb" />
+                    <Label>CNPJ da AR <span className="text-muted-foreground font-normal text-xs">(fornecido pela Safeweb no onboarding)</span></Label>
+                    <Input value={form.safewebCnpjAr} onChange={e => set("safewebCnpjAr", e.target.value)} placeholder="00000000000000" />
+                    <p className="text-xs text-muted-foreground">Necessário para listar produtos e criar solicitações. Não é obrigatório para testar a conexão.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Código do Parceiro <span className="text-muted-foreground font-normal text-xs">(opcional)</span></Label>
+                    <Input value={form.safewebCodigoParceiro} onChange={e => set("safewebCodigoParceiro", e.target.value)} placeholder="Se fornecido pela Safeweb" />
+                    <p className="text-xs text-muted-foreground">Incluso nas solicitações apenas se preenchido. Deixe em branco se não tiver sido fornecido.</p>
                   </div>
                   <Button type="button" variant="outline" size="sm"
                     disabled={testingAuth || !(form.safewebAmbiente === "homologacao" ? form.safewebUrlHomologacao : form.safewebUrl) || !form.safewebUsername || !form.safewebPassword}
