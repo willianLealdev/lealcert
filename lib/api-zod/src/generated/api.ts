@@ -357,6 +357,7 @@ export const ListCertificatesResponseItem = zod.object({
   "active": zod.boolean(),
   "garHashProduto": zod.string().nullish(),
   "safewebIdProduto": zod.string().nullish(),
+  "validityMonths": zod.number().optional(),
   "createdAt": zod.string()
 })
 export const ListCertificatesResponse = zod.array(ListCertificatesResponseItem)
@@ -412,6 +413,7 @@ export const UpdateCertificateResponse = zod.object({
   "active": zod.boolean(),
   "garHashProduto": zod.string().nullish(),
   "safewebIdProduto": zod.string().nullish(),
+  "validityMonths": zod.number().optional(),
   "createdAt": zod.string()
 })
 

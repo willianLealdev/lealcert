@@ -2253,6 +2253,8 @@ components:
           type: ["string", "null"]
         safewebIdProduto:
           type: ["string", "null"]
+        validityMonths:
+          type: integer
         createdAt:
           type: string
 

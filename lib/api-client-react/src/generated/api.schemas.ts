@@ -207,6 +207,7 @@ export interface Certificate {
   garHashProduto?: string | null;
   /** @nullable */
   safewebIdProduto?: string | null;
+  validityMonths?: number;
   createdAt: string;
 }
 

@@ -431,6 +431,9 @@ export default function NewOrder() {
                           {c.description && (
                             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.description}</p>
                           )}
+                          {c.validityMonths ? (
+                            <p className="text-xs text-amber-600 font-medium mt-1">{c.validityMonths} meses de validade</p>
+                          ) : null}
                           <p className={["text-lg font-bold mt-3", selected ? "text-primary" : "text-foreground"].join(" ")}>{formatBRL(certPrice(c))}</p>
                         </button>
                       );

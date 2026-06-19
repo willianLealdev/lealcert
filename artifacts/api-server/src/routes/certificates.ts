@@ -17,6 +17,7 @@ function certRow(c: typeof certificatesTable.$inferSelect) {
     active: c.active,
     garHashProduto: c.garHashProduto ?? null,
     safewebIdProduto: c.safewebIdProduto ?? null,
+    validityMonths: c.validityMonths,
     createdAt: c.createdAt,
   };
 }
@@ -138,7 +139,7 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
       price: "0.00",
       active: true,
       safewebIdProduto: idStr,
-      validityMonths: p.Validade || 12,
+      validityMonths: (p.Validade || 1) * 12,
       garHashProduto: null,
     });
     imported++;

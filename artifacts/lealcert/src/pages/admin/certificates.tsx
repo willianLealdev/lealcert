@@ -133,6 +133,9 @@ export default function AdminCertificates() {
                 <div className="min-w-0">
                   <p className="font-semibold truncate">{c.name}</p>
                   {c.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.description}</p>}
+                  {c.validityMonths ? (
+                    <p className="text-xs text-amber-600 font-medium mt-0.5">{c.validityMonths} meses de validade</p>
+                  ) : null}
                 </div>
                 <Badge variant={c.active ? "default" : "secondary"} className="shrink-0">
                   {c.active ? "Ativo" : "Inativo"}
