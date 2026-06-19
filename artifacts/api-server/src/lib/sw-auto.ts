@@ -122,9 +122,10 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     }
   }
 
-  // CEI e NIS do titular (opcionais)
+  // CEI, NIS, PIS do representante (mutuamente exclusivos — apenas um é preenchido)
   if (order.customerCei) body.CEI = order.customerCei;
   if (order.customerNis) body.NIS = order.customerNis;
+  if (order.inssNumber) body.PIS = order.inssNumber;
 
   // Documento de identificação do titular/representante
   // Tipo: 0=Não Informado, 1=RG, 2=RNE, 3=Passaporte

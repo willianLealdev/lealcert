@@ -969,7 +969,7 @@ export default function NewOrder() {
                           }))}
                           className="accent-primary"
                         />
-                        <span className="text-sm font-medium">{tipo === "pis" ? "PIS / IMEI" : tipo.toUpperCase()}</span>
+                        <span className="text-sm font-medium">{tipo === "pis" ? "PIS" : tipo.toUpperCase()}</span>
                       </label>
                     ))}
                     {form.repNumeroTipo && (
@@ -1001,8 +1001,9 @@ export default function NewOrder() {
                   {form.repNumeroTipo === "pis" && (
                     <Input
                       value={form.inssNumber}
-                      onChange={e => set("inssNumber", e.target.value)}
-                      placeholder="PIS / IMEI"
+                      onChange={e => set("inssNumber", e.target.value.replace(/\D/g, "").slice(0, 11))}
+                      placeholder="PIS — 11 dígitos"
+                      maxLength={11}
                     />
                   )}
                 </div>
