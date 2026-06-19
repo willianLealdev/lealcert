@@ -63,8 +63,23 @@ function requireSw(sw: SafewebSettings | null, res: Res): sw is SafewebSettings 
 }
 
 function handleErr(res: Res, err: unknown, msg: string): void {
+  const message = (err as Error).message ?? msg;
+  // Safeweb returns HTTP 4xx when credentials/request are invalid — extract clean message
+  const swMatch = message.match(/Safeweb \w+ HTTP (\d+): (.+)/s);
+  if (swMatch) {
+    const httpCode = Number(swMatch[1]);
+    let detail = swMatch[2];
+    try {
+      const parsed = JSON.parse(detail) as { mensagem?: string };
+      if (parsed.mensagem) detail = parsed.mensagem;
+    } catch { /* use raw */ }
+    const status = httpCode >= 400 && httpCode < 500 ? 400 : 502;
+    logger.error({ err }, msg);
+    res.status(status).json({ error: detail });
+    return;
+  }
   logger.error({ err }, msg);
-  res.status(502).json({ error: (err as Error).message ?? msg });
+  res.status(502).json({ error: message });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

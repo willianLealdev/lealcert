@@ -185,9 +185,9 @@ export default function AdminSettings() {
     setTestingAuth(true);
     try {
       const resp = await fetch("/api/safeweb/test-auth", { method: "POST", credentials: "include" });
-      const data = await resp.json() as { ok?: boolean; error?: string };
-      if (data.ok) toast({ title: "Safeweb: autenticação OK!" });
-      else toast({ title: "Safeweb: falha", description: data.error ?? "Erro desconhecido.", variant: "destructive" });
+      const data = await resp.json() as { ok?: boolean; tokenPreview?: string; error?: string };
+      if (resp.ok && data.ok) toast({ title: "✅ Safeweb: autenticação OK!", description: data.tokenPreview ? `Token: ${data.tokenPreview}` : undefined });
+      else toast({ title: "Safeweb: credenciais inválidas", description: data.error ?? "Verifique o Identificador e Segredo.", variant: "destructive" });
     } catch {
       toast({ title: "Erro ao testar autenticação", variant: "destructive" });
     } finally {
