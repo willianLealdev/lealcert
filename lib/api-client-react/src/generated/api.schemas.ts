@@ -293,11 +293,27 @@ export interface Order {
   /** @nullable */
   addressNumber?: string | null;
   /** @nullable */
+  addressComplement?: string | null;
+  /** @nullable */
   addressNeighborhood?: string | null;
   /** @nullable */
   addressCity?: string | null;
   /** @nullable */
   addressState?: string | null;
+  /** @nullable */
+  representanteAddressZipcode?: string | null;
+  /** @nullable */
+  representanteAddressStreet?: string | null;
+  /** @nullable */
+  representanteAddressNumber?: string | null;
+  /** @nullable */
+  representanteAddressComplement?: string | null;
+  /** @nullable */
+  representanteAddressNeighborhood?: string | null;
+  /** @nullable */
+  representanteAddressCity?: string | null;
+  /** @nullable */
+  representanteAddressState?: string | null;
   /** @nullable */
   mpPaymentId?: string | null;
   /** @nullable */
@@ -374,9 +390,17 @@ export interface OrderInput {
   addressZipcode?: string;
   addressStreet?: string;
   addressNumber?: string;
+  addressComplement?: string;
   addressNeighborhood?: string;
   addressCity?: string;
   addressState?: string;
+  representanteAddressZipcode?: string;
+  representanteAddressStreet?: string;
+  representanteAddressNumber?: string;
+  representanteAddressComplement?: string;
+  representanteAddressNeighborhood?: string;
+  representanteAddressCity?: string;
+  representanteAddressState?: string;
   customerCei?: string;
   customerNis?: string;
   representanteCpf?: string;

@@ -23,9 +23,17 @@ export interface OrderInput {
   addressZipcode?: string;
   addressStreet?: string;
   addressNumber?: string;
+  addressComplement?: string;
   addressNeighborhood?: string;
   addressCity?: string;
   addressState?: string;
+  representanteAddressZipcode?: string;
+  representanteAddressStreet?: string;
+  representanteAddressNumber?: string;
+  representanteAddressComplement?: string;
+  representanteAddressNeighborhood?: string;
+  representanteAddressCity?: string;
+  representanteAddressState?: string;
   customerCei?: string;
   customerNis?: string;
   representanteCpf?: string;

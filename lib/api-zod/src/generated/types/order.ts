@@ -54,11 +54,27 @@ export interface Order {
   /** @nullable */
   addressNumber?: string | null;
   /** @nullable */
+  addressComplement?: string | null;
+  /** @nullable */
   addressNeighborhood?: string | null;
   /** @nullable */
   addressCity?: string | null;
   /** @nullable */
   addressState?: string | null;
+  /** @nullable */
+  representanteAddressZipcode?: string | null;
+  /** @nullable */
+  representanteAddressStreet?: string | null;
+  /** @nullable */
+  representanteAddressNumber?: string | null;
+  /** @nullable */
+  representanteAddressComplement?: string | null;
+  /** @nullable */
+  representanteAddressNeighborhood?: string | null;
+  /** @nullable */
+  representanteAddressCity?: string | null;
+  /** @nullable */
+  representanteAddressState?: string | null;
   /** @nullable */
   mpPaymentId?: string | null;
   /** @nullable */

@@ -104,6 +104,14 @@ export default function NewOrder() {
     customerCei: "",
     customerNis: "",
     repNumeroTipo: "" as "" | "cei" | "nis" | "pis",
+    addressComplement: "",
+    representanteAddressZipcode: "",
+    representanteAddressStreet: "",
+    representanteAddressNumber: "",
+    representanteAddressComplement: "",
+    representanteAddressNeighborhood: "",
+    representanteAddressCity: "",
+    representanteAddressState: "",
   });
 
   type PsbioStatus = null | "loading" | { hasPsbio: boolean; mensagem: string; requiresPresencial: boolean; apiError?: boolean };
@@ -122,6 +130,8 @@ export default function NewOrder() {
   const [warrantyInfoOpen, setWarrantyInfoOpen] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [cepFilled, setCepFilled] = useState(false);
+  const [repCepLoading, setRepCepLoading] = useState(false);
+  const [repCepFilled, setRepCepFilled] = useState(false);
   const [cnhFile, setCnhFile] = useState<File | null>(null);
   const [cnhUploading, setCnhUploading] = useState(false);
   const [cnhKey, setCnhKey] = useState<string | null>(null);
@@ -301,6 +311,34 @@ export default function NewOrder() {
     setCepLoading(false);
   }
 
+  async function fetchRepCep(raw: string) {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length !== 8) { if (repCepFilled) setRepCepFilled(false); return; }
+    setRepCepLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setForm(prev => ({
+          ...prev,
+          representanteAddressStreet: data.logradouro || prev.representanteAddressStreet,
+          representanteAddressNeighborhood: data.bairro || prev.representanteAddressNeighborhood,
+          representanteAddressCity: data.localidade || prev.representanteAddressCity,
+          representanteAddressState: data.uf || prev.representanteAddressState,
+        }));
+        setRepCepFilled(true);
+        toast({ title: "CEP do representante encontrado!", description: `${data.localidade} — ${data.uf}` });
+      } else {
+        setRepCepFilled(false);
+        toast({ title: "CEP não encontrado", description: "Preencha o endereço manualmente.", variant: "destructive" });
+      }
+    } catch (_) {
+      setRepCepFilled(false);
+      toast({ title: "Erro ao buscar CEP", description: "Verifique sua conexão.", variant: "destructive" });
+    }
+    setRepCepLoading(false);
+  }
+
   async function uploadDoc(
     file: File,
     tipo: "cnh" | "cartao-cnpj" | "ficha-cadastral",
@@ -397,10 +435,18 @@ export default function NewOrder() {
         addressZipcode: form.addressZipcode || undefined,
         addressStreet: form.addressStreet || undefined,
         addressNumber: form.addressNumber || undefined,
+        addressComplement: form.addressComplement || undefined,
         addressNeighborhood: form.addressNeighborhood || undefined,
         addressCity: form.addressCity || undefined,
         addressState: form.addressState || undefined,
         representanteCpf: isCnpjCert && form.repCpf ? form.repCpf : undefined,
+        representanteAddressZipcode: isCnpjCert && form.representanteAddressZipcode ? form.representanteAddressZipcode : undefined,
+        representanteAddressStreet: isCnpjCert && form.representanteAddressStreet ? form.representanteAddressStreet : undefined,
+        representanteAddressNumber: isCnpjCert && form.representanteAddressNumber ? form.representanteAddressNumber : undefined,
+        representanteAddressComplement: isCnpjCert && form.representanteAddressComplement ? form.representanteAddressComplement : undefined,
+        representanteAddressNeighborhood: isCnpjCert && form.representanteAddressNeighborhood ? form.representanteAddressNeighborhood : undefined,
+        representanteAddressCity: isCnpjCert && form.representanteAddressCity ? form.representanteAddressCity : undefined,
+        representanteAddressState: isCnpjCert && form.representanteAddressState ? form.representanteAddressState : undefined,
         representanteNascimento: isCnpjCert && form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
         cnhPath: uploadedKey || undefined,
         cartaoCnpjPath: cartaoKey || undefined,
@@ -743,6 +789,17 @@ export default function NewOrder() {
                     />
                   </div>
 
+                  {/* Complemento */}
+                  <div className="space-y-2">
+                    <Label>Complemento <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                    <Input
+                      value={form.addressComplement}
+                      onChange={e => set("addressComplement", e.target.value)}
+                      placeholder="Apto, Sala, Bloco..."
+                      maxLength={20}
+                    />
+                  </div>
+
                   {/* Bairro */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1">
@@ -1006,6 +1063,98 @@ export default function NewOrder() {
                       maxLength={11}
                     />
                   )}
+                </div>
+
+                {/* Endereço do representante legal (Titular_* Safeweb) */}
+                <div className="space-y-3 pt-1">
+                  <p className="text-sm font-medium text-foreground flex items-center gap-1">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Endereço do Representante Legal *
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>CEP *</Label>
+                      <div className="relative">
+                        <Input
+                          value={form.representanteAddressZipcode}
+                          onChange={e => {
+                            const masked = maskCep(e.target.value);
+                            set("representanteAddressZipcode", masked);
+                            fetchRepCep(masked);
+                          }}
+                          placeholder="00000-000"
+                          maxLength={9}
+                          className="pr-9"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                          {repCepLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label className="flex items-center gap-1">
+                        Rua / Logradouro *
+                        {repCepFilled && form.representanteAddressStreet && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                      </Label>
+                      <Input
+                        value={form.representanteAddressStreet}
+                        onChange={e => set("representanteAddressStreet", e.target.value)}
+                        className={repCepFilled && form.representanteAddressStreet ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Número *</Label>
+                      <Input
+                        value={form.representanteAddressNumber}
+                        onChange={e => set("representanteAddressNumber", e.target.value)}
+                        placeholder="Ex: 123"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Complemento <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                      <Input
+                        value={form.representanteAddressComplement}
+                        onChange={e => set("representanteAddressComplement", e.target.value)}
+                        placeholder="Apto, Sala..."
+                        maxLength={20}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        Bairro
+                        {repCepFilled && form.representanteAddressNeighborhood && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                      </Label>
+                      <Input
+                        value={form.representanteAddressNeighborhood}
+                        onChange={e => set("representanteAddressNeighborhood", e.target.value)}
+                        className={repCepFilled && form.representanteAddressNeighborhood ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        Cidade
+                        {repCepFilled && form.representanteAddressCity && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                      </Label>
+                      <Input
+                        value={form.representanteAddressCity}
+                        onChange={e => set("representanteAddressCity", e.target.value)}
+                        className={repCepFilled && form.representanteAddressCity ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        UF
+                        {repCepFilled && form.representanteAddressState && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                      </Label>
+                      <Input
+                        value={form.representanteAddressState}
+                        onChange={e => set("representanteAddressState", e.target.value)}
+                        maxLength={2}
+                        placeholder="SP"
+                        className={repCepFilled && form.representanteAddressState ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Documento de identificação do representante — obrigatório */}

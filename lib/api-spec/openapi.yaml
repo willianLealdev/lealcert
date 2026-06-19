@@ -2474,11 +2474,27 @@ components:
           type: ["string", "null"]
         addressNumber:
           type: ["string", "null"]
+        addressComplement:
+          type: ["string", "null"]
         addressNeighborhood:
           type: ["string", "null"]
         addressCity:
           type: ["string", "null"]
         addressState:
+          type: ["string", "null"]
+        representanteAddressZipcode:
+          type: ["string", "null"]
+        representanteAddressStreet:
+          type: ["string", "null"]
+        representanteAddressNumber:
+          type: ["string", "null"]
+        representanteAddressComplement:
+          type: ["string", "null"]
+        representanteAddressNeighborhood:
+          type: ["string", "null"]
+        representanteAddressCity:
+          type: ["string", "null"]
+        representanteAddressState:
           type: ["string", "null"]
         mpPaymentId:
           type: ["string", "null"]
@@ -2556,11 +2572,27 @@ components:
           type: string
         addressNumber:
           type: string
+        addressComplement:
+          type: string
         addressNeighborhood:
           type: string
         addressCity:
           type: string
         addressState:
+          type: string
+        representanteAddressZipcode:
+          type: string
+        representanteAddressStreet:
+          type: string
+        representanteAddressNumber:
+          type: string
+        representanteAddressComplement:
+          type: string
+        representanteAddressNeighborhood:
+          type: string
+        representanteAddressCity:
+          type: string
+        representanteAddressState:
           type: string
         customerCei:
           type: string

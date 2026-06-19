@@ -77,9 +77,11 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     Email: order.customerEmail ?? "",
   };
 
+  // Endereço da empresa/cliente (campo Endereco — endereço geral da pessoa/empresa)
   const endereco = {
     Logradouro: order.addressStreet ?? "",
     Numero: order.addressNumber ?? "S/N",
+    Complemento: order.addressComplement ?? "",
     Bairro: order.addressNeighborhood ?? "",
     UF: order.addressState ?? "",
     Cidade: order.addressCity ?? "",
@@ -102,24 +104,58 @@ export async function swAutoComprar(orderId: number): Promise<void> {
   };
 
   if (isCnpj) {
-    // e-CNPJ: campos da empresa + representante legal (obrigatório pela Safeweb PSS)
+    // e-CNPJ: campos da empresa + representante legal (titular do certificado)
     body.CNPJ = order.customerCpfCnpj;
     body.RazaoSocial = order.companyName ?? order.customerName;
     body.NomeFantasia = order.companyName ?? "";
     body.Nome = order.customerName; // nome do representante legal
+
     if (order.representanteCpf) {
-      body.CPF = order.representanteCpf; // CPF do representante legal
+      body.CPF = order.representanteCpf;
     }
     if (order.representanteNascimento) {
-      body.DataNascimento = order.representanteNascimento; // data de nascimento do representante
+      body.DataNascimento = order.representanteNascimento;
     }
+
+    // Titular_* — campos obrigatórios do titular físico do certificado (representante legal)
+    // Manual: C16-C28 Titular_Nome, Titular_CPF, Titular_DataNascimento, Titular_Email,
+    //         Titular_DDD, Titular_Telefone, Titular_CEP, Titular_Logradouro, Titular_Numero,
+    //         Titular_Complemento, Titular_Bairro, Titular_Cidade, Titular_UF
+    body.Titular_Nome = order.customerName;
+    body.Titular_CPF = (order.representanteCpf ?? "").replace(/\D/g, "");
+    body.Titular_DataNascimento = order.representanteNascimento ?? "";
+    body.Titular_Email = order.customerEmail ?? "";
+    body.Titular_DDD = ddd;
+    body.Titular_Telefone = tel;
+    body.Titular_CEP = (order.representanteAddressZipcode ?? "").replace(/\D/g, "");
+    body.Titular_Logradouro = order.representanteAddressStreet ?? "";
+    body.Titular_Numero = order.representanteAddressNumber ?? "S/N";
+    body.Titular_Complemento = order.representanteAddressComplement ?? "";
+    body.Titular_Bairro = order.representanteAddressNeighborhood ?? "";
+    body.Titular_Cidade = order.representanteAddressCity ?? "";
+    body.Titular_UF = order.representanteAddressState ?? "";
   } else {
-    // e-CPF: campos da pessoa física
+    // e-CPF: titular é o próprio cliente
     body.Nome = order.customerName;
     body.CPF = order.customerCpfCnpj;
     if (order.customerBirthDate) {
-      body.DataNascimento = order.customerBirthDate; // ISO format: YYYY-MM-DD
+      body.DataNascimento = order.customerBirthDate;
     }
+
+    // Titular_* para e-CPF: o titular é o próprio portador do certificado
+    body.Titular_Nome = order.customerName;
+    body.Titular_CPF = order.customerCpfCnpj.replace(/\D/g, "");
+    body.Titular_DataNascimento = order.customerBirthDate ?? "";
+    body.Titular_Email = order.customerEmail ?? "";
+    body.Titular_DDD = ddd;
+    body.Titular_Telefone = tel;
+    body.Titular_CEP = (order.addressZipcode ?? "").replace(/\D/g, "");
+    body.Titular_Logradouro = order.addressStreet ?? "";
+    body.Titular_Numero = order.addressNumber ?? "S/N";
+    body.Titular_Complemento = order.addressComplement ?? "";
+    body.Titular_Bairro = order.addressNeighborhood ?? "";
+    body.Titular_Cidade = order.addressCity ?? "";
+    body.Titular_UF = order.addressState ?? "";
   }
 
   // CEI, NIS, PIS do representante (mutuamente exclusivos — apenas um é preenchido)
