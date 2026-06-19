@@ -678,6 +678,20 @@ export const CreatePaymentResponse = zod.object({
 
 
 /**
+ * @summary Manually check MP payment status and mark order as paid if approved
+ */
+export const SyncPaymentOrderParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SyncPaymentOrderResponse = zod.object({
+  "ok": zod.boolean(),
+  "status": zod.string().optional(),
+  "error": zod.string().optional()
+})
+
+
+/**
  * @summary Sync order status from active provider (Safeweb or Gestão AR)
  */
 export const SyncProviderOrderParams = zod.object({

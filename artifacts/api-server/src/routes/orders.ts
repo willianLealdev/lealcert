@@ -400,6 +400,79 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
   });
 });
 
+router.post("/orders/:id/sync-payment", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+
+  const [row] = await db
+    .select({ order: ordersTable, certName: certificatesTable.name })
+    .from(ordersTable)
+    .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ ok: false, error: "Pedido não encontrado" }); return; }
+  const order = row.order;
+
+  // Só o admin ou o dono do pedido pode sincronizar
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  if (!isAdmin && req.session.userId !== order.userId) {
+    res.status(403).json({ ok: false, error: "Acesso negado" }); return;
+  }
+
+  if (!order.mpPaymentId) {
+    res.status(400).json({ ok: false, error: "Nenhum pagamento gerado para este pedido" }); return;
+  }
+
+  const [settings] = await db.select().from(settingsTable).limit(1);
+  const mpToken = settings?.mpAccessToken || process.env.MP_ACCESS_TOKEN || "";
+  if (!mpToken) { res.status(500).json({ ok: false, error: "MP Access Token não configurado" }); return; }
+
+  const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${order.mpPaymentId}`, {
+    headers: { Authorization: `Bearer ${mpToken}` },
+  });
+  if (!mpRes.ok) {
+    res.status(502).json({ ok: false, error: `Erro ao consultar MP: ${mpRes.status}` }); return;
+  }
+
+  const payment = await mpRes.json() as { status: string; id?: number };
+  req.log.info({ orderId: id, mpPaymentId: order.mpPaymentId, mpStatus: payment.status }, "sync-payment: consultado");
+
+  if (payment.status !== "approved") {
+    res.json({ ok: true, status: payment.status }); return;
+  }
+
+  // Já estava pago — só responde
+  if (order.status !== "pending_payment" && order.status !== "created") {
+    res.json({ ok: true, status: order.status }); return;
+  }
+
+  // Marca como pago
+  await db.update(ordersTable).set({ status: "paid" }).where(eq(ordersTable.id, id));
+  req.log.info({ orderId: id }, "sync-payment: pedido marcado como PAGO");
+
+  const { notifyOrderStatus } = await import("../lib/notify");
+  notifyOrderStatus({
+    to: order.customerEmail,
+    phone: order.customerPhone,
+    customerName: order.customerName,
+    orderNumber: order.orderNumber,
+    status: "paid",
+    total: parseFloat(order.total),
+    certName: row.certName ?? undefined,
+  }).catch((err: unknown) => req.log.error({ err }, "sync-payment: erro ao notificar"));
+
+  const activeProvider = settings?.activeProvider ?? "gestaoar";
+  if (activeProvider === "safeweb") {
+    const { swAutoComprar } = await import("../lib/sw-auto");
+    swAutoComprar(id).catch((err: unknown) => req.log.error({ err }, "sync-payment: erro sw-auto"));
+  } else {
+    const { garAutoComprar } = await import("../lib/gar-auto");
+    garAutoComprar(id).catch((err: unknown) => req.log.error({ err }, "sync-payment: erro gar-auto"));
+  }
+
+  res.json({ ok: true, status: "paid" });
+});
+
 router.post("/orders/:id/sync-provider", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 

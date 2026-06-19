@@ -1301,6 +1301,12 @@ export type CnpjLookupParams = {
 cnpj: string;
 };
 
+export type SyncPaymentOrder200 = {
+  ok: boolean;
+  status?: string;
+  error?: string;
+};
+
 export type ListSlotsParams = {
 date?: string;
 };

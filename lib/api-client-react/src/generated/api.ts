@@ -120,6 +120,7 @@ import type {
   Slot,
   SlotInput,
   SubscribePush200,
+  SyncPaymentOrder200,
   SyncProviderResult,
   TestEmailRequest,
   TestEmailResult,
@@ -2631,6 +2632,76 @@ export const useCreatePayment = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreatePaymentMutationOptions(options));
+    }
+
+export const getSyncPaymentOrderUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/sync-payment`
+}
+
+/**
+ * @summary Manually check MP payment status and mark order as paid if approved
+ */
+export const syncPaymentOrder = async (id: number, options?: RequestInit): Promise<SyncPaymentOrder200> => {
+
+  return customFetch<SyncPaymentOrder200>(getSyncPaymentOrderUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSyncPaymentOrderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncPaymentOrder>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncPaymentOrder>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['syncPaymentOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncPaymentOrder>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  syncPaymentOrder(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncPaymentOrderMutationResult = NonNullable<Awaited<ReturnType<typeof syncPaymentOrder>>>
+
+    export type SyncPaymentOrderMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Manually check MP payment status and mark order as paid if approved
+ */
+export const useSyncPaymentOrder = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncPaymentOrder>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncPaymentOrder>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getSyncPaymentOrderMutationOptions(options));
     }
 
 export const getSyncProviderOrderUrl = (id: number,) => {

@@ -13,7 +13,8 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
     res.status(401).json({ error: "Não autenticado." });
     return;
   }
-  if (req.session.role !== "admin") {
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  if (!isAdmin) {
     res.status(403).json({ error: "Acesso negado." });
     return;
   }

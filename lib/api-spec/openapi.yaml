@@ -730,6 +730,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/PaymentPreference"
 
+  /orders/{id}/sync-payment:
+    post:
+      operationId: syncPaymentOrder
+      tags: [orders]
+      summary: Manually check MP payment status and mark order as paid if approved
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                  status:
+                    type: string
+                  error:
+                    type: string
+
   /orders/{id}/sync-provider:
     post:
       operationId: syncProviderOrder

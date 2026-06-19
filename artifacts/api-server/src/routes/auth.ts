@@ -115,6 +115,7 @@ router.post("/auth/verify-email", async (req, res): Promise<void> => {
   }
   req.session.userId = user.id;
   req.session.role = user.role;
+  req.session.userType = user.userType;
   res.json(userResponse({ ...user, emailVerified: true, emailVerificationCode: null, emailVerificationExpiresAt: null }));
 });
 
@@ -183,6 +184,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   req.session.userId = user.id;
   req.session.role = user.role;
+  req.session.userType = user.userType;
   res.json(userResponse(user));
 });
 

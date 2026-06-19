@@ -6,6 +6,7 @@ import {
   useGarComprarOrder,
   useSyncGarOrder,
   useSyncProviderOrder,
+  useSyncPaymentOrder,
   useGetOrderGarLocais,
   useGetOrderGarSlots,
   useAgendarOrder,
@@ -724,6 +725,23 @@ export default function OrderDetail() {
     },
   });
 
+  const syncPayment = useSyncPaymentOrder({
+    mutation: {
+      onSuccess: (data) => {
+        if (data.ok && (data.status === "paid" || data.status === "approved")) {
+          toast({ title: "✅ Pagamento confirmado!", description: "Pedido atualizado para Pago." });
+        } else {
+          toast({ title: "Pagamento consultado", description: `Status no MercadoPago: ${data.status ?? "desconhecido"}` });
+        }
+        refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao consultar pagamento.";
+        toast({ title: "Erro", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
   if (isLoading) return <div className="text-center py-20 text-muted-foreground">Carregando...</div>;
   if (!order) return <div className="text-center py-20 text-muted-foreground">Pedido não encontrado.</div>;
 
@@ -841,17 +859,30 @@ export default function OrderDetail() {
       {/* Barra de pagamento fixa no rodapé — só mobile */}
       {isPayable && (
         <div className="fixed bottom-0 left-0 right-0 z-20 px-4 py-3 bg-background/95 backdrop-blur-sm border-t shadow-xl md:hidden">
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={() => createPayment.mutate({ id: Number(id) })}
-            disabled={createPayment.isPending}
-          >
-            {createPayment.isPending
-              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              : <QrCode className="h-4 w-4 mr-2" />}
-            Pagamento com PIX
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              className="flex-1"
+              size="lg"
+              onClick={() => createPayment.mutate({ id: Number(id) })}
+              disabled={createPayment.isPending}
+            >
+              {createPayment.isPending
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <QrCode className="h-4 w-4 mr-2" />}
+              Pagar PIX
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => syncPayment.mutate({ id: Number(id) })}
+              disabled={syncPayment.isPending}
+              title="Verificar se pagamento foi confirmado no MercadoPago"
+            >
+              {syncPayment.isPending
+                ? <Loader2 className="h-5 w-5 animate-spin" />
+                : <RefreshCw className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -888,18 +919,30 @@ export default function OrderDetail() {
           </div>
           <p className="text-muted-foreground text-sm">Criado em {formatDateTime(order.createdAt)}</p>
         </div>
-        {/* Botão de pagar — apenas desktop */}
+        {/* Botões de pagamento — apenas desktop */}
         {isPayable && (
-          <Button
-            className="hidden md:flex shrink-0"
-            onClick={() => createPayment.mutate({ id: Number(id) })}
-            disabled={createPayment.isPending}
-          >
-            {createPayment.isPending
-              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              : <QrCode className="h-4 w-4 mr-2" />}
-            Pagamento com PIX
-          </Button>
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            <Button
+              onClick={() => createPayment.mutate({ id: Number(id) })}
+              disabled={createPayment.isPending}
+            >
+              {createPayment.isPending
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <QrCode className="h-4 w-4 mr-2" />}
+              Pagamento com PIX
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => syncPayment.mutate({ id: Number(id) })}
+              disabled={syncPayment.isPending}
+              title="Consultar status do pagamento no MercadoPago"
+            >
+              {syncPayment.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <RefreshCw className="h-4 w-4" />}
+              {!syncPayment.isPending && <span className="ml-2">Verificar Pagamento</span>}
+            </Button>
+          </div>
         )}
       </div>
 

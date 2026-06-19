@@ -148,6 +148,7 @@ export * from './sendTestPush200';
 export * from './slot';
 export * from './slotInput';
 export * from './subscribePush200';
+export * from './syncPaymentOrder200';
 export * from './syncProviderResult';
 export * from './testEmailRequest';
 export * from './testEmailResult';
