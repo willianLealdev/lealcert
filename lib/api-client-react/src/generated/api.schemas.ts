@@ -403,10 +403,9 @@ export interface CnpjLookupResult {
 }
 
 export interface PaymentPreference {
-  preferenceId: string;
-  initPoint: string;
-  /** @nullable */
-  sandboxInitPoint?: string | null;
+  paymentId: string;
+  pixQrCode: string;
+  pixQrCodeBase64: string;
 }
 
 export interface Slot {

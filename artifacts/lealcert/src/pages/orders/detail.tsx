@@ -24,10 +24,12 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, QrCode, Loader2, FileText, Download, RefreshCw,
   ShoppingBag, CheckCircle2, Calendar, MapPin, Video, Clock, ChevronRight, Check,
-  Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag,
+  Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag, Copy,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useMemo } from "react";
+
+type PixData = { paymentId: string; pixQrCode: string; pixQrCodeBase64: string };
 
 const STATUS_LABELS: Record<string, string> = {
   created: "Criado",
@@ -618,6 +620,8 @@ export default function OrderDetail() {
   const [protocol, setProtocol] = useState("");
   const [newStatus, setNewStatus] = useState("");
   const [garHashProduto, setGarHashProduto] = useState("");
+  const [pixData, setPixData] = useState<PixData | null>(null);
+  const [pixCopied, setPixCopied] = useState(false);
 
   const { data: order, isLoading, refetch } = useGetOrder(Number(id));
 
@@ -630,11 +634,7 @@ export default function OrderDetail() {
   const createPayment = useCreatePayment({
     mutation: {
       onSuccess: (data) => {
-        if (data.initPoint) {
-          window.open(data.initPoint, "_blank");
-        } else {
-          toast({ title: "Link gerado", description: "Verifique o painel do MercadoPago." });
-        }
+        setPixData({ paymentId: data.paymentId, pixQrCode: data.pixQrCode, pixQrCodeBase64: data.pixQrCodeBase64 });
       },
       onError: (err: unknown) => {
         const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao gerar pagamento.";
@@ -745,6 +745,64 @@ export default function OrderDetail() {
 
   return (
     <div className={`space-y-6 ${isPayable ? "pb-28 md:pb-0" : ""}`}>
+
+      {/* Modal PIX */}
+      <Dialog open={!!pixData} onOpenChange={open => { if (!open) { setPixData(null); setPixCopied(false); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5 text-green-600" />
+              Pagamento via PIX
+            </DialogTitle>
+          </DialogHeader>
+          {pixData && (
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-sm text-muted-foreground text-center">
+                Escaneie o QR Code abaixo ou copie o código PIX para efetuar o pagamento.
+              </p>
+              {pixData.pixQrCodeBase64 ? (
+                <img
+                  src={`data:image/png;base64,${pixData.pixQrCodeBase64}`}
+                  alt="QR Code PIX"
+                  className="w-48 h-48 rounded-lg border"
+                />
+              ) : (
+                <div className="w-48 h-48 flex items-center justify-center rounded-lg border bg-muted">
+                  <QrCode className="h-16 w-16 text-muted-foreground" />
+                </div>
+              )}
+              <div className="w-full space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Código PIX (copia e cola)</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-muted rounded px-2 py-1.5 break-all select-all">
+                    {pixData.pixQrCode}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(pixData.pixQrCode);
+                      setPixCopied(true);
+                      setTimeout(() => setPixCopied(false), 2500);
+                    }}
+                  >
+                    {pixCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Após o pagamento, o status do pedido será atualizado automaticamente.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" className="w-full" onClick={() => { setPixData(null); setPixCopied(false); }}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Barra de pagamento fixa no rodapé — só mobile */}
       {isPayable && (

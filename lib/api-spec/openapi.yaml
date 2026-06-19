@@ -2505,14 +2505,14 @@ components:
 
     PaymentPreference:
       type: object
-      required: [preferenceId, initPoint]
+      required: [paymentId, pixQrCode, pixQrCodeBase64]
       properties:
-        preferenceId:
+        paymentId:
           type: string
-        initPoint:
+        pixQrCode:
           type: string
-        sandboxInitPoint:
-          type: ["string", "null"]
+        pixQrCodeBase64:
+          type: string
 
     Slot:
       type: object

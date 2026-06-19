@@ -339,35 +339,64 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
 
   const siteUrl = settings?.siteUrl || process.env.SITE_URL || "https://example.com";
 
-  const payload = {
-    items: [{ title: row.certName ?? "Certificado Digital", quantity: 1, currency_id: "BRL", unit_price: parseFloat(row.order.total) }],
+  const cpfDigits = row.order.customerCpfCnpj.replace(/\D/g, "");
+  const payerEmail = row.order.customerEmail || "cliente@lealcert.com.br";
+  const nameParts = (row.order.customerName || "Cliente").split(" ");
+  const firstName = nameParts[0];
+  const lastName = nameParts.slice(1).join(" ") || firstName;
+
+  const pixPayload = {
+    transaction_amount: parseFloat(row.order.total),
+    description: row.certName ?? "Certificado Digital",
+    payment_method_id: "pix",
     external_reference: row.order.orderNumber,
     notification_url: `${siteUrl}/api/mp/webhook`,
-    back_urls: {
-      success: `${siteUrl}/?order_success=${row.order.orderNumber}`,
-      failure: `${siteUrl}/?order_failure=${row.order.orderNumber}`,
-      pending: `${siteUrl}/?order_pending=${row.order.orderNumber}`,
+    payer: {
+      email: payerEmail,
+      first_name: firstName,
+      last_name: lastName,
+      identification: {
+        type: cpfDigits.length === 14 ? "CNPJ" : "CPF",
+        number: cpfDigits,
+      },
     },
-    auto_return: "approved",
   };
 
-  const resp = await fetch("https://api.mercadopago.com/checkout/preferences", {
+  const resp = await fetch("https://api.mercadopago.com/v1/payments", {
     method: "POST",
-    headers: { "Authorization": `Bearer ${mpToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    headers: {
+      "Authorization": `Bearer ${mpToken}`,
+      "Content-Type": "application/json",
+      "X-Idempotency-Key": `${row.order.orderNumber}-${Date.now()}`,
+    },
+    body: JSON.stringify(pixPayload),
   });
-  const data = await resp.json() as { id?: string; init_point?: string; sandbox_init_point?: string; message?: string };
+  const data = await resp.json() as {
+    id?: number;
+    status?: string;
+    point_of_interaction?: { transaction_data?: { qr_code?: string; qr_code_base64?: string } };
+    message?: string;
+    error?: string;
+  };
   if (!resp.ok) {
-    res.status(400).json({ error: data.message ?? "Erro ao criar preferência no MercadoPago." });
+    res.status(400).json({ error: data.message ?? data.error ?? "Erro ao criar pagamento PIX no MercadoPago." });
     return;
   }
 
-  await db.update(ordersTable).set({ mpPreferenceId: data.id }).where(eq(ordersTable.id, id));
+  const txData = data.point_of_interaction?.transaction_data;
+  if (!txData?.qr_code) {
+    res.status(400).json({ error: "MercadoPago não retornou o QR Code PIX." });
+    return;
+  }
+
+  await db.update(ordersTable)
+    .set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") })
+    .where(eq(ordersTable.id, id));
 
   res.json({
-    preferenceId: data.id,
-    initPoint: data.init_point,
-    sandboxInitPoint: data.sandbox_init_point ?? null,
+    paymentId: String(data.id ?? ""),
+    pixQrCode: txData.qr_code,
+    pixQrCodeBase64: txData.qr_code_base64 ?? "",
   });
 });
 

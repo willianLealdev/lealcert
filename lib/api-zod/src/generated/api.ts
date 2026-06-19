@@ -669,9 +669,9 @@ export const CreatePaymentParams = zod.object({
 })
 
 export const CreatePaymentResponse = zod.object({
-  "preferenceId": zod.string(),
-  "initPoint": zod.string(),
-  "sandboxInitPoint": zod.string().nullish()
+  "paymentId": zod.string(),
+  "pixQrCode": zod.string(),
+  "pixQrCodeBase64": zod.string()
 })
 
 
