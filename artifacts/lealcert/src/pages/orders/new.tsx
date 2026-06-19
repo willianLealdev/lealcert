@@ -624,6 +624,116 @@ export default function NewOrder() {
               </CardContent>
             </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  Endereço
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {/* CEP — busca automática */}
+                  <div className="space-y-2">
+                    <Label>CEP</Label>
+                    <div className="relative">
+                      <Input
+                        value={form.addressZipcode}
+                        onChange={e => {
+                          const masked = maskCep(e.target.value);
+                          set("addressZipcode", masked);
+                          fetchCep(masked);
+                        }}
+                        placeholder="00000-000"
+                        maxLength={9}
+                        className="pr-9"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                        {cepLoading
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <Search className="h-4 w-4" />}
+                      </div>
+                    </div>
+                    {cepLoading && (
+                      <p className="text-xs text-primary animate-pulse">Buscando endereço...</p>
+                    )}
+                  </div>
+
+                  {/* Rua / Logradouro */}
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label className="flex items-center gap-1">
+                      Rua / Logradouro
+                      {cepFilled && form.addressStreet && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                    </Label>
+                    <Input
+                      value={form.addressStreet}
+                      onChange={e => set("addressStreet", e.target.value)}
+                      className={cepFilled && form.addressStreet ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                    />
+                  </div>
+
+                  {/* Número — sempre manual */}
+                  <div className="space-y-2">
+                    <Label>Número <span className="text-xs text-muted-foreground">(preencha manualmente)</span></Label>
+                    <Input
+                      value={form.addressNumber}
+                      onChange={e => set("addressNumber", e.target.value)}
+                      placeholder="Ex: 123"
+                      autoFocus={cepFilled}
+                    />
+                  </div>
+
+                  {/* Bairro */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      Bairro
+                      {cepFilled && form.addressNeighborhood && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                    </Label>
+                    <Input
+                      value={form.addressNeighborhood}
+                      onChange={e => set("addressNeighborhood", e.target.value)}
+                      className={cepFilled && form.addressNeighborhood ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                    />
+                  </div>
+
+                  {/* Cidade */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      Cidade
+                      {cepFilled && form.addressCity && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                    </Label>
+                    <Input
+                      value={form.addressCity}
+                      onChange={e => set("addressCity", e.target.value)}
+                      className={cepFilled && form.addressCity ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                    />
+                  </div>
+
+                  {/* UF */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      UF
+                      {cepFilled && form.addressState && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                    </Label>
+                    <Input
+                      value={form.addressState}
+                      onChange={e => set("addressState", e.target.value)}
+                      maxLength={2}
+                      placeholder="SP"
+                      className={cepFilled && form.addressState ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
+                    />
+                  </div>
+                </div>
+
+                {cepFilled && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Endereço preenchido automaticamente pelo CEP. Confira e ajuste se necessário.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Dados do Representante Legal — sempre visível */}
             <Card>
               <CardHeader>
@@ -919,116 +1029,6 @@ export default function NewOrder() {
                 </CardContent>
               </Card>
             )}
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  Endereço
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {/* CEP — busca automática */}
-                  <div className="space-y-2">
-                    <Label>CEP</Label>
-                    <div className="relative">
-                      <Input
-                        value={form.addressZipcode}
-                        onChange={e => {
-                          const masked = maskCep(e.target.value);
-                          set("addressZipcode", masked);
-                          fetchCep(masked);
-                        }}
-                        placeholder="00000-000"
-                        maxLength={9}
-                        className="pr-9"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                        {cepLoading
-                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : <Search className="h-4 w-4" />}
-                      </div>
-                    </div>
-                    {cepLoading && (
-                      <p className="text-xs text-primary animate-pulse">Buscando endereço...</p>
-                    )}
-                  </div>
-
-                  {/* Rua / Logradouro */}
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label className="flex items-center gap-1">
-                      Rua / Logradouro
-                      {cepFilled && form.addressStreet && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                    </Label>
-                    <Input
-                      value={form.addressStreet}
-                      onChange={e => set("addressStreet", e.target.value)}
-                      className={cepFilled && form.addressStreet ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                    />
-                  </div>
-
-                  {/* Número — sempre manual */}
-                  <div className="space-y-2">
-                    <Label>Número <span className="text-xs text-muted-foreground">(preencha manualmente)</span></Label>
-                    <Input
-                      value={form.addressNumber}
-                      onChange={e => set("addressNumber", e.target.value)}
-                      placeholder="Ex: 123"
-                      autoFocus={cepFilled}
-                    />
-                  </div>
-
-                  {/* Bairro */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1">
-                      Bairro
-                      {cepFilled && form.addressNeighborhood && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                    </Label>
-                    <Input
-                      value={form.addressNeighborhood}
-                      onChange={e => set("addressNeighborhood", e.target.value)}
-                      className={cepFilled && form.addressNeighborhood ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                    />
-                  </div>
-
-                  {/* Cidade */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1">
-                      Cidade
-                      {cepFilled && form.addressCity && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                    </Label>
-                    <Input
-                      value={form.addressCity}
-                      onChange={e => set("addressCity", e.target.value)}
-                      className={cepFilled && form.addressCity ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                    />
-                  </div>
-
-                  {/* UF */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1">
-                      UF
-                      {cepFilled && form.addressState && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                    </Label>
-                    <Input
-                      value={form.addressState}
-                      onChange={e => set("addressState", e.target.value)}
-                      maxLength={2}
-                      placeholder="SP"
-                      className={cepFilled && form.addressState ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
-                    />
-                  </div>
-                </div>
-
-                {cepFilled && (
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    Endereço preenchido automaticamente pelo CEP. Confira e ajuste se necessário.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
 
             <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
               <CardContent className="pt-5">
