@@ -75,8 +75,8 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
   // Remove formatação do CNPJ AR (pontos, barras, traços) — a Safeweb exige só dígitos no path
   swSettings.cnpjAr = swSettings.cnpjAr.replace(/\D/g, "");
 
-  // Busca produtos para todos os tipos de emissão disponíveis
-  const TIPOS_EMISSAO = [1, 2, 3, 5];
+  // Apenas videoconferência (tipo 3)
+  const TIPOS_EMISSAO = [3];
   const allProdutos: Awaited<ReturnType<typeof swListarProdutos>> = [];
   const erros: string[] = [];
 
