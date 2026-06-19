@@ -323,11 +323,21 @@ router.get("/orders/:id/events", requireAuth, async (req, res): Promise<void> =>
   if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
   if (role !== "admin" && row.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
 
-  const events = await db
+  const rows = await db
     .select()
     .from(orderEventsTable)
     .where(eq(orderEventsTable.orderId, id))
     .orderBy(desc(orderEventsTable.createdAt));
+
+  // Map DB column names to the OpenAPI schema field names
+  const events = rows.map((r) => ({
+    id: r.id,
+    orderId: r.orderId,
+    type: r.eventType,
+    message: r.description,
+    meta: r.metadata ?? null,
+    createdAt: r.createdAt,
+  }));
 
   res.json(events);
 });

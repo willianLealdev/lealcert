@@ -253,6 +253,10 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     representanteNascimento: representanteNascimento || null,
   }).returning();
 
+  // Log order creation
+  const { logEvent } = await import("../lib/order-events");
+  await logEvent(order.id, "order_created", `Pedido criado — ${cert.name}${extendedWarranty ? " (+ garantia estendida)" : ""} — R$ ${total.toFixed(2).replace(".", ",")}`, { certificateId, total });
+
   // Notify customer about new order
   if (order.customerEmail || order.customerPhone) {
     notifyOrderStatus({
@@ -311,6 +315,17 @@ router.patch("/orders/:id", requireAdmin, async (req, res): Promise<void> => {
   if (!order) {
     res.status(404).json({ error: "Pedido não encontrado." });
     return;
+  }
+
+  // Log admin actions
+  const { logEvent: logEv } = await import("../lib/order-events");
+  const changes: string[] = [];
+  if (status !== undefined) changes.push(`Status → ${status}`);
+  if (protocolNumber !== undefined) changes.push(`Protocolo → ${protocolNumber}`);
+  if (scheduledAt !== undefined) changes.push(`Agendamento → ${new Date(scheduledAt).toLocaleString("pt-BR")}`);
+  if (safewebSolicitacaoId !== undefined) changes.push(`ID Safeweb → ${safewebSolicitacaoId || "(removido)"}`);
+  if (changes.length > 0) {
+    await logEv(id, "admin_action", `Admin atualizou pedido: ${changes.join("; ")}`, { updates });
   }
 
   if (status !== undefined) {
@@ -403,6 +418,9 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
     .set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") })
     .where(eq(ordersTable.id, id));
 
+  const { logEvent: logPayEv } = await import("../lib/order-events");
+  await logPayEv(id, "payment_initiated", `Pagamento PIX gerado via MercadoPago — R$ ${parseFloat(row.order.total).toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
+
   res.json({
     paymentId: String(data.id ?? ""),
     pixQrCode: txData.qr_code,
@@ -459,6 +477,8 @@ router.post("/orders/:id/sync-payment", requireAuth, async (req, res): Promise<v
   // Marca como pago
   await db.update(ordersTable).set({ status: "paid" }).where(eq(ordersTable.id, id));
   req.log.info({ orderId: id }, "sync-payment: pedido marcado como PAGO");
+  const { logEvent: logPaidEv } = await import("../lib/order-events");
+  await logPaidEv(id, "payment_confirmed", `Pagamento confirmado via MercadoPago — R$ ${parseFloat(order.total).toFixed(2).replace(".", ",")}`, { mpPaymentId: order.mpPaymentId });
 
   const { notifyOrderStatus } = await import("../lib/notify");
   notifyOrderStatus({

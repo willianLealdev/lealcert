@@ -78,8 +78,8 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ── Timeline de Eventos ───────────────────────────────────────────────────────
 const EVENT_ICONS: Record<string, React.ReactNode> = {
-  order_created:        <Package className="h-4 w-4" />,
-  payment_initiated:    <PayIcon className="h-4 w-4" />,
+  order_created:        <Package className="h-4 w-4 text-primary" />,
+  payment_initiated:    <PayIcon className="h-4 w-4 text-amber-500" />,
   payment_confirmed:    <CheckCircle2 className="h-4 w-4 text-green-600" />,
   gar_sale_registered:  <ShoppingBag className="h-4 w-4 text-blue-600" />,
   gar_protocol_emitted: <Tag className="h-4 w-4 text-blue-600" />,
@@ -89,8 +89,24 @@ const EVENT_ICONS: Record<string, React.ReactNode> = {
   order_completed:      <CheckCircle2 className="h-4 w-4 text-green-700" />,
   order_cancelled:      <AlertCircle className="h-4 w-4 text-destructive" />,
   status_updated:       <Activity className="h-4 w-4" />,
-  admin_action:         <Activity className="h-4 w-4 text-muted-foreground" />,
+  admin_action:         <Activity className="h-4 w-4 text-violet-500" />,
   sync_performed:       <RefreshCw className="h-4 w-4 text-muted-foreground" />,
+};
+
+const EVENT_LABELS: Record<string, string> = {
+  order_created:        "Pedido Criado",
+  payment_initiated:    "Pagamento Iniciado",
+  payment_confirmed:    "Pagamento Confirmado",
+  gar_sale_registered:  "Registro no Provedor",
+  gar_protocol_emitted: "Protocolo Emitido",
+  scheduling_confirmed: "Atendimento Agendado",
+  gar_status_updated:   "Status Atualizado",
+  certificate_emitted:  "Certificado Emitido",
+  order_completed:      "Pedido Concluído",
+  order_cancelled:      "Pedido Cancelado",
+  status_updated:       "Status Alterado",
+  admin_action:         "Ação do Administrador",
+  sync_performed:       "Sincronização",
 };
 
 function OrderTimeline({ orderId, isPendingPayment }: { orderId: number; isPendingPayment: boolean }) {
@@ -143,7 +159,10 @@ function OrderTimeline({ orderId, isPendingPayment }: { orderId: number; isPendi
                   {!isLast && <div className="w-px flex-1 bg-border mt-1" />}
                 </div>
                 <div className="flex-1 min-w-0 pb-2">
-                  <p className="text-xs font-medium leading-tight">{ev.message}</p>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide leading-tight">
+                    {EVENT_LABELS[ev.type] ?? ev.type}
+                  </p>
+                  <p className="text-xs font-medium leading-snug mt-0.5">{ev.message}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(ev.createdAt))}
                   </p>
