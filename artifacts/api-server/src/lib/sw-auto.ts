@@ -130,29 +130,45 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     // Log completo da resposta para diagnóstico
     logger.info({ orderId, resultRaw: result }, "swAutoComprar: resposta completa da Safeweb");
 
-    // Tenta capturar o ID da solicitação em múltiplos campos possíveis da API
-    const solicitacaoId =
-      result.idSolicitacao ??
-      result.IdSolicitacao ??
-      result.Protocolo ??
-      result.protocolo ??
-      result.id ??
-      result.Id ??
-      result.idSolicitacaoVenda ??
-      result.IdSolicitacaoVenda ??
-      result.SolicitacaoId ??
-      result.solicitacaoId ??
-      null;
+    // A Safeweb pode retornar o ID diretamente como string/number,
+    // ou como objeto com vários campos possíveis
+    let solicitacaoId: string | null = null;
+    let statusMsg = "Solicitação criada";
 
-    const statusMsg = result.sucesso === false
-      ? (result.mensagem ?? "Erro retornado pela Safeweb")
-      : (result.mensagem ?? "Solicitação criada");
-
-    if (result.sucesso === false) {
-      logger.error({ orderId, result }, "swAutoComprar: Safeweb retornou erro");
-      await logEvent(orderId, "admin_action", `Erro ao criar solicitação na Safeweb: ${statusMsg}`, { result });
-      await db.update(ordersTable).set({ safewebStatus: `Erro: ${statusMsg}`, safewebSyncedAt: new Date() }).where(eq(ordersTable.id, orderId));
-      return;
+    if (typeof result === "string" || typeof result === "number") {
+      // Resposta é o próprio ID (ex: "8000136590")
+      const raw = String(result).trim();
+      if (raw && !/^(false|erro|error|null|undefined)$/i.test(raw)) {
+        solicitacaoId = raw;
+      } else {
+        logger.error({ orderId, result }, "swAutoComprar: Safeweb retornou string de erro");
+        await logEvent(orderId, "admin_action", `Erro ao criar solicitação na Safeweb: ${raw}`, { result });
+        await db.update(ordersTable).set({ safewebStatus: `Erro: ${raw}`, safewebSyncedAt: new Date() }).where(eq(ordersTable.id, orderId));
+        return;
+      }
+    } else {
+      // Resposta é um objeto — tenta extrair o ID de campos conhecidos
+      if (result.sucesso === false) {
+        statusMsg = String(result.mensagem ?? "Erro retornado pela Safeweb");
+        logger.error({ orderId, result }, "swAutoComprar: Safeweb retornou erro");
+        await logEvent(orderId, "admin_action", `Erro ao criar solicitação na Safeweb: ${statusMsg}`, { result });
+        await db.update(ordersTable).set({ safewebStatus: `Erro: ${statusMsg}`, safewebSyncedAt: new Date() }).where(eq(ordersTable.id, orderId));
+        return;
+      }
+      solicitacaoId = String(
+        result.idSolicitacao ??
+        result.IdSolicitacao ??
+        result.Protocolo ??
+        result.protocolo ??
+        result.id ??
+        result.Id ??
+        result.idSolicitacaoVenda ??
+        result.IdSolicitacaoVenda ??
+        result.SolicitacaoId ??
+        result.solicitacaoId ??
+        ""
+      ) || null;
+      statusMsg = String(result.mensagem ?? "Solicitação criada");
     }
 
     await db.update(ordersTable).set({

@@ -766,7 +766,7 @@ export default function OrderDetail() {
 
   const { data: order, isLoading, refetch } = useGetOrder(Number(id));
 
-  // Polling a cada 5 s enquanto pagamento pendente; para automaticamente ao confirmar
+  // Polling DB a cada 5 s enquanto pagamento pendente
   useEffect(() => {
     if (!order) return;
     const isPending = order.status === "pending_payment" || order.status === "created";
@@ -774,6 +774,20 @@ export default function OrderDetail() {
     const timer = setInterval(() => { refetch(); }, 5000);
     return () => clearInterval(timer);
   }, [order?.status]);
+
+  // Polling MercadoPago a cada 30 s (verifica status real no MP e atualiza o banco)
+  const syncPaymentRef = useRef<typeof syncPayment.mutate | null>(null);
+  useEffect(() => { syncPaymentRef.current = syncPayment.mutate; });
+  useEffect(() => {
+    if (!order) return;
+    const isPending = order.status === "pending_payment" || order.status === "created";
+    const hasMpId = !!(order as typeof order & { mpPaymentId?: string | null }).mpPaymentId;
+    if (!isPending || !hasMpId) return;
+    const timer = setInterval(() => {
+      syncPaymentRef.current?.({ id: Number(id) });
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [order?.status, id]);
 
   // Detecta transição de pendente → pago e notifica o usuário
   useEffect(() => {
