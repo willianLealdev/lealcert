@@ -74,7 +74,7 @@ export default function Login() {
       <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden">
         <div className="relative z-10 flex flex-col items-center text-center space-y-8">
           <img
-            src={branding.logoUrl ?? "/logo.png"}
+            src={branding.logoUrl || "/logo.png"}
             alt={branding.appName}
             className="h-56 w-auto object-contain drop-shadow-2xl"
           />
@@ -135,7 +135,7 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex justify-center mb-8">
-            <img src={branding.logoUrl ?? "/logo.png"} alt={branding.appName} className="h-24 w-auto object-contain" />
+            <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-24 w-auto object-contain" />
           </div>
 
           <div
