@@ -1261,11 +1261,12 @@ export default function OrderDetail() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    {/* Campos ocultos — manter no código para uso futuro */}
+                    <div className="space-y-2 hidden">
                       <Label>Número de Protocolo</Label>
                       <Input value={protocol} onChange={e => setProtocol(e.target.value)} placeholder="Ex: 2024001234" />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 hidden">
                       <Label>ID Solicitação Safeweb</Label>
                       <Input value={swSolicitacaoInput} onChange={e => setSwSolicitacaoInput(e.target.value)} placeholder="Ex: 1234567" />
                     </div>
