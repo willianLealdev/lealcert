@@ -643,7 +643,11 @@ export default function NewOrder() {
                         const v = maskCpfCnpj(e.target.value);
                         set("repCpf", v);
                         if (v.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
-                          triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", v, form.repBirthDate);
+                          if (isCnpjCert) {
+                            triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, "cnpj", v, form.repBirthDate);
+                          } else {
+                            triggerPsbioCheck(v, form.repBirthDate, "cpf");
+                          }
                         }
                       }}
                       placeholder="000.000.000-00"
@@ -658,7 +662,11 @@ export default function NewOrder() {
                         const v = maskDate(e.target.value);
                         set("repBirthDate", v);
                         if (form.repCpf.replace(/\D/g, "").length === 11 && v.length === 10) {
-                          triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, isCnpjCert ? "cnpj" : "cpf", form.repCpf, v);
+                          if (isCnpjCert) {
+                            triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, "cnpj", form.repCpf, v);
+                          } else {
+                            triggerPsbioCheck(form.repCpf, v, "cpf");
+                          }
                         }
                       }}
                       placeholder="dd/mm/aaaa"
@@ -716,9 +724,7 @@ export default function NewOrder() {
                         if (isCnpjCert) {
                           checkPsbio.mutate({ data: { cnpj: form.customerCpfCnpj.replace(/\D/g, ""), cpfResponsavel: repDigits, dataNascimento: repDateIso } });
                         } else {
-                          const custDigits = form.customerCpfCnpj.replace(/\D/g, "");
-                          const custDateIso = form.customerBirthDate.includes("/") ? parseBrDate(form.customerBirthDate) : form.customerBirthDate;
-                          checkPsbio.mutate({ data: { cpf: custDigits, dataNascimento: custDateIso } });
+                          checkPsbio.mutate({ data: { cpf: repDigits, dataNascimento: repDateIso } });
                         }
                       }}
                     >
