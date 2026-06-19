@@ -78,11 +78,21 @@ export interface Order {
   /** @nullable */
   garAgendamentoDataHora?: string | null;
   /** @nullable */
+  representanteCpf?: string | null;
+  /** @nullable */
+  representanteNascimento?: string | null;
+  /** @nullable */
   safewebSolicitacaoId?: string | null;
   /** @nullable */
   safewebStatus?: string | null;
   /** @nullable */
   safewebSyncedAt?: string | null;
+  /** @nullable */
+  safewebAgendamentoId?: string | null;
+  /** @nullable */
+  safewebAgendamentoDataHora?: string | null;
+  /** @nullable */
+  safewebAgendamentoLocalNome?: string | null;
   createdAt: string;
   updatedAt?: string;
 }

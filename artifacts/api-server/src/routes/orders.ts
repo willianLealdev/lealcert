@@ -51,10 +51,16 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     garAgendamentoLocalHash: o.garAgendamentoLocalHash,
     garAgendamentoSlotHash: o.garAgendamentoSlotHash,
     garAgendamentoDataHora: o.garAgendamentoDataHora,
+    // Representante Legal
+    representanteCpf: o.representanteCpf,
+    representanteNascimento: o.representanteNascimento,
     // Safeweb
     safewebSolicitacaoId: o.safewebSolicitacaoId,
     safewebStatus: o.safewebStatus,
     safewebSyncedAt: o.safewebSyncedAt,
+    safewebAgendamentoId: o.safewebAgendamentoId,
+    safewebAgendamentoDataHora: o.safewebAgendamentoDataHora,
+    safewebAgendamentoLocalNome: o.safewebAgendamentoLocalNome,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
   };
@@ -195,7 +201,8 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   const {
     certificateId, clientType, customerName, customerCpfCnpj, customerEmail,
     customerPhone, customerBirthDate, hasPsbio, companyName, inssNumber, extendedWarranty,
-    addressZipcode, addressStreet, addressNumber, addressNeighborhood, addressCity, addressState
+    addressZipcode, addressStreet, addressNumber, addressNeighborhood, addressCity, addressState,
+    representanteCpf, representanteNascimento,
   } = req.body ?? {};
 
   if (!certificateId || !customerName || !customerCpfCnpj || !clientType) {
@@ -242,6 +249,8 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     addressNeighborhood: addressNeighborhood || null,
     addressCity: addressCity || null,
     addressState: addressState || null,
+    representanteCpf: representanteCpf ? representanteCpf.replace(/\D/g, "") : null,
+    representanteNascimento: representanteNascimento || null,
   }).returning();
 
   // Notify customer about new order
@@ -287,11 +296,12 @@ router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
 
 router.patch("/orders/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const { status, protocolNumber, scheduledAt } = req.body ?? {};
+  const { status, protocolNumber, scheduledAt, safewebSolicitacaoId } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (status !== undefined) updates.status = status;
   if (protocolNumber !== undefined) updates.protocolNumber = protocolNumber;
   if (scheduledAt !== undefined) updates.scheduledAt = new Date(scheduledAt);
+  if (safewebSolicitacaoId !== undefined) updates.safewebSolicitacaoId = safewebSolicitacaoId || null;
 
   const [order] = await db
     .update(ordersTable)
@@ -491,6 +501,70 @@ router.post("/orders/:id/sync-provider", requireAdmin, async (req, res): Promise
   } catch (err) {
     res.status(500).json({ ok: false, error: (err as Error).message });
   }
+});
+
+// ── POST /orders/:id/safeweb-agendar — agenda atendimento via Safeweb ────────
+router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  if (!order.safewebSolicitacaoId) {
+    res.status(400).json({ error: "Pedido ainda não registrado na Safeweb. Aguarde o processamento do pagamento." });
+    return;
+  }
+
+  const { dataHora, localNome } = req.body ?? {};
+  if (!dataHora) { res.status(400).json({ error: "dataHora obrigatório" }); return; }
+
+  const [s] = await db.select().from(settingsTable).limit(1);
+  const isHomol = s?.safewebAmbiente === "homologacao";
+  const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
+  const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
+  const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
+  const { swAgendaAgendar } = await import("../lib/safeweb");
+
+  let agendamentoId: string | null = null;
+
+  if (username && password && rawUrl) {
+    try {
+      const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
+      const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined, codigoParceiro: s?.safewebCodigoParceiro ?? undefined };
+      const result = await swAgendaAgendar(sw, {
+        idSolicitacao: Number(order.safewebSolicitacaoId),
+        DataHora: dataHora,
+        CnpjAR: sw.cnpjAr ?? "",
+        ...(localNome ? { Local: localNome } : {}),
+      });
+      req.log.info({ orderId: id, result }, "safeweb-agendar: resposta da API");
+      if (result.sucesso !== false) {
+        agendamentoId = String(result.idAgendamento ?? result.IdAgendamento ?? result.id ?? result.Id ?? `sw-${Date.now()}`);
+      }
+    } catch (err) {
+      req.log.warn({ orderId: id, err }, "safeweb-agendar: erro na API Safeweb, salvando agendamento manualmente");
+      agendamentoId = `manual-${Date.now()}`;
+    }
+  } else {
+    agendamentoId = `manual-${Date.now()}`;
+  }
+
+  const nomeLocal = localNome || "Videoconferência";
+  await db.update(ordersTable).set({
+    safewebAgendamentoId: agendamentoId,
+    safewebAgendamentoDataHora: dataHora,
+    safewebAgendamentoLocalNome: nomeLocal,
+    scheduledAt: new Date(dataHora),
+  }).where(eq(ordersTable.id, id));
+
+  const { logEvent } = await import("../lib/order-events");
+  await logEvent(id, "gar_status_updated", `Atendimento agendado: ${nomeLocal} — ${dataHora}`, { agendamentoId, dataHora });
+
+  res.json({ ok: true, dataHora, localNome: nomeLocal, agendamentoId });
 });
 
 export default router;

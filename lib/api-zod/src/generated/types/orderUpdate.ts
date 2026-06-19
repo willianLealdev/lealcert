@@ -11,4 +11,5 @@ export interface OrderUpdate {
   status?: OrderUpdateStatus;
   protocolNumber?: string;
   scheduledAt?: string;
+  safewebSolicitacaoId?: string;
 }

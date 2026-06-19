@@ -10,6 +10,7 @@ import {
   useGetOrderGarLocais,
   useGetOrderGarSlots,
   useAgendarOrder,
+  useAgendarSafewebOrder,
   useGetOrderEvents,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -619,6 +620,136 @@ function SchedulingDialog({
   );
 }
 
+// ── SafewebSchedulingCard ──────────────────────────────────────────────────────
+function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamentoDataHora, safewebAgendamentoLocalNome, onSuccess }: {
+  orderId: number;
+  safewebSolicitacaoId: string;
+  safewebAgendamentoId?: string | null;
+  safewebAgendamentoDataHora?: string | null;
+  safewebAgendamentoLocalNome?: string | null;
+  onSuccess: () => void;
+}) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [dataHora, setDataHora] = useState("");
+  const [localNome, setLocalNome] = useState("Videoconferência");
+
+  const agendar = useAgendarSafewebOrder({
+    mutation: {
+      onSuccess: (data) => {
+        setOpen(false);
+        toast({
+          title: "✅ Agendamento confirmado!",
+          description: `${data.localNome} — ${data.dataHora ? new Date(data.dataHora).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""}`,
+        });
+        onSuccess();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao agendar.";
+        toast({ title: "Erro no agendamento", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
+  const isScheduled = !!safewebAgendamentoId;
+
+  if (isScheduled) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-emerald-600" />
+            Agendamento Safeweb
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Atendimento agendado</p>
+              {safewebAgendamentoDataHora && (
+                <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                  {new Date(safewebAgendamentoDataHora).toLocaleString("pt-BR", { dateStyle: "full", timeStyle: "short" })}
+                </p>
+              )}
+              {safewebAgendamentoLocalNome && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {safewebAgendamentoLocalNome}
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            Agendar Atendimento
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Seu certificado foi registrado na Safeweb. Escolha uma data e horário para realizar o atendimento por videoconferência.
+          </p>
+          <Button onClick={() => setOpen(true)} className="w-full sm:w-auto">
+            <Calendar className="h-4 w-4 mr-2" />
+            Agendar Atendimento
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agendar Atendimento Safeweb</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Data e Horário</Label>
+              <Input
+                type="datetime-local"
+                value={dataHora}
+                onChange={e => setDataHora(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Selecione a data e horário combinados para o atendimento.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Modalidade / Local</Label>
+              <Input
+                value={localNome}
+                onChange={e => setLocalNome(e.target.value)}
+                placeholder="Ex: Videoconferência"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button
+              disabled={!dataHora || agendar.isPending}
+              onClick={() => agendar.mutate({
+                id: orderId,
+                data: { dataHora: new Date(dataHora).toISOString(), localNome },
+              })}
+            >
+              {agendar.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirmar Agendamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ── Página principal ──────────────────────────────────────────────────────────
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
@@ -626,6 +757,7 @@ export default function OrderDetail() {
   const { toast } = useToast();
   const [protocol, setProtocol] = useState("");
   const [newStatus, setNewStatus] = useState("");
+  const [swSolicitacaoInput, setSwSolicitacaoInput] = useState("");
   const [garHashProduto, setGarHashProduto] = useState("");
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
@@ -759,6 +891,9 @@ export default function OrderDetail() {
     safewebSolicitacaoId?: string | null;
     safewebStatus?: string | null;
     safewebSyncedAt?: string | null;
+    safewebAgendamentoId?: string | null;
+    safewebAgendamentoDataHora?: string | null;
+    safewebAgendamentoLocalNome?: string | null;
   };
   const hasGar = !!orderExt.garPedido;
   const garPedido = orderExt.garPedido ?? undefined;
@@ -772,16 +907,22 @@ export default function OrderDetail() {
   const safewebSolicitacaoId = orderExt.safewebSolicitacaoId ?? undefined;
   const safewebStatus = orderExt.safewebStatus ?? undefined;
   const safewebSyncedAt = orderExt.safewebSyncedAt ?? undefined;
+  const safewebAgendamentoId = orderExt.safewebAgendamentoId ?? undefined;
+  const safewebAgendamentoDataHora = orderExt.safewebAgendamentoDataHora ?? undefined;
+  const safewebAgendamentoLocalNome = orderExt.safewebAgendamentoLocalNome ?? undefined;
 
-  // Mostrar card de agendamento quando pedido está registrado no provedor (GAR ou Safeweb)
-  const canSchedule = (!!garProtocolo || !!orderExt.safewebSolicitacaoId) &&
-    (order.status === "protocol_assigned" || order.status === "paid" || order.status === "completed");
+  const statusOk = order.status === "protocol_assigned" || order.status === "paid" || order.status === "completed";
+  // Card de agendamento GAR: precisa de protocolo GAR
+  const canScheduleGar = !!garProtocolo && statusOk;
+  // Card de agendamento Safeweb: precisa de solicitacaoId na Safeweb
+  const canScheduleSafeweb = !!safewebSolicitacaoId && statusOk;
 
   function handleStatusUpdate(e: React.FormEvent) {
     e.preventDefault();
     const data: Record<string, unknown> = {};
     if (newStatus) data.status = newStatus;
     if (protocol) data.protocolNumber = protocol;
+    if (swSolicitacaoInput) data.safewebSolicitacaoId = swSolicitacaoInput;
     if (Object.keys(data).length === 0) return;
     updateOrder.mutate({ id: Number(id), data: data as Parameters<typeof updateOrder.mutate>[0]["data"] });
   }
@@ -972,13 +1113,25 @@ export default function OrderDetail() {
             </CardContent>
           </Card>
 
-          {/* Card de agendamento — visível para todos com protocolo */}
-          {canSchedule && (
+          {/* Card de agendamento GAR */}
+          {canScheduleGar && (
             <SchedulingCard
               orderId={Number(id)}
               garProtocolo={garProtocolo!}
               garAgendamentoDataHora={garAgendamentoDataHora}
               garAgendamentoLocalNome={garAgendamentoLocalNome}
+              onSuccess={refetch}
+            />
+          )}
+
+          {/* Card de agendamento Safeweb */}
+          {canScheduleSafeweb && (
+            <SafewebSchedulingCard
+              orderId={Number(id)}
+              safewebSolicitacaoId={safewebSolicitacaoId!}
+              safewebAgendamentoId={safewebAgendamentoId}
+              safewebAgendamentoDataHora={safewebAgendamentoDataHora}
+              safewebAgendamentoLocalNome={safewebAgendamentoLocalNome}
               onSuccess={refetch}
             />
           )}
@@ -1003,6 +1156,10 @@ export default function OrderDetail() {
                     <div className="space-y-2">
                       <Label>Número de Protocolo</Label>
                       <Input value={protocol} onChange={e => setProtocol(e.target.value)} placeholder="Ex: 2024001234" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>ID Solicitação Safeweb</Label>
+                      <Input value={swSolicitacaoInput} onChange={e => setSwSolicitacaoInput(e.target.value)} placeholder="Ex: 1234567" />
                     </div>
                   </div>
                   <Button type="submit" disabled={updateOrder.isPending}>

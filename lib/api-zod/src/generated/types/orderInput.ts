@@ -25,4 +25,6 @@ export interface OrderInput {
   addressNeighborhood?: string;
   addressCity?: string;
   addressState?: string;
+  representanteCpf?: string;
+  representanteNascimento?: string;
 }

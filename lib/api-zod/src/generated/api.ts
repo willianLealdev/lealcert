@@ -474,9 +474,14 @@ export const ListOrdersResponseItem = zod.object({
   "garAgendamentoLocalHash": zod.string().nullish(),
   "garAgendamentoSlotHash": zod.string().nullish(),
   "garAgendamentoDataHora": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "representanteNascimento": zod.string().nullish(),
   "safewebSolicitacaoId": zod.string().nullish(),
   "safewebStatus": zod.string().nullish(),
   "safewebSyncedAt": zod.string().nullish(),
+  "safewebAgendamentoId": zod.string().nullish(),
+  "safewebAgendamentoDataHora": zod.string().nullish(),
+  "safewebAgendamentoLocalNome": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })
@@ -503,7 +508,9 @@ export const CreateOrderBody = zod.object({
   "addressNumber": zod.string().optional(),
   "addressNeighborhood": zod.string().optional(),
   "addressCity": zod.string().optional(),
-  "addressState": zod.string().optional()
+  "addressState": zod.string().optional(),
+  "representanteCpf": zod.string().optional(),
+  "representanteNascimento": zod.string().optional()
 })
 
 
@@ -594,9 +601,14 @@ export const GetOrderResponse = zod.object({
   "garAgendamentoLocalHash": zod.string().nullish(),
   "garAgendamentoSlotHash": zod.string().nullish(),
   "garAgendamentoDataHora": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "representanteNascimento": zod.string().nullish(),
   "safewebSolicitacaoId": zod.string().nullish(),
   "safewebStatus": zod.string().nullish(),
   "safewebSyncedAt": zod.string().nullish(),
+  "safewebAgendamentoId": zod.string().nullish(),
+  "safewebAgendamentoDataHora": zod.string().nullish(),
+  "safewebAgendamentoLocalNome": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })
@@ -612,7 +624,8 @@ export const UpdateOrderParams = zod.object({
 export const UpdateOrderBody = zod.object({
   "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'completed', 'cancelled']).optional(),
   "protocolNumber": zod.string().optional(),
-  "scheduledAt": zod.string().optional()
+  "scheduledAt": zod.string().optional(),
+  "safewebSolicitacaoId": zod.string().optional()
 })
 
 export const UpdateOrderResponse = zod.object({
@@ -655,9 +668,14 @@ export const UpdateOrderResponse = zod.object({
   "garAgendamentoLocalHash": zod.string().nullish(),
   "garAgendamentoSlotHash": zod.string().nullish(),
   "garAgendamentoDataHora": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "representanteNascimento": zod.string().nullish(),
   "safewebSolicitacaoId": zod.string().nullish(),
   "safewebStatus": zod.string().nullish(),
   "safewebSyncedAt": zod.string().nullish(),
+  "safewebAgendamentoId": zod.string().nullish(),
+  "safewebAgendamentoDataHora": zod.string().nullish(),
+  "safewebAgendamentoLocalNome": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })
@@ -688,6 +706,26 @@ export const SyncPaymentOrderResponse = zod.object({
   "ok": zod.boolean(),
   "status": zod.string().optional(),
   "error": zod.string().optional()
+})
+
+
+/**
+ * @summary Agenda atendimento via Safeweb para o pedido
+ */
+export const AgendarSafewebOrderParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AgendarSafewebOrderBody = zod.object({
+  "dataHora": zod.string(),
+  "localNome": zod.string().optional()
+})
+
+export const AgendarSafewebOrderResponse = zod.object({
+  "ok": zod.boolean(),
+  "dataHora": zod.string(),
+  "localNome": zod.string(),
+  "agendamentoId": zod.string().nullish()
 })
 
 
@@ -1603,9 +1641,14 @@ export const GetRecentOrdersResponseItem = zod.object({
   "garAgendamentoLocalHash": zod.string().nullish(),
   "garAgendamentoSlotHash": zod.string().nullish(),
   "garAgendamentoDataHora": zod.string().nullish(),
+  "representanteCpf": zod.string().nullish(),
+  "representanteNascimento": zod.string().nullish(),
   "safewebSolicitacaoId": zod.string().nullish(),
   "safewebStatus": zod.string().nullish(),
   "safewebSyncedAt": zod.string().nullish(),
+  "safewebAgendamentoId": zod.string().nullish(),
+  "safewebAgendamentoDataHora": zod.string().nullish(),
+  "safewebAgendamentoLocalNome": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
 })

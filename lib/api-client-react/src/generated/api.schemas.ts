@@ -314,11 +314,21 @@ export interface Order {
   /** @nullable */
   garAgendamentoDataHora?: string | null;
   /** @nullable */
+  representanteCpf?: string | null;
+  /** @nullable */
+  representanteNascimento?: string | null;
+  /** @nullable */
   safewebSolicitacaoId?: string | null;
   /** @nullable */
   safewebStatus?: string | null;
   /** @nullable */
   safewebSyncedAt?: string | null;
+  /** @nullable */
+  safewebAgendamentoId?: string | null;
+  /** @nullable */
+  safewebAgendamentoDataHora?: string | null;
+  /** @nullable */
+  safewebAgendamentoLocalNome?: string | null;
   createdAt: string;
   updatedAt?: string;
 }
@@ -349,6 +359,8 @@ export interface OrderInput {
   addressNeighborhood?: string;
   addressCity?: string;
   addressState?: string;
+  representanteCpf?: string;
+  representanteNascimento?: string;
 }
 
 export type OrderUpdateStatus = typeof OrderUpdateStatus[keyof typeof OrderUpdateStatus];
@@ -367,6 +379,7 @@ export interface OrderUpdate {
   status?: OrderUpdateStatus;
   protocolNumber?: string;
   scheduledAt?: string;
+  safewebSolicitacaoId?: string;
 }
 
 export interface SyncProviderResult {
@@ -825,6 +838,19 @@ export interface GarSyncResult {
 
 export interface GarPsBioInput {
   cpf: string;
+}
+
+export interface SafewebAgendarInput {
+  dataHora: string;
+  localNome?: string;
+}
+
+export interface SafewebAgendarResult {
+  ok: boolean;
+  dataHora: string;
+  localNome: string;
+  /** @nullable */
+  agendamentoId?: string | null;
 }
 
 export interface GenerateSlotsInput {

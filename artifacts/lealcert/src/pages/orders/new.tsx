@@ -378,6 +378,8 @@ export default function NewOrder() {
         addressNeighborhood: form.addressNeighborhood || undefined,
         addressCity: form.addressCity || undefined,
         addressState: form.addressState || undefined,
+        representanteCpf: isCnpjCert && form.repCpf ? form.repCpf : undefined,
+        representanteNascimento: isCnpjCert && form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
       },
     });
   }

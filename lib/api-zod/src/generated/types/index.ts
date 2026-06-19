@@ -139,6 +139,8 @@ export * from './pushVapidPublicKey';
 export * from './registerInput';
 export * from './registerInputUserType';
 export * from './resendVerificationInput';
+export * from './safewebAgendarInput';
+export * from './safewebAgendarResult';
 export * from './sendCampaignInput';
 export * from './sendCampaignInputManualRecipientsItem';
 export * from './sendCampaignInputTargetOverride';

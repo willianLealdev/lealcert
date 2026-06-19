@@ -102,26 +102,48 @@ export async function swAutoComprar(orderId: number): Promise<void> {
   };
 
   if (isCnpj) {
+    // e-CNPJ: campos da empresa + representante legal (obrigatório pela Safeweb PSS)
     body.CNPJ = order.customerCpfCnpj;
     body.RazaoSocial = order.companyName ?? order.customerName;
-    body.NomeFantasia = order.companyName ? order.customerName : "";
-    body.Nome = order.customerName;
-    // CPF do responsável pode ser preenchido pelo operador se necessário
+    body.NomeFantasia = order.companyName ?? "";
+    body.Nome = order.customerName; // nome do representante legal
+    if (order.representanteCpf) {
+      body.CPF = order.representanteCpf; // CPF do representante legal
+    }
+    if (order.representanteNascimento) {
+      body.DataNascimento = order.representanteNascimento; // data de nascimento do representante
+    }
   } else {
+    // e-CPF: campos da pessoa física
     body.Nome = order.customerName;
     body.CPF = order.customerCpfCnpj;
-    // DataNascimento obrigatória para e-CPF (PF)
     if (order.customerBirthDate) {
       body.DataNascimento = order.customerBirthDate; // ISO format: YYYY-MM-DD
     }
   }
 
   try {
-    logger.info({ orderId, safewebIdProduto }, "swAutoComprar: criando solicitação na Safeweb (videoconferência)");
+    logger.info({ orderId, safewebIdProduto, isCnpj, body }, "swAutoComprar: enviando solicitação para Safeweb");
 
     const result = await swAdicionarVideoconferencia(sw, body);
 
-    const solicitacaoId = result.idSolicitacao ?? result.Protocolo ?? null;
+    // Log completo da resposta para diagnóstico
+    logger.info({ orderId, resultRaw: result }, "swAutoComprar: resposta completa da Safeweb");
+
+    // Tenta capturar o ID da solicitação em múltiplos campos possíveis da API
+    const solicitacaoId =
+      result.idSolicitacao ??
+      result.IdSolicitacao ??
+      result.Protocolo ??
+      result.protocolo ??
+      result.id ??
+      result.Id ??
+      result.idSolicitacaoVenda ??
+      result.IdSolicitacaoVenda ??
+      result.SolicitacaoId ??
+      result.solicitacaoId ??
+      null;
+
     const statusMsg = result.sucesso === false
       ? (result.mensagem ?? "Erro retornado pela Safeweb")
       : (result.mensagem ?? "Solicitação criada");

@@ -56,10 +56,17 @@ export const ordersTable = pgTable("orders", {
   garAgendamentoLocalHash: text("gar_agendamento_local_hash"),
   garAgendamentoSlotHash: text("gar_agendamento_slot_hash"),
   garAgendamentoDataHora: text("gar_agendamento_data_hora"),
+  // Representante Legal (obrigatório para e-CNPJ na Safeweb)
+  representanteCpf: text("representante_cpf"),
+  representanteNascimento: text("representante_nascimento"),
   // Safeweb integration fields
   safewebSolicitacaoId: text("safeweb_solicitacao_id"),
   safewebStatus: text("safeweb_status"),
   safewebSyncedAt: timestamp("safeweb_synced_at", { withTimezone: true }),
+  // Safeweb scheduling (booked inside the panel)
+  safewebAgendamentoId: text("safeweb_agendamento_id"),
+  safewebAgendamentoDataHora: text("safeweb_agendamento_data_hora"),
+  safewebAgendamentoLocalNome: text("safeweb_agendamento_local_nome"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

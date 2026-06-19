@@ -757,6 +757,31 @@ paths:
                   error:
                     type: string
 
+  /orders/{id}/safeweb-agendar:
+    post:
+      operationId: agendarSafewebOrder
+      tags: [orders]
+      summary: Agenda atendimento via Safeweb para o pedido
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SafewebAgendarInput"
+      responses:
+        "200":
+          description: Agendamento realizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafewebAgendarResult"
+
   /orders/{id}/sync-provider:
     post:
       operationId: syncProviderOrder
@@ -2405,11 +2430,21 @@ components:
           type: ["string", "null"]
         garAgendamentoDataHora:
           type: ["string", "null"]
+        representanteCpf:
+          type: ["string", "null"]
+        representanteNascimento:
+          type: ["string", "null"]
         safewebSolicitacaoId:
           type: ["string", "null"]
         safewebStatus:
           type: ["string", "null"]
         safewebSyncedAt:
+          type: ["string", "null"]
+        safewebAgendamentoId:
+          type: ["string", "null"]
+        safewebAgendamentoDataHora:
+          type: ["string", "null"]
+        safewebAgendamentoLocalNome:
           type: ["string", "null"]
         createdAt:
           type: string
@@ -2455,6 +2490,10 @@ components:
           type: string
         addressState:
           type: string
+        representanteCpf:
+          type: string
+        representanteNascimento:
+          type: string
 
     OrderUpdate:
       type: object
@@ -2465,6 +2504,8 @@ components:
         protocolNumber:
           type: string
         scheduledAt:
+          type: string
+        safewebSolicitacaoId:
           type: string
 
     SyncProviderResult:
@@ -3112,6 +3153,28 @@ components:
       required: [cpf]
       properties:
         cpf: { type: string }
+
+    SafewebAgendarInput:
+      type: object
+      required: [dataHora]
+      properties:
+        dataHora:
+          type: string
+        localNome:
+          type: string
+
+    SafewebAgendarResult:
+      type: object
+      required: [ok, dataHora, localNome]
+      properties:
+        ok:
+          type: boolean
+        dataHora:
+          type: string
+        localNome:
+          type: string
+        agendamentoId:
+          type: ["string", "null"]
 
     GenerateSlotsInput:
       type: object
