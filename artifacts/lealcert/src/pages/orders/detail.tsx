@@ -12,7 +12,7 @@ import {
   useAgendarOrder,
   useAgendarSafewebOrder,
   useCancelarSafewebOrder,
-  useGetSafewebSlots,
+  useGetSafewebLocais,
   useGetOrderEvents,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -629,135 +629,110 @@ function SchedulingDialog({
   );
 }
 
-// ── ManualSlotInput — fallback quando a Safeweb não retorna horários ──────────
-function ManualSlotInput({ selected, onSelect }: {
-  selected: { idAgendamento: string | number | null; dataHora: string; local: string } | null;
-  onSelect: (slot: { idAgendamento: string | number | null; dataHora: string; local: string }) => void;
-}) {
-  const [dataHora, setDataHora] = useState(selected?.dataHora ? new Date(selected.dataHora).toISOString().slice(0, 16) : "");
-  const [local, setLocal] = useState(selected?.local ?? "Videoconferência");
+// ── LocaisAndDateDialogBody — busca locais Safeweb e permite escolha + data ───
+type SwLocalItem = { id: number; titulo: string; endereco?: string; cidade?: string; estado?: string; uf?: string };
+type AgendarSelection = { idLocal: number; localNome: string; dataHora: string };
 
-  const handleChange = (dh: string, loc: string) => {
-    if (dh) onSelect({ idAgendamento: null, dataHora: new Date(dh).toISOString(), local: loc });
-  };
-
-  return (
-    <div className="space-y-4 py-2">
-      <p className="text-sm text-muted-foreground">
-        Informe a data, horário e modalidade combinados para o atendimento.
-      </p>
-      <div className="space-y-2">
-        <Label>Data e Horário</Label>
-        <Input
-          type="datetime-local"
-          value={dataHora}
-          onChange={e => { setDataHora(e.target.value); handleChange(e.target.value, local); }}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Modalidade / Local</Label>
-        <Input
-          value={local}
-          onChange={e => { setLocal(e.target.value); handleChange(dataHora, e.target.value); }}
-          placeholder="Ex: Videoconferência"
-        />
-      </div>
-    </div>
-  );
-}
-
-// ── SlotsDialogBody — montado só quando o dialog está aberto ─────────────────
-function SlotsDialogBody({ orderId, onSelect, selected }: {
+function LocaisAndDateDialogBody({ orderId, onSelect }: {
   orderId: number;
-  selected: { idAgendamento: string | number | null; dataHora: string; local: string } | null;
-  onSelect: (slot: { idAgendamento: string | number | null; dataHora: string; local: string }) => void;
+  onSelect: (sel: AgendarSelection) => void;
 }) {
-  const { data: slotsData, isLoading, isError, refetch } = useGetSafewebSlots(orderId);
-  const slots = slotsData?.slots ?? [];
+  const { data, isLoading, isError, refetch } = useGetSafewebLocais(orderId);
+  const locais: SwLocalItem[] = (data?.locais ?? []) as SwLocalItem[];
 
-  const slotsByDate = useMemo(() => {
-    const map: Record<string, typeof slots> = {};
-    for (const s of slots) {
-      if (!s.dataHora) continue;
-      const dateKey = new Date(s.dataHora).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" });
-      if (!map[dateKey]) map[dateKey] = [];
-      map[dateKey].push(s);
+  const [selectedLocal, setSelectedLocal] = useState<SwLocalItem | null>(null);
+  const [dataHora, setDataHora] = useState("");
+
+  useEffect(() => {
+    if (selectedLocal && dataHora) {
+      onSelect({ idLocal: selectedLocal.id, localNome: selectedLocal.titulo, dataHora: new Date(dataHora).toISOString() });
     }
-    return map;
-  }, [slots]);
+  }, [selectedLocal, dataHora]);
 
   if (isLoading) return (
     <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
       <Loader2 className="h-5 w-5 animate-spin" />
-      <span className="text-sm">Consultando horários disponíveis...</span>
+      <span className="text-sm">Buscando locais de atendimento...</span>
     </div>
   );
 
   if (isError) return (
     <div className="space-y-3 text-center py-6">
-      <p className="text-sm text-destructive">Não foi possível carregar os horários da Safeweb.</p>
+      <p className="text-sm text-destructive">Não foi possível carregar os locais de atendimento.</p>
       <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
     </div>
   );
 
-  if (slots.length === 0) return (
-    <ManualSlotInput selected={selected} onSelect={onSelect} />
-  );
-
   return (
-    <div className="space-y-4">
-      {Object.entries(slotsByDate).map(([dateLabel, daySlots]) => (
-        <div key={dateLabel} className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{dateLabel}</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {daySlots.map((s, idx) => {
-              const time = new Date(s.dataHora!).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-              const isSelected = selected?.dataHora === s.dataHora && selected?.local === s.local;
-              const isUnavailable = s.disponivel === false;
+    <div className="space-y-5 py-1">
+      {/* Passo 1: Escolher local */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          1. Escolha o local de atendimento
+        </p>
+        {locais.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">Nenhum local disponível retornado pela Safeweb.</p>
+        ) : (
+          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+            {locais.map((l) => {
+              const isSelected = selectedLocal?.id === l.id;
               return (
                 <button
-                  key={idx}
-                  disabled={isUnavailable}
-                  onClick={() => onSelect({ idAgendamento: s.idAgendamento ?? null, dataHora: s.dataHora!, local: s.local })}
+                  key={l.id}
+                  onClick={() => setSelectedLocal(l)}
                   className={[
-                    "rounded-lg border p-3 text-left text-sm transition-all",
-                    isUnavailable
-                      ? "opacity-40 cursor-not-allowed bg-muted"
-                      : isSelected
-                        ? "border-primary bg-primary/10 ring-2 ring-primary"
-                        : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
+                    "w-full rounded-lg border p-3 text-left text-sm transition-all",
+                    isSelected
+                      ? "border-primary bg-primary/10 ring-2 ring-primary"
+                      : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
                   ].join(" ")}
                 >
-                  <div className="font-semibold">{time}</div>
-                  <div className="text-xs text-muted-foreground truncate">{s.local}</div>
+                  <p className="font-semibold">{l.titulo}</p>
+                  {l.endereco && <p className="text-xs text-muted-foreground mt-0.5">{l.endereco}</p>}
+                  {(l.cidade || l.uf) && (
+                    <p className="text-xs text-muted-foreground">{[l.cidade, l.uf].filter(Boolean).join(" — ")}</p>
+                  )}
                 </button>
               );
             })}
           </div>
-        </div>
-      ))}
+        )}
+      </div>
+
+      {/* Passo 2: Data e horário */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          2. Informe a data e horário
+        </p>
+        <Input
+          type="datetime-local"
+          value={dataHora}
+          onChange={e => setDataHora(e.target.value)}
+        />
+      </div>
     </div>
   );
 }
 
 // ── SafewebSchedulingCard ──────────────────────────────────────────────────────
-function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamentoDataHora, safewebAgendamentoLocalNome, onSuccess }: {
+function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamentoDataHora, safewebAgendamentoLocalNome, onSuccess, open, onOpenChange }: {
   orderId: number;
   safewebSolicitacaoId: string;
   safewebAgendamentoId?: string | null;
   safewebAgendamentoDataHora?: string | null;
   safewebAgendamentoLocalNome?: string | null;
   onSuccess: () => void;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
 }) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<{ idAgendamento: string | number | null; dataHora: string; local: string } | null>(null);
+  const [selection, setSelection] = useState<AgendarSelection | null>(null);
 
   const agendar = useAgendarSafewebOrder({
     mutation: {
       onSuccess: (data) => {
-        setOpen(false);
-        setSelectedSlot(null);
+        onOpenChange(false);
+        setSelection(null);
         toast({
           title: "✅ Agendamento confirmado!",
           description: `${data.localNome} — ${data.dataHora ? new Date(data.dataHora).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""}`,
@@ -772,101 +747,95 @@ function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamen
   });
 
   const isScheduled = !!safewebAgendamentoId;
-
-  if (isScheduled) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-emerald-600" />
-            Agendamento Safeweb
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Atendimento agendado</p>
-              {safewebAgendamentoDataHora && (
-                <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                  {new Date(safewebAgendamentoDataHora).toLocaleString("pt-BR", { dateStyle: "full", timeStyle: "short" })}
-                </p>
-              )}
-              {safewebAgendamentoLocalNome && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {safewebAgendamentoLocalNome}
-                </p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const title = isScheduled ? "Agendamento Safeweb" : "Agendar Atendimento";
 
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-primary" />
-            Agendar Atendimento
+            <Calendar className={`h-4 w-4 ${isScheduled ? "text-emerald-600" : "text-primary"}`} />
+            {title}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Seu certificado foi registrado na Safeweb. Escolha um dos horários disponíveis para realizar o atendimento por videoconferência.
-          </p>
-          <Button onClick={() => setOpen(true)} className="w-full sm:w-auto">
-            <Calendar className="h-4 w-4 mr-2" />
-            Ver Horários Disponíveis
-          </Button>
+        <CardContent className="space-y-3">
+          {isScheduled ? (
+            <>
+              <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Atendimento agendado</p>
+                  {safewebAgendamentoDataHora && (
+                    <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                      {new Date(safewebAgendamentoDataHora).toLocaleString("pt-BR", { dateStyle: "full", timeStyle: "short" })}
+                    </p>
+                  )}
+                  {safewebAgendamentoLocalNome && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {safewebAgendamentoLocalNome}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => onOpenChange(true)}>
+                <Calendar className="h-4 w-4 mr-2" />
+                Alterar Agendamento
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Seu certificado foi registrado na Safeweb. Selecione o local de atendimento e informe a data e hora.
+              </p>
+              <Button onClick={() => onOpenChange(true)} className="w-full sm:w-auto">
+                <Calendar className="h-4 w-4 mr-2" />
+                Escolher Local e Data
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setSelectedSlot(null); }}>
-        <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
+      <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setSelection(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Escolha o Horário de Atendimento</DialogTitle>
+            <DialogTitle>Agendamento Safeweb</DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto space-y-4 py-2 pr-1">
+          <div className="flex-1 overflow-y-auto py-2 pr-1">
             {open && (
-              <SlotsDialogBody
+              <LocaisAndDateDialogBody
                 orderId={orderId}
-                selected={selectedSlot}
-                onSelect={setSelectedSlot}
+                onSelect={setSelection}
               />
             )}
           </div>
 
-          {selectedSlot && (
+          {selection && (
             <div className="border-t pt-3 mt-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
                 <span>
-                  <span className="font-medium text-foreground">
-                    {new Date(selectedSlot.dataHora).toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  {" — "}{selectedSlot.local}
+                  <span className="font-medium text-foreground">{selection.localNome}</span>
+                  {" — "}{new Date(selection.dataHora).toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
             </div>
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setOpen(false); setSelectedSlot(null); }}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { onOpenChange(false); setSelection(null); }}>Cancelar</Button>
             <Button
-              disabled={!selectedSlot || agendar.isPending}
+              disabled={!selection || agendar.isPending}
               onClick={() => {
-                if (!selectedSlot) return;
+                if (!selection) return;
                 agendar.mutate({
                   id: orderId,
                   data: {
-                    dataHora: new Date(selectedSlot.dataHora).toISOString(),
-                    localNome: selectedSlot.local,
-                    idAgendamento: selectedSlot.idAgendamento != null ? String(selectedSlot.idAgendamento) : undefined,
+                    dataHora: selection.dataHora,
+                    localNome: selection.localNome,
+                    idLocal: selection.idLocal,
                   },
                 });
               }}
@@ -892,6 +861,7 @@ export default function OrderDetail() {
   const [garHashProduto, setGarHashProduto] = useState("");
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
+  const [safewebAgendarOpen, setSafewebAgendarOpen] = useState(false);
 
   const prevStatusRef = useRef<string | undefined>(undefined);
 
@@ -1291,6 +1261,8 @@ export default function OrderDetail() {
               safewebAgendamentoDataHora={safewebAgendamentoDataHora}
               safewebAgendamentoLocalNome={safewebAgendamentoLocalNome}
               onSuccess={refetch}
+              open={safewebAgendarOpen}
+              onOpenChange={setSafewebAgendarOpen}
             />
           )}
 
@@ -1464,7 +1436,15 @@ export default function OrderDetail() {
             <CardHeader><CardTitle>Resumo</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <InfoRow label="Certificado" value={order.certificateName} />
-              <InfoRow label="Agendamento" value={garAgendamentoDataHora ?? formatDateTime(order.scheduledAt ?? null)} />
+              <div className="flex items-center justify-between gap-2">
+                <InfoRow label="Agendamento" value={garAgendamentoDataHora ?? formatDateTime(order.scheduledAt ?? null)} />
+                {canScheduleSafeweb && (
+                  <Button variant="outline" size="sm" className="shrink-0 text-xs h-7 px-2" onClick={() => setSafewebAgendarOpen(true)}>
+                    <Calendar className="h-3 w-3 mr-1" />
+                    Alterar
+                  </Button>
+                )}
+              </div>
               {order.protocolNumber && <InfoRow label="Protocolo" value={order.protocolNumber} />}
               {garProtocolo && !order.protocolNumber && <InfoRow label="Protocolo GAR" value={garProtocolo} />}
               {order.extendedWarranty && (

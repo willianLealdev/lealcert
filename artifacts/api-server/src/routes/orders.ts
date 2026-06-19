@@ -575,7 +575,7 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
     return;
   }
 
-  const { dataHora, localNome } = req.body ?? {};
+  const { dataHora, localNome, idLocal } = req.body ?? {};
   if (!dataHora) { res.status(400).json({ error: "dataHora obrigatório" }); return; }
 
   const [s] = await db.select().from(settingsTable).limit(1);
@@ -595,6 +595,7 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
         idSolicitacao: Number(order.safewebSolicitacaoId),
         DataHora: dataHora,
         CnpjAR: sw.cnpjAr ?? "",
+        ...(idLocal ? { IdLocal: idLocal } : {}),
         ...(localNome ? { Local: localNome } : {}),
       });
       req.log.info({ orderId: id, result }, "safeweb-agendar: resposta da API");
@@ -622,6 +623,50 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   await logEvent(id, "gar_status_updated", `Atendimento agendado: ${nomeLocal} — ${dataHora}`, { agendamentoId, dataHora });
 
   res.json({ ok: true, dataHora, localNome: nomeLocal, agendamentoId });
+});
+
+// ── GET /orders/:id/safeweb-locais — locais de atendimento na Safeweb ─────────
+router.get("/orders/:id/safeweb-locais", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const [s] = await db.select().from(settingsTable).limit(1);
+  const isHomol = s?.safewebAmbiente === "homologacao";
+  const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
+  const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
+  const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
+
+  if (!username || !password || !rawUrl) {
+    res.status(503).json({ error: "Credenciais Safeweb não configuradas" }); return;
+  }
+
+  try {
+    const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
+    const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined };
+    const { swLocaisPorCnpjAr } = await import("../lib/safeweb");
+    const result = await swLocaisPorCnpjAr(sw, sw.cnpjAr, 1);
+
+    const rawList = result.LocaisAtendimento ?? [];
+    const locais = rawList.map((l) => ({
+      id: l.properties.id,
+      titulo: l.properties.titulo,
+      endereco: `${l.properties.endereco}, ${l.properties.numero} — ${l.properties.bairro}`,
+      cidade: l.properties.cidade,
+      estado: l.properties.estado,
+      uf: l.properties.UF,
+    }));
+
+    res.json({ locais });
+  } catch (err) {
+    const msg = (err as Error).message ?? "";
+    req.log.error({ err, orderId: id }, "safeweb-locais: erro");
+    res.status(502).json({ error: `Erro ao consultar locais: ${msg}` });
+  }
 });
 
 // ── GET /orders/:id/safeweb-slots — lista horários disponíveis na Safeweb ────

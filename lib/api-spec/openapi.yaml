@@ -757,6 +757,25 @@ paths:
                   error:
                     type: string
 
+  /orders/{id}/safeweb-locais:
+    get:
+      operationId: getSafewebLocais
+      tags: [orders]
+      summary: Lista locais de atendimento Safeweb (por CNPJ AR)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Locais de atendimento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafewebLocaisResult"
+
   /orders/{id}/safeweb-slots:
     get:
       operationId: getSafewebSlots
@@ -3221,6 +3240,29 @@ components:
           type: object
           additionalProperties: true
 
+    SafewebLocaisResult:
+      type: object
+      required: [locais]
+      properties:
+        locais:
+          type: array
+          items:
+            type: object
+            required: [id, titulo]
+            properties:
+              id:
+                type: integer
+              titulo:
+                type: string
+              endereco:
+                type: string
+              cidade:
+                type: string
+              estado:
+                type: string
+              uf:
+                type: string
+
     SafewebCancelarInput:
       type: object
       properties:
@@ -3244,6 +3286,8 @@ components:
           type: string
         localNome:
           type: string
+        idLocal:
+          type: integer
         idAgendamento:
           type: string
 

@@ -710,6 +710,25 @@ export const SyncPaymentOrderResponse = zod.object({
 
 
 /**
+ * @summary Lista locais de atendimento Safeweb (por CNPJ AR)
+ */
+export const GetSafewebLocaisParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetSafewebLocaisResponse = zod.object({
+  "locais": zod.array(zod.object({
+  "id": zod.number(),
+  "titulo": zod.string(),
+  "endereco": zod.string().optional(),
+  "cidade": zod.string().optional(),
+  "estado": zod.string().optional(),
+  "uf": zod.string().optional()
+}))
+})
+
+
+/**
  * @summary Lista horários disponíveis na Safeweb para agendamento
  */
 export const GetSafewebSlotsParams = zod.object({
@@ -737,6 +756,7 @@ export const AgendarSafewebOrderParams = zod.object({
 export const AgendarSafewebOrderBody = zod.object({
   "dataHora": zod.string(),
   "localNome": zod.string().optional(),
+  "idLocal": zod.number().optional(),
   "idAgendamento": zod.string().optional()
 })
 

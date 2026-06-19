@@ -117,6 +117,7 @@ import type {
   SafewebAgendarResult,
   SafewebCancelarInput,
   SafewebCancelarResult,
+  SafewebLocaisResult,
   SafewebSlotsResult,
   SendCampaignInput,
   SendRenewalAlert200,
@@ -2708,6 +2709,83 @@ export const useSyncPaymentOrder = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getSyncPaymentOrderMutationOptions(options));
     }
+
+export const getGetSafewebLocaisUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/safeweb-locais`
+}
+
+/**
+ * @summary Lista locais de atendimento Safeweb (por CNPJ AR)
+ */
+export const getSafewebLocais = async (id: number, options?: RequestInit): Promise<SafewebLocaisResult> => {
+
+  return customFetch<SafewebLocaisResult>(getGetSafewebLocaisUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSafewebLocaisQueryKey = (id: number,) => {
+    return [
+    `/api/orders/${id}/safeweb-locais`
+    ] as const;
+    }
+
+
+export const getGetSafewebLocaisQueryOptions = <TData = Awaited<ReturnType<typeof getSafewebLocais>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebLocais>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSafewebLocaisQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSafewebLocais>>> = ({ signal }) => getSafewebLocais(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSafewebLocais>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSafewebLocaisQueryResult = NonNullable<Awaited<ReturnType<typeof getSafewebLocais>>>
+export type GetSafewebLocaisQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista locais de atendimento Safeweb (por CNPJ AR)
+ */
+
+export function useGetSafewebLocais<TData = Awaited<ReturnType<typeof getSafewebLocais>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebLocais>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSafewebLocaisQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetSafewebSlotsUrl = (id: number,) => {
 

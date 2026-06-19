@@ -9,5 +9,6 @@
 export interface SafewebAgendarInput {
   dataHora: string;
   localNome?: string;
+  idLocal?: number;
   idAgendamento?: string;
 }

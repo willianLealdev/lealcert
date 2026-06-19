@@ -860,6 +860,19 @@ export interface SafewebSlotsResult {
   raw?: SafewebSlotsResultRaw;
 }
 
+export type SafewebLocaisResultLocaisItem = {
+  id: number;
+  titulo: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  uf?: string;
+};
+
+export interface SafewebLocaisResult {
+  locais: SafewebLocaisResultLocaisItem[];
+}
+
 export interface SafewebCancelarInput {
   motivo?: string;
 }
@@ -872,6 +885,7 @@ export interface SafewebCancelarResult {
 export interface SafewebAgendarInput {
   dataHora: string;
   localNome?: string;
+  idLocal?: number;
   idAgendamento?: string;
 }
 

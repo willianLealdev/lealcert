@@ -143,6 +143,8 @@ export * from './safewebAgendarInput';
 export * from './safewebAgendarResult';
 export * from './safewebCancelarInput';
 export * from './safewebCancelarResult';
+export * from './safewebLocaisResult';
+export * from './safewebLocaisResultLocaisItem';
 export * from './safewebSlotsResult';
 export * from './safewebSlotsResultRaw';
 export * from './safewebSlotsResultSlotsItem';
