@@ -549,6 +549,13 @@ export default function NewOrder() {
                         if (showCnpjFields) {
                           if (digits.length === 14) setCnpjToQuery(digits);
                           else { setCnpjToQuery(""); setAutoFilledCustomerName(false); }
+                        } else {
+                          // CPF Pessoa Física — dispara consulta quando CPF completo + data preenchida
+                          if (digits.length === 11 && form.customerBirthDate.length === 10) {
+                            triggerPsbioCheck(v, form.customerBirthDate, "cpf");
+                          } else if (digits.length < 11) {
+                            setPsbioStatus(null);
+                          }
                         }
                       }} required placeholder={showCnpjFields ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
                       {cnpjFetching && showCnpjFields && (
@@ -570,12 +577,39 @@ export default function NewOrder() {
                   {!showCnpjFields && (
                     <div className="space-y-2">
                       <Label>Data de Nascimento</Label>
-                      <Input
-                        value={form.customerBirthDate}
-                        onChange={e => { set("customerBirthDate", maskDate(e.target.value)); }}
-                        placeholder="dd/mm/aaaa"
-                        maxLength={10}
-                      />
+                      <div className="relative">
+                        <Input
+                          value={form.customerBirthDate}
+                          onChange={e => {
+                            const v = maskDate(e.target.value);
+                            set("customerBirthDate", v);
+                            // Dispara consulta quando data completa + CPF completo
+                            const cpfDigits = form.customerCpfCnpj.replace(/\D/g, "");
+                            if (v.length === 10 && cpfDigits.length === 11) {
+                              triggerPsbioCheck(form.customerCpfCnpj, v, "cpf");
+                            } else if (v.length < 10) {
+                              setPsbioStatus(null);
+                            }
+                          }}
+                          placeholder="dd/mm/aaaa"
+                          maxLength={10}
+                          className="pr-8"
+                        />
+                        {psbioStatus === "loading" && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
+                        )}
+                        {psbioStatus && psbioStatus !== "loading" && psbioStatus.hasPsbio && (
+                          <ShieldCheck className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
+                        )}
+                        {psbioStatus && psbioStatus !== "loading" && !psbioStatus.hasPsbio && (
+                          <ShieldAlert className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
+                        )}
+                      </div>
+                      {psbioStatus && psbioStatus !== "loading" && (
+                        <p className={`text-xs ${psbioStatus.hasPsbio ? "text-emerald-600" : psbioStatus.apiError ? "text-destructive" : "text-amber-600"}`}>
+                          {psbioStatus.mensagem}
+                        </p>
+                      )}
                     </div>
                   )}
 
