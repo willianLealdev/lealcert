@@ -39,13 +39,18 @@ import {
 const router = Router();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+/** Extract only the origin (scheme+host+port) from a URL — strips any path the user may have pasted */
+function normalizeSwUrl(raw: string): string {
+  try { return new URL(raw).origin; } catch { return raw.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); }
+}
+
 async function getSwSettings(): Promise<SafewebSettings | null> {
   const [s] = await db.select().from(settingsTable).limit(1);
   if (!s?.safewebUsername || !s?.safewebPassword) return null;
-  const url = (s.safewebAmbiente === "homologacao" ? s.safewebUrlHomologacao : s.safewebUrl) ?? s.safewebUrl;
-  if (!url) return null;
+  const rawUrl = (s.safewebAmbiente === "homologacao" ? s.safewebUrlHomologacao : s.safewebUrl) ?? s.safewebUrl;
+  if (!rawUrl) return null;
   return {
-    url,
+    url: normalizeSwUrl(rawUrl),
     username: s.safewebUsername,
     password: s.safewebPassword,
     cnpjAr: s.safewebCnpjAr ?? undefined,
