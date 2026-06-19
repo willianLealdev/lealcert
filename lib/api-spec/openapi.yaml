@@ -2558,6 +2558,10 @@ components:
           type: string
         addressState:
           type: string
+        customerCei:
+          type: string
+        customerNis:
+          type: string
         representanteCpf:
           type: string
         representanteNascimento:

@@ -101,6 +101,8 @@ export default function NewOrder() {
     repDocNumero: "",
     repDocOrgan: "",
     repDocUf: "",
+    customerCei: "",
+    customerNis: "",
   });
 
   type PsbioStatus = null | "loading" | { hasPsbio: boolean; mensagem: string; requiresPresencial: boolean; apiError?: boolean };
@@ -391,6 +393,8 @@ export default function NewOrder() {
         addressState: form.addressState || undefined,
         representanteCpf: isCnpjCert && form.repCpf ? form.repCpf : undefined,
         representanteNascimento: isCnpjCert && form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
+        customerCei: form.customerCei || undefined,
+        customerNis: form.customerNis || undefined,
         representanteDocTipo: form.repDocTipo !== "0" ? form.repDocTipo as "1" | "2" | "3" | "4" : undefined,
         representanteDocNumero: form.repDocTipo !== "0" && form.repDocNumero ? form.repDocNumero : undefined,
         representanteDocEmissor: form.repDocTipo !== "0" && form.repDocOrgan && form.repDocUf
@@ -711,6 +715,26 @@ export default function NewOrder() {
                       )}
                     </div>
                   )}
+
+                  {/* CEI / NIS — opcionais para e-CPF e e-CNPJ */}
+                  <div className="space-y-2">
+                    <Label>CEI <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                    <Input
+                      value={form.customerCei}
+                      onChange={e => set("customerCei", e.target.value.replace(/\D/g, "").slice(0, isCnpjCert ? 11 : 12))}
+                      placeholder={isCnpjCert ? "11 dígitos" : "Até 12 dígitos"}
+                      maxLength={isCnpjCert ? 11 : 12}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>NIS <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                    <Input
+                      value={form.customerNis}
+                      onChange={e => set("customerNis", e.target.value.replace(/\D/g, "").slice(0, isCnpjCert ? 9 : 11))}
+                      placeholder={isCnpjCert ? "9 dígitos" : "Até 11 dígitos"}
+                      maxLength={isCnpjCert ? 9 : 11}
+                    />
+                  </div>
 
                   <div className="space-y-2">
                     <Label>E-mail *</Label>

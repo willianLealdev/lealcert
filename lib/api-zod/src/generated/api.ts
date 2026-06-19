@@ -509,6 +509,8 @@ export const CreateOrderBody = zod.object({
   "addressNeighborhood": zod.string().optional(),
   "addressCity": zod.string().optional(),
   "addressState": zod.string().optional(),
+  "customerCei": zod.string().optional(),
+  "customerNis": zod.string().optional(),
   "representanteCpf": zod.string().optional(),
   "representanteNascimento": zod.string().optional(),
   "representanteDocTipo": zod.enum(['0', '1', '2', '3', '4']).optional(),

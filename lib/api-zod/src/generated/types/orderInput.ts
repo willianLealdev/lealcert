@@ -26,6 +26,8 @@ export interface OrderInput {
   addressNeighborhood?: string;
   addressCity?: string;
   addressState?: string;
+  customerCei?: string;
+  customerNis?: string;
   representanteCpf?: string;
   representanteNascimento?: string;
   representanteDocTipo?: OrderInputRepresentanteDocTipo;

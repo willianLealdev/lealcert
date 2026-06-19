@@ -62,7 +62,10 @@ export const ordersTable = pgTable("orders", {
   // Representante Legal (obrigatório para e-CNPJ na Safeweb)
   representanteCpf: text("representante_cpf"),
   representanteNascimento: text("representante_nascimento"),
-  // Documento de identificação do representante (0=Não Informado, 1=RG, 2=RNE, 3=Passaporte)
+  // CEI e NIS do titular (opcional — e-CPF max 12/11 chars; e-CNPJ max 11/9 chars)
+  customerCei: text("customer_cei"),
+  customerNis: text("customer_nis"),
+  // Documento de identificação do representante (0=Não Informado, 1=RG, 2=RNE, 3=Passaporte, 4=CNH)
   representanteDocTipo: text("representante_doc_tipo"),
   representanteDocNumero: text("representante_doc_numero"),
   representanteDocEmissor: text("representante_doc_emissor"),

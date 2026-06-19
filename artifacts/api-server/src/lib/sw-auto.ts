@@ -122,6 +122,10 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     }
   }
 
+  // CEI e NIS do titular (opcionais)
+  if (order.customerCei) body.CEI = order.customerCei;
+  if (order.customerNis) body.NIS = order.customerNis;
+
   // Documento de identificação do titular/representante
   // Tipo: 0=Não Informado, 1=RG, 2=RNE, 3=Passaporte
   const docTipo = (isCnpj ? order.representanteDocTipo : order.representanteDocTipo) ?? "0";

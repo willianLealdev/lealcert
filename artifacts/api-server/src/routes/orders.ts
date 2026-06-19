@@ -202,6 +202,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     certificateId, clientType, customerName, customerCpfCnpj, customerEmail,
     customerPhone, customerBirthDate, hasPsbio, companyName, inssNumber, extendedWarranty,
     addressZipcode, addressStreet, addressNumber, addressNeighborhood, addressCity, addressState,
+    customerCei, customerNis,
     representanteCpf, representanteNascimento,
     representanteDocTipo, representanteDocNumero, representanteDocEmissor,
   } = req.body ?? {};
@@ -250,6 +251,8 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     addressNeighborhood: addressNeighborhood || null,
     addressCity: addressCity || null,
     addressState: addressState || null,
+    customerCei: customerCei || null,
+    customerNis: customerNis || null,
     representanteCpf: representanteCpf ? representanteCpf.replace(/\D/g, "") : null,
     representanteNascimento: representanteNascimento || null,
     representanteDocTipo: representanteDocTipo || null,
