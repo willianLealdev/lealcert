@@ -81,6 +81,7 @@ import type {
   GetGarTiposProdutoParams,
   GetGarValidadesParams,
   GetMeStatsParams,
+  GetSafewebSlotsParams,
   HealthStatus,
   ImportSafewebCertificates200,
   InboundWebhookInput,
@@ -2787,20 +2788,29 @@ export function useGetSafewebLocais<TData = Awaited<ReturnType<typeof getSafeweb
 
 
 
-export const getGetSafewebSlotsUrl = (id: number,) => {
+export const getGetSafewebSlotsUrl = (id: number,
+    params?: GetSafewebSlotsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/orders/${id}/safeweb-slots`
+  return stringifiedParams.length > 0 ? `/api/orders/${id}/safeweb-slots?${stringifiedParams}` : `/api/orders/${id}/safeweb-slots`
 }
 
 /**
  * @summary Lista horários disponíveis na Safeweb para agendamento
  */
-export const getSafewebSlots = async (id: number, options?: RequestInit): Promise<SafewebSlotsResult> => {
+export const getSafewebSlots = async (id: number,
+    params?: GetSafewebSlotsParams, options?: RequestInit): Promise<SafewebSlotsResult> => {
 
-  return customFetch<SafewebSlotsResult>(getGetSafewebSlotsUrl(id),
+  return customFetch<SafewebSlotsResult>(getGetSafewebSlotsUrl(id,params),
   {
     ...options,
     method: 'GET'
@@ -2813,23 +2823,25 @@ export const getSafewebSlots = async (id: number, options?: RequestInit): Promis
 
 
 
-export const getGetSafewebSlotsQueryKey = (id: number,) => {
+export const getGetSafewebSlotsQueryKey = (id: number,
+    params?: GetSafewebSlotsParams,) => {
     return [
-    `/api/orders/${id}/safeweb-slots`
+    `/api/orders/${id}/safeweb-slots`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetSafewebSlotsQueryOptions = <TData = Awaited<ReturnType<typeof getSafewebSlots>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetSafewebSlotsQueryOptions = <TData = Awaited<ReturnType<typeof getSafewebSlots>>, TError = ErrorType<unknown>>(id: number,
+    params?: GetSafewebSlotsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetSafewebSlotsQueryKey(id);
+  const queryKey =  queryOptions?.queryKey ?? getGetSafewebSlotsQueryKey(id,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSafewebSlots>>> = ({ signal }) => getSafewebSlots(id, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSafewebSlots>>> = ({ signal }) => getSafewebSlots(id,params, { signal, ...requestOptions });
 
 
 
@@ -2847,11 +2859,12 @@ export type GetSafewebSlotsQueryError = ErrorType<unknown>
  */
 
 export function useGetSafewebSlots<TData = Awaited<ReturnType<typeof getSafewebSlots>>, TError = ErrorType<unknown>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ id: number,
+    params?: GetSafewebSlotsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetSafewebSlotsQueryOptions(id,options)
+  const queryOptions = getGetSafewebSlotsQueryOptions(id,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

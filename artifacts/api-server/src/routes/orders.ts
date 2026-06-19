@@ -737,33 +737,63 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
     res.status(503).json({ error: "Credenciais Safeweb não configuradas" }); return;
   }
 
+  const idLocalParam = req.query.idLocal ? parseInt(String(req.query.idLocal), 10) : null;
+
   try {
     const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
     const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined };
-    const { swAgendaListarHorarios } = await import("../lib/safeweb");
-    const result = await swAgendaListarHorarios(sw, sw.cnpjAr, row.cert?.safewebIdProduto ? { idProduto: row.cert.safewebIdProduto } : undefined);
+    const { swGetToken } = await import("../lib/safeweb");
+    const token = await swGetToken(sw);
+    const H: Record<string, string> = { Authorization: token, "Content-Type": "application/json" };
 
-    // Normaliza resposta — pode ser array ou objeto com lista
-    const rawList = Array.isArray(result) ? result : (result as Record<string, unknown>).horarios ?? (result as Record<string, unknown>).slots ?? [];
-    const slots = (rawList as Record<string, unknown>[]).map((s: Record<string, unknown>) => ({
-      idAgendamento: s.IdAgendamento ?? s.idAgendamento ?? s.id,
-      dataHora: s.DataHora ?? s.dataHora ?? s.Data ?? s.data,
-      local: String(s.Local ?? s.local ?? s.NomeLocal ?? s.nomeLocal ?? "Videoconferência"),
-      disponivel: s.Disponivel ?? s.disponivel ?? true,
-    })).filter(s => s.dataHora);
+    // Tenta os caminhos mais prováveis para obter horários disponíveis
+    // O path correto será confirmado pela Safeweb — adaptar quando documentação chegar
+    const candidatePaths: string[] = [];
+    if (idLocalParam) {
+      candidatePaths.push(
+        `/Service/Microservice/Shared/Schedule/api/GetAvailableSchedules/${idLocalParam}`,
+        `/Service/Microservice/Shared/Schedule/api/GetList/${idLocalParam}`,
+        `/Service/Microservice/Shared/Schedule/api/GetByAttendancePlace/${idLocalParam}`,
+      );
+    }
+    if (sw.cnpjAr) {
+      candidatePaths.push(
+        `/Service/Microservice/Shared/Schedule/api/GetAvailableSchedules/${sw.cnpjAr}`,
+        `/Service/Microservice/Shared/Schedule/api/GetListByAR/${sw.cnpjAr}`,
+      );
+    }
 
-    res.json({ slots, raw: result });
+    let rawResult: unknown = null;
+    for (const path of candidatePaths) {
+      const r = await fetch(`${sw.url}${path}`, { headers: H });
+      if (r.ok) {
+        rawResult = await r.json();
+        req.log.info({ orderId: id, path }, "safeweb-slots: endpoint de horários encontrado");
+        break;
+      }
+      req.log.debug({ orderId: id, path, status: r.status }, "safeweb-slots: path sem resposta");
+    }
+
+    // Normaliza resposta — pode ser array direto ou objeto com chave de lista
+    const rawList = Array.isArray(rawResult)
+      ? rawResult
+      : ((rawResult as Record<string, unknown> | null)?.horarios
+        ?? (rawResult as Record<string, unknown> | null)?.slots
+        ?? (rawResult as Record<string, unknown> | null)?.schedules
+        ?? []) as unknown[];
+
+    const slots = (rawList as Record<string, unknown>[]).map((sl) => ({
+      idAgendamento: sl.IdAgendamento ?? sl.idAgendamento ?? sl.id,
+      dataHora: sl.DataHora ?? sl.dataHora ?? sl.Data ?? sl.data,
+      local: String(sl.Local ?? sl.local ?? sl.NomeLocal ?? sl.nomeLocal ?? ""),
+      disponivel: sl.Disponivel ?? sl.disponivel ?? true,
+    })).filter(sl => sl.dataHora);
+
+    res.json({ slots });
   } catch (err) {
     const msg = (err as Error).message ?? "";
-    // Se o endpoint não existe na Safeweb (404) retorna lista vazia sem erro —
-    // o agendamento manual continua disponível via input de data/hora.
-    if (msg.includes("404") || msg.includes("Not Found")) {
-      req.log.warn({ orderId: id }, "safeweb-slots: endpoint GetAvailableSchedules não disponível — retornando lista vazia");
-      res.json({ slots: [] });
-      return;
-    }
-    req.log.error({ err, orderId: id }, "safeweb-slots: erro ao listar horários");
-    res.status(502).json({ error: `Erro ao consultar horários: ${msg}` });
+    req.log.warn({ orderId: id, err }, "safeweb-slots: erro ao listar horários, retornando lista vazia");
+    res.json({ slots: [] });
   }
 });
 

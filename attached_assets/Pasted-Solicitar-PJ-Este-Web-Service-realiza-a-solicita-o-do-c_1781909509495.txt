@@ -1,0 +1,53 @@
+Solicitar PJ
+Este Web Service realiza a solicitação do certificado PJ.
+
+Parâmetros:
+
+O parâmetro será uma string com o conteúdo XML da classe PjSoliticar. O XML está descrito abaixo, assim como seus atributos necessários:
+
+#	Campo	Descrição	Pai	Tipo	Tamanho	Obrigatório	Observação
+C01	PjSolicitar	TAG de grupo de informações para a solicitação		G			
+C02	RazaoSocial	Razão Social da empresa	C01	C	1-110	S	Vide "Observações"
+C03	NomeFantasia	Nome Fantasia	C01	C	1-40	N	
+C04	CNPJ	Cnpj da empresa	C01	N	14	S	
+C05	Empresa_DDD	DDD do telefone	C01	N	2	S	
+C05	Empresa_DDD	DDD do telefone	C01	N	2	S	
+C06	Empresa_Telefone	Telefone da empresa	C01	N	8	S	
+C07	Empresa_Email	Email da empresa	C01	C	1-250	S	
+C08	Empresa_CEP	CEP do endereço	C01	N	8	S	
+C09	Empresa_Logradouro	Endereço da empresa	C01	C	1-60	S	
+C10	Empresa_Numero	Numero do endereço	C01	C	1-10	S	
+C11	Empresa_Complemento	Complemento	C01	C	1-20	N	
+C12	Empresa_Bairro	Bairro do endereço	C01	C	1-30	S	
+C13	Empresa_Cidade	Cidade da empresa	C01	C	1-40	S	
+C14	Empresa_UF	Sigla da UF	C01	C	2	S	
+C15	CEI	Número PIS da empresa	C01	N	12	S	
+C16	Titular_Nome	Nome do titular	C01	C	1-110	S	
+C17	Titular_CPF	CPF do titular	C01	N	11	S	
+C18	Titular_DataNascimento	Data de nascimento	C01	C	8	S	
+C19	Titular_Email	Email do titular	C01	C	1-60	S	
+C20	Titular_DDD	DDD do telefone	C01	N	2	S	
+C21	Titular_Telefone	Telefone do titular	C01	N	8	S	
+C22	Titular_CEP	CEP do endereço	C01	N	8	S	
+C23	Titular_Logradouro	Endereço do titular	C01	C	1-60	S	
+C24	Titular_Numero	Número do endereço	C01	C	1-10	S	
+C25	Titular_Complemento	Complemento do endereço do titular	C01	C	1-20	N	
+C26	Titular_Bairro	Bairro do endereço	C01	C	1-30	S	
+C27	Titular_Cidade	Cidade do titular	C01	C	1-40	S	
+C28	Titular_UF	Sigla da UF	C01	C	2	S	
+C29	Titular_DocumentoTipo	Tipo de documento	C01	N	1	S	0 – Não Informado 1 – RG 2 – RNE 3 – Passaporte
+C30	Titular_DocumentoNumero	Número do documento	C01	N	1-15	N	Opcional apenas se C29 for ‘0’
+C31	Titular_DocumentoEmissor	Orgão expedidor	C01	C	1-6	N	Opcional apenas se C29 for ‘0’ Formato: OrgãoExpedidor
+C32	Titular_EleitorNumero	Número do Título de eleitor	C01	C		N	
+C33	Titular_EleitorSecao	Seção do Título de eleitor	C01	C		S	Se o campo C32 for informado
+C34	Titular_EleitorZona	Zona do Título de eleitor	C01	C		S	Se o campo C32 for informado
+C35	Titular_EleitorMunicipio	Município do Título de eleitor	C01	C		S	Se o campo C32 for informado Formato: CidadeUF
+C36	Titular_CEI	Número CEI do titular	C01	N	11	N	
+C37	Titular_NIS	Número NIS do titular	C01	N	9	N	
+C38	IdProduto	Id do produto	C01	N	1-5	S	
+C39	IdAutoridadeRegistro	Identificação da AR	C01	N	1	S	
+C40	ContatoComercial	Contato Comercial	C01	C	1-200	N	
+C41	ProdutoDescricao	Mídia utilizada para emissão do certificado	C01	C	1-100	S	
+C42	ProdutoValor	Valor Total das mídias	C01	C	1-100	S	
+C43	Parametro1 até	Campo livre	C01	C	1-500	N	
+C68	Parâmetro 25	

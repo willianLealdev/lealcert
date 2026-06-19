@@ -1377,6 +1377,13 @@ export type SyncPaymentOrder200 = {
   error?: string;
 };
 
+export type GetSafewebSlotsParams = {
+/**
+ * ID do local de atendimento para filtrar horários
+ */
+idLocal?: number;
+};
+
 export type ListSlotsParams = {
 date?: string;
 };

@@ -787,6 +787,12 @@ paths:
           required: true
           schema:
             type: integer
+        - name: idLocal
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID do local de atendimento para filtrar horários
       responses:
         "200":
           description: Horários disponíveis

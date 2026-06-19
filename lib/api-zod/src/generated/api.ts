@@ -735,6 +735,10 @@ export const GetSafewebSlotsParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const GetSafewebSlotsQueryParams = zod.object({
+  "idLocal": zod.coerce.number().optional().describe('ID do local de atendimento para filtrar horários')
+})
+
 export const GetSafewebSlotsResponse = zod.object({
   "slots": zod.array(zod.object({
   "idAgendamento": zod.union([zod.string(),zod.number()]).optional(),
