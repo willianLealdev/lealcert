@@ -97,6 +97,10 @@ export default function NewOrder() {
     repName: "",
     repBirthDate: "",
     repCpf: "",
+    repDocTipo: "0",
+    repDocNumero: "",
+    repDocOrgan: "",
+    repDocUf: "",
   });
 
   type PsbioStatus = null | "loading" | { hasPsbio: boolean; mensagem: string; requiresPresencial: boolean; apiError?: boolean };
@@ -380,6 +384,11 @@ export default function NewOrder() {
         addressState: form.addressState || undefined,
         representanteCpf: isCnpjCert && form.repCpf ? form.repCpf : undefined,
         representanteNascimento: isCnpjCert && form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
+        representanteDocTipo: form.repDocTipo !== "0" ? form.repDocTipo : undefined,
+        representanteDocNumero: form.repDocTipo !== "0" && form.repDocNumero ? form.repDocNumero : undefined,
+        representanteDocEmissor: form.repDocTipo !== "0" && form.repDocOrgan && form.repDocUf
+          ? (form.repDocOrgan + form.repDocUf).toUpperCase()
+          : undefined,
       },
     });
   }
@@ -929,6 +938,60 @@ export default function NewOrder() {
                 <div className="space-y-2">
                   <Label>PIS / IMEI <span className="text-muted-foreground text-xs">(opcional)</span></Label>
                   <Input value={form.inssNumber} onChange={e => set("inssNumber", e.target.value)} placeholder="Opcional" />
+                </div>
+
+                {/* Documento de identificação do representante */}
+                <div className="space-y-3 pt-1">
+                  <p className="text-sm font-medium text-foreground">Documento de Identificação <span className="text-muted-foreground font-normal text-xs">(opcional)</span></p>
+                  <div className="space-y-2">
+                    <Label>Tipo de Documento</Label>
+                    <select
+                      value={form.repDocTipo}
+                      onChange={e => setForm(f => ({ ...f, repDocTipo: e.target.value, repDocNumero: "", repDocOrgan: "", repDocUf: "" }))}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="0">Não Informado</option>
+                      <option value="1">RG</option>
+                      <option value="2">RNE</option>
+                      <option value="3">Passaporte</option>
+                    </select>
+                  </div>
+                  {form.repDocTipo !== "0" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Número do Documento</Label>
+                        <Input
+                          value={form.repDocNumero}
+                          onChange={e => set("repDocNumero", e.target.value)}
+                          placeholder={form.repDocTipo === "3" ? "Ex: BR123456" : "Ex: 12.345.678-9"}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label>Órgão Expedidor <span className="text-muted-foreground font-normal text-xs">(máx. 4 car.)</span></Label>
+                          <Input
+                            value={form.repDocOrgan}
+                            onChange={e => set("repDocOrgan", e.target.value.toUpperCase().slice(0, 4))}
+                            placeholder="Ex: SSP"
+                            maxLength={4}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>UF</Label>
+                          <select
+                            value={form.repDocUf}
+                            onChange={e => set("repDocUf", e.target.value)}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          >
+                            <option value="">Selecione</option>
+                            {["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map(uf => (
+                              <option key={uf} value={uf}>{uf}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

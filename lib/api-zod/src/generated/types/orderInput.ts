@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OrderInputClientType } from './orderInputClientType';
+import type { OrderInputRepresentanteDocTipo } from './orderInputRepresentanteDocTipo';
 
 export interface OrderInput {
   certificateId: number;
@@ -27,4 +28,7 @@ export interface OrderInput {
   addressState?: string;
   representanteCpf?: string;
   representanteNascimento?: string;
+  representanteDocTipo?: OrderInputRepresentanteDocTipo;
+  representanteDocNumero?: string;
+  representanteDocEmissor?: string;
 }

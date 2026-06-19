@@ -62,6 +62,10 @@ export const ordersTable = pgTable("orders", {
   // Representante Legal (obrigatório para e-CNPJ na Safeweb)
   representanteCpf: text("representante_cpf"),
   representanteNascimento: text("representante_nascimento"),
+  // Documento de identificação do representante (0=Não Informado, 1=RG, 2=RNE, 3=Passaporte)
+  representanteDocTipo: text("representante_doc_tipo"),
+  representanteDocNumero: text("representante_doc_numero"),
+  representanteDocEmissor: text("representante_doc_emissor"),
   // Safeweb integration fields
   safewebSolicitacaoId: text("safeweb_solicitacao_id"),
   safewebStatus: text("safeweb_status"),

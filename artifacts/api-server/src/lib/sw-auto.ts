@@ -122,6 +122,16 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     }
   }
 
+  // Documento de identificação do titular/representante
+  // Tipo: 0=Não Informado, 1=RG, 2=RNE, 3=Passaporte
+  const docTipo = (isCnpj ? order.representanteDocTipo : order.representanteDocTipo) ?? "0";
+  body.DocumentoTipo = docTipo;
+  if (docTipo !== "0" && docTipo) {
+    if (order.representanteDocNumero) body.DocumentoNumero = order.representanteDocNumero;
+    // Formato: OrgãoExpedidorUF (ex: "SSPRJ") — sem espaços, sem CR/LF
+    if (order.representanteDocEmissor) body.DocumentoEmissor = order.representanteDocEmissor.replace(/\s+/g, "").toUpperCase();
+  }
+
   try {
     logger.info({ orderId, safewebIdProduto, isCnpj, body }, "swAutoComprar: enviando solicitação para Safeweb");
 

@@ -203,6 +203,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     customerPhone, customerBirthDate, hasPsbio, companyName, inssNumber, extendedWarranty,
     addressZipcode, addressStreet, addressNumber, addressNeighborhood, addressCity, addressState,
     representanteCpf, representanteNascimento,
+    representanteDocTipo, representanteDocNumero, representanteDocEmissor,
   } = req.body ?? {};
 
   if (!certificateId || !customerName || !customerCpfCnpj || !clientType) {
@@ -251,6 +252,9 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     addressState: addressState || null,
     representanteCpf: representanteCpf ? representanteCpf.replace(/\D/g, "") : null,
     representanteNascimento: representanteNascimento || null,
+    representanteDocTipo: representanteDocTipo || null,
+    representanteDocNumero: representanteDocNumero || null,
+    representanteDocEmissor: representanteDocEmissor || null,
   }).returning();
 
   // Log order creation

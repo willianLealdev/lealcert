@@ -344,6 +344,16 @@ export const OrderInputClientType = {
   cnpj: 'cnpj',
 } as const;
 
+export type OrderInputRepresentanteDocTipo = typeof OrderInputRepresentanteDocTipo[keyof typeof OrderInputRepresentanteDocTipo];
+
+
+export const OrderInputRepresentanteDocTipo = {
+  NUMBER_0: '0',
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+  NUMBER_3: '3',
+} as const;
+
 export interface OrderInput {
   certificateId: number;
   clientType: OrderInputClientType;
@@ -364,6 +374,9 @@ export interface OrderInput {
   addressState?: string;
   representanteCpf?: string;
   representanteNascimento?: string;
+  representanteDocTipo?: OrderInputRepresentanteDocTipo;
+  representanteDocNumero?: string;
+  representanteDocEmissor?: string;
 }
 
 export type OrderUpdateStatus = typeof OrderUpdateStatus[keyof typeof OrderUpdateStatus];
