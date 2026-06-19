@@ -441,7 +441,7 @@ export const ListOrdersResponseItem = zod.object({
   "userName": zod.string().nullish(),
   "certificateId": zod.number(),
   "certificateName": zod.string().nullish(),
-  "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'completed', 'cancelled']),
+  "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
   "total": zod.number(),
   "customerName": zod.string(),
   "customerCpfCnpj": zod.string(),
@@ -568,7 +568,7 @@ export const GetOrderResponse = zod.object({
   "userName": zod.string().nullish(),
   "certificateId": zod.number(),
   "certificateName": zod.string().nullish(),
-  "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'completed', 'cancelled']),
+  "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
   "total": zod.number(),
   "customerName": zod.string(),
   "customerCpfCnpj": zod.string(),
@@ -622,7 +622,7 @@ export const UpdateOrderParams = zod.object({
 })
 
 export const UpdateOrderBody = zod.object({
-  "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'completed', 'cancelled']).optional(),
+  "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']).optional(),
   "protocolNumber": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
   "safewebSolicitacaoId": zod.string().optional()
@@ -635,7 +635,7 @@ export const UpdateOrderResponse = zod.object({
   "userName": zod.string().nullish(),
   "certificateId": zod.number(),
   "certificateName": zod.string().nullish(),
-  "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'completed', 'cancelled']),
+  "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
   "total": zod.number(),
   "customerName": zod.string(),
   "customerCpfCnpj": zod.string(),
@@ -710,6 +710,24 @@ export const SyncPaymentOrderResponse = zod.object({
 
 
 /**
+ * @summary Lista horários disponíveis na Safeweb para agendamento
+ */
+export const GetSafewebSlotsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetSafewebSlotsResponse = zod.object({
+  "slots": zod.array(zod.object({
+  "idAgendamento": zod.union([zod.string(),zod.number()]).optional(),
+  "dataHora": zod.string(),
+  "local": zod.string(),
+  "disponivel": zod.boolean().optional()
+})),
+  "raw": zod.record(zod.string(), zod.unknown()).optional()
+})
+
+
+/**
  * @summary Agenda atendimento via Safeweb para o pedido
  */
 export const AgendarSafewebOrderParams = zod.object({
@@ -718,7 +736,8 @@ export const AgendarSafewebOrderParams = zod.object({
 
 export const AgendarSafewebOrderBody = zod.object({
   "dataHora": zod.string(),
-  "localNome": zod.string().optional()
+  "localNome": zod.string().optional(),
+  "idAgendamento": zod.string().optional()
 })
 
 export const AgendarSafewebOrderResponse = zod.object({
@@ -1608,7 +1627,7 @@ export const GetRecentOrdersResponseItem = zod.object({
   "userName": zod.string().nullish(),
   "certificateId": zod.number(),
   "certificateName": zod.string().nullish(),
-  "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'completed', 'cancelled']),
+  "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
   "total": zod.number(),
   "customerName": zod.string(),
   "customerCpfCnpj": zod.string(),

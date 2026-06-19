@@ -393,13 +393,142 @@ router.post("/safeweb/biometria/psbio-global", requireAuth, async (req, res): Pr
 //        pagamento, confirmacao-cadastro, solicitacao-periodo-uso,
 //        certificado-periodo-uso, validacao-autonoma, cancelamento-solicitacao
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// Mapa tipo do evento Safeweb → status interno do pedido
+const SW_EVENT_STATUS_MAP: Record<string, string> = {
+  emissao: "emitido",
+  "certificado-periodo-uso": "emitido",
+  validacao: "aguardando_validacao",
+  "validacao-autonoma": "aguardando_validacao",
+  verificacao: "aguardando_validacao",
+  cancelamento: "cancelled",
+  "cancelamento-solicitacao": "cancelled",
+  revogacao: "revogado",
+};
+
 router.post("/safeweb/eventos/:tipo", async (req, res): Promise<void> => {
-  const tipo = req.params.tipo;
+  const tipo = (req.params.tipo ?? "").toLowerCase();
   const payload = req.body ?? {};
   logger.info({ tipo, payload }, "Safeweb evento recebido");
-  // Registra o evento — implemente lógica de negócio conforme necessário
-  // Ex: atualizar status do pedido, notificar cliente, etc.
+
+  // Responde imediatamente para a Safeweb não reenviar
   res.json({ ok: true, tipo, recebido: new Date().toISOString() });
+
+  // Processa em background para não bloquear a resposta
+  (async () => {
+    try {
+      const solicitacaoId =
+        payload.IdSolicitacao ?? payload.idSolicitacao ??
+        payload.SolicitacaoId ?? payload.solicitacaoId ??
+        payload.Protocolo ?? payload.protocolo;
+
+      if (!solicitacaoId) {
+        logger.warn({ tipo, payload }, "Safeweb evento sem IdSolicitacao — ignorado");
+        return;
+      }
+
+      const { ordersTable: ot, db: database, certificatesTable: ct } = await import("@workspace/db");
+      const { eq } = await import("drizzle-orm");
+      const { logEvent } = await import("../lib/order-events");
+      const { notifyOrderStatus } = await import("../lib/notify");
+
+      const [row] = await database
+        .select({ order: ot, certName: ct.name })
+        .from(ot)
+        .leftJoin(ct, eq(ot.certificateId, ct.id))
+        .where(eq(ot.safewebSolicitacaoId, String(solicitacaoId)))
+        .limit(1);
+
+      if (!row) {
+        logger.warn({ tipo, solicitacaoId }, "Safeweb evento: pedido não encontrado");
+        return;
+      }
+
+      const order = row.order;
+
+      // Atualiza status Safeweb raw
+      const safewebStatusLabel = String(
+        payload.Status ?? payload.status ?? payload.Situacao ?? payload.Evento ?? tipo
+      );
+
+      const updates: Record<string, unknown> = {
+        safewebStatus: safewebStatusLabel,
+        safewebSyncedAt: new Date(),
+      };
+
+      // Mapeia para status interno se reconhecido
+      const newStatus = SW_EVENT_STATUS_MAP[tipo];
+      if (newStatus && order.status !== newStatus) {
+        updates.status = newStatus;
+      }
+
+      await database.update(ot).set(updates as unknown as Parameters<typeof database.update<typeof ot>>[0]).where(eq(ot.id, order.id));
+      await logEvent(order.id, "gar_status_updated", `Evento Safeweb [${tipo}]: ${safewebStatusLabel}`, { tipo, payload });
+
+      // Notifica o cliente quando o certificado for emitido
+      if (newStatus === "emitido") {
+        notifyOrderStatus({
+          to: order.customerEmail,
+          phone: order.customerPhone,
+          customerName: order.customerName,
+          orderNumber: order.orderNumber,
+          status: "completed",
+          total: parseFloat(order.total),
+          certName: row.certName ?? undefined,
+        }).catch(err => logger.error({ err }, "Notificação emissão Safeweb: erro"));
+      }
+    } catch (err) {
+      logger.error({ err, tipo }, "Safeweb evento: erro ao processar");
+    }
+  })();
+});
+
+// Rota específica para o webhook configurado em UrlSolicitacao no sw-auto.ts
+// URL: /api/safeweb/eventos/webhook  (tipo = "webhook", ignoramos o tipo e lemos o payload)
+router.post("/safeweb/eventos/webhook", async (req, res): Promise<void> => {
+  const payload = req.body ?? {};
+  const tipo = String(payload.Tipo ?? payload.tipo ?? payload.Evento ?? payload.evento ?? "webhook").toLowerCase();
+  logger.info({ tipo, payload }, "Safeweb webhook recebido");
+
+  res.json({ ok: true, tipo, recebido: new Date().toISOString() });
+
+  (async () => {
+    try {
+      const solicitacaoId =
+        payload.IdSolicitacao ?? payload.idSolicitacao ??
+        payload.SolicitacaoId ?? payload.solicitacaoId;
+
+      if (!solicitacaoId) {
+        logger.warn({ payload }, "Safeweb webhook sem IdSolicitacao — ignorado");
+        return;
+      }
+
+      const { ordersTable: ot, db: database, certificatesTable: ct } = await import("@workspace/db");
+      const { eq } = await import("drizzle-orm");
+      const { logEvent } = await import("../lib/order-events");
+
+      const [row] = await database
+        .select({ order: ot, certName: ct.name })
+        .from(ot)
+        .leftJoin(ct, eq(ot.certificateId, ct.id))
+        .where(eq(ot.safewebSolicitacaoId, String(solicitacaoId)))
+        .limit(1);
+
+      if (!row) { logger.warn({ solicitacaoId }, "Safeweb webhook: pedido não encontrado"); return; }
+
+      const safewebStatusLabel = String(
+        payload.Status ?? payload.status ?? payload.Situacao ?? payload.Evento ?? tipo
+      );
+      const updates: Record<string, unknown> = { safewebStatus: safewebStatusLabel, safewebSyncedAt: new Date() };
+      const newStatus = SW_EVENT_STATUS_MAP[tipo];
+      if (newStatus && row.order.status !== newStatus) updates.status = newStatus;
+
+      await database.update(ot).set(updates as unknown as Parameters<typeof database.update<typeof ot>>[0]).where(eq(ot.id, row.order.id));
+      await logEvent(row.order.id, "gar_status_updated", `Webhook Safeweb [${tipo}]: ${safewebStatusLabel}`, { tipo, payload });
+    } catch (err) {
+      logger.error({ err }, "Safeweb webhook: erro ao processar");
+    }
+  })();
 });
 
 export default router;

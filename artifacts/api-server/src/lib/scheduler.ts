@@ -1,5 +1,5 @@
-import { eq, lte, and } from "drizzle-orm";
-import { db, marketingCampaignsTable } from "@workspace/db";
+import { eq, lte, and, isNotNull, notInArray } from "drizzle-orm";
+import { db, marketingCampaignsTable, ordersTable, settingsTable, certificatesTable, type InsertOrder } from "@workspace/db";
 import { logger } from "./logger";
 import { dispatchCampaign } from "../routes/marketing";
 
@@ -30,8 +30,104 @@ async function checkScheduledCampaigns() {
   }
 }
 
+// ── Safeweb Status Sync ───────────────────────────────────────────────────────
+// Roda a cada 5 minutos, consultando todos os pedidos Safeweb que ainda não
+// estão em status final (emitido, revogado, cancelled, completed).
+// Isso garante que qualquer mudança no sistema da Safeweb aparece aqui.
+let swSyncRunning = false;
+
+async function syncSafewebStatuses() {
+  if (swSyncRunning) return;
+  swSyncRunning = true;
+  try {
+    const [settings] = await db.select().from(settingsTable).limit(1);
+    const activeProvider = settings?.activeProvider ?? "gestaoar";
+    if (activeProvider !== "safeweb") return;
+
+    const isHomol = settings?.safewebAmbiente === "homologacao";
+    const username = isHomol ? (settings?.safewebUsernameHomologacao ?? settings?.safewebUsername) : settings?.safewebUsername;
+    const password = isHomol ? (settings?.safewebPasswordHomologacao ?? settings?.safewebPassword) : settings?.safewebPassword;
+    const rawUrl = (isHomol ? settings?.safewebUrlHomologacao : settings?.safewebUrl) ?? settings?.safewebUrl;
+
+    if (!username || !password || !rawUrl) return;
+
+    const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
+    const sw = { url: swUrl, username, password, cnpjAr: settings?.safewebCnpjAr ?? undefined };
+
+    // Busca pedidos Safeweb com status não-finais
+    const pendingOrders = await db
+      .select({ order: ordersTable, certName: certificatesTable.name })
+      .from(ordersTable)
+      .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
+      .where(and(
+        isNotNull(ordersTable.safewebSolicitacaoId),
+        notInArray(ordersTable.status, ["emitido", "revogado", "cancelled", "completed"]),
+      ));
+
+    if (pendingOrders.length === 0) return;
+
+    logger.info({ count: pendingOrders.length }, "Safeweb sync: verificando pedidos pendentes");
+
+    const { swGetToken } = await import("./safeweb");
+    const { logEvent } = await import("../lib/order-events");
+
+    const STATUS_MAP: Record<string, string> = {
+      "Emitida": "emitido",
+      "Emitido": "emitido",
+      "Aguardando": "aguardando_validacao",
+      "Pendente": "aguardando_validacao",
+      "Validada": "aguardando_validacao",
+      "Aprovada": "aguardando_validacao",
+      "Cancelada": "cancelled",
+      "Cancelado": "cancelled",
+      "Revogada": "revogado",
+      "Revogado": "revogado",
+    };
+
+    for (const { order } of pendingOrders) {
+      if (!order.safewebSolicitacaoId) continue;
+      try {
+        const token = await swGetToken(sw);
+        const resp = await fetch(
+          `${sw.url}/Service/Microservice/Shared/Partner/api/GetStatus/${order.safewebSolicitacaoId}`,
+          { headers: { "Authorization": token, "Content-Type": "application/json" } },
+        );
+        if (!resp.ok) continue;
+
+        const data = await resp.json() as Record<string, unknown>;
+        const statusLabel = String(data.Status ?? data.Situacao ?? data.status ?? "");
+        if (!statusLabel) continue;
+
+        const newStatus = STATUS_MAP[statusLabel];
+        const updates: Record<string, unknown> = {
+          safewebStatus: statusLabel,
+          safewebSyncedAt: new Date(),
+        };
+        if (newStatus && order.status !== newStatus) {
+          updates.status = newStatus;
+          await logEvent(order.id, "gar_status_updated", `Status Safeweb atualizado: ${statusLabel}`, { safewebStatus: statusLabel });
+          logger.info({ orderId: order.id, statusLabel, newStatus }, "Safeweb sync: status atualizado");
+        }
+
+        await db.update(ordersTable).set(updates as Partial<InsertOrder>).where(eq(ordersTable.id, order.id));
+      } catch (err) {
+        logger.error({ err, orderId: order.id }, "Safeweb sync: erro ao consultar status");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "Safeweb sync: erro geral");
+  } finally {
+    swSyncRunning = false;
+  }
+}
+
 export function startScheduler() {
   logger.info("Marketing scheduler started (60s interval)");
   setInterval(checkScheduledCampaigns, 60_000);
   checkScheduledCampaigns().catch(err => logger.error({ err }, "Initial scheduler check error"));
+
+  logger.info("Safeweb status sync started (5min interval)");
+  setInterval(syncSafewebStatuses, 5 * 60_000);
+  // Primeira verificação após 30s para não sobrecarregar o boot
+  setTimeout(() => syncSafewebStatuses().catch(err => logger.error({ err }, "Initial Safeweb sync error")), 30_000);
 }

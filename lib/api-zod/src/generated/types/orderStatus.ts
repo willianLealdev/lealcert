@@ -14,6 +14,9 @@ export const OrderStatus = {
   pending_payment: 'pending_payment',
   paid: 'paid',
   protocol_assigned: 'protocol_assigned',
+  aguardando_validacao: 'aguardando_validacao',
+  emitido: 'emitido',
+  revogado: 'revogado',
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;

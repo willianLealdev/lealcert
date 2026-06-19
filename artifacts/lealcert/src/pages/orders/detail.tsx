@@ -11,6 +11,7 @@ import {
   useGetOrderGarSlots,
   useAgendarOrder,
   useAgendarSafewebOrder,
+  useGetSafewebSlots,
   useGetOrderEvents,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -38,6 +39,9 @@ const STATUS_LABELS: Record<string, string> = {
   pending_payment: "Aguardando Pagamento",
   paid: "Pago",
   protocol_assigned: "Protocolo Atribuído",
+  aguardando_validacao: "Aguardando Validação",
+  emitido: "Emitido",
+  revogado: "Revogado",
   completed: "Concluído",
   cancelled: "Cancelado",
 };
@@ -46,6 +50,9 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
   pending_payment: "outline",
   paid: "default",
   protocol_assigned: "default",
+  aguardando_validacao: "default",
+  emitido: "default",
+  revogado: "destructive",
   completed: "default",
   cancelled: "destructive",
 };
@@ -620,6 +627,82 @@ function SchedulingDialog({
   );
 }
 
+// ── SlotsDialogBody — montado só quando o dialog está aberto ─────────────────
+function SlotsDialogBody({ orderId, onSelect, selected }: {
+  orderId: number;
+  selected: { idAgendamento: string | number | null; dataHora: string; local: string } | null;
+  onSelect: (slot: { idAgendamento: string | number | null; dataHora: string; local: string }) => void;
+}) {
+  const { data: slotsData, isLoading, isError, refetch } = useGetSafewebSlots(orderId);
+  const slots = slotsData?.slots ?? [];
+
+  const slotsByDate = useMemo(() => {
+    const map: Record<string, typeof slots> = {};
+    for (const s of slots) {
+      if (!s.dataHora) continue;
+      const dateKey = new Date(s.dataHora).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" });
+      if (!map[dateKey]) map[dateKey] = [];
+      map[dateKey].push(s);
+    }
+    return map;
+  }, [slots]);
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
+      <Loader2 className="h-5 w-5 animate-spin" />
+      <span className="text-sm">Consultando horários disponíveis...</span>
+    </div>
+  );
+
+  if (isError) return (
+    <div className="space-y-3 text-center py-6">
+      <p className="text-sm text-destructive">Não foi possível carregar os horários da Safeweb.</p>
+      <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
+    </div>
+  );
+
+  if (slots.length === 0) return (
+    <p className="text-sm text-muted-foreground text-center py-6">
+      Nenhum horário disponível no momento. Tente novamente mais tarde.
+    </p>
+  );
+
+  return (
+    <div className="space-y-4">
+      {Object.entries(slotsByDate).map(([dateLabel, daySlots]) => (
+        <div key={dateLabel} className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{dateLabel}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {daySlots.map((s, idx) => {
+              const time = new Date(s.dataHora!).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+              const isSelected = selected?.dataHora === s.dataHora && selected?.local === s.local;
+              const isUnavailable = s.disponivel === false;
+              return (
+                <button
+                  key={idx}
+                  disabled={isUnavailable}
+                  onClick={() => onSelect({ idAgendamento: s.idAgendamento ?? null, dataHora: s.dataHora!, local: s.local })}
+                  className={[
+                    "rounded-lg border p-3 text-left text-sm transition-all",
+                    isUnavailable
+                      ? "opacity-40 cursor-not-allowed bg-muted"
+                      : isSelected
+                        ? "border-primary bg-primary/10 ring-2 ring-primary"
+                        : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
+                  ].join(" ")}
+                >
+                  <div className="font-semibold">{time}</div>
+                  <div className="text-xs text-muted-foreground truncate">{s.local}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── SafewebSchedulingCard ──────────────────────────────────────────────────────
 function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamentoDataHora, safewebAgendamentoLocalNome, onSuccess }: {
   orderId: number;
@@ -631,13 +714,13 @@ function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamen
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [dataHora, setDataHora] = useState("");
-  const [localNome, setLocalNome] = useState("Videoconferência");
+  const [selectedSlot, setSelectedSlot] = useState<{ idAgendamento: string | number | null; dataHora: string; local: string } | null>(null);
 
   const agendar = useAgendarSafewebOrder({
     mutation: {
       onSuccess: (data) => {
         setOpen(false);
+        setSelectedSlot(null);
         toast({
           title: "✅ Agendamento confirmado!",
           description: `${data.localNome} — ${data.dataHora ? new Date(data.dataHora).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : ""}`,
@@ -696,49 +779,60 @@ function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamen
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Seu certificado foi registrado na Safeweb. Escolha uma data e horário para realizar o atendimento por videoconferência.
+            Seu certificado foi registrado na Safeweb. Escolha um dos horários disponíveis para realizar o atendimento por videoconferência.
           </p>
           <Button onClick={() => setOpen(true)} className="w-full sm:w-auto">
             <Calendar className="h-4 w-4 mr-2" />
-            Agendar Atendimento
+            Ver Horários Disponíveis
           </Button>
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setSelectedSlot(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Agendar Atendimento Safeweb</DialogTitle>
+            <DialogTitle>Escolha o Horário de Atendimento</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Data e Horário</Label>
-              <Input
-                type="datetime-local"
-                value={dataHora}
-                onChange={e => setDataHora(e.target.value)}
+
+          <div className="flex-1 overflow-y-auto space-y-4 py-2 pr-1">
+            {open && (
+              <SlotsDialogBody
+                orderId={orderId}
+                selected={selectedSlot}
+                onSelect={setSelectedSlot}
               />
-              <p className="text-xs text-muted-foreground">
-                Selecione a data e horário combinados para o atendimento.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Modalidade / Local</Label>
-              <Input
-                value={localNome}
-                onChange={e => setLocalNome(e.target.value)}
-                placeholder="Ex: Videoconferência"
-              />
-            </div>
+            )}
           </div>
+
+          {selectedSlot && (
+            <div className="border-t pt-3 mt-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                <span>
+                  <span className="font-medium text-foreground">
+                    {new Date(selectedSlot.dataHora).toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  {" — "}{selectedSlot.local}
+                </span>
+              </div>
+            </div>
+          )}
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setOpen(false); setSelectedSlot(null); }}>Cancelar</Button>
             <Button
-              disabled={!dataHora || agendar.isPending}
-              onClick={() => agendar.mutate({
-                id: orderId,
-                data: { dataHora: new Date(dataHora).toISOString(), localNome },
-              })}
+              disabled={!selectedSlot || agendar.isPending}
+              onClick={() => {
+                if (!selectedSlot) return;
+                agendar.mutate({
+                  id: orderId,
+                  data: {
+                    dataHora: new Date(selectedSlot.dataHora).toISOString(),
+                    localNome: selectedSlot.local,
+                    idAgendamento: selectedSlot.idAgendamento != null ? String(selectedSlot.idAgendamento) : undefined,
+                  },
+                });
+              }}
             >
               {agendar.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Confirmar Agendamento

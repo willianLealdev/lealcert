@@ -757,6 +757,25 @@ paths:
                   error:
                     type: string
 
+  /orders/{id}/safeweb-slots:
+    get:
+      operationId: getSafewebSlots
+      tags: [orders]
+      summary: Lista horários disponíveis na Safeweb para agendamento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Horários disponíveis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafewebSlotsResult"
+
   /orders/{id}/safeweb-agendar:
     post:
       operationId: agendarSafewebOrder
@@ -2365,7 +2384,7 @@ components:
           type: ["string", "null"]
         status:
           type: string
-          enum: [created, pending_payment, paid, protocol_assigned, completed, cancelled]
+          enum: [created, pending_payment, paid, protocol_assigned, aguardando_validacao, emitido, revogado, completed, cancelled]
         total:
           type: number
         customerName:
@@ -2500,7 +2519,7 @@ components:
       properties:
         status:
           type: string
-          enum: [created, pending_payment, paid, protocol_assigned, completed, cancelled]
+          enum: [created, pending_payment, paid, protocol_assigned, aguardando_validacao, emitido, revogado, completed, cancelled]
         protocolNumber:
           type: string
         scheduledAt:
@@ -3154,6 +3173,30 @@ components:
       properties:
         cpf: { type: string }
 
+    SafewebSlotsResult:
+      type: object
+      required: [slots]
+      properties:
+        slots:
+          type: array
+          items:
+            type: object
+            required: [dataHora, local]
+            properties:
+              idAgendamento:
+                oneOf:
+                  - type: string
+                  - type: integer
+              dataHora:
+                type: string
+              local:
+                type: string
+              disponivel:
+                type: boolean
+        raw:
+          type: object
+          additionalProperties: true
+
     SafewebAgendarInput:
       type: object
       required: [dataHora]
@@ -3161,6 +3204,8 @@ components:
         dataHora:
           type: string
         localNome:
+          type: string
+        idAgendamento:
           type: string
 
     SafewebAgendarResult:

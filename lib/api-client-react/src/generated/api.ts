@@ -115,6 +115,7 @@ import type {
   ResendVerificationInput,
   SafewebAgendarInput,
   SafewebAgendarResult,
+  SafewebSlotsResult,
   SendCampaignInput,
   SendRenewalAlert200,
   SendReplyInput,
@@ -2705,6 +2706,83 @@ export const useSyncPaymentOrder = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getSyncPaymentOrderMutationOptions(options));
     }
+
+export const getGetSafewebSlotsUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/safeweb-slots`
+}
+
+/**
+ * @summary Lista horários disponíveis na Safeweb para agendamento
+ */
+export const getSafewebSlots = async (id: number, options?: RequestInit): Promise<SafewebSlotsResult> => {
+
+  return customFetch<SafewebSlotsResult>(getGetSafewebSlotsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSafewebSlotsQueryKey = (id: number,) => {
+    return [
+    `/api/orders/${id}/safeweb-slots`
+    ] as const;
+    }
+
+
+export const getGetSafewebSlotsQueryOptions = <TData = Awaited<ReturnType<typeof getSafewebSlots>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSafewebSlotsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSafewebSlots>>> = ({ signal }) => getSafewebSlots(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSafewebSlotsQueryResult = NonNullable<Awaited<ReturnType<typeof getSafewebSlots>>>
+export type GetSafewebSlotsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista horários disponíveis na Safeweb para agendamento
+ */
+
+export function useGetSafewebSlots<TData = Awaited<ReturnType<typeof getSafewebSlots>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSafewebSlotsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getAgendarSafewebOrderUrl = (id: number,) => {
 

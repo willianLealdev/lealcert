@@ -239,6 +239,9 @@ export const OrderStatus = {
   pending_payment: 'pending_payment',
   paid: 'paid',
   protocol_assigned: 'protocol_assigned',
+  aguardando_validacao: 'aguardando_validacao',
+  emitido: 'emitido',
+  revogado: 'revogado',
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;
@@ -371,6 +374,9 @@ export const OrderUpdateStatus = {
   pending_payment: 'pending_payment',
   paid: 'paid',
   protocol_assigned: 'protocol_assigned',
+  aguardando_validacao: 'aguardando_validacao',
+  emitido: 'emitido',
+  revogado: 'revogado',
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;
@@ -840,9 +846,24 @@ export interface GarPsBioInput {
   cpf: string;
 }
 
+export type SafewebSlotsResultSlotsItem = {
+  idAgendamento?: string | number;
+  dataHora: string;
+  local: string;
+  disponivel?: boolean;
+};
+
+export type SafewebSlotsResultRaw = { [key: string]: unknown };
+
+export interface SafewebSlotsResult {
+  slots: SafewebSlotsResultSlotsItem[];
+  raw?: SafewebSlotsResultRaw;
+}
+
 export interface SafewebAgendarInput {
   dataHora: string;
   localNome?: string;
+  idAgendamento?: string;
 }
 
 export interface SafewebAgendarResult {

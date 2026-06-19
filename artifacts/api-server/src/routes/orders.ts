@@ -559,12 +559,64 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
     safewebAgendamentoDataHora: dataHora,
     safewebAgendamentoLocalNome: nomeLocal,
     scheduledAt: new Date(dataHora),
+    status: "aguardando_validacao",
   }).where(eq(ordersTable.id, id));
 
   const { logEvent } = await import("../lib/order-events");
   await logEvent(id, "gar_status_updated", `Atendimento agendado: ${nomeLocal} — ${dataHora}`, { agendamentoId, dataHora });
 
   res.json({ ok: true, dataHora, localNome: nomeLocal, agendamentoId });
+});
+
+// ── GET /orders/:id/safeweb-slots — lista horários disponíveis na Safeweb ────
+router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [row] = await db
+    .select({ order: ordersTable, cert: certificatesTable })
+    .from(ordersTable)
+    .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  if (!isAdmin && req.session.userId !== row.order.userId) {
+    res.status(403).json({ error: "Acesso negado" }); return;
+  }
+
+  const [s] = await db.select().from(settingsTable).limit(1);
+  const isHomol = s?.safewebAmbiente === "homologacao";
+  const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
+  const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
+  const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
+
+  if (!username || !password || !rawUrl) {
+    res.status(503).json({ error: "Credenciais Safeweb não configuradas" }); return;
+  }
+
+  try {
+    const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
+    const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined };
+    const { swAgendaListarHorarios } = await import("../lib/safeweb");
+    const result = await swAgendaListarHorarios(sw, sw.cnpjAr, row.cert?.safewebIdProduto ? { idProduto: row.cert.safewebIdProduto } : undefined);
+
+    // Normaliza resposta — pode ser array ou objeto com lista
+    const rawList = Array.isArray(result) ? result : (result as Record<string, unknown>).horarios ?? (result as Record<string, unknown>).slots ?? [];
+    const slots = (rawList as Record<string, unknown>[]).map((s: Record<string, unknown>) => ({
+      idAgendamento: s.IdAgendamento ?? s.idAgendamento ?? s.id,
+      dataHora: s.DataHora ?? s.dataHora ?? s.Data ?? s.data,
+      local: String(s.Local ?? s.local ?? s.NomeLocal ?? s.nomeLocal ?? "Videoconferência"),
+      disponivel: s.Disponivel ?? s.disponivel ?? true,
+    })).filter(s => s.dataHora);
+
+    res.json({ slots, raw: result });
+  } catch (err) {
+    req.log.error({ err, orderId: id }, "safeweb-slots: erro ao listar horários");
+    res.status(502).json({ error: `Erro ao consultar horários: ${(err as Error).message}` });
+  }
 });
 
 export default router;
