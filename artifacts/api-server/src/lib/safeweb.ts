@@ -150,12 +150,27 @@ export async function swConsultaCNPJ(settings: SafewebSettings, cnpj: string, cp
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOCAIS DE ATENDIMENTO
 // ═══════════════════════════════════════════════════════════════════════════════
+// Estrutura real retornada pela API Safeweb (array direto, não GeoJSON)
 export interface SwLocal {
-  type: string;
-  geometry: { type: string; coordinates: number[] };
-  properties: { id: number; UF: string; titulo: string; descricao: string | null; endereco: string; cidade: string; bairro: string; estado: string; numero: string; numeroalternativo: string };
+  idLocalAtendimento: number;
+  CNPJ?: string;
+  Nome?: string;
+  RazaoSocial?: string;
+  Endereco?: {
+    CEP?: string;
+    Logradouro?: string;
+    Numero?: string;
+    Bairro?: string;
+    Complemento?: string;
+    Municipio?: {
+      Nome?: string;
+      UF?: { Sigla?: string; Nome?: string };
+    };
+  };
+  Status?: number;
 }
-export interface SwLocaisResult { type?: string; LocaisAtendimento?: SwLocal[] }
+// A API retorna um array direto ou null
+export type SwLocaisResult = SwLocal[] | null;
 
 export async function swLocaisPorCnpjAr(settings: SafewebSettings, cnpjAr?: string, idStatus = 1): Promise<SwLocaisResult> {
   return swGet<SwLocaisResult>(settings, `${LOCAIS_CNPJ_PATH}/${cnpjAr ?? settings.cnpjAr ?? ""}?idStatus=${idStatus}`);

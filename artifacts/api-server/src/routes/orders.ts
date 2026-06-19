@@ -688,14 +688,16 @@ router.get("/orders/:id/safeweb-locais", requireAuth, async (req, res): Promise<
     const { swLocaisPorCnpjAr } = await import("../lib/safeweb");
     const result = await swLocaisPorCnpjAr(sw, sw.cnpjAr, 1);
 
-    const rawList = result.LocaisAtendimento ?? [];
+    // A API retorna um array direto ou null
+    const rawList = Array.isArray(result) ? result : [];
     const locais = rawList.map((l) => ({
-      id: l.properties.id,
-      titulo: l.properties.titulo,
-      endereco: `${l.properties.endereco}, ${l.properties.numero} — ${l.properties.bairro}`,
-      cidade: l.properties.cidade,
-      estado: l.properties.estado,
-      uf: l.properties.UF,
+      id: l.idLocalAtendimento,
+      titulo: l.Nome ?? l.RazaoSocial ?? `Local ${l.idLocalAtendimento}`,
+      endereco: [l.Endereco?.Logradouro, l.Endereco?.Numero, l.Endereco?.Complemento].filter(Boolean).join(", "),
+      bairro: l.Endereco?.Bairro ?? "",
+      cidade: l.Endereco?.Municipio?.Nome ?? "",
+      uf: l.Endereco?.Municipio?.UF?.Sigla ?? "",
+      cep: l.Endereco?.CEP ?? "",
     }));
 
     res.json({ locais });
