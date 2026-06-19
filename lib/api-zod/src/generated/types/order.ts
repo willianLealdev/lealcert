@@ -37,6 +37,10 @@ export interface Order {
   /** @nullable */
   cnhPath?: string | null;
   /** @nullable */
+  cartaoCnpjPath?: string | null;
+  /** @nullable */
+  fichaCadastralPath?: string | null;
+  /** @nullable */
   chatDocuments?: string | null;
   /** @nullable */
   scheduledAt?: string | null;

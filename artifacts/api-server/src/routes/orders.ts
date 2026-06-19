@@ -29,6 +29,8 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     companyName: o.companyName,
     inssNumber: o.inssNumber,
     cnhPath: o.cnhPath,
+    cartaoCnpjPath: o.cartaoCnpjPath,
+    fichaCadastralPath: o.fichaCadastralPath,
     chatDocuments: o.chatDocuments ?? null,
     scheduledAt: o.scheduledAt,
     protocolNumber: o.protocolNumber,
@@ -205,6 +207,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     customerCei, customerNis,
     representanteCpf, representanteNascimento,
     representanteDocTipo, representanteDocNumero, representanteDocEmissor,
+    cnhPath, cartaoCnpjPath, fichaCadastralPath,
   } = req.body ?? {};
 
   if (!certificateId || !customerName || !customerCpfCnpj || !clientType) {
@@ -258,6 +261,9 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     representanteDocTipo: representanteDocTipo || null,
     representanteDocNumero: representanteDocNumero || null,
     representanteDocEmissor: representanteDocEmissor || null,
+    cnhPath: cnhPath || null,
+    cartaoCnpjPath: cartaoCnpjPath || null,
+    fichaCadastralPath: fichaCadastralPath || null,
   }).returning();
 
   // Log order creation

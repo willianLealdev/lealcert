@@ -276,6 +276,10 @@ export interface Order {
   /** @nullable */
   cnhPath?: string | null;
   /** @nullable */
+  cartaoCnpjPath?: string | null;
+  /** @nullable */
+  fichaCadastralPath?: string | null;
+  /** @nullable */
   chatDocuments?: string | null;
   /** @nullable */
   scheduledAt?: string | null;
@@ -380,6 +384,9 @@ export interface OrderInput {
   representanteDocTipo?: OrderInputRepresentanteDocTipo;
   representanteDocNumero?: string;
   representanteDocEmissor?: string;
+  cnhPath?: string;
+  cartaoCnpjPath?: string;
+  fichaCadastralPath?: string;
 }
 
 export type OrderUpdateStatus = typeof OrderUpdateStatus[keyof typeof OrderUpdateStatus];

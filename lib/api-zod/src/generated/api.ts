@@ -453,6 +453,8 @@ export const ListOrdersResponseItem = zod.object({
   "companyName": zod.string().nullish(),
   "inssNumber": zod.string().nullish(),
   "cnhPath": zod.string().nullish(),
+  "cartaoCnpjPath": zod.string().nullish(),
+  "fichaCadastralPath": zod.string().nullish(),
   "chatDocuments": zod.string().nullish(),
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),
@@ -515,7 +517,10 @@ export const CreateOrderBody = zod.object({
   "representanteNascimento": zod.string().optional(),
   "representanteDocTipo": zod.enum(['0', '1', '2', '3', '4']).optional(),
   "representanteDocNumero": zod.string().optional(),
-  "representanteDocEmissor": zod.string().optional()
+  "representanteDocEmissor": zod.string().optional(),
+  "cnhPath": zod.string().optional(),
+  "cartaoCnpjPath": zod.string().optional(),
+  "fichaCadastralPath": zod.string().optional()
 })
 
 
@@ -585,6 +590,8 @@ export const GetOrderResponse = zod.object({
   "companyName": zod.string().nullish(),
   "inssNumber": zod.string().nullish(),
   "cnhPath": zod.string().nullish(),
+  "cartaoCnpjPath": zod.string().nullish(),
+  "fichaCadastralPath": zod.string().nullish(),
   "chatDocuments": zod.string().nullish(),
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),
@@ -652,6 +659,8 @@ export const UpdateOrderResponse = zod.object({
   "companyName": zod.string().nullish(),
   "inssNumber": zod.string().nullish(),
   "cnhPath": zod.string().nullish(),
+  "cartaoCnpjPath": zod.string().nullish(),
+  "fichaCadastralPath": zod.string().nullish(),
   "chatDocuments": zod.string().nullish(),
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),
@@ -1685,6 +1694,8 @@ export const GetRecentOrdersResponseItem = zod.object({
   "companyName": zod.string().nullish(),
   "inssNumber": zod.string().nullish(),
   "cnhPath": zod.string().nullish(),
+  "cartaoCnpjPath": zod.string().nullish(),
+  "fichaCadastralPath": zod.string().nullish(),
   "chatDocuments": zod.string().nullish(),
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),

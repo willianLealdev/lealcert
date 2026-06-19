@@ -1571,13 +1571,57 @@ export default function OrderDetail() {
             </CardContent>
           </Card>
 
+          {(order.cnhPath || order.cartaoCnpjPath || order.fichaCadastralPath) && (
+            <Card>
+              <CardHeader><CardTitle>Documentos Anexados</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {order.cnhPath && (
+                  <a
+                    href={`/api/${order.cnhPath}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-primary hover:underline"
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">CNH / RG do Titular</span>
+                    <Download className="h-4 w-4 shrink-0" />
+                  </a>
+                )}
+                {order.cartaoCnpjPath && (
+                  <a
+                    href={`/api/${order.cartaoCnpjPath}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-primary hover:underline"
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">Cartão CNPJ</span>
+                    <Download className="h-4 w-4 shrink-0" />
+                  </a>
+                )}
+                {order.fichaCadastralPath && (
+                  <a
+                    href={`/api/${order.fichaCadastralPath}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-primary hover:underline"
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">Ficha Cadastral</span>
+                    <Download className="h-4 w-4 shrink-0" />
+                  </a>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {order.chatDocuments && (() => {
             let docs: { name: string; key: string; url: string }[] = [];
             try { docs = JSON.parse(order.chatDocuments); } catch { /* ignore */ }
             if (!docs.length) return null;
             return (
               <Card>
-                <CardHeader><CardTitle>Documentos Enviados</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Documentos do Suporte</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                   {docs.map((doc, i) => (
                     <a

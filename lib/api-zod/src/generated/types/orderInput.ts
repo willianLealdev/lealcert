@@ -33,4 +33,7 @@ export interface OrderInput {
   representanteDocTipo?: OrderInputRepresentanteDocTipo;
   representanteDocNumero?: string;
   representanteDocEmissor?: string;
+  cnhPath?: string;
+  cartaoCnpjPath?: string;
+  fichaCadastralPath?: string;
 }

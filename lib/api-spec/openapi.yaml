@@ -2456,6 +2456,10 @@ components:
           type: ["string", "null"]
         cnhPath:
           type: ["string", "null"]
+        cartaoCnpjPath:
+          type: ["string", "null"]
+        fichaCadastralPath:
+          type: ["string", "null"]
         chatDocuments:
           type: ["string", "null"]
         scheduledAt:
@@ -2572,6 +2576,12 @@ components:
         representanteDocNumero:
           type: string
         representanteDocEmissor:
+          type: string
+        cnhPath:
+          type: string
+        cartaoCnpjPath:
+          type: string
+        fichaCadastralPath:
           type: string
 
     OrderUpdate:
