@@ -682,6 +682,25 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
     </div>
   );
 
+  if (locais.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8 text-center">
+        <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
+        <div>
+          <p className="text-sm font-medium">Nenhum local de atendimento disponível</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            O portal da Safeweb não retornou pontos de atendimento para esta solicitação.<br />
+            Entre em contato com a Safeweb ou tente novamente mais tarde.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 py-1">
       {/* Passo 1: Escolher local */}
@@ -689,46 +708,44 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           1. Escolha o local de atendimento
         </p>
-        {locais.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">Nenhum local disponível retornado pela Safeweb.</p>
-        ) : (
-          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-            {locais.map((l) => {
-              const isSelected = selectedLocal?.id === l.id;
-              return (
-                <button
-                  key={l.id}
-                  onClick={() => setSelectedLocal(l)}
-                  className={[
-                    "w-full rounded-lg border p-3 text-left text-sm transition-all",
-                    isSelected
-                      ? "border-primary bg-primary/10 ring-2 ring-primary"
-                      : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
-                  ].join(" ")}
-                >
-                  <p className="font-semibold">{l.titulo}</p>
-                  {l.endereco && <p className="text-xs text-muted-foreground mt-0.5">{l.endereco}</p>}
-                  {(l.cidade || l.uf) && (
-                    <p className="text-xs text-muted-foreground">{[l.cidade, l.uf].filter(Boolean).join(" — ")}</p>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+          {locais.map((l) => {
+            const isSelected = selectedLocal?.id === l.id;
+            return (
+              <button
+                key={l.id}
+                onClick={() => setSelectedLocal(l)}
+                className={[
+                  "w-full rounded-lg border p-3 text-left text-sm transition-all",
+                  isSelected
+                    ? "border-primary bg-primary/10 ring-2 ring-primary"
+                    : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
+                ].join(" ")}
+              >
+                <p className="font-semibold">{l.titulo}</p>
+                {l.endereco && <p className="text-xs text-muted-foreground mt-0.5">{l.endereco}</p>}
+                {(l.cidade || l.uf) && (
+                  <p className="text-xs text-muted-foreground">{[l.cidade, l.uf].filter(Boolean).join(" — ")}</p>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Passo 2: Data e horário */}
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          2. Informe a data e horário
-        </p>
-        <Input
-          type="datetime-local"
-          value={dataHora}
-          onChange={e => setDataHora(e.target.value)}
-        />
-      </div>
+      {/* Passo 2: Data e horário — só aparece após escolher um local */}
+      {selectedLocal && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            2. Informe a data e horário
+          </p>
+          <Input
+            type="datetime-local"
+            value={dataHora}
+            onChange={e => setDataHora(e.target.value)}
+          />
+        </div>
+      )}
     </div>
   );
 }
