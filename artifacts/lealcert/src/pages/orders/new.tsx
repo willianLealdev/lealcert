@@ -148,7 +148,11 @@ export default function NewOrder() {
   const checkPsbio = useConsultaPrevia({
     mutation: {
       onSuccess: (data) => {
-        setPsbioStatus({ hasPsbio: data.hasPsbio, mensagem: data.mensagem, requiresPresencial: data.requiresPresencial });
+        // PSBio status só é exibido no contexto do representante legal (CNPJ)
+        // Para o titular PF (nota fiscal), apenas preenchemos o nome
+        if (psbioContextRef.current === "rep") {
+          setPsbioStatus({ hasPsbio: data.hasPsbio, mensagem: data.mensagem, requiresPresencial: data.requiresPresencial });
+        }
         if (data.customerName) {
           if (psbioContextRef.current === "rep") {
             setForm(prev => ({ ...prev, repName: data.customerName!, customerName: prev.customerName || data.customerName! }));
@@ -161,8 +165,10 @@ export default function NewOrder() {
         }
       },
       onError: (err: unknown) => {
-        const msg = (err as { message?: string })?.message ?? "Erro ao consultar biometria";
-        setPsbioStatus({ hasPsbio: false, mensagem: msg, requiresPresencial: true, apiError: true });
+        if (psbioContextRef.current === "rep") {
+          const msg = (err as { message?: string })?.message ?? "Erro ao consultar biometria";
+          setPsbioStatus({ hasPsbio: false, mensagem: msg, requiresPresencial: true, apiError: true });
+        }
       },
     },
   });
@@ -198,11 +204,12 @@ export default function NewOrder() {
     const isCnpj = clientType === "cnpj" && digits.length === 14;
 
     if (isCpf && birthDate) {
+      // Para o titular PF: consulta na RFB apenas para buscar o nome (sem PSBio)
       psbioContextRef.current = context ?? "customer";
-      setPsbioStatus("loading");
       const dateIso = birthDate.includes("/") ? parseBrDate(birthDate) : birthDate;
       checkPsbio.mutate({ data: { cpf: digits, dataNascimento: dateIso } });
     } else if (isCnpj && repCpf && repBirthDate) {
+      // Para o representante CNPJ: consulta PSBio (biometria + nome)
       const repDigits = repCpf.replace(/\D/g, "");
       const repDateIso = repBirthDate.includes("/") ? parseBrDate(repBirthDate) : repBirthDate;
       if (repDigits.length === 11 && repDateIso.length === 10) {
@@ -384,7 +391,7 @@ export default function NewOrder() {
         addressState: form.addressState || undefined,
         representanteCpf: isCnpjCert && form.repCpf ? form.repCpf : undefined,
         representanteNascimento: isCnpjCert && form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
-        representanteDocTipo: form.repDocTipo !== "0" ? form.repDocTipo : undefined,
+        representanteDocTipo: form.repDocTipo !== "0" ? form.repDocTipo as "1" | "2" | "3" : undefined,
         representanteDocNumero: form.repDocTipo !== "0" && form.repDocNumero ? form.repDocNumero : undefined,
         representanteDocEmissor: form.repDocTipo !== "0" && form.repDocOrgan && form.repDocUf
           ? (form.repDocOrgan + form.repDocUf).toUpperCase()
@@ -604,21 +611,13 @@ export default function NewOrder() {
                           maxLength={10}
                           className="pr-8"
                         />
-                        {psbioStatus === "loading" && (
+                        {checkPsbio.isPending && psbioContextRef.current === "customer" && (
                           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
                         )}
-                        {psbioStatus && psbioStatus !== "loading" && psbioStatus.hasPsbio && (
-                          <ShieldCheck className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
-                        )}
-                        {psbioStatus && psbioStatus !== "loading" && !psbioStatus.hasPsbio && (
-                          <ShieldAlert className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
+                        {!checkPsbio.isPending && autoFilledCustomerName && (
+                          <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
                         )}
                       </div>
-                      {psbioStatus && psbioStatus !== "loading" && (
-                        <p className={`text-xs ${psbioStatus.hasPsbio ? "text-emerald-600" : psbioStatus.apiError ? "text-destructive" : "text-amber-600"}`}>
-                          {psbioStatus.mensagem}
-                        </p>
-                      )}
                     </div>
                   )}
 
@@ -653,6 +652,62 @@ export default function NewOrder() {
                         required
                         className={autoFilledCustomerName ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200" : ""}
                       />
+                    </div>
+                  )}
+
+                  {/* Documento de identificação — apenas PF */}
+                  {!showCnpjFields && (
+                    <div className="sm:col-span-2 space-y-3 pt-1">
+                      <p className="text-sm font-medium">Documento de Identificação <span className="text-muted-foreground font-normal text-xs">(opcional)</span></p>
+                      <div className="space-y-2">
+                        <Label>Tipo de Documento</Label>
+                        <select
+                          value={form.repDocTipo}
+                          onChange={e => setForm(f => ({ ...f, repDocTipo: e.target.value, repDocNumero: "", repDocOrgan: "", repDocUf: "" }))}
+                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          <option value="0">Não Informado</option>
+                          <option value="1">RG</option>
+                          <option value="2">RNE</option>
+                          <option value="3">Passaporte</option>
+                        </select>
+                      </div>
+                      {form.repDocTipo !== "0" && (
+                        <>
+                          <div className="space-y-2">
+                            <Label>Número do Documento</Label>
+                            <Input
+                              value={form.repDocNumero}
+                              onChange={e => set("repDocNumero", e.target.value)}
+                              placeholder={form.repDocTipo === "3" ? "Ex: BR123456" : "Ex: 12.345.678-9"}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label>Órgão Expedidor <span className="text-muted-foreground font-normal text-xs">(máx. 4 car.)</span></Label>
+                              <Input
+                                value={form.repDocOrgan}
+                                onChange={e => set("repDocOrgan", e.target.value.toUpperCase().slice(0, 4))}
+                                placeholder="Ex: SSP"
+                                maxLength={4}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>UF</Label>
+                              <select
+                                value={form.repDocUf}
+                                onChange={e => set("repDocUf", e.target.value)}
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              >
+                                <option value="">Selecione</option>
+                                {["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map(uf => (
+                                  <option key={uf} value={uf}>{uf}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
