@@ -598,19 +598,35 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   const { dataHora, localNome, idLocal } = req.body ?? {};
   if (!dataHora) { res.status(400).json({ error: "dataHora obrigatório" }); return; }
 
+  const isReagendar = !!order.safewebAgendamentoId;
+
   const [s] = await db.select().from(settingsTable).limit(1);
   const isHomol = s?.safewebAmbiente === "homologacao";
   const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
   const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
   const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
-  const { swAgendaAgendar } = await import("../lib/safeweb");
+  const { swAgendaAgendar, swAgendaCancelar } = await import("../lib/safeweb");
 
   let agendamentoId: string | null = null;
 
   if (username && password && rawUrl) {
+    const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
+    const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined, codigoParceiro: s?.safewebCodigoParceiro ?? undefined };
+
+    // Se já há agendamento anterior e é um ID numérico real (não "manual-..."), cancela antes de reagendar
+    if (isReagendar && order.safewebAgendamentoId && !order.safewebAgendamentoId.startsWith("manual-") && !order.safewebAgendamentoId.startsWith("sw-")) {
+      const oldId = parseInt(order.safewebAgendamentoId, 10);
+      if (!isNaN(oldId)) {
+        try {
+          await swAgendaCancelar(sw, oldId);
+          req.log.info({ orderId: id, oldAgendamentoId: oldId }, "safeweb-agendar: agendamento anterior cancelado na Safeweb");
+        } catch (err) {
+          req.log.warn({ orderId: id, err }, "safeweb-agendar: não foi possível cancelar agendamento anterior, prosseguindo mesmo assim");
+        }
+      }
+    }
+
     try {
-      const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
-      const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined, codigoParceiro: s?.safewebCodigoParceiro ?? undefined };
       const result = await swAgendaAgendar(sw, {
         idSolicitacao: Number(order.safewebSolicitacaoId),
         DataHora: dataHora,
@@ -640,7 +656,8 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   }).where(eq(ordersTable.id, id));
 
   const { logEvent } = await import("../lib/order-events");
-  await logEvent(id, "gar_status_updated", `Atendimento agendado: ${nomeLocal} — ${dataHora}`, { agendamentoId, dataHora });
+  const acao = isReagendar ? "Agendamento alterado" : "Atendimento agendado";
+  await logEvent(id, "scheduling_confirmed", `${acao}: ${nomeLocal} — ${new Date(dataHora).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`, { agendamentoId, dataHora, isReagendar });
 
   res.json({ ok: true, dataHora, localNome: nomeLocal, agendamentoId });
 });
