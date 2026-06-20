@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, ShieldQuestion, Building2, User, Tag, CheckCircle, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Link } from "wouter";
 function maskCpfCnpj(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 14);
@@ -693,6 +694,154 @@ export default function NewOrder() {
                     </div>
                   </DialogContent>
                 </Dialog>
+              </CardContent>
+            </Card>
+
+            {/* Accordion — tipos de emissão */}
+            <Card>
+              <CardContent className="pt-5 pb-4">
+                <p className="text-center text-sm font-semibold text-foreground mb-3">Entenda a diferença entre os tipos de emissão</p>
+                <Accordion type="multiple" className="divide-y border rounded-lg overflow-hidden">
+                  {/* Videoconferência */}
+                  <AccordionItem value="videoconferencia" className="border-0">
+                    <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-primary hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
+                      Videoconferência
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4 pt-1">
+                      <div className="flex gap-4 items-start">
+                        <div className="flex-1 space-y-2">
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            É o método em que o Certificado Digital é feito através de videoconferência, no qual o Titular/Responsável pode realizar a validação de qualquer lugar.
+                          </p>
+                          <ol className="text-sm space-y-1 list-none">
+                            {["Compra do Certificado", "Validação dos documentos (caso necessário)", "Agendamento da videoconferência", "Videoconferência", "Emissão"].map((s, i) => (
+                              <li key={i} className="flex gap-1.5">
+                                <span className="text-muted-foreground shrink-0">{i + 1}.</span>
+                                {i === 1 ? (
+                                  <span><strong>Validação dos documentos</strong> (caso necessário)</span>
+                                ) : (
+                                  <strong>{s.replace(" (caso necessário)", "")}</strong>
+                                )}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                        <div className="shrink-0 hidden sm:flex items-center justify-center w-28 h-20 rounded-xl bg-blue-50 dark:bg-blue-950/20">
+                          <svg viewBox="0 0 80 56" className="w-20 h-14 text-primary" fill="none">
+                            <rect x="4" y="4" width="72" height="48" rx="6" stroke="currentColor" strokeWidth="2.5" fill="none"/>
+                            <rect x="14" y="12" width="52" height="32" rx="3" fill="currentColor" fillOpacity=".08"/>
+                            <circle cx="40" cy="28" r="9" fill="currentColor" fillOpacity=".15" stroke="currentColor" strokeWidth="2"/>
+                            <path d="M36 28l3 3 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <rect x="28" y="52" width="24" height="2.5" rx="1.25" fill="currentColor" fillOpacity=".3"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Presencial */}
+                  <AccordionItem value="presencial" className="border-0">
+                    <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-primary hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
+                      Presencial
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4 pt-1">
+                      <div className="flex gap-4 items-start">
+                        <div className="flex-1 space-y-2">
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            É o método de emissão em que o Titular/Responsável escolhe um local de atendimento para emitir presencialmente seu Certificado Digital.
+                          </p>
+                          <ol className="text-sm space-y-1 list-none">
+                            {[
+                              { label: "Compra do Certificado", suffix: "" },
+                              { label: "Agendamento do atendimento", suffix: "" },
+                              { label: "Atendimento presencial para emissão", suffix: "" },
+                              { label: "Validação dos documentos", suffix: " (caso necessário)" },
+                            ].map((s, i) => (
+                              <li key={i} className="flex gap-1.5">
+                                <span className="text-muted-foreground shrink-0">{i + 1}.</span>
+                                <span><strong>{s.label}</strong>{s.suffix}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                        <div className="shrink-0 hidden sm:flex items-center justify-center w-28 h-20 rounded-xl bg-emerald-50 dark:bg-emerald-950/20">
+                          <svg viewBox="0 0 80 56" className="w-20 h-14 text-emerald-600" fill="none">
+                            <rect x="10" y="10" width="28" height="36" rx="4" stroke="currentColor" strokeWidth="2.5"/>
+                            <rect x="14" y="18" width="20" height="3" rx="1.5" fill="currentColor" fillOpacity=".4"/>
+                            <rect x="14" y="24" width="14" height="3" rx="1.5" fill="currentColor" fillOpacity=".4"/>
+                            <circle cx="56" cy="24" r="10" stroke="currentColor" strokeWidth="2.5"/>
+                            <path d="M52 24l3 3 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M46 44c0-5.523 4.477-10 10-10s10 4.477 10 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Fast */}
+                  <AccordionItem value="fast" className="border-0">
+                    <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-primary hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
+                      Fast
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4 pt-1">
+                      <div className="flex gap-4 items-start">
+                        <div className="flex-1 space-y-2">
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            É o método em que o próprio titular realiza a emissão do Certificado Digital de forma imediata, utilizando um e-CPF A3 dentro do prazo de validade (em token, cartão ou SafeID) para se identificar em nossa plataforma, sem precisar de um atendente. É a forma mais rápida e prática de obter seu certificado, disponível 24 horas por dia.
+                          </p>
+                          <ol className="text-sm space-y-1 list-none">
+                            {["Compra do certificado", "Validação do pagamento", "Emissão"].map((s, i) => (
+                              <li key={i} className="flex gap-1.5">
+                                <span className="text-muted-foreground shrink-0">{i + 1}.</span>
+                                <strong>{s}</strong>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                        <div className="shrink-0 hidden sm:flex items-center justify-center w-28 h-20 rounded-xl bg-amber-50 dark:bg-amber-950/20">
+                          <svg viewBox="0 0 80 56" className="w-20 h-14 text-amber-600" fill="none">
+                            <path d="M40 8l6 16h16l-13 10 5 16-14-10-14 10 5-16L18 24h16z" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/>
+                            <circle cx="40" cy="28" r="10" fill="currentColor" fillOpacity=".08"/>
+                            <path d="M37 28l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Renovação */}
+                  <AccordionItem value="renovacao" className="border-0">
+                    <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-primary hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
+                      Renovação
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4 pt-1">
+                      <div className="flex gap-4 items-start">
+                        <div className="flex-1 space-y-2">
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            É o método de renovação de Certificado Digital totalmente on-line e autônoma, feita exclusivamente pelo Titular/Responsável. Permite que você renove o seu Certificado Digital a partir de um certificado já existente (modelo A3, com mídia, dentro do prazo de validade, sem nenhuma alteração nas informações na RFB).
+                          </p>
+                          <ol className="text-sm space-y-1 list-none">
+                            {["Escolha do certificado", "Validação do certificado válido já existente", "Compra do certificado escolhido", "Emissão"].map((s, i) => (
+                              <li key={i} className="flex gap-1.5">
+                                <span className="text-muted-foreground shrink-0">{i + 1}.</span>
+                                <strong>{s}</strong>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                        <div className="shrink-0 hidden sm:flex items-center justify-center w-28 h-20 rounded-xl bg-violet-50 dark:bg-violet-950/20">
+                          <svg viewBox="0 0 80 56" className="w-20 h-14 text-violet-600" fill="none">
+                            <path d="M20 28a20 20 0 0 1 38-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                            <path d="M60 28a20 20 0 0 1-38 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                            <path d="M58 16l2 6-6 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M22 40l-2-6 6-2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <circle cx="40" cy="28" r="6" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="2"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </CardContent>
             </Card>
 
