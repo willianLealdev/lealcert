@@ -134,28 +134,51 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
     return;
   }
 
-  const existing = await db.select({ safewebIdProduto: certificatesTable.safewebIdProduto }).from(certificatesTable);
-  const existingIds = new Set(existing.map(e => e.safewebIdProduto).filter(Boolean));
-
-  let imported = 0;
-  let skipped = 0;
-  for (const { produto: p, tipo } of unique) {
-    const idStr = String(p.idProduto);
-    if (existingIds.has(idStr)) { skipped++; continue; }
-    await db.insert(certificatesTable).values({
-      name: p.Nome,
-      description: null,
-      price: "0.00",
-      active: true,
-      safewebIdProduto: idStr,
-      validityMonths: (p.Validade || 1) * 12,
-      garHashProduto: null,
-      issuanceType: ISSUANCE_MAP[tipo] ?? null,
-    });
-    imported++;
+  function deriveProduct(nome: string): string | null {
+    if (/e-cnpj/i.test(nome)) return "e-CNPJ";
+    if (/e-cpf/i.test(nome))  return "e-CPF";
+    if (/e-pj/i.test(nome))   return "e-PJ";
+    if (/e-pf/i.test(nome))   return "e-PF";
+    return null;
   }
 
-  res.json({ imported, skipped, total: unique.length });
+  const existingRows = await db
+    .select({ id: certificatesTable.id, safewebIdProduto: certificatesTable.safewebIdProduto })
+    .from(certificatesTable);
+  const existingMap = new Map(existingRows.filter(r => r.safewebIdProduto).map(r => [r.safewebIdProduto!, r.id]));
+
+  let imported = 0;
+  let updated = 0;
+  for (const { produto: p, tipo } of unique) {
+    const idStr = String(p.idProduto);
+    const issuanceType = ISSUANCE_MAP[tipo] ?? null;
+    const product = deriveProduct(p.Nome);
+    const validityMonths = (p.Validade || 1) * 12;
+
+    if (existingMap.has(idStr)) {
+      // Update issuance_type and product for existing cert (fills in nulls from before migration)
+      await db
+        .update(certificatesTable)
+        .set({ issuanceType, product, validityMonths })
+        .where(eq(certificatesTable.id, existingMap.get(idStr)!));
+      updated++;
+    } else {
+      await db.insert(certificatesTable).values({
+        name: p.Nome,
+        description: null,
+        price: "0.00",
+        active: true,
+        safewebIdProduto: idStr,
+        validityMonths,
+        garHashProduto: null,
+        issuanceType,
+        product,
+      });
+      imported++;
+    }
+  }
+
+  res.json({ imported, updated, skipped: 0, total: unique.length });
 });
 
 router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {
