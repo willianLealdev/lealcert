@@ -170,6 +170,7 @@ export default function NewOrder() {
   const [pickedIssuance, setPickedIssuance] = useState("");
   const [pickedValidity, setPickedValidity] = useState("");
   const [warrantyInfoOpen, setWarrantyInfoOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   // ── Form ──
   const [form, setForm] = useState({
@@ -1252,12 +1253,31 @@ export default function NewOrder() {
           </Button>
           <p className="text-xs text-center text-muted-foreground -mt-2">
             Ao confirmar, você concorda com a{" "}
-            <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-primary">
+            <button
+              type="button"
+              onClick={() => setPrivacyOpen(true)}
+              className="underline underline-offset-2 hover:text-primary transition-colors"
+            >
               Política de Privacidade
-            </a>
+            </button>
           </p>
         </div>
       )}
+
+      {/* Privacy Policy dialog */}
+      <Dialog open={privacyOpen} onOpenChange={setPrivacyOpen}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden" style={{ height: "85vh" }}>
+          <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
+            <DialogTitle>Política de Privacidade</DialogTitle>
+          </DialogHeader>
+          <iframe
+            src="/politica-de-privacidade"
+            className="w-full flex-1 border-0"
+            style={{ height: "calc(85vh - 68px)" }}
+            title="Política de Privacidade"
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Warranty dialog */}
       <Dialog open={warrantyInfoOpen} onOpenChange={setWarrantyInfoOpen}>
