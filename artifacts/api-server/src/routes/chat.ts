@@ -185,7 +185,7 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // Validate that the selected provider has a key configured
   const providerKey = {
-    openai: aiSettings?.openaiApiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY || "",
+    openai: aiSettings?.openaiApiKey || "",
     deepseek: aiSettings?.deepseekApiKey || "",
     claude: aiSettings?.claudeApiKey || "",
   }[provider] ?? "";
@@ -210,7 +210,7 @@ router.post("/chat", async (req, res): Promise<void> => {
         model: claudeModel,
         max_tokens: 1024,
         system: systemPrompt,
-        messages: chatHistory.filter(m => m.role !== "system"),
+        messages: chatHistory,
       });
 
       for await (const event of stream) {
@@ -235,7 +235,7 @@ router.post("/chat", async (req, res): Promise<void> => {
     // ── OpenAI / DeepSeek (OpenAI-compatible) ────────────────────────────
     const baseURL = provider === "deepseek"
       ? "https://api.deepseek.com"
-      : (aiSettings?.openaiApiKey ? undefined : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL);
+      : undefined;
     const model = provider === "deepseek"
       ? (aiSettings?.deepseekModel || "deepseek-chat")
       : (aiSettings?.openaiModel || "gpt-4o-mini");

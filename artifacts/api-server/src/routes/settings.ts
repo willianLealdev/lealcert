@@ -170,11 +170,11 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
 // ── POST /settings/test-email ──────────────────────────────────────────────
 router.post("/settings/test-email", requireAdmin, async (req, res): Promise<void> => {
   const s = await getOrCreateSettings();
-  const host = s.smtpHostDb || process.env.SMTP_HOST;
-  const port = parseInt(s.smtpPortDb ?? process.env.SMTP_PORT ?? "587", 10);
-  const user = s.smtpUserDb || process.env.SMTP_USER;
-  const pass = s.smtpPassDb || process.env.SMTP_PASS;
-  const from = s.mailFrom || process.env.SMTP_FROM || `${s.appName} <naoresponda@lealcert.com.br>`;
+  const host = s.smtpHostDb || null;
+  const port = parseInt(s.smtpPortDb ?? "587", 10);
+  const user = s.smtpUserDb || null;
+  const pass = s.smtpPassDb || null;
+  const from = s.mailFrom || `${s.appName} <naoresponda@lealcert.com.br>`;
   const to = (req.body as { to?: string })?.to ?? (req.session as { user?: { email?: string } })?.user?.email;
 
   if (!host || !user || !pass) {

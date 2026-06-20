@@ -1,20 +1,44 @@
 import nodemailer from "nodemailer";
 import { logger } from "./logger";
+import { db, settingsTable } from "@workspace/db";
 import type { MarketingCampaign, MarketingContact } from "@workspace/db";
 
-function createTransporter() {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT ?? "587", 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!host || !user || !pass) return null;
-  return nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass }, tls: { rejectUnauthorized: process.env.NODE_ENV === "production" } });
+async function getSmtpConfig() {
+  const rows = await db.select({
+    appName:    settingsTable.appName,
+    siteUrl:    settingsTable.siteUrl,
+    mailFrom:   settingsTable.mailFrom,
+    smtpHostDb: settingsTable.smtpHostDb,
+    smtpPortDb: settingsTable.smtpPortDb,
+    smtpUserDb: settingsTable.smtpUserDb,
+    smtpPassDb: settingsTable.smtpPassDb,
+  }).from(settingsTable).limit(1);
+
+  const s = rows[0];
+  return {
+    appName: s?.appName ?? "LealCert",
+    siteUrl: s?.siteUrl ?? "https://lealcert.com.br",
+    mailFrom: s?.mailFrom ?? null,
+    host: s?.smtpHostDb ?? null,
+    port: parseInt(s?.smtpPortDb ?? "587", 10),
+    user: s?.smtpUserDb ?? null,
+    pass: s?.smtpPassDb ?? null,
+  };
 }
 
-function getBaseUrl() {
-  const domains = process.env.REPLIT_DOMAINS ?? "";
-  const domain = domains.split(",")[0]?.trim();
-  return domain ? `https://${domain}` : "http://localhost:80";
+async function createTransporter() {
+  const cfg = await getSmtpConfig();
+  if (!cfg.host || !cfg.user || !cfg.pass) return null;
+  return {
+    transport: nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.port === 465,
+      auth: { user: cfg.user, pass: cfg.pass },
+      tls: { rejectUnauthorized: process.env.NODE_ENV === "production" },
+    }),
+    cfg,
+  };
 }
 
 interface SendMarketingEmailOptions {
@@ -35,7 +59,13 @@ function wrapLinks(html: string, baseUrl: string, trackingToken: string): string
 }
 
 export async function sendMarketingEmail({ campaign, contact, trackingToken }: SendMarketingEmailOptions): Promise<void> {
-  const baseUrl = getBaseUrl();
+  const result = await createTransporter();
+  if (!result) {
+    logger.info({ to: contact.email, subject: campaign.subject, trackingToken }, "📧 [DEV] Marketing email (SMTP não configurado no painel)");
+    return;
+  }
+  const { transport, cfg } = result;
+  const baseUrl = cfg.siteUrl;
   const pixelUrl = `${baseUrl}/api/marketing/track/${trackingToken}.png`;
   const unsubUrl = `${baseUrl}/unsubscribe?token=${trackingToken}`;
 
@@ -60,13 +90,7 @@ export async function sendMarketingEmail({ campaign, contact, trackingToken }: S
   const from = `${campaign.fromName} <${campaign.fromEmail}>`;
   const replyTo = campaign.replyTo ?? undefined;
 
-  const transporter = createTransporter();
-  if (!transporter) {
-    logger.info({ to: contact.email, subject: campaign.subject, trackingToken }, "📧 [DEV] Marketing email (SMTP not configured)");
-    return;
-  }
-
-  await transporter.sendMail({ from, to: `${contact.name} <${contact.email}>`, subject: campaign.subject, html, text, replyTo });
+  await transport.sendMail({ from, to: `${contact.name} <${contact.email}>`, subject: campaign.subject, html, text, replyTo });
 }
 
 interface SendReplyEmailOptions {
@@ -77,26 +101,26 @@ interface SendReplyEmailOptions {
 }
 
 export async function sendReplyEmail({ to, toName, subject, body }: SendReplyEmailOptions): Promise<void> {
-  const from = process.env.SMTP_FROM_MARKETING ?? "LealCert Marketing <mkt@lealcert.com.br>";
-  const html = `<div style="font-family:sans-serif;line-height:1.6;">${body.replace(/\n/g, "<br>")}</div>`;
-
-  const transporter = createTransporter();
-  if (!transporter) {
-    logger.info({ to, subject }, "📧 [DEV] Reply email (SMTP not configured)");
+  const result = await createTransporter();
+  if (!result) {
+    logger.info({ to, subject }, "📧 [DEV] Reply email (SMTP não configurado no painel)");
     return;
   }
-
+  const { transport, cfg } = result;
+  const from = cfg.mailFrom ?? `${cfg.appName} <naoresponda@${cfg.siteUrl.replace(/^https?:\/\//, "")}>`;
+  const html = `<div style="font-family:sans-serif;line-height:1.6;">${body.replace(/\n/g, "<br>")}</div>`;
   const recipient = toName ? `${toName} <${to}>` : to;
-  await transporter.sendMail({ from, to: recipient, subject, html, text: body });
+  await transport.sendMail({ from, to: recipient, subject, html, text: body });
 }
 
 export async function sendSystemEmail(opts: { to: string; toName?: string; subject: string; html: string; text?: string }): Promise<void> {
-  const from = process.env.SMTP_FROM_SYSTEM ?? "LealCert <naoresponda@lealcert.com.br>";
-  const transporter = createTransporter();
-  if (!transporter) {
-    logger.info({ to: opts.to, subject: opts.subject }, "📧 [DEV] System email (SMTP not configured)");
+  const result = await createTransporter();
+  if (!result) {
+    logger.info({ to: opts.to, subject: opts.subject }, "📧 [DEV] System email (SMTP não configurado no painel)");
     return;
   }
+  const { transport, cfg } = result;
+  const from = cfg.mailFrom ?? `${cfg.appName} <naoresponda@${cfg.siteUrl.replace(/^https?:\/\//, "")}>`;
   const recipient = opts.toName ? `${opts.toName} <${opts.to}>` : opts.to;
-  await transporter.sendMail({ from, to: recipient, subject: opts.subject, html: opts.html, text: opts.text ?? opts.html.replace(/<[^>]*>/g, " ") });
+  await transport.sendMail({ from, to: recipient, subject: opts.subject, html: opts.html, text: opts.text ?? opts.html.replace(/<[^>]*>/g, " ") });
 }

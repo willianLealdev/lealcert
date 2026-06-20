@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 import { logger } from "./logger";
 import { db, settingsTable } from "@workspace/db";
 
-// Fetch SMTP + branding from DB (with env-var fallback)
+// Fetch SMTP + branding from DB — tudo configurado pelo painel admin
 async function getEmailConfig() {
   const rows = await db.select({
     appName: settingsTable.appName,
@@ -19,11 +19,11 @@ async function getEmailConfig() {
   const s = rows[0];
   const appName = s?.appName ?? "LealCert";
   const siteUrl = s?.siteUrl ?? "https://lealcert.com.br";
-  const host = s?.smtpHostDb || process.env.SMTP_HOST;
-  const port = parseInt(s?.smtpPortDb ?? process.env.SMTP_PORT ?? "587", 10);
-  const user = s?.smtpUserDb || process.env.SMTP_USER;
-  const pass = s?.smtpPassDb || process.env.SMTP_PASS;
-  const from = s?.mailFrom || process.env.SMTP_FROM || `${appName} <naoresponda@lealcert.com.br>`;
+  const host = s?.smtpHostDb || null;
+  const port = parseInt(s?.smtpPortDb ?? "587", 10);
+  const user = s?.smtpUserDb || null;
+  const pass = s?.smtpPassDb || null;
+  const from = s?.mailFrom || `${appName} <naoresponda@lealcert.com.br>`;
   const logoUrl = s?.logoUrl ?? null;
 
   return { appName, siteUrl, host, port, user, pass, from, logoUrl };
