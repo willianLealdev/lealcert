@@ -46,7 +46,10 @@ echo ""
 # ── 1. Configurar chave SSH temporária ─────────────────────────────────────
 SSH_KEY_FILE="$(mktemp)"
 chmod 600 "$SSH_KEY_FILE"
-echo "$VPS_SSH_KEY" > "$SSH_KEY_FILE"
+# Garante quebras de linha reais (Replit às vezes armazena \n literais)
+printf '%s' "$VPS_SSH_KEY" | sed 's/\\n/\n/g' > "$SSH_KEY_FILE"
+# Garante newline final obrigatório no formato PEM
+echo >> "$SSH_KEY_FILE"
 
 SSH_OPTS="-i $SSH_KEY_FILE -o StrictHostKeyChecking=no -o ConnectTimeout=15"
 
@@ -81,11 +84,11 @@ echo ""
 echo "🔨  [2/4] Buildando imagens no servidor..."
 
 ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" bash -s <<REMOTE_SCRIPT
-  set -e
+  set -euo pipefail
   cd /opt/lealcert
 
   # Login no Docker Hub
-  echo "${DOCKER_HUB_PASS}" | docker login -u "${DOCKER_HUB_USER}" --password-stdin 2>/dev/null
+  echo "${DOCKER_HUB_PASS}" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
   echo "✅  Login Docker Hub OK"
 
   # Build API
@@ -95,7 +98,7 @@ ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" bash -s <<REMOTE_SCRIPT
     --tag "${DOCKER_HUB_USER}/lealcert-api:${TAG}" \
     --tag "${DOCKER_HUB_USER}/lealcert-api:latest" \
     --cache-from "${DOCKER_HUB_USER}/lealcert-api:latest" \
-    . 2>&1 | tail -5
+    .
   echo "✅  API buildada"
 
   # Build Web
@@ -105,7 +108,7 @@ ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" bash -s <<REMOTE_SCRIPT
     --tag "${DOCKER_HUB_USER}/lealcert-web:${TAG}" \
     --tag "${DOCKER_HUB_USER}/lealcert-web:latest" \
     --cache-from "${DOCKER_HUB_USER}/lealcert-web:latest" \
-    . 2>&1 | tail -5
+    .
   echo "✅  Web buildada"
 
   docker logout 2>/dev/null || true

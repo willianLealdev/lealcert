@@ -1,0 +1,212 @@
+~/workspace$ bash deploy.sh
+
+╔══════════════════════════════════════════════╗
+║   🚀  Deploy LealCert → Docker Hub + Coolify  ║
+╚══════════════════════════════════════════════╝
+  VPS:         root@213.136.88.20
+  Docker Hub:  willianlealdev/lealcert-api:latest
+
+📦  [1/4] Sincronizando código...
+deploy.sh: line 60: rsync: command not found
+~/workspace$ ^C
+~/workspace$ bash deploy.sh
+
+╔══════════════════════════════════════════════╗
+║   🚀  Deploy LealCert → Docker Hub + Coolify  ║
+╚══════════════════════════════════════════════╝
+  VPS:         root@213.136.88.20
+  Docker Hub:  willianlealdev/lealcert-api:latest
+
+📦  [1/4] Sincronizando código...
+Warning: Permanently added '213.136.88.20' (ED25519) to the list of known hosts.
+Load key "/tmp/tmp.pJC3fDITNM": error in libcrypto
+root@213.136.88.20's password: 
+Load key "/tmp/tmp.pJC3fDITNM": error in libcrypto
+root@213.136.88.20's password: 
+✅  Código sincronizado
+
+🔨  [2/4] Buildando imagens no servidor...
+Load key "/tmp/tmp.pJC3fDITNM": error in libcrypto
+root@213.136.88.20's password: 
+Login Succeeded
+✅  Login Docker Hub OK
+🔨  Buildando API...
+#21 unpacking to docker.io/willianlealdev/lealcert-api:latest 0.4s done
+#21 DONE 2.5s
+------
+ > importing cache manifest from willianlealdev/lealcert-api:latest:
+------
+✅  API buildada
+🔨  Buildando Web...
+  25 | >>> RUN BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/lealcert run build
+  26 |     
+  27 |     # ── Stage 2: Nginx ────────────────────────────────────────────────────────────
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/lealcert run build" did not complete successfully: exit code: 1
+✅  Web buildada
+Removing login credentials for https://index.docker.io/v1/
+✅  Imagens buildadas no servidor
+
+📤  [3/4] Enviando imagens para Docker Hub...
+Load key "/tmp/tmp.pJC3fDITNM": error in libcrypto
+root@213.136.88.20's password: 
+Login Succeeded
+The push refers to repository [docker.io/willianlealdev/lealcert-api]
+38b83f9399d6: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+678a9fc5921a: Waiting
+55afa1ecc21d: Waiting
+5bbf453126d5: Waiting
+3e22723f2b49: Waiting
+8a2dd5967a86: Waiting
+55afa1ecc21d: Waiting
+5bbf453126d5: Waiting
+3e22723f2b49: Waiting
+8a2dd5967a86: Waiting
+38b83f9399d6: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+678a9fc5921a: Waiting
+5bbf453126d5: Waiting
+3e22723f2b49: Waiting
+8a2dd5967a86: Waiting
+38b83f9399d6: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+678a9fc5921a: Waiting
+55afa1ecc21d: Waiting
+38b83f9399d6: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+678a9fc5921a: Waiting
+55afa1ecc21d: Waiting
+5bbf453126d5: Waiting
+3e22723f2b49: Waiting
+8a2dd5967a86: Waiting
+38b83f9399d6: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+678a9fc5921a: Waiting
+55afa1ecc21d: Waiting
+5bbf453126d5: Waiting
+3e22723f2b49: Waiting
+8a2dd5967a86: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+678a9fc5921a: Waiting
+55afa1ecc21d: Waiting
+5bbf453126d5: Waiting
+3e22723f2b49: Waiting
+8a2dd5967a86: Waiting
+38b83f9399d6: Waiting
+678a9fc5921a: Waiting
+55afa1ecc21d: Waiting
+5bbf453126d5: Waiting
+3e22723f2b49: Waiting
+8a2dd5967a86: Waiting
+38b83f9399d6: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+3e22723f2b49: Waiting
+8a2dd5967a86: Waiting
+38b83f9399d6: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+678a9fc5921a: Waiting
+55afa1ecc21d: Waiting
+5bbf453126d5: Waiting
+b91d22c17840: Waiting
+678a9fc5921a: Waiting
+55afa1ecc21d: Waiting
+3e22723f2b49: Waiting
+8a2dd5967a86: Waiting
+38b83f9399d6: Waiting
+8a2dd5967a86: Waiting
+b91d22c17840: Waiting
+55afa1ecc21d: Waiting
+3e22723f2b49: Waiting
+55afa1ecc21d: Waiting
+55afa1ecc21d: Waiting
+55afa1ecc21d: Mounted from library/postgres
+5bbf453126d5: Pushed
+b91d22c17840: Pushed
+38b83f9399d6: Pushed
+cd9726287580: Pushed
+678a9fc5921a: Pushed
+8a2dd5967a86: Pushed
+3e22723f2b49: Pushed
+latest: digest: sha256:e8384a3eaf6dc34ec5331b44e8c79241d224f97724238220b34a0a7c557ff08b size: 856
+The push refers to repository [docker.io/willianlealdev/lealcert-api]
+3e22723f2b49: Waiting
+678a9fc5921a: Waiting
+8a2dd5967a86: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+38b83f9399d6: Waiting
+5bbf453126d5: Waiting
+55afa1ecc21d: Waiting
+5bbf453126d5: Waiting
+55afa1ecc21d: Waiting
+3e22723f2b49: Waiting
+678a9fc5921a: Waiting
+8a2dd5967a86: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+38b83f9399d6: Waiting
+8a2dd5967a86: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+38b83f9399d6: Waiting
+5bbf453126d5: Waiting
+55afa1ecc21d: Waiting
+3e22723f2b49: Waiting
+678a9fc5921a: Waiting
+3e22723f2b49: Waiting
+678a9fc5921a: Waiting
+8a2dd5967a86: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+38b83f9399d6: Waiting
+5bbf453126d5: Waiting
+55afa1ecc21d: Waiting
+678a9fc5921a: Waiting
+8a2dd5967a86: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+38b83f9399d6: Waiting
+5bbf453126d5: Waiting
+55afa1ecc21d: Waiting
+3e22723f2b49: Waiting
+678a9fc5921a: Waiting
+8a2dd5967a86: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+38b83f9399d6: Waiting
+5bbf453126d5: Waiting
+55afa1ecc21d: Waiting
+3e22723f2b49: Waiting
+8a2dd5967a86: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+38b83f9399d6: Waiting
+5bbf453126d5: Waiting
+55afa1ecc21d: Waiting
+3e22723f2b49: Waiting
+678a9fc5921a: Layer already exists
+8a2dd5967a86: Waiting
+cd9726287580: Waiting
+b91d22c17840: Waiting
+38b83f9399d6: Waiting
+5bbf453126d5: Layer already exists
+55afa1ecc21d: Waiting
+3e22723f2b49: Layer already exists
+cd9726287580: Already exists
+b91d22c17840: Layer already exists
+38b83f9399d6: Layer already exists
+55afa1ecc21d: Layer already exists
+8a2dd5967a86: Layer already exists
+latest: digest: sha256:e8384a3eaf6dc34ec5331b44e8c79241d224f97724238220b34a0a7c557ff08b size: 856
+The push refers to repository [docker.io/willianlealdev/lealcert-web]
+tag does not exist: willianlealdev/lealcert-web:latest
+~/workspace$ ^C
