@@ -29,6 +29,7 @@ import AdminSettings from "@/pages/admin/settings";
 import AdminMarketing from "@/pages/admin/marketing";
 import AdminRenovacoes from "@/pages/admin/renovacoes";
 import AdminCoupons from "@/pages/admin/coupons";
+import PrivacyPolicy from "@/pages/privacy-policy";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +74,7 @@ function Router() {
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/change-password" component={ChangePassword} />
+      <Route path="/politica-de-privacidade" component={PrivacyPolicy} />
       {/* Protected user routes */}
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/orders" component={() => <ProtectedRoute component={Orders} />} />

@@ -1723,7 +1723,7 @@ export default function NewOrder() {
                 <p className="text-xs text-center text-muted-foreground pt-1">
                   Ao avançar, você concorda com a{" "}
                   <a
-                    href="https://checkout.safeweb.com.br/967b698f-de8b-4a72-b646-3e426e0824f2"
+                    href="/politica-de-privacidade"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline underline-offset-2 hover:text-primary transition-colors"
