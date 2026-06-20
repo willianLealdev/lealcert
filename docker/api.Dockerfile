@@ -32,6 +32,9 @@ WORKDIR /app
 # Copy the self-contained esbuild bundle (includes pino workers)
 COPY --from=builder /workspace/artifacts/api-server/dist ./dist
 
+# Copy database migrations (applied automatically on startup)
+COPY --from=builder /workspace/artifacts/api-server/migrations ./migrations
+
 # Create upload directory (persisted via Docker volume)
 RUN mkdir -p uploads/chat-docs
 
