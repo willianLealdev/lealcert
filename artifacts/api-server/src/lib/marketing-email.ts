@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer";
 import { logger } from "./logger";
 import { db, settingsTable } from "@workspace/db";
 import type { MarketingCampaign, MarketingContact } from "@workspace/db";
@@ -29,6 +28,7 @@ async function getSmtpConfig() {
 async function createTransporter() {
   const cfg = await getSmtpConfig();
   if (!cfg.host || !cfg.user || !cfg.pass) return null;
+  const nodemailer = (await import("nodemailer")).default;
   return {
     transport: nodemailer.createTransport({
       host: cfg.host,

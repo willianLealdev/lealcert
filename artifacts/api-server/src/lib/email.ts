@@ -1,5 +1,4 @@
 import path from "path";
-import nodemailer from "nodemailer";
 import { logger } from "./logger";
 import { db, settingsTable } from "@workspace/db";
 
@@ -29,11 +28,12 @@ async function getEmailConfig() {
   return { appName, siteUrl, host, port, user, pass, from, logoUrl };
 }
 
-function createTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
+async function createTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
   if (!cfg.host || !cfg.user || !cfg.pass) {
     logger.warn("SMTP not configured — emails will be logged only");
     return null;
   }
+  const nodemailer = (await import("nodemailer")).default;
   return nodemailer.createTransport({
     host: cfg.host,
     port: cfg.port,
@@ -129,7 +129,7 @@ export async function sendOrderStatusEmail(opts: {
 
   const text = `Olá, ${opts.customerName}!\n\nSeu pedido #${opts.orderNumber} foi atualizado para: ${statusLabel}\n${opts.certName ? `Certificado: ${opts.certName}\n` : ""}${opts.total !== undefined ? `Total: R$ ${opts.total.toFixed(2)}\n` : ""}${opts.protocolNumber ? `Protocolo: ${opts.protocolNumber}\n` : ""}\n${cfg.appName} — Certificados Digitais`;
 
-  const transporter = createTransporter(cfg);
+  const transporter = await createTransporter(cfg);
   if (!transporter) {
     logger.info({ to: opts.to, orderNumber: opts.orderNumber, status: opts.status }, "📧 [DEV] Order status email (SMTP not configured)");
     return;
@@ -178,7 +178,7 @@ export async function sendSchedulingEmail(opts: {
   `, cfg.appName, cfg.logoUrl);
   const text = `Agendamento confirmado!\n\nOlá, ${opts.customerName}!\n\nPedido: #${opts.orderNumber}\nProtocolo: ${opts.protocolo}\nLocal: ${opts.localNome}\nData e hora: ${opts.dataHora}\n\nApresente documento de identificação original.\n\n${cfg.appName} — Certificados Digitais`;
 
-  const transporter = createTransporter(cfg);
+  const transporter = await createTransporter(cfg);
   if (!transporter) {
     logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "📧 [DEV] Scheduling email (SMTP not configured)");
     return;
@@ -227,7 +227,7 @@ export async function sendRenewalAlertEmail(opts: {
   `, cfg.appName, cfg.logoUrl);
   const text = `Atenção, ${opts.customerName}!\n\nSeu certificado ${opts.certificateName} vence ${daysText} (${expiresFormatted}).\n\nAcesse para renovar: ${siteUrl}/entrar\n\n${cfg.appName} — Certificados Digitais`;
 
-  const transporter = createTransporter(cfg);
+  const transporter = await createTransporter(cfg);
   if (!transporter) {
     logger.info({ to: opts.to, daysLeft: opts.daysLeft }, "📧 [DEV] Renewal alert email (SMTP not configured)");
     return;
@@ -261,7 +261,7 @@ export async function sendWelcomeEmail(to: string, name: string, userType: strin
   `, cfg.appName, cfg.logoUrl);
   const text = `Olá, ${name}!\n\nSua conta ${cfg.appName} foi ativada com sucesso. Acesse: ${cfg.siteUrl}/entrar\n\n${cfg.appName} — Certificados Digitais`;
 
-  const transporter = createTransporter(cfg);
+  const transporter = await createTransporter(cfg);
   if (!transporter) {
     logger.info({ to, userType }, "📧 [DEV] Welcome email (SMTP not configured)");
     return;
@@ -297,7 +297,7 @@ export async function sendTempPasswordEmail(to: string, name: string, tempPasswo
   `, cfg.appName, cfg.logoUrl);
   const text = `Olá, ${name}!\n\nSua senha temporária ${cfg.appName}: ${tempPassword}\n\nAo fazer login, você deverá cadastrar uma nova senha.\n\nAcesse: ${cfg.siteUrl}/entrar`;
 
-  const transporter = createTransporter(cfg);
+  const transporter = await createTransporter(cfg);
   if (!transporter) {
     logger.info({ to, tempPassword }, "📧 [DEV] Temp password email (SMTP not configured)");
     return;
@@ -326,7 +326,7 @@ export async function sendVerificationEmail(to: string, name: string, code: stri
   `, cfg.appName, cfg.logoUrl);
   const text = `Olá, ${name}!\n\nSeu código de verificação ${cfg.appName}: ${code}\n\nVálido por 30 minutos.`;
 
-  const transporter = createTransporter(cfg);
+  const transporter = await createTransporter(cfg);
   if (!transporter) {
     logger.info({ to, code }, "📧 [DEV] Verification email (SMTP not configured)");
     return;
