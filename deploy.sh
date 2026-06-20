@@ -91,10 +91,10 @@ ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" bash -s <<REMOTE_SCRIPT
   # Build API
   echo "🔨  Buildando API..."
   docker build \
+    --no-cache \
     --file docker/api.Dockerfile \
     --tag "${DOCKER_HUB_USER}/lealcert-api:${TAG}" \
     --tag "${DOCKER_HUB_USER}/lealcert-api:latest" \
-    --cache-from "${DOCKER_HUB_USER}/lealcert-api:latest" \
     .
   echo "✅  API buildada"
 

@@ -35,6 +35,9 @@ COPY --from=builder /workspace/artifacts/api-server/dist ./dist
 # Copy database migrations (applied automatically on startup)
 COPY --from=builder /workspace/artifacts/api-server/migrations ./migrations
 
+# Install externalized runtime packages not bundled by esbuild
+RUN npm install --save nodemailer
+
 # Create upload directory (persisted via Docker volume)
 RUN mkdir -p uploads/chat-docs
 
