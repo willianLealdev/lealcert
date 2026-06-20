@@ -46,10 +46,28 @@ echo ""
 # ── 1. Configurar chave SSH temporária ─────────────────────────────────────
 SSH_KEY_FILE="$(mktemp)"
 chmod 600 "$SSH_KEY_FILE"
-# Garante quebras de linha reais (Replit às vezes armazena \n literais)
-printf '%s' "$VPS_SSH_KEY" | sed 's/\\n/\n/g' > "$SSH_KEY_FILE"
-# Garante newline final obrigatório no formato PEM
-echo >> "$SSH_KEY_FILE"
+
+# Converte a chave SSH para o formato correto.
+# O Replit pode armazenar \n como texto literal — o Node.js converte para quebras reais.
+node -e "
+  const key = process.env.VPS_SSH_KEY || '';
+  const normalized = key.replace(/\\\\n/g, '\\n').trimEnd() + '\\n';
+  process.stdout.write(normalized);
+" > "$SSH_KEY_FILE"
+
+# Valida a chave antes de tentar conectar
+if ! ssh-keygen -y -f "$SSH_KEY_FILE" > /dev/null 2>&1; then
+  echo ""
+  echo "❌  A chave SSH em VPS_SSH_KEY está inválida ou malformada."
+  echo ""
+  echo "  Solução: no seu VPS, rode:"
+  echo "    cat ~/.ssh/replit_key"
+  echo "  Copie TODO o conteúdo (incluindo -----BEGIN e -----END)"
+  echo "  e cole no Secret VPS_SSH_KEY do Replit."
+  echo ""
+  exit 1
+fi
+echo "🔑  Chave SSH validada"
 
 SSH_OPTS="-i $SSH_KEY_FILE -o StrictHostKeyChecking=no -o ConnectTimeout=15"
 
