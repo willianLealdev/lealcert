@@ -1720,6 +1720,17 @@ export default function NewOrder() {
                     ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando...</>
                     : "Criar Pedido"}
                 </Button>
+                <p className="text-xs text-center text-muted-foreground pt-1">
+                  Ao avançar, você concorda com a{" "}
+                  <a
+                    href="https://checkout.safeweb.com.br/967b698f-de8b-4a72-b646-3e426e0824f2"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:text-primary transition-colors"
+                  >
+                    Política de Privacidade
+                  </a>
+                </p>
               </CardContent>
             </Card>
           </div>
