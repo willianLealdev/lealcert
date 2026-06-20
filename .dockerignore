@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# Replit
+.replit
+.local
+replit.nix
+attached_assets
+
+# Node
+node_modules
+**/node_modules
+
+# Build outputs (serão gerados dentro do container)
+**/dist
+**/.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env files locais
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (não incluir arquivos de usuário na imagem)
+artifacts/api-server/uploads
+uploads

@@ -1,50 +1,46 @@
 services:
 
-  # ── Banco de dados PostgreSQL ─────────────────────────────
+  # ── Banco de dados PostgreSQL ───────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     restart: unless-stopped
-    volumes:
-      - db_data:/var/lib/postgresql/data
     environment:
       POSTGRES_DB:       lealcert
-      POSTGRES_USER:     lealcert
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD é obrigatório}
+      POSTGRES_USER:     ${DB_USER:-lealcert}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lealcert"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-lealcert} -d lealcert"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  # ── API Node.js ───────────────────────────────────────────
+  # ── API (Express + Drizzle) ─────────────────────────────────────────────────
   api:
-    build:
-      context: .
-      target: api
+    image: ${DOCKER_HUB_USER}/lealcert-api:${TAG:-latest}
     restart: unless-stopped
+    environment:
+      DATABASE_URL:   postgresql://${DB_USER:-lealcert}:${DB_PASSWORD}@db:5432/lealcert
+      SESSION_SECRET: ${SESSION_SECRET}
+      PORT:           8080
+      NODE_ENV:       production
+      SMTP_HOST:      ${SMTP_HOST:-}
+      SMTP_PORT:      ${SMTP_PORT:-587}
+      SMTP_USER:      ${SMTP_USER:-}
+      SMTP_PASS:      ${SMTP_PASS:-}
+      SMTP_FROM:      ${SMTP_FROM:-}
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      NODE_ENV:        production
-      PORT:            8080
-      DATABASE_URL:    postgresql://lealcert:${DB_PASSWORD}@db:5432/lealcert
-      SESSION_SECRET:  ${SESSION_SECRET:?SESSION_SECRET é obrigatório}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
-      # E-mail (opcional — pode configurar no painel admin)
-      SMTP_HOST:       ${SMTP_HOST:-}
-      SMTP_PORT:       ${SMTP_PORT:-587}
-      SMTP_USER:       ${SMTP_USER:-}
-      SMTP_PASS:       ${SMTP_PASS:-}
-      SMTP_FROM:       ${SMTP_FROM:-}
     volumes:
-      - uploads:/app/artifacts/api-server/uploads
+      - uploads:/app/uploads
+    expose:
+      - "8080"
 
-  # ── Nginx (frontend + reverse proxy /api) ─────────────────
+  # ── Frontend (Nginx + React build) ─────────────────────────────────────────
   web:
-    build:
-      context: .
-      target: web
+    image: ${DOCKER_HUB_USER}/lealcert-web:${TAG:-latest}
     restart: unless-stopped
     ports:
       - "80:80"
@@ -52,5 +48,5 @@ services:
       - api
 
 volumes:
-  db_data:
+  postgres_data:
   uploads:
