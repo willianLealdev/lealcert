@@ -54,6 +54,14 @@ export const settingsTable = pgTable("settings", {
   vapidSubject: text("vapid_subject"),
   vapidPublicKey: text("vapid_public_key"),
   vapidPrivateKey: text("vapid_private_key"),
+  // IA — assistente de vendas (provedor configurável)
+  aiProvider: text("ai_provider").default("openai"),   // openai | deepseek | claude
+  openaiApiKey: text("openai_api_key"),
+  openaiModel: text("openai_model").default("gpt-4o-mini"),
+  deepseekApiKey: text("deepseek_api_key"),
+  deepseekModel: text("deepseek_model").default("deepseek-chat"),
+  claudeApiKey: text("claude_api_key"),
+  claudeModel: text("claude_model").default("claude-3-5-haiku-20241022"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

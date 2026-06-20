@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight,
-  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff,
+  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff, Bot,
 } from "lucide-react";
 import { useSendTestPush } from "@workspace/api-client-react";
 import { usePush } from "@/lib/use-push";
@@ -102,6 +102,13 @@ export default function AdminSettings() {
     vapidSubject: "mailto:contato@lealcert.com.br",
     vapidPublicKey: "",
     vapidPrivateKey: "",
+    openaiApiKey: "",
+    openaiModel: "gpt-4o-mini",
+    aiProvider: "openai",
+    deepseekApiKey: "",
+    deepseekModel: "deepseek-chat",
+    claudeApiKey: "",
+    claudeModel: "claude-3-5-haiku-20241022",
   });
 
   useEffect(() => {
@@ -116,6 +123,10 @@ export default function AdminSettings() {
         evolutionUrl?: string; evolutionApiKey?: string; evolutionInstance?: string;
         smtpHostDb?: string; smtpPortDb?: string; smtpUserDb?: string; smtpPassDb?: string;
         vapidSubject?: string; vapidPublicKey?: string; vapidPrivateKey?: string;
+        openaiApiKey?: string; openaiModel?: string;
+        aiProvider?: string;
+        deepseekApiKey?: string; deepseekModel?: string;
+        claudeApiKey?: string; claudeModel?: string;
       };
       setForm({
         appName: s.appName ?? "",
@@ -155,6 +166,13 @@ export default function AdminSettings() {
         vapidSubject: s.vapidSubject ?? "mailto:contato@lealcert.com.br",
         vapidPublicKey: s.vapidPublicKey ?? "",
         vapidPrivateKey: s.vapidPrivateKey ?? "",
+        openaiApiKey: s.openaiApiKey ?? "",
+        openaiModel: s.openaiModel ?? "gpt-4o-mini",
+        aiProvider: s.aiProvider ?? "openai",
+        deepseekApiKey: s.deepseekApiKey ?? "",
+        deepseekModel: s.deepseekModel ?? "deepseek-chat",
+        claudeApiKey: s.claudeApiKey ?? "",
+        claudeModel: s.claudeModel ?? "claude-3-5-haiku-20241022",
       });
     }
   }, [settings]);
@@ -248,7 +266,122 @@ export default function AdminSettings() {
           <TabsTrigger value="notificacoes" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Bell className="h-4 w-4" /><span>Notificações</span>
           </TabsTrigger>
+          <TabsTrigger value="ia" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Bot className="h-4 w-4" /><span>IA</span>
+          </TabsTrigger>
         </TabsList>
+
+        {/* ── IA ────────────────────────────────────────────────────────── */}
+        <TabsContent value="ia">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  <CardTitle>Assistente de Vendas (IA)</CardTitle>
+                </div>
+                <CardDescription>
+                  Configure sua própria chave OpenAI para o chat de vendas automatizado. A chave é armazenada com segurança no servidor e nunca exposta ao navegador.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Provider selector */}
+                <div className="space-y-2">
+                  <Label>Provedor de IA Ativo</Label>
+                  <Select value={form.aiProvider} onValueChange={v => set("aiProvider", v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                      <SelectItem value="deepseek">DeepSeek — mais econômico</SelectItem>
+                      <SelectItem value="claude">Claude (Anthropic)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">O provedor selecionado será usado no chat de vendas. Configure a chave correspondente abaixo.</p>
+                </div>
+
+                {/* OpenAI */}
+                <div className="rounded-lg border p-4 space-y-3">
+                  <p className="font-semibold text-sm flex items-center gap-1.5">
+                    <span className={form.aiProvider === "openai" ? "text-primary" : "text-muted-foreground"}>OpenAI (GPT)</span>
+                    {form.aiProvider === "openai" && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">ativo</span>}
+                  </p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Chave de API</Label>
+                    <MaskedInput value={form.openaiApiKey} onChange={v => set("openaiApiKey", v)} placeholder="sk-proj-..." />
+                    <p className="text-xs text-muted-foreground">Obtenha em <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">platform.openai.com/api-keys</a></p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Modelo</Label>
+                    <Select value={form.openaiModel} onValueChange={v => set("openaiModel", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gpt-4o-mini">gpt-4o-mini — Econômico (recomendado)</SelectItem>
+                        <SelectItem value="gpt-4o">gpt-4o — Mais inteligente</SelectItem>
+                        <SelectItem value="gpt-4.1-mini">gpt-4.1-mini — Nova geração econômica</SelectItem>
+                        <SelectItem value="gpt-4.1">gpt-4.1 — Nova geração completa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Custo gpt-4o-mini: ~$0,15/1M tokens entrada · ~$0,60/1M saída</p>
+                </div>
+
+                {/* DeepSeek */}
+                <div className="rounded-lg border p-4 space-y-3">
+                  <p className="font-semibold text-sm flex items-center gap-1.5">
+                    <span className={form.aiProvider === "deepseek" ? "text-primary" : "text-muted-foreground"}>DeepSeek</span>
+                    {form.aiProvider === "deepseek" && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">ativo</span>}
+                  </p>
+                  <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-800">
+                    💰 <strong>Mais econômico</strong> — deepseek-chat custa ~$0,014/1M tokens entrada · ~$0,28/1M saída (≈10× mais barato que GPT-4o-mini)
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Chave de API</Label>
+                    <MaskedInput value={form.deepseekApiKey} onChange={v => set("deepseekApiKey", v)} placeholder="sk-..." />
+                    <p className="text-xs text-muted-foreground">Obtenha em <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer" className="underline">platform.deepseek.com</a></p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Modelo</Label>
+                    <Select value={form.deepseekModel} onValueChange={v => set("deepseekModel", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="deepseek-chat">deepseek-chat — Recomendado</SelectItem>
+                        <SelectItem value="deepseek-reasoner">deepseek-reasoner — Raciocínio avançado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Claude */}
+                <div className="rounded-lg border p-4 space-y-3">
+                  <p className="font-semibold text-sm flex items-center gap-1.5">
+                    <span className={form.aiProvider === "claude" ? "text-primary" : "text-muted-foreground"}>Claude (Anthropic)</span>
+                    {form.aiProvider === "claude" && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">ativo</span>}
+                  </p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Chave de API</Label>
+                    <MaskedInput value={form.claudeApiKey} onChange={v => set("claudeApiKey", v)} placeholder="sk-ant-..." />
+                    <p className="text-xs text-muted-foreground">Obtenha em <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="underline">console.anthropic.com</a></p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Modelo</Label>
+                    <Select value={form.claudeModel} onValueChange={v => set("claudeModel", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="claude-3-5-haiku-20241022">claude-3-5-haiku — Rápido e econômico</SelectItem>
+                        <SelectItem value="claude-3-5-sonnet-20241022">claude-3-5-sonnet — Mais inteligente</SelectItem>
+                        <SelectItem value="claude-opus-4-5">claude-opus-4-5 — Máximo desempenho</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Custo haiku: ~$0,80/1M tokens entrada · ~$4/1M saída</p>
+                </div>
+              </CardContent>
+            </Card>
+            <SaveButton />
+          </form>
+        </TabsContent>
 
         {/* ── IDENTIDADE ──────────────────────────────────────────────────── */}
         <TabsContent value="identidade">

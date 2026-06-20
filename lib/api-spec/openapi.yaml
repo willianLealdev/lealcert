@@ -2942,6 +2942,20 @@ components:
           type: ["string", "null"]
         vapidPrivateKey:
           type: ["string", "null"]
+        aiProvider:
+          type: ["string", "null"]
+        openaiApiKey:
+          type: ["string", "null"]
+        openaiModel:
+          type: ["string", "null"]
+        deepseekApiKey:
+          type: ["string", "null"]
+        deepseekModel:
+          type: ["string", "null"]
+        claudeApiKey:
+          type: ["string", "null"]
+        claudeModel:
+          type: ["string", "null"]
         updatedAt:
           type: string
 
@@ -3031,6 +3045,20 @@ components:
         vapidPublicKey:
           type: string
         vapidPrivateKey:
+          type: string
+        aiProvider:
+          type: string
+        openaiApiKey:
+          type: string
+        openaiModel:
+          type: string
+        deepseekApiKey:
+          type: string
+        deepseekModel:
+          type: string
+        claudeApiKey:
+          type: string
+        claudeModel:
           type: string
 
     PushSubscribeBody:

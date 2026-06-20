@@ -32,6 +32,13 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     evolutionApiKey: mask(s.evolutionApiKey),
     smtpPassDb: mask(s.smtpPassDb),
     vapidPrivateKey: mask(s.vapidPrivateKey),             // crypto private key — never expose
+    aiProvider: s.aiProvider ?? "openai",
+    openaiApiKey: mask(s.openaiApiKey),
+    openaiModel: s.openaiModel ?? "gpt-4o-mini",
+    deepseekApiKey: mask(s.deepseekApiKey),
+    deepseekModel: s.deepseekModel ?? "deepseek-chat",
+    claudeApiKey: mask(s.claudeApiKey),
+    claudeModel: s.claudeModel ?? "claude-3-5-haiku-20241022",
     // Non-secret fields
     mailFrom: s.mailFrom,
     siteUrl: s.siteUrl,
@@ -88,6 +95,10 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     contactPhone, contactWhatsapp, contactEmailSupport, contactAddress,
     smtpHostDb, smtpPortDb, smtpUserDb, smtpPassDb,
     vapidSubject, vapidPublicKey, vapidPrivateKey,
+    openaiApiKey, openaiModel,
+    deepseekApiKey, deepseekModel,
+    claudeApiKey, claudeModel,
+    aiProvider,
   } = req.body ?? {};
 
   // Helper: skip masked sentinel value (never overwrite a real secret with "***")
@@ -128,6 +139,10 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (smtpUserDb !== undefined) u.smtpUserDb = smtpUserDb;
   if (vapidSubject !== undefined) u.vapidSubject = vapidSubject;
   if (vapidPublicKey !== undefined) u.vapidPublicKey = vapidPublicKey;
+  if (aiProvider !== undefined) u.aiProvider = aiProvider;
+  if (openaiModel !== undefined) u.openaiModel = openaiModel;
+  if (deepseekModel !== undefined) u.deepseekModel = deepseekModel;
+  if (claudeModel !== undefined) u.claudeModel = claudeModel;
   // Sensitive secrets — only update if non-empty and not the masked sentinel "***"
   set("mpAccessToken", mpAccessToken);
   set("webhookSecret", webhookSecret);
@@ -139,6 +154,9 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("evolutionApiKey", evolutionApiKey);
   set("smtpPassDb", smtpPassDb);
   set("vapidPrivateKey", vapidPrivateKey);
+  set("openaiApiKey", openaiApiKey);
+  set("deepseekApiKey", deepseekApiKey);
+  set("claudeApiKey", claudeApiKey);
 
   const [updated] = await db
     .update(settingsTable)

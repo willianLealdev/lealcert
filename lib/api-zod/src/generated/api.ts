@@ -1598,6 +1598,13 @@ export const GetSettingsResponse = zod.object({
   "vapidSubject": zod.string().nullish(),
   "vapidPublicKey": zod.string().nullish(),
   "vapidPrivateKey": zod.string().nullish(),
+  "aiProvider": zod.string().nullish(),
+  "openaiApiKey": zod.string().nullish(),
+  "openaiModel": zod.string().nullish(),
+  "deepseekApiKey": zod.string().nullish(),
+  "deepseekModel": zod.string().nullish(),
+  "claudeApiKey": zod.string().nullish(),
+  "claudeModel": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 
@@ -1647,7 +1654,14 @@ export const UpdateSettingsBody = zod.object({
   "smtpPassDb": zod.string().optional(),
   "vapidSubject": zod.string().optional(),
   "vapidPublicKey": zod.string().optional(),
-  "vapidPrivateKey": zod.string().optional()
+  "vapidPrivateKey": zod.string().optional(),
+  "aiProvider": zod.string().optional(),
+  "openaiApiKey": zod.string().optional(),
+  "openaiModel": zod.string().optional(),
+  "deepseekApiKey": zod.string().optional(),
+  "deepseekModel": zod.string().optional(),
+  "claudeApiKey": zod.string().optional(),
+  "claudeModel": zod.string().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -1694,6 +1708,13 @@ export const UpdateSettingsResponse = zod.object({
   "vapidSubject": zod.string().nullish(),
   "vapidPublicKey": zod.string().nullish(),
   "vapidPrivateKey": zod.string().nullish(),
+  "aiProvider": zod.string().nullish(),
+  "openaiApiKey": zod.string().nullish(),
+  "openaiModel": zod.string().nullish(),
+  "deepseekApiKey": zod.string().nullish(),
+  "deepseekModel": zod.string().nullish(),
+  "claudeApiKey": zod.string().nullish(),
+  "claudeModel": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 

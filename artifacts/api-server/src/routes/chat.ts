@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { eq, asc } from "drizzle-orm";
 import { db, conversations, chatMessages, certificatesTable, usersTable, ordersTable, settingsTable } from "@workspace/db";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../lib/logger";
 import { sendOrderStatusEmail } from "../lib/email";
 import multer from "multer";
@@ -169,28 +170,103 @@ router.post("/chat", async (req, res): Promise<void> => {
     }
   }
 
+  // Load AI provider settings from DB
+  const [aiSettings] = await db.select({
+    aiProvider: settingsTable.aiProvider,
+    openaiApiKey: settingsTable.openaiApiKey,
+    openaiModel: settingsTable.openaiModel,
+    deepseekApiKey: settingsTable.deepseekApiKey,
+    deepseekModel: settingsTable.deepseekModel,
+    claudeApiKey: settingsTable.claudeApiKey,
+    claudeModel: settingsTable.claudeModel,
+  }).from(settingsTable).limit(1);
+
+  const provider = aiSettings?.aiProvider || "openai";
+
+  // Validate that the selected provider has a key configured
+  const providerKey = {
+    openai: aiSettings?.openaiApiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY || "",
+    deepseek: aiSettings?.deepseekApiKey || "",
+    claude: aiSettings?.claudeApiKey || "",
+  }[provider] ?? "";
+
+  if (!providerKey) {
+    const names: Record<string, string> = { openai: "OpenAI", deepseek: "DeepSeek", claude: "Claude (Anthropic)" };
+    res.write(`data: ${JSON.stringify({ content: `⚠️ Assistente não configurado. Configure a chave ${names[provider] ?? provider} no painel Configurações → IA.` })}\n\n`);
+    res.write("data: [DONE]\n\n");
+    res.end();
+    return;
+  }
+
   let fullResponse = "";
 
-  try {
-    const stream = await openai.chat.completions.create({
-      model: "gpt-5.1",
-      max_completion_tokens: 1024,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...chatHistory,
-      ],
-      stream: true,
-    });
+  // ── Claude (Anthropic) ──────────────────────────────────────────────────
+  if (provider === "claude") {
+    const anthropic = new Anthropic({ apiKey: providerKey });
+    const claudeModel = aiSettings?.claudeModel || "claude-3-5-haiku-20241022";
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        fullResponse += content;
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    try {
+      const stream = anthropic.messages.stream({
+        model: claudeModel,
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: chatHistory.filter(m => m.role !== "system"),
+      });
+
+      for await (const event of stream) {
+        if (
+          event.type === "content_block_delta" &&
+          event.delta.type === "text_delta"
+        ) {
+          const content = event.delta.text;
+          if (content) {
+            fullResponse += content;
+            res.write(`data: ${JSON.stringify({ content })}\n\n`);
+          }
+        }
       }
+    } catch (claudeErr) {
+      logger.error({ err: claudeErr }, "Claude streaming error");
+      res.write(`data: ${JSON.stringify({ content: "\n\n⚠️ Erro ao conectar ao Claude. Verifique a chave de API." })}\n\n`);
     }
 
     await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: fullResponse });
+  } else {
+    // ── OpenAI / DeepSeek (OpenAI-compatible) ────────────────────────────
+    const baseURL = provider === "deepseek"
+      ? "https://api.deepseek.com"
+      : (aiSettings?.openaiApiKey ? undefined : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL);
+    const model = provider === "deepseek"
+      ? (aiSettings?.deepseekModel || "deepseek-chat")
+      : (aiSettings?.openaiModel || "gpt-4o-mini");
+
+    const openai = new OpenAI({ apiKey: providerKey, ...(baseURL ? { baseURL } : {}) });
+
+    try {
+      const stream = await openai.chat.completions.create({
+        model,
+        max_completion_tokens: 1024,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...chatHistory,
+        ],
+        stream: true,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) {
+          fullResponse += content;
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
+      }
+    } catch (openaiErr) {
+      logger.error({ err: openaiErr }, "OpenAI/DeepSeek streaming error");
+      res.write(`data: ${JSON.stringify({ content: "\n\n⚠️ Erro ao conectar à IA. Verifique a chave de API." })}\n\n`);
+    }
+
+    await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: fullResponse });
+  }
 
     // Detect document request action
     if (fullResponse.includes("ACAO:SOLICITAR_DOCS:")) {
@@ -326,13 +402,8 @@ router.post("/chat", async (req, res): Promise<void> => {
       }
     }
 
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-    res.end();
-  } catch (err) {
-    logger.error({ err }, "Chat stream error");
-    res.write(`data: ${JSON.stringify({ error: "Erro interno. Tente novamente." })}\n\n`);
-    res.end();
-  }
+  res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  res.end();
 });
 
 export default router;

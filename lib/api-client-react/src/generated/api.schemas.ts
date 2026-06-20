@@ -659,6 +659,20 @@ export interface AppSettings {
   vapidPublicKey?: string | null;
   /** @nullable */
   vapidPrivateKey?: string | null;
+  /** @nullable */
+  aiProvider?: string | null;
+  /** @nullable */
+  openaiApiKey?: string | null;
+  /** @nullable */
+  openaiModel?: string | null;
+  /** @nullable */
+  deepseekApiKey?: string | null;
+  /** @nullable */
+  deepseekModel?: string | null;
+  /** @nullable */
+  claudeApiKey?: string | null;
+  /** @nullable */
+  claudeModel?: string | null;
   updatedAt?: string;
 }
 
@@ -705,6 +719,13 @@ export interface AppSettingsUpdate {
   vapidSubject?: string;
   vapidPublicKey?: string;
   vapidPrivateKey?: string;
+  aiProvider?: string;
+  openaiApiKey?: string;
+  openaiModel?: string;
+  deepseekApiKey?: string;
+  deepseekModel?: string;
+  claudeApiKey?: string;
+  claudeModel?: string;
 }
 
 export type PushSubscribeBodyKeys = {

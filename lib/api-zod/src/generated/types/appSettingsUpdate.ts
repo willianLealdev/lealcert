@@ -49,4 +49,11 @@ export interface AppSettingsUpdate {
   vapidSubject?: string;
   vapidPublicKey?: string;
   vapidPrivateKey?: string;
+  aiProvider?: string;
+  openaiApiKey?: string;
+  openaiModel?: string;
+  deepseekApiKey?: string;
+  deepseekModel?: string;
+  claudeApiKey?: string;
+  claudeModel?: string;
 }
