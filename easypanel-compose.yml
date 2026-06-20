@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: lealcert
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: Leal2024Xpto
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -14,8 +14,8 @@ services:
     image: willianlealdev/lealcert-api:latest
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@db:5432/lealcert
-      SESSION_SECRET: ${SESSION_SECRET}
+      DATABASE_URL: postgresql://postgres:Leal2024Xpto@db:5432/lealcert
+      SESSION_SECRET: LealCertKey2024
       PORT: "8080"
       NODE_ENV: production
     depends_on:
@@ -26,8 +26,8 @@ services:
   web:
     image: willianlealdev/lealcert-web:latest
     restart: unless-stopped
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     depends_on:
       - api
 
