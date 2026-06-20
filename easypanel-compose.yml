@@ -1,0 +1,36 @@
+services:
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lealcert
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    image: willianlealdev/lealcert-api:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@db:5432/lealcert
+      SESSION_SECRET: ${SESSION_SECRET}
+      PORT: "8080"
+      NODE_ENV: production
+    depends_on:
+      - db
+    volumes:
+      - uploads:/app/uploads
+
+  web:
+    image: willianlealdev/lealcert-web:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  uploads:
