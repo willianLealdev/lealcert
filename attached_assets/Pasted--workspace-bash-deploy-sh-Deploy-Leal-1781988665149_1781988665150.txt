@@ -1,0 +1,269 @@
+~/workspace$ bash deploy.sh
+
+╔══════════════════════════════════════════════╗
+║   🚀  Deploy LealCert → Docker Hub + Coolify  ║
+╚══════════════════════════════════════════════╝
+  VPS:         root@213.136.88.20
+  Docker Hub:  willianlealdev/lealcert-api:latest
+
+📦  [1/4] Sincronizando código...
+Load key "/tmp/tmp.NXkvnla3kH": error in libcrypto
+root@213.136.88.20's password: 
+Load key "/tmp/tmp.NXkvnla3kH": error in libcrypto
+root@213.136.88.20's password: 
+✅  Código sincronizado
+
+🔨  [2/4] Buildando imagens no servidor...
+Load key "/tmp/tmp.NXkvnla3kH": error in libcrypto
+root@213.136.88.20's password: 
+Login Succeeded
+✅  Login Docker Hub OK
+🔨  Buildando API...
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from api.Dockerfile
+#1 transferring dockerfile: 1.46kB 0.0s done
+#1 DONE 0.0s
+
+#2 [auth] library/node:pull token for registry-1.docker.io
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:24-alpine
+#3 DONE 1.3s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 503B 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [auth] willianlealdev/lealcert-api:pull token for registry-1.docker.io
+#6 DONE 0.0s
+
+#7 [builder  1/10] FROM docker.io/library/node:24-alpine@sha256:156b55f92e98ccd5ef49578a8cea0df4679826564bad1c9d4ef04462b9f0ded6
+#7 resolve docker.io/library/node:24-alpine@sha256:156b55f92e98ccd5ef49578a8cea0df4679826564bad1c9d4ef04462b9f0ded6 0.0s done
+#7 DONE 0.1s
+
+#8 importing cache manifest from willianlealdev/lealcert-api:latest
+#8 inferred cache manifest type: application/vnd.oci.image.index.v1+json done
+#8 DONE 2.0s
+
+#5 [internal] load build context
+#5 transferring context: 375.44kB 0.0s done
+#5 DONE 0.1s
+
+#9 [builder  4/10] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+#9 CACHED
+
+#10 [builder  5/10] COPY tsconfig.base.json tsconfig.json ./
+#10 CACHED
+
+#11 [builder  8/10] RUN pnpm install --frozen-lockfile --ignore-scripts
+#11 CACHED
+
+#12 [builder  9/10] RUN pnpm run typecheck:libs
+#12 CACHED
+
+#13 [stage-1 3/4] COPY --from=builder /workspace/artifacts/api-server/dist ./dist
+#13 CACHED
+
+#14 [stage-1 2/4] WORKDIR /app
+#14 CACHED
+
+#15 [builder 10/10] RUN pnpm --filter @workspace/api-server run build
+#15 CACHED
+
+#16 [builder  2/10] RUN corepack enable && corepack prepare pnpm@latest --activate
+#16 CACHED
+
+#17 [builder  3/10] WORKDIR /workspace
+#17 CACHED
+
+#18 [builder  6/10] COPY lib/ ./lib/
+#18 CACHED
+
+#19 [builder  7/10] COPY artifacts/api-server/ ./artifacts/api-server/
+#19 CACHED
+
+#20 [stage-1 4/4] RUN mkdir -p uploads/chat-docs
+#20 CACHED
+
+#21 exporting to image
+#21 exporting layers 0.0s done
+#21 exporting manifest sha256:5b234065d994710b9acca4cb8d51c01e253e2dd09957f77ba52f3e3268815643 done
+#21 exporting config sha256:4e3a7347c89e99835f0d3321c1068f91a466fc979db21603c21ce189ba541c76 done
+#21 exporting attestation manifest sha256:64c64213582485d93b19c2115577aad50a5bae7e61af004f37201f74bb7f7c33 0.1s done
+#21 exporting manifest list sha256:63e710abd95bc93db19bcacbefef0d728aa4f0fdd982081dd4a08ea57f392e16
+#21 exporting manifest list sha256:63e710abd95bc93db19bcacbefef0d728aa4f0fdd982081dd4a08ea57f392e16 0.0s done
+#21 naming to docker.io/willianlealdev/lealcert-api:latest done
+#21 unpacking to docker.io/willianlealdev/lealcert-api:latest 0.0s done
+#21 DONE 0.3s
+✅  API buildada
+🔨  Buildando Web...
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from web.Dockerfile
+#1 transferring dockerfile: 1.30kB done
+#1 DONE 0.0s
+
+#2 [auth] library/nginx:pull token for registry-1.docker.io
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:24-alpine
+#3 DONE 0.3s
+
+#4 [internal] load metadata for docker.io/library/nginx:1.27-alpine
+#4 DONE 1.2s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 503B done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 [auth] willianlealdev/lealcert-web:pull token for registry-1.docker.io
+#7 DONE 0.0s
+
+#8 [builder  1/10] FROM docker.io/library/node:24-alpine@sha256:156b55f92e98ccd5ef49578a8cea0df4679826564bad1c9d4ef04462b9f0ded6
+#8 resolve docker.io/library/node:24-alpine@sha256:156b55f92e98ccd5ef49578a8cea0df4679826564bad1c9d4ef04462b9f0ded6 0.1s done
+#8 DONE 0.1s
+
+#9 [stage-1 1/3] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#9 resolve docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 0.1s done
+#9 DONE 0.1s
+
+#10 importing cache manifest from willianlealdev/lealcert-web:latest
+#10 ERROR: failed to configure registry cache importer: docker.io/willianlealdev/lealcert-web:latest: not found
+
+#6 [internal] load build context
+#6 transferring context: 2.67MB 0.1s done
+#6 DONE 0.1s
+
+#11 [builder  2/10] RUN corepack enable && corepack prepare pnpm@latest --activate
+#11 CACHED
+
+#12 [builder  3/10] WORKDIR /workspace
+#12 CACHED
+
+#13 [builder  4/10] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+#13 CACHED
+
+#14 [builder  5/10] COPY tsconfig.base.json tsconfig.json ./
+#14 CACHED
+
+#15 [builder  6/10] COPY lib/ ./lib/
+#15 CACHED
+
+#16 [stage-1 2/3] COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+#16 CACHED
+
+#17 [builder  7/10] COPY artifacts/lealcert/ ./artifacts/lealcert/
+#17 DONE 0.3s
+
+#18 [builder  8/10] RUN pnpm install --frozen-lockfile --ignore-scripts
+#18 2.051 Scope: all 8 workspace projects
+#18 2.329 ? Verifying lockfile against supply-chain policies (811 entries)...
+#18 2.358 Lockfile is up to date, resolution step is skipped
+#18 2.561 Progress: resolved 1, reused 0, downloaded 0, added 0
+#18 2.852 Packages: +657
+#18 2.852 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#18 3.921 Progress: resolved 657, reused 0, downloaded 0, added 0
+#18 5.588 Progress: resolved 657, reused 0, downloaded 1, added 0
+#18 6.596 Progress: resolved 657, reused 0, downloaded 105, added 4
+#18 7.665 Progress: resolved 657, reused 0, downloaded 180, added 12
+#18 8.694 Progress: resolved 657, reused 0, downloaded 208, added 15
+#18 9.904 Progress: resolved 657, reused 0, downloaded 223, added 16
+#18 10.91 Progress: resolved 657, reused 0, downloaded 307, added 22
+#18 11.95 Progress: resolved 657, reused 0, downloaded 351, added 26
+#18 12.96 Progress: resolved 657, reused 0, downloaded 457, added 35
+#18 13.98 Progress: resolved 657, reused 0, downloaded 541, added 43
+#18 15.00 Progress: resolved 657, reused 0, downloaded 648, added 54
+#18 15.19 [WARN] Request took 13124ms: https://registry.npmjs.org/pnpm
+#18 15.90 [WARN] Request took 10010ms: https://registry.npmjs.org/@tailwindcss%2Foxide
+#18 16.01 Progress: resolved 657, reused 0, downloaded 657, added 232
+#18 16.42 [WARN] Request took 10008ms: https://registry.npmjs.org/@types%2Fnode
+#18 17.06 Progress: resolved 657, reused 0, downloaded 657, added 454
+#18 17.44 Progress: resolved 657, reused 0, downloaded 657, added 657, done
+#18 18.30 
+#18 18.30 devDependencies:
+#18 18.30 + prettier 3.8.3
+#18 18.30 + typescript 5.9.3
+#18 18.30 
+#18 18.37 ✓ Lockfile passes supply-chain policies (811 entries in 16s)
+#18 18.57 Done in 17.8s using pnpm v11.8.0
+#18 DONE 21.2s
+
+#19 [builder  9/10] RUN pnpm run typecheck:libs
+#19 1.938 $ tsc --build
+#19 DONE 2.5s
+
+#20 [builder 10/10] RUN BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/lealcert run build
+#20 1.691 $ vite build --config vite.config.ts
+#20 2.091 /workspace/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js:115
+#20 2.091       throw new Error(
+#20 2.091             ^
+#20 2.091 
+#20 2.091 Error: Cannot find module @rollup/rollup-linux-x64-musl. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+#20 2.091     at requireWithFriendlyError (/workspace/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js:115:9)
+#20 2.091     at Object.<anonymous> (/workspace/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js:124:76)
+#20 2.091     at Module._compile (node:internal/modules/cjs/loader:1854:14)
+#20 2.091     at Object..js (node:internal/modules/cjs/loader:1985:10)
+#20 2.091     at Module.load (node:internal/modules/cjs/loader:1577:32)
+#20 2.091     at Module._load (node:internal/modules/cjs/loader:1379:12)
+#20 2.091     at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+#20 2.091     at loadCJSModuleWithModuleLoad (node:internal/modules/esm/translators:326:3)
+#20 2.091     at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:231:7)
+#20 2.091     at ModuleJob.run (node:internal/modules/esm/module_job:439:25) {
+#20 2.091   [cause]: Error: Cannot find module '@rollup/rollup-linux-x64-musl'
+#20 2.091   Require stack:
+#20 2.091   - /workspace/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js
+#20 2.091       at Module._resolveFilename (node:internal/modules/cjs/loader:1500:15)
+#20 2.091       at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+#20 2.091       at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)
+#20 2.091       at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1116:12)
+#20 2.091       at Module._load (node:internal/modules/cjs/loader:1285:25)
+#20 2.091       at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+#20 2.091       at Module.require (node:internal/modules/cjs/loader:1600:12)
+#20 2.091       at require (node:internal/modules/helpers:153:16)
+#20 2.091       at requireWithFriendlyError (/workspace/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js:97:10)
+#20 2.091       at Object.<anonymous> (/workspace/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js:124:76) {
+#20 2.091     code: 'MODULE_NOT_FOUND',
+#20 2.091     requireStack: [
+#20 2.091       '/workspace/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js'
+#20 2.091     ]
+#20 2.091   }
+#20 2.091 }
+#20 2.091 
+#20 2.091 Node.js v24.17.0
+#20 2.137 /workspace/artifacts/lealcert:
+#20 2.137 [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @workspace/lealcert@0.0.0 build: `vite build --config vite.config.ts`
+#20 2.137 Exit status 1
+#20 ERROR: process "/bin/sh -c BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/lealcert run build" did not complete successfully: exit code: 1
+------
+ > importing cache manifest from willianlealdev/lealcert-web:latest:
+------
+------
+ > [builder 10/10] RUN BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/lealcert run build:
+2.091     requireStack: [
+2.091       '/workspace/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js'
+2.091     ]
+2.091   }
+2.091 }
+2.091 
+2.091 Node.js v24.17.0
+2.137 /workspace/artifacts/lealcert:
+2.137 [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @workspace/lealcert@0.0.0 build: `vite build --config vite.config.ts`
+2.137 Exit status 1
+------
+web.Dockerfile:25
+--------------------
+  23 |     
+  24 |     # Build the Vite app (output → artifacts/lealcert/dist/public)
+  25 | >>> RUN BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/lealcert run build
+  26 |     
+  27 |     # ── Stage 2: Nginx ────────────────────────────────────────────────────────────
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/lealcert run build" did not complete successfully: exit code: 1
+~/workspace$ 

@@ -1,5 +1,5 @@
 # ── Stage 1: Builder ─────────────────────────────────────────────────────────
-FROM node:24-alpine AS builder
+FROM node:24-slim AS builder
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
@@ -25,7 +25,7 @@ RUN pnpm run typecheck:libs
 RUN pnpm --filter @workspace/api-server run build
 
 # ── Stage 2: Production ───────────────────────────────────────────────────────
-FROM node:24-alpine
+FROM node:24-slim
 
 WORKDIR /app
 

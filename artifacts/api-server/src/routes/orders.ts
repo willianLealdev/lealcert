@@ -386,14 +386,14 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
   }
 
   const [settings] = await db.select().from(settingsTable).limit(1);
-  const mpToken = settings?.mpAccessToken || process.env.MP_ACCESS_TOKEN || "";
+  const mpToken = settings?.mpAccessToken || "";
 
   if (!mpToken) {
     res.status(400).json({ error: "Chaves do MercadoPago não configuradas. Acesse Configurações para inserir o MP Access Token." });
     return;
   }
 
-  const siteUrl = settings?.siteUrl || process.env.SITE_URL || "https://example.com";
+  const siteUrl = settings?.siteUrl || "https://lealcert.com.br";
 
   const cpfDigits = row.order.customerCpfCnpj.replace(/\D/g, "");
   const payerEmail = row.order.customerEmail || "cliente@lealcert.com.br";
@@ -483,8 +483,8 @@ router.post("/orders/:id/sync-payment", requireAuth, async (req, res): Promise<v
   }
 
   const [settings] = await db.select().from(settingsTable).limit(1);
-  const mpToken = settings?.mpAccessToken || process.env.MP_ACCESS_TOKEN || "";
-  if (!mpToken) { res.status(500).json({ ok: false, error: "MP Access Token não configurado" }); return; }
+  const mpToken = settings?.mpAccessToken || "";
+  if (!mpToken) { res.status(500).json({ ok: false, error: "MP Access Token não configurado. Configure em Configurações → MercadoPago." }); return; }
 
   const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${order.mpPaymentId}`, {
     headers: { Authorization: `Bearer ${mpToken}` },

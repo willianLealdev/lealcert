@@ -69,7 +69,7 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
     if (!paymentId) { logger.warn("mp/webhook: sem paymentId"); return; }
 
     const [settings] = await db.select().from(settingsTable).limit(1);
-    const mpToken = settings?.mpAccessToken || process.env.MP_ACCESS_TOKEN || "";
+    const mpToken = settings?.mpAccessToken || "";
     if (!mpToken) { logger.warn("mp/webhook: MP Access Token não configurado"); return; }
 
     // ── Signature verification ──────────────────────────────────────────────
