@@ -57,17 +57,22 @@ trap cleanup EXIT
 
 # ── 2. Sincronizar código para o VPS ───────────────────────────────────────
 echo "📦  [1/4] Sincronizando código..."
-rsync -az --delete \
-  --exclude '.git' \
-  --exclude '.replit' \
-  --exclude '.local' \
-  --exclude 'attached_assets' \
-  --exclude 'node_modules' \
-  --exclude '*/node_modules' \
-  --exclude '*/dist' \
-  --exclude '.env.production' \
-  -e "ssh $SSH_OPTS" \
-  ./ "${VPS_USER}@${VPS_HOST}:/opt/lealcert/"
+
+# Cria o diretório no VPS se não existir
+ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" "mkdir -p /opt/lealcert"
+
+# Empacota e envia via tar+ssh (não precisa de rsync)
+tar czf - \
+  --exclude='.git' \
+  --exclude='.replit' \
+  --exclude='.local' \
+  --exclude='attached_assets' \
+  --exclude='node_modules' \
+  --exclude='*/node_modules' \
+  --exclude='*/dist' \
+  --exclude='.env.production' \
+  . \
+  | ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" "cd /opt/lealcert && tar xzf -"
 
 echo "✅  Código sincronizado"
 
