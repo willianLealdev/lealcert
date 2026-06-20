@@ -1217,20 +1217,20 @@ export default function NewOrder() {
               <p className="text-sm text-muted-foreground">O link de pagamento será gerado após a confirmação do pedido.</p>
             </CardHeader>
             <CardContent>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {[
-                  { label: "PIX", desc: "Aprovação imediata", icon: "💠" },
-                  { label: "Cartão de Crédito", desc: "Parcelamento disponível", icon: "💳" },
-                  { label: "Boleto", desc: "Vencimento em 3 dias", icon: "📄" },
-                ].map(({ label, desc, icon }) => (
-                  <div key={label} className="flex items-center gap-3 border rounded-xl p-3.5 bg-muted/20">
-                    <span className="text-2xl shrink-0">{icon}</span>
-                    <div>
-                      <p className="text-sm font-semibold">{label}</p>
-                      <p className="text-xs text-muted-foreground">{desc}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center gap-4 border rounded-xl p-4 bg-primary/5 border-primary/20">
+                <div className="h-12 w-12 rounded-xl bg-[#32BCAD]/10 flex items-center justify-center shrink-0">
+                  <svg viewBox="0 0 48 48" className="h-8 w-8" fill="none">
+                    <path d="M11.7 36.3c1.9 1.9 4.4 2.9 7.1 2.9h10.4c2.6 0 5.2-1 7.1-2.9l7.3-7.3c3.9-3.9 3.9-10.2 0-14.1l-7.3-7.3c-1.9-1.9-4.4-2.9-7.1-2.9H18.8c-2.6 0-5.2 1-7.1 2.9L4.4 15c-3.9 3.9-3.9 10.2 0 14.1l7.3 7.2z" fill="#32BCAD"/>
+                    <path d="M17.5 28.5l-3.5-3.5 3.5-3.5M30.5 28.5l3.5-3.5-3.5-3.5M21 30l6-12" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-base">PIX</p>
+                  <p className="text-sm text-muted-foreground">Aprovação imediata · disponível 24h</p>
+                </div>
+                <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center shrink-0">
+                  <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3 text-center">
                 Pagamento processado com segurança via <strong>Mercado Pago</strong>
