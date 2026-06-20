@@ -208,6 +208,10 @@ export interface Certificate {
   /** @nullable */
   safewebIdProduto?: string | null;
   validityMonths?: number;
+  /** @nullable */
+  product?: string | null;
+  /** @nullable */
+  issuanceType?: string | null;
   createdAt: string;
 }
 
@@ -219,6 +223,8 @@ export interface CertificateInput {
   active?: boolean;
   garHashProduto?: string;
   safewebIdProduto?: string;
+  product?: string;
+  issuanceType?: string;
 }
 
 export interface CertificateUpdate {
@@ -229,6 +235,8 @@ export interface CertificateUpdate {
   active?: boolean;
   garHashProduto?: string;
   safewebIdProduto?: string;
+  product?: string;
+  issuanceType?: string;
 }
 
 export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];

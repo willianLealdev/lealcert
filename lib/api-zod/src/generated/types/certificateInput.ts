@@ -14,4 +14,6 @@ export interface CertificateInput {
   active?: boolean;
   garHashProduto?: string;
   safewebIdProduto?: string;
+  product?: string;
+  issuanceType?: string;
 }

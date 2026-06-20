@@ -14,6 +14,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, Link2, AlertCircle, Users, User, Download } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
+const PRODUCT_OPTIONS = ["e-CPF", "e-CNPJ", "e-PF", "e-PJ"];
+const ISSUANCE_OPTIONS = ["Presencial", "Videoconferência", "Fast", "Renovação"];
+
 type CertForm = {
   name: string;
   description: string;
@@ -22,9 +25,11 @@ type CertForm = {
   active: boolean;
   garHashProduto: string;
   safewebIdProduto: string;
+  product: string;
+  issuanceType: string;
 };
 
-const EMPTY: CertForm = { name: "", description: "", price: "", priceContador: "", active: true, garHashProduto: "", safewebIdProduto: "" };
+const EMPTY: CertForm = { name: "", description: "", price: "", priceContador: "", active: true, garHashProduto: "", safewebIdProduto: "", product: "", issuanceType: "" };
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
@@ -69,6 +74,8 @@ export default function AdminCertificates() {
       active: c.active,
       garHashProduto: c.garHashProduto ?? "",
       safewebIdProduto: c.safewebIdProduto ?? "",
+      product: c.product ?? "",
+      issuanceType: c.issuanceType ?? "",
     });
     setEditId(c.id);
     setOpen(true);
@@ -85,6 +92,8 @@ export default function AdminCertificates() {
       active: form.active,
       garHashProduto: form.garHashProduto || undefined,
       safewebIdProduto: form.safewebIdProduto || undefined,
+      product: form.product || undefined,
+      issuanceType: form.issuanceType || undefined,
     };
     if (editId !== null) update.mutate({ id: editId, data });
     else create.mutate({ data });
@@ -216,6 +225,30 @@ export default function AdminCertificates() {
                 </Label>
                 <Input type="number" step="0.01" min="0" value={form.priceContador} onChange={e => set("priceContador", e.target.value)} placeholder="Deixe vazio para usar preço cliente" />
                 <p className="text-xs text-muted-foreground">Se preenchido, contadores verão este valor. Clientes sempre veem o Preço Cliente.</p>
+              </div>
+            </div>
+
+            {/* Produto e Emissão */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Produto</Label>
+                <Select value={form.product || "__none__"} onValueChange={v => set("product", v === "__none__" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Não classificado —</SelectItem>
+                    {PRODUCT_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo de Emissão</Label>
+                <Select value={form.issuanceType || "__none__"} onValueChange={v => set("issuanceType", v === "__none__" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Não classificado —</SelectItem>
+                    {ISSUANCE_OPTIONS.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

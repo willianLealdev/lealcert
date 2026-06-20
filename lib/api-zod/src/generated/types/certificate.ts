@@ -20,5 +20,9 @@ export interface Certificate {
   /** @nullable */
   safewebIdProduto?: string | null;
   validityMonths?: number;
+  /** @nullable */
+  product?: string | null;
+  /** @nullable */
+  issuanceType?: string | null;
   createdAt: string;
 }

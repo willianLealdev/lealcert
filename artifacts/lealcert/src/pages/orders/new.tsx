@@ -77,6 +77,12 @@ export default function NewOrder() {
     return c.price;
   }
 
+  function validityLabel(months: number) {
+    if (months < 12) return `${months} ${months === 1 ? "mês" : "meses"}`;
+    const years = months / 12;
+    return years === 1 ? "1 ano" : `${years} anos`;
+  }
+
   const [form, setForm] = useState({
     certificateId: "",
     clientType: "cpf",
@@ -126,6 +132,11 @@ export default function NewOrder() {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; type: string; value: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
+
+  // Cascading certificate selector state
+  const [pickedProduct, setPickedProduct] = useState("");
+  const [pickedIssuance, setPickedIssuance] = useState("");
+  const [pickedValidity, setPickedValidity] = useState("");
 
   const [warrantyInfoOpen, setWarrantyInfoOpen] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
@@ -250,6 +261,51 @@ export default function NewOrder() {
     },
   });
 
+  // Cascade selector derived state
+  const PRODUCT_OPTIONS_ORDER = ["e-CPF", "e-CNPJ", "e-PF", "e-PJ"];
+  const ISSUANCE_ORDER = ["Presencial", "Videoconferência", "Fast", "Renovação"];
+
+  const certsWithMeta = certificates ?? [];
+
+  const availableProducts = PRODUCT_OPTIONS_ORDER.filter(p =>
+    certsWithMeta.some(c => c.product === p)
+  );
+
+  const availableIssuances = ISSUANCE_ORDER.filter(i =>
+    certsWithMeta.some(c => c.product === pickedProduct && c.issuanceType === i)
+  );
+
+  const availableValidities = Array.from(
+    new Set(
+      certsWithMeta
+        .filter(c => c.product === pickedProduct && c.issuanceType === pickedIssuance)
+        .map(c => c.validityMonths)
+    )
+  ).sort((a, b) => (a ?? 0) - (b ?? 0));
+
+  const filteredCerts = certsWithMeta.filter(c =>
+    c.product === pickedProduct &&
+    c.issuanceType === pickedIssuance &&
+    (c.validityMonths ?? 0) === Number(pickedValidity)
+  );
+
+  // When product changes, reset downstream
+  function pickProduct(p: string) {
+    setPickedProduct(p);
+    setPickedIssuance("");
+    setPickedValidity("");
+    set("certificateId", "");
+  }
+  function pickIssuance(i: string) {
+    setPickedIssuance(i);
+    setPickedValidity("");
+    set("certificateId", "");
+  }
+  function pickValidity(v: string) {
+    setPickedValidity(v);
+    set("certificateId", "");
+  }
+
   const selectedCert = certificates?.find(c => String(c.id) === form.certificateId);
   const subtotal = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? 15 : 0);
   const discount = appliedCoupon
@@ -260,14 +316,16 @@ export default function NewOrder() {
   const total = Math.max(0, subtotal - discount);
 
   // Derived: is the selected certificate an e-CNPJ type?
-  const isCnpjCert = selectedCert ? /cnpj/i.test(selectedCert.name) : false;
+  const isCnpjCert = selectedCert
+    ? (selectedCert.product === "e-CNPJ" || selectedCert.product === "e-PJ" || /cnpj/i.test(selectedCert.name))
+    : false;
   // Show CNPJ/company fields either for e-CNPJ cert OR e-CPF cert with NF jurídica
   const showCnpjFields = isCnpjCert || (!isCnpjCert && nfType === "juridica");
 
   // Auto-set clientType when certificate changes
   useEffect(() => {
     if (!selectedCert) return;
-    const certIsCnpj = /cnpj/i.test(selectedCert.name);
+    const certIsCnpj = selectedCert.product === "e-CNPJ" || selectedCert.product === "e-PJ" || /cnpj/i.test(selectedCert.name);
     setForm(prev => ({ ...prev, clientType: certIsCnpj ? "cnpj" : "cpf" }));
     if (!certIsCnpj) setNfType("fisica");
     setCnpjToQuery("");
@@ -481,45 +539,110 @@ export default function NewOrder() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <Card>
-              <CardHeader><CardTitle>Modelo de Certificado *</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle>Certificado Digital *</CardTitle>
+                <p className="text-sm text-muted-foreground">Selecione as opções abaixo para encontrar seu Certificado Digital.</p>
+              </CardHeader>
               <CardContent className="space-y-4">
-                {!certificates?.length ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">Nenhum modelo disponível.</p>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {certificates.map(c => {
-                      const selected = form.certificateId === String(c.id);
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => set("certificateId", String(c.id))}
-                          className={[
-                            "text-left rounded-xl border-2 p-4 transition-all cursor-pointer w-full",
-                            selected
-                              ? "border-primary bg-primary/5 shadow-md"
-                              : "border-border hover:border-primary/40 hover:bg-muted/40",
-                          ].join(" ")}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={["font-semibold text-sm leading-tight", selected ? "text-primary" : ""].join(" ")}>{c.name}</p>
-                            {selected && (
-                              <span className="shrink-0 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
-                                <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                              </span>
-                            )}
-                          </div>
-                          {c.description && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.description}</p>
-                          )}
-                          {c.validityMonths ? (
-                            <p className="text-xs text-amber-600 font-medium mt-1">{c.validityMonths} meses de validade</p>
-                          ) : null}
-                          <p className={["text-lg font-bold mt-3", selected ? "text-primary" : "text-foreground"].join(" ")}>{formatBRL(certPrice(c))}</p>
-                        </button>
-                      );
-                    })}
+                {/* Step 1 — Cascade header */}
+                <div className="grid grid-cols-3 divide-x border rounded-lg overflow-hidden">
+                  {/* Produto */}
+                  <div className="p-3 space-y-1.5">
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wider">Produto</p>
+                    <div className="relative">
+                      <select
+                        value={pickedProduct}
+                        onChange={e => pickProduct(e.target.value)}
+                        className="w-full appearance-none bg-transparent text-sm font-medium pr-6 focus:outline-none cursor-pointer"
+                      >
+                        <option value="">Selecione ▾</option>
+                        {availableProducts.length > 0
+                          ? availableProducts.map(p => <option key={p} value={p}>{p}</option>)
+                          : ["e-CPF", "e-CNPJ", "e-PF", "e-PJ"].map(p => <option key={p} value={p}>{p}</option>)
+                        }
+                      </select>
+                    </div>
                   </div>
+                  {/* Emissão */}
+                  <div className={["p-3 space-y-1.5 transition-opacity", !pickedProduct ? "opacity-40 pointer-events-none" : ""].join(" ")}>
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wider">Emissão</p>
+                    <select
+                      value={pickedIssuance}
+                      onChange={e => pickIssuance(e.target.value)}
+                      disabled={!pickedProduct}
+                      className="w-full appearance-none bg-transparent text-sm font-medium pr-6 focus:outline-none cursor-pointer disabled:cursor-default"
+                    >
+                      <option value="">Selecione ▾</option>
+                      {availableIssuances.length > 0
+                        ? availableIssuances.map(i => <option key={i} value={i}>{i}</option>)
+                        : ["Presencial", "Videoconferência", "Fast", "Renovação"].map(i => <option key={i} value={i}>{i}</option>)
+                      }
+                    </select>
+                  </div>
+                  {/* Validade */}
+                  <div className={["p-3 space-y-1.5 transition-opacity", !pickedIssuance ? "opacity-40 pointer-events-none" : ""].join(" ")}>
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wider">Validade</p>
+                    <select
+                      value={pickedValidity}
+                      onChange={e => pickValidity(e.target.value)}
+                      disabled={!pickedIssuance}
+                      className="w-full appearance-none bg-transparent text-sm font-medium pr-6 focus:outline-none cursor-pointer disabled:cursor-default"
+                    >
+                      <option value="">Selecione ▾</option>
+                      {availableValidities.map(v => (
+                        <option key={v} value={String(v ?? 0)}>{validityLabel(v ?? 0)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Step 2 — Filtered certificate list */}
+                {pickedProduct && pickedIssuance && pickedValidity && (
+                  filteredCerts.length === 0 ? (
+                    <p className="text-sm text-center text-muted-foreground py-3">Nenhum certificado disponível para essa combinação.</p>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden divide-y">
+                      <div className="grid grid-cols-[1fr_auto_auto] items-center px-4 py-2 bg-muted/50">
+                        <p className="text-xs font-semibold text-muted-foreground">Produtos</p>
+                        <p className="text-xs font-semibold text-muted-foreground text-right pr-8">Valores</p>
+                      </div>
+                      {filteredCerts.map(c => {
+                        const selected = form.certificateId === String(c.id);
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => set("certificateId", String(c.id))}
+                            className={[
+                              "w-full grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 text-left transition-colors",
+                              selected ? "bg-primary/5" : "hover:bg-muted/40",
+                            ].join(" ")}
+                          >
+                            <span className={["text-sm font-medium", selected ? "text-primary" : "text-foreground"].join(" ")}>
+                              {c.name}
+                            </span>
+                            <span className={["text-sm font-bold tabular-nums", selected ? "text-primary" : "text-foreground"].join(" ")}>
+                              {formatBRL(certPrice(c))}
+                            </span>
+                            <span className={[
+                              "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
+                              selected ? "border-primary bg-primary" : "border-muted-foreground/40",
+                            ].join(" ")}>
+                              {selected && (
+                                <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )
+                )}
+
+                {!pickedProduct && !certificates?.length && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhum modelo disponível. Configure os certificados no painel admin.</p>
                 )}
                 <div className="flex items-center gap-3 p-3 border rounded-lg">
                   <Checkbox

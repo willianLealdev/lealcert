@@ -358,6 +358,8 @@ export const ListCertificatesResponseItem = zod.object({
   "garHashProduto": zod.string().nullish(),
   "safewebIdProduto": zod.string().nullish(),
   "validityMonths": zod.number().optional(),
+  "product": zod.string().nullish(),
+  "issuanceType": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListCertificatesResponse = zod.array(ListCertificatesResponseItem)
@@ -373,7 +375,9 @@ export const CreateCertificateBody = zod.object({
   "priceContador": zod.number().optional(),
   "active": zod.boolean().optional(),
   "garHashProduto": zod.string().optional(),
-  "safewebIdProduto": zod.string().optional()
+  "safewebIdProduto": zod.string().optional(),
+  "product": zod.string().optional(),
+  "issuanceType": zod.string().optional()
 })
 
 
@@ -401,7 +405,9 @@ export const UpdateCertificateBody = zod.object({
   "priceContador": zod.number().optional(),
   "active": zod.boolean().optional(),
   "garHashProduto": zod.string().optional(),
-  "safewebIdProduto": zod.string().optional()
+  "safewebIdProduto": zod.string().optional(),
+  "product": zod.string().optional(),
+  "issuanceType": zod.string().optional()
 })
 
 export const UpdateCertificateResponse = zod.object({
@@ -414,6 +420,8 @@ export const UpdateCertificateResponse = zod.object({
   "garHashProduto": zod.string().nullish(),
   "safewebIdProduto": zod.string().nullish(),
   "validityMonths": zod.number().optional(),
+  "product": zod.string().nullish(),
+  "issuanceType": zod.string().nullish(),
   "createdAt": zod.string()
 })
 

@@ -12,6 +12,8 @@ export const certificatesTable = pgTable("certificates", {
   safewebIdProduto: text("safeweb_id_produto"),
   priceContador: numeric("price_contador", { precision: 10, scale: 2 }),
   validityMonths: integer("validity_months").notNull().default(12),
+  product: text("product"),
+  issuanceType: text("issuance_type"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

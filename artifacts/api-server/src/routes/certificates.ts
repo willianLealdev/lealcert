@@ -18,6 +18,8 @@ function certRow(c: typeof certificatesTable.$inferSelect) {
     garHashProduto: c.garHashProduto ?? null,
     safewebIdProduto: c.safewebIdProduto ?? null,
     validityMonths: c.validityMonths,
+    product: c.product ?? null,
+    issuanceType: c.issuanceType ?? null,
     createdAt: c.createdAt,
   };
 }
@@ -30,7 +32,7 @@ router.get("/certificates", async (req, res): Promise<void> => {
 });
 
 router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {
-  const { name, description, price, priceContador, active, garHashProduto, safewebIdProduto } = req.body ?? {};
+  const { name, description, price, priceContador, active, garHashProduto, safewebIdProduto, product, issuanceType } = req.body ?? {};
   if (!name || price === undefined) {
     res.status(400).json({ error: "Nome e preço são obrigatórios." });
     return;
@@ -43,6 +45,8 @@ router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {
     active: active !== false,
     garHashProduto: garHashProduto || null,
     safewebIdProduto: safewebIdProduto || null,
+    product: product || null,
+    issuanceType: issuanceType || null,
   }).returning();
   res.status(201).json(certRow(cert));
 });
@@ -73,31 +77,36 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
     return;
   }
 
-  // Remove formatação do CNPJ AR (pontos, barras, traços) — a Safeweb exige só dígitos no path
   swSettings.cnpjAr = swSettings.cnpjAr.replace(/\D/g, "");
 
-  // Apenas videoconferência (tipo 3)
-  const TIPOS_EMISSAO = [3];
+  const TIPOS_EMISSAO = [1, 2, 3, 4];
   const allProdutos: Awaited<ReturnType<typeof swListarProdutos>> = [];
   const erros: string[] = [];
+
+  const ISSUANCE_MAP: Record<number, string> = {
+    1: "Presencial",
+    2: "Renovação",
+    3: "Videoconferência",
+    4: "Fast",
+  };
+
+  const productsPerType: Record<number, Awaited<ReturnType<typeof swListarProdutos>>> = {};
 
   for (const tipo of TIPOS_EMISSAO) {
     try {
       const raw = await swListarProdutos(swSettings, tipo);
-      // A Safeweb pode retornar array direto OU objeto wrapper
       let lista: typeof allProdutos = [];
       if (Array.isArray(raw)) {
         lista = raw;
       } else if (raw && typeof raw === "object") {
         const obj = raw as Record<string, unknown>;
-        // Tenta campos comuns de wrapper
         const inner = obj["Produtos"] ?? obj["produtos"] ?? obj["data"] ?? obj["Data"] ?? obj["items"];
         if (Array.isArray(inner)) lista = inner as typeof allProdutos;
-        // Se veio sucesso=false, captura mensagem
         if (obj["sucesso"] === false || obj["Sucesso"] === false) {
           erros.push(`Tipo ${tipo}: ${String(obj["mensagem"] ?? obj["Mensagem"] ?? "sem produtos")}`);
         }
       }
+      productsPerType[tipo] = lista;
       allProdutos.push(...lista);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -108,13 +117,16 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
 
   logger.info({ total: allProdutos.length, erros }, "import-safeweb: coleta concluída");
 
-  // Deduplica por idProduto
   const seen = new Set<number>();
-  const unique = allProdutos.filter(p => {
-    if (seen.has(p.idProduto)) return false;
-    seen.add(p.idProduto);
-    return true;
-  });
+  const unique: Array<{ produto: (typeof allProdutos)[number]; tipo: number }> = [];
+  for (const tipo of TIPOS_EMISSAO) {
+    for (const p of (productsPerType[tipo] ?? [])) {
+      if (!seen.has(p.idProduto)) {
+        seen.add(p.idProduto);
+        unique.push({ produto: p, tipo });
+      }
+    }
+  }
 
   if (!unique.length) {
     const detail = erros.length ? ` Detalhes: ${erros.join("; ")}` : "";
@@ -122,25 +134,23 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
     return;
   }
 
-  // Busca IDs já importados
   const existing = await db.select({ safewebIdProduto: certificatesTable.safewebIdProduto }).from(certificatesTable);
   const existingIds = new Set(existing.map(e => e.safewebIdProduto).filter(Boolean));
 
-  // Insere os novos
   let imported = 0;
   let skipped = 0;
-  for (const p of unique) {
+  for (const { produto: p, tipo } of unique) {
     const idStr = String(p.idProduto);
     if (existingIds.has(idStr)) { skipped++; continue; }
-    const descParts = [p.TipoEmissao, p.ProdutoModelo].filter(Boolean);
     await db.insert(certificatesTable).values({
       name: p.Nome,
-      description: descParts.length ? descParts.join(" · ") : null,
+      description: null,
       price: "0.00",
       active: true,
       safewebIdProduto: idStr,
       validityMonths: (p.Validade || 1) * 12,
       garHashProduto: null,
+      issuanceType: ISSUANCE_MAP[tipo] ?? null,
     });
     imported++;
   }
@@ -150,7 +160,7 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
 
 router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const { name, description, price, priceContador, active, garHashProduto, safewebIdProduto } = req.body ?? {};
+  const { name, description, price, priceContador, active, garHashProduto, safewebIdProduto, product, issuanceType } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
   if (description !== undefined) updates.description = description;
@@ -159,6 +169,8 @@ router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> 
   if (active !== undefined) updates.active = active;
   if (garHashProduto !== undefined) updates.garHashProduto = garHashProduto || null;
   if (safewebIdProduto !== undefined) updates.safewebIdProduto = safewebIdProduto || null;
+  if (product !== undefined) updates.product = product || null;
+  if (issuanceType !== undefined) updates.issuanceType = issuanceType || null;
 
   const [cert] = await db
     .update(certificatesTable)
@@ -177,5 +189,4 @@ router.delete("/certificates/:id", requireAdmin, async (req, res): Promise<void>
   await db.delete(certificatesTable).where(eq(certificatesTable.id, id));
   res.sendStatus(204);
 });
-
 export default router;

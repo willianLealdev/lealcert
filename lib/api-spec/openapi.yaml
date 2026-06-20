@@ -2375,6 +2375,10 @@ components:
           type: ["string", "null"]
         validityMonths:
           type: integer
+        product:
+          type: ["string", "null"]
+        issuanceType:
+          type: ["string", "null"]
         createdAt:
           type: string
 
@@ -2396,6 +2400,10 @@ components:
           type: string
         safewebIdProduto:
           type: string
+        product:
+          type: string
+        issuanceType:
+          type: string
 
     CertificateUpdate:
       type: object
@@ -2413,6 +2421,10 @@ components:
         garHashProduto:
           type: string
         safewebIdProduto:
+          type: string
+        product:
+          type: string
+        issuanceType:
           type: string
 
     Order:
