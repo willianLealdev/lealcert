@@ -48,8 +48,22 @@ router.post("/users", requireAdmin, async (req, res): Promise<void> => {
   });
 });
 
+// ── GET /users/:id — only admin or the user themselves ──────────────────────
 router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "ID inválido." });
+    return;
+  }
+
+  // IDOR guard: non-admin users can only access their own profile
+  const sessionRole = req.session.role as string | undefined;
+  const sessionUserId = req.session.userId as number;
+  if (sessionRole !== "admin" && sessionUserId !== id) {
+    res.status(403).json({ error: "Acesso negado." });
+    return;
+  }
+
   const [user] = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -101,6 +115,13 @@ router.patch("/users/:id", requireAdmin, async (req, res): Promise<void> => {
 
 router.delete("/users/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+
+  // Prevent admin from deleting their own account via this route
+  if (id === (req.session.userId as number)) {
+    res.status(400).json({ error: "Não é possível excluir a própria conta." });
+    return;
+  }
+
   await db.delete(usersTable).where(eq(usersTable.id, id));
   res.sendStatus(204);
 });

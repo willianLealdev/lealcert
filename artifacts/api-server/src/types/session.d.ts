@@ -7,5 +7,6 @@ declare module "express-session" {
     userType: string;
     cpfCnpj: string;
     name: string;
+    csrfToken: string;
   }
 }

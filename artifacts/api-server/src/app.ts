@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
@@ -77,7 +77,7 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
-// General: 200 req / 15 min per IP (webhooks and push subscribe exempt)
+// General: 200 req / 15 min per IP
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
@@ -96,10 +96,21 @@ const authLimiter = rateLimit({
   message: { error: "Muitas tentativas. Aguarde 15 minutos antes de tentar novamente." },
 });
 
+// Chat: 30 messages / 15 min per IP — prevents AI cost exhaustion
+const chatLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas mensagens enviadas. Aguarde alguns minutos." },
+});
+
 app.use("/api", generalLimiter);
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/forgot-password", authLimiter);
+app.use("/api/auth/resend-verification", authLimiter);  // prevent email spam
+app.use("/api/chat", chatLimiter);                      // prevent AI cost abuse
 
 // ── Session (session-only cookie — expires when browser closes) ──────────────
 const PgSession = connectPgSimple(session);
@@ -125,5 +136,14 @@ app.use(
 );
 
 app.use("/api", router);
+
+// ── Global error handler — must have 4 params to be recognized by Express ────
+// Prevents stack traces from leaking to the client in any environment.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: Error, req: Request, res: Response, _next: NextFunction): void => {
+  logger.error({ err, method: req.method, path: req.path }, "Unhandled error");
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Erro interno do servidor." });
+});
 
 export default app;

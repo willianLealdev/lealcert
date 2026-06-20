@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import { db, usersTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { sendVerificationEmail, sendWelcomeEmail, sendTempPasswordEmail } from "../lib/email";
@@ -32,14 +33,24 @@ function userResponse(user: typeof usersTable.$inferSelect) {
 
 const router = Router();
 
+// ── GET /auth/csrf-token — backend-generated CSRF token ──────────────────────
+// The frontend must call this endpoint and include the returned token in the
+// X-CSRF-Token header on every state-changing request.
+router.get("/auth/csrf-token", (req, res): void => {
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = randomBytes(32).toString("hex");
+  }
+  res.json({ csrfToken: req.session.csrfToken });
+});
+
 router.post("/auth/register", async (req, res): Promise<void> => {
   const { name, email, cpfCnpj, password, phone, userType } = req.body ?? {};
   if (!name || !email || !cpfCnpj || !password) {
     res.status(400).json({ error: "Nome, e-mail, CPF/CNPJ e senha são obrigatórios." });
     return;
   }
-  if (password.length < 6) {
-    res.status(400).json({ error: "A senha deve ter no mínimo 6 caracteres." });
+  if (password.length < 8) {
+    res.status(400).json({ error: "A senha deve ter no mínimo 8 caracteres." });
     return;
   }
   const resolvedUserType = userType === "contador" ? "contador" : "cliente";
@@ -113,10 +124,20 @@ router.post("/auth/verify-email", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Failed to send welcome email");
   }
-  req.session.userId = user.id;
-  req.session.role = user.role;
-  req.session.userType = user.userType;
-  res.json(userResponse({ ...user, emailVerified: true, emailVerificationCode: null, emailVerificationExpiresAt: null }));
+
+  // Regenerate session to prevent session fixation
+  const userData = { ...user, emailVerified: true, emailVerificationCode: null, emailVerificationExpiresAt: null };
+  req.session.regenerate((err) => {
+    if (err) {
+      logger.error({ err }, "Session regeneration failed after verify-email");
+      res.status(500).json({ error: "Erro interno ao iniciar sessão." });
+      return;
+    }
+    req.session.userId = user.id;
+    req.session.role = user.role;
+    req.session.userType = user.userType;
+    res.json(userResponse(userData));
+  });
 });
 
 router.post("/auth/resend-verification", async (req, res): Promise<void> => {
@@ -166,6 +187,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .limit(1);
 
   if (!user) {
+    // Use constant-time comparison to prevent user enumeration timing attacks
+    await bcrypt.compare(password, "$2a$10$invalidhashfortimingprotection00000000000000000000000");
     res.status(401).json({ error: "CPF/CNPJ ou senha inválidos." });
     return;
   }
@@ -182,10 +205,20 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     res.status(401).json({ error: "CPF/CNPJ ou senha inválidos." });
     return;
   }
-  req.session.userId = user.id;
-  req.session.role = user.role;
-  req.session.userType = user.userType;
-  res.json(userResponse(user));
+
+  // Regenerate session ID after successful login (prevents session fixation attacks)
+  const userData = userResponse(user);
+  req.session.regenerate((err) => {
+    if (err) {
+      logger.error({ err }, "Session regeneration failed after login");
+      res.status(500).json({ error: "Erro interno ao iniciar sessão." });
+      return;
+    }
+    req.session.userId = user.id;
+    req.session.role = user.role;
+    req.session.userType = user.userType;
+    res.json(userData);
+  });
 });
 
 router.post("/auth/forgot-password", async (req, res): Promise<void> => {
@@ -234,8 +267,8 @@ router.post("/auth/change-password", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Senha atual e nova senha são obrigatórias." });
     return;
   }
-  if (newPassword.length < 6) {
-    res.status(400).json({ error: "A nova senha deve ter no mínimo 6 caracteres." });
+  if (newPassword.length < 8) {
+    res.status(400).json({ error: "A nova senha deve ter no mínimo 8 caracteres." });
     return;
   }
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
@@ -294,6 +327,10 @@ router.patch("/auth/profile", async (req, res): Promise<void> => {
   if (phone) updates.phone = phone;
 
   if (newPassword) {
+    if (newPassword.length < 8) {
+      res.status(400).json({ error: "A nova senha deve ter no mínimo 8 caracteres." });
+      return;
+    }
     if (!currentPassword) {
       res.status(400).json({ error: "Informe a senha atual." });
       return;

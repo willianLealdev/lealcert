@@ -1,12 +1,14 @@
 /**
  * POST /mp/webhook — recebe notificações de pagamento do MercadoPago.
  * Ao confirmar pagamento aprovado:
- *  1. Atualiza pedido para status "paid"
- *  2. Envia notificação (e-mail + WhatsApp)
- *  3. Dispara registro automático no provedor ativo (Gestão AR ou Safeweb)
+ *  1. Verifica assinatura HMAC-SHA256 do webhook (x-signature header)
+ *  2. Atualiza pedido para status "paid"
+ *  3. Envia notificação (e-mail + WhatsApp)
+ *  4. Dispara registro automático no provedor ativo (Gestão AR ou Safeweb)
  */
 import { Router } from "express";
 import { eq } from "drizzle-orm";
+import { createHmac, timingSafeEqual } from "crypto";
 import { db, ordersTable, settingsTable, certificatesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { garAutoComprar } from "../lib/gar-auto";
@@ -16,8 +18,41 @@ import { sendPushToUser, sendPushToAdmins } from "../lib/push";
 
 const router = Router();
 
+/**
+ * Verifica a assinatura HMAC do MercadoPago.
+ * Formato do header x-signature: "ts=TIMESTAMP,v1=HMAC_SHA256"
+ * Manifesto a assinar: "id:<paymentId>;request-id:<x-request-id>;ts:<ts>"
+ * Ref: https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks
+ */
+function verifyMpSignature(
+  secret: string,
+  xSignature: string,
+  xRequestId: string,
+  paymentId: string | number,
+): boolean {
+  try {
+    const parts = Object.fromEntries(
+      xSignature.split(",").map(p => p.trim().split("=") as [string, string])
+    );
+    const ts = parts["ts"];
+    const v1 = parts["v1"];
+    if (!ts || !v1) return false;
+
+    const manifest = `id:${paymentId};request-id:${xRequestId};ts:${ts}`;
+    const expected = createHmac("sha256", secret).update(manifest).digest("hex");
+
+    // Constant-time comparison to prevent timing attacks
+    const expectedBuf = Buffer.from(expected, "hex");
+    const actualBuf = Buffer.from(v1, "hex");
+    if (expectedBuf.length !== actualBuf.length) return false;
+    return timingSafeEqual(expectedBuf, actualBuf);
+  } catch {
+    return false;
+  }
+}
+
 router.post("/mp/webhook", async (req, res): Promise<void> => {
-  res.sendStatus(200); // responde imediatamente para o MP não retentar
+  res.sendStatus(200); // respond immediately so MP doesn't retry
 
   try {
     const topic = req.query.topic as string | undefined;
@@ -36,6 +71,24 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
     const [settings] = await db.select().from(settingsTable).limit(1);
     const mpToken = settings?.mpAccessToken || process.env.MP_ACCESS_TOKEN || "";
     if (!mpToken) { logger.warn("mp/webhook: MP Access Token não configurado"); return; }
+
+    // ── Signature verification ──────────────────────────────────────────────
+    const webhookSecret = settings?.webhookSecret || "";
+    if (webhookSecret) {
+      const xSignature = (req.headers["x-signature"] as string) || "";
+      const xRequestId = (req.headers["x-request-id"] as string) || "";
+      if (!xSignature) {
+        logger.warn({ paymentId }, "mp/webhook: x-signature ausente — rejeitando");
+        return;
+      }
+      if (!verifyMpSignature(webhookSecret, xSignature, xRequestId, String(paymentId))) {
+        logger.warn({ paymentId }, "mp/webhook: assinatura HMAC inválida — rejeitando");
+        return;
+      }
+    } else {
+      logger.warn("mp/webhook: webhookSecret não configurado — verificação de assinatura ignorada");
+    }
+    // ───────────────────────────────────────────────────────────────────────
 
     const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { Authorization: `Bearer ${mpToken}` },
@@ -91,7 +144,7 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
       url: `/admin/orders/${order.id}`,
     }).catch((err: unknown) => logger.error({ err }, "mp/webhook: erro ao enviar push aos admins"));
 
-    // 2b. Notificar cliente
+    // 2c. Notificar cliente
     notifyOrderStatus({
       to: order.customerEmail,
       phone: order.customerPhone,

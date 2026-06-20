@@ -164,8 +164,7 @@ router.post("/orders/consulta-previa", requireAuth, async (req, res): Promise<vo
     }
   } catch (err) {
     logger.error({ err }, "Consulta prévia error");
-    const msg = err instanceof Error ? err.message : String(err);
-    res.status(422).json({ ok: false, hasPsbio: false, mensagem: `Erro ao consultar: ${msg}`, requiresPresencial: true });
+    res.status(422).json({ ok: false, hasPsbio: false, mensagem: "Não foi possível consultar os dados. Tente novamente.", requiresPresencial: true });
   }
 });
 
