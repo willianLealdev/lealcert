@@ -1,0 +1,572 @@
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+db-1   | The files belonging to this database system will be owned by user "postgres".
+db-1   | This user must also own the server process.
+db-1   | 
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:28:19 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:28:25 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:28:31 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:28:38 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+db-1   | The database cluster will be initialized with locale "en_US.utf8".
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+db-1   | The default database encoding has accordingly been set to "UTF8".
+db-1   | The default text search configuration will be set to "english".
+db-1   | 
+db-1   | Data page checksums are disabled.
+db-1   | 
+db-1   | fixing permissions on existing directory /var/lib/postgresql/data ... ok
+db-1   | creating subdirectories ... ok
+db-1   | selecting dynamic shared memory implementation ... posix
+db-1   | selecting default max_connections ... 100
+db-1   | selecting default shared_buffers ... 128MB
+db-1   | selecting default time zone ... Etc/UTC
+db-1   | creating configuration files ... ok
+db-1   | running bootstrap script ... ok
+db-1   | performing post-bootstrap initialization ... ok
+db-1   | syncing data to disk ... ok
+db-1   | 
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:28:44 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:28:52 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:29:01 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:29:13 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:29:32 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:30:05 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:31:02 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+db-1   | initdb: warning: enabling "trust" authentication for local connections
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+db-1   | initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+db-1   | 
+db-1   | Success. You can now start the database server using:
+db-1   | 
+db-1   |     pg_ctl -D /var/lib/postgresql/data -l logfile start
+db-1   | 
+db-1   | waiting for server to start....2026-06-20 23:23:49.529 UTC [47] LOG:  starting PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+db-1   | 2026-06-20 23:23:49.536 UTC [47] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+db-1   | 2026-06-20 23:23:49.559 UTC [50] LOG:  database system was shut down at 2026-06-20 23:23:49 UTC
+db-1   | 2026-06-20 23:23:49.574 UTC [47] LOG:  database system is ready to accept connections
+db-1   |  done
+db-1   | server started
+db-1   | CREATE DATABASE
+db-1   | 
+db-1   | 
+db-1   | /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+db-1   | 
+db-1   | waiting for server to shut down....2026-06-20 23:23:50.033 UTC [47] LOG:  received fast shutdown request
+db-1   | 2026-06-20 23:23:50.040 UTC [47] LOG:  aborting any active transactions
+db-1   | 2026-06-20 23:23:50.054 UTC [47] LOG:  background worker "logical replication launcher" (PID 53) exited with exit code 1
+db-1   | 2026-06-20 23:23:50.063 UTC [48] LOG:  shutting down
+db-1   | 2026-06-20 23:23:50.069 UTC [48] LOG:  checkpoint starting: shutdown immediate
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+db-1   | 2026-06-20 23:23:50.191 UTC [48] LOG:  checkpoint complete: wrote 926 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.039 s, sync=0.068 s, total=0.127 s; sync files=301, longest=0.007 s, average=0.001 s; distance=4273 kB, estimate=4273 kB; lsn=0/191F0F0, redo lsn=0/191F0F0
+db-1   | 2026-06-20 23:23:50.208 UTC [47] LOG:  database system is shut down
+db-1   |  done
+db-1   | server stopped
+db-1   | 
+db-1   | PostgreSQL init process complete; ready for start up.
+db-1   | 
+db-1   | 2026-06-20 23:23:50.310 UTC [1] LOG:  starting PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+db-1   | 2026-06-20 23:23:50.313 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+db-1   | 2026-06-20 23:23:50.313 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+db-1   | 2026-06-20 23:23:50.331 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+db-1   | 2026-06-20 23:23:50.357 UTC [63] LOG:  database system was shut down at 2026-06-20 23:23:50 UTC
+db-1   | 2026-06-20 23:23:50.376 UTC [1] LOG:  database system is ready to accept connections
+db-1   | 2026-06-20 23:28:50.429 UTC [61] LOG:  checkpoint starting: time
+db-1   | 2026-06-20 23:28:54.679 UTC [61] LOG:  checkpoint complete: wrote 45 buffers (0.3%); 0 WAL file(s) added, 0 removed, 0 recycled; write=4.226 s, sync=0.010 s, total=4.251 s; sync files=12, longest=0.005 s, average=0.001 s; distance=261 kB, estimate=261 kB; lsn=0/1960528, redo lsn=0/19604F0
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:32:08 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:33:14 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+web-1  | nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:27
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+api-1  | node:internal/modules/package_json_reader:301
+api-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+api-1  |         ^
+api-1  | 
+api-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+api-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+api-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+api-1  |     at moduleResolve (node:internal/modules/esm/resolve:859:18)
+api-1  |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+api-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+api-1  |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+api-1  |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+api-1  |     at #resolve (node:internal/modules/esm/loader:673:17)
+api-1  |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+api-1  |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+api-1  |   code: 'ERR_MODULE_NOT_FOUND'
+api-1  | }
+api-1  | 
+api-1  | Node.js v24.17.0
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/20 23:34:20 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/co

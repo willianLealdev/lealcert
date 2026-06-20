@@ -26,8 +26,8 @@ services:
   web:
     image: willianlealdev/lealcert-web:latest
     restart: unless-stopped
-    expose:
-      - "80"
+    ports:
+      - "8090:80"
     depends_on:
       - api
 
