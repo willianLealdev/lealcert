@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, certificatesTable, settingsTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { swListarProdutos, type SafewebSettings } from "../lib/safeweb";
@@ -135,10 +135,11 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
   }
 
   function deriveProduct(nome: string): string | null {
-    if (/e-cnpj/i.test(nome)) return "e-CNPJ";
-    if (/e-cpf/i.test(nome))  return "e-CPF";
-    if (/e-pj/i.test(nome))   return "e-PJ";
-    if (/e-pf/i.test(nome))   return "e-PF";
+    const n = (nome ?? "").toLowerCase().replace(/[^a-z0-9]/g, " ");
+    if (n.includes("cnpj")) return "e-CNPJ";
+    if (n.includes("cpf"))  return "e-CPF";
+    if (n.includes("e pj") || n.match(/\bpj\b/)) return "e-PJ";
+    if (n.includes("e pf") || n.match(/\bpf\b/)) return "e-PF";
     return null;
   }
 
@@ -177,6 +178,18 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
       imported++;
     }
   }
+
+  await db.execute(sql`
+    UPDATE certificates SET product =
+      CASE
+        WHEN name ILIKE '%cnpj%' THEN 'e-CNPJ'
+        WHEN name ILIKE '%cpf%'  THEN 'e-CPF'
+        WHEN name ILIKE '%e-pj%' OR name ILIKE '%e pj%' THEN 'e-PJ'
+        WHEN name ILIKE '%e-pf%' OR name ILIKE '%e pf%' THEN 'e-PF'
+        ELSE product
+      END
+    WHERE product IS NULL OR product = ''
+  `);
 
   res.json({ imported, updated, skipped: 0, total: unique.length });
 });
