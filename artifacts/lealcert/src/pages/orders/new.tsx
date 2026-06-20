@@ -62,6 +62,26 @@ function formatBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 }
 
+// ─── Privacy Policy helpers ──────────────────────────────────────────────────
+
+function PPSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-base font-bold text-foreground border-b pb-1.5">{title}</h2>
+      <div className="space-y-2 text-muted-foreground leading-relaxed">{children}</div>
+    </section>
+  );
+}
+
+function PPSub({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5 mt-2">
+      <h3 className="font-semibold text-foreground text-sm">{title}</h3>
+      <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+
 // ─── Stepper ─────────────────────────────────────────────────────────────────
 
 const STEPS = [
@@ -1266,16 +1286,111 @@ export default function NewOrder() {
 
       {/* Privacy Policy dialog */}
       <Dialog open={privacyOpen} onOpenChange={setPrivacyOpen}>
-        <DialogContent className="max-w-3xl p-0 overflow-hidden" style={{ height: "85vh" }}>
+        <DialogContent className="max-w-3xl flex flex-col p-0 overflow-hidden" style={{ maxHeight: "88vh" }}>
           <DialogHeader className="px-6 pt-5 pb-3 border-b shrink-0">
-            <DialogTitle>Política de Privacidade</DialogTitle>
+            <DialogTitle>Política de Privacidade e Uso de Dados Pessoais</DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">Versão 5.1 — Última atualização: 23/02/2026</p>
           </DialogHeader>
-          <iframe
-            src="/politica-de-privacidade"
-            className="w-full flex-1 border-0"
-            style={{ height: "calc(85vh - 68px)" }}
-            title="Política de Privacidade"
-          />
+          <div className="overflow-y-auto flex-1 px-6 py-6 space-y-8 text-sm">
+
+            <PPSection title="1. Introdução">
+              <p>A Política de Privacidade e Uso de Dados Pessoais tem como objetivo principal evidenciar a transparência do compromisso da Safeweb em garantir a proteção dos dados fornecidos pelos titulares de dados pessoais.</p>
+              <p>Não fornecemos informações pessoais para terceiros sem a devida autorização e não divulgamos informações que possam identificar os titulares dos dados, salvo em casos de pedido judicial ou determinação legal.</p>
+              <p>A aceitação da nossa Política se dará quando você acessar ou utilizar o site, aplicativo ou serviços da Safeweb, em observância à Lei Geral de Proteção de Dados Pessoais n° 13.709/2018 (LGPD).</p>
+            </PPSection>
+
+            <PPSection title="2. Definições">
+              <dl className="space-y-2">
+                {([
+                  ["Agentes de tratamento", "O controlador e o operador."],
+                  ["ANPD", "Autoridade Nacional de Proteção de Dados."],
+                  ["Consentimento", "Manifestação livre, informada e inequívoca pela qual o titular concorda com o tratamento de seus dados pessoais para uma finalidade determinada."],
+                  ["Controlador", "Aquele que toma as decisões referentes ao tratamento de dados pessoais."],
+                  ["Cookie", "Pequeno pedaço de informação que um site atribui ao dispositivo do titular enquanto visualiza um site."],
+                  ["Dado Pessoal", "Informação relacionada a pessoa natural identificada ou identificável."],
+                  ["Dado Pessoal Sensível", "Dado pessoal sobre origem racial ou étnica, convicção religiosa, opinião política, dado referente à saúde ou à vida sexual, dado genético ou biométrico."],
+                  ["DPO (Encarregado)", "Canal de comunicação entre o controlador, os titulares dos dados e a ANPD."],
+                  ["ITI", "Instituto Nacional de Tecnologia da Informação — Autoridade Certificadora Raiz da ICP-Brasil."],
+                  ["Titular", "Pessoa natural a quem se referem os dados pessoais tratados pela Safeweb."],
+                ] as [string, string][]).map(([term, def]) => (
+                  <div key={term}>
+                    <dt className="font-semibold text-foreground">{term}</dt>
+                    <dd className="text-muted-foreground ml-4">{def}</dd>
+                  </div>
+                ))}
+              </dl>
+            </PPSection>
+
+            <PPSection title="3. Direitos dos Usuários sobre os Dados Pessoais">
+              <PPSub title="3.1 Direito de Revogação"><p>Titulares de dados pessoais tratados pela Safeweb poderão solicitar a revogação das permissões de uso de dados, uma vez que o prazo legal do tratamento esteja expirado.</p></PPSub>
+              <PPSub title="3.2 Direito de Divulgação"><p>A Safeweb não divulga os dados pessoais dos titulares, exceto por determinação legal ou a pedido do próprio titular do dado.</p></PPSub>
+              <PPSub title="3.3 Direito de Retificação"><p>O titular tem direito de solicitar a retificação de seus dados pessoais incompletos, inexatos ou desatualizados, exceto informações contidas dentro dos Certificados Digitais, gravadas no momento da emissão.</p></PPSub>
+              <PPSub title="3.4 Direito à Exclusão"><p>O titular tem direito à exclusão definitiva dos dados pessoais que tiver fornecido à Safeweb, ao término da relação entre as partes, quando ultrapassado o período obrigatório de armazenamento.</p></PPSub>
+              <PPSub title="3.5 Direito à Portabilidade"><p>As solicitações de portabilidade de dados serão analisadas caso a caso, via <a href="https://portaldotitular.safecomply.com.br/safecomply/safeweb" target="_blank" rel="noopener noreferrer" className="text-primary underline">portaldotitular.safecomply.com.br</a>.</p></PPSub>
+            </PPSection>
+
+            <PPSection title="4. Responsabilidades dos Titulares">
+              <p>Os titulares dos dados pessoais têm a obrigação de assegurar que os dados fornecidos à Safeweb são precisos, completos e atualizados.</p>
+            </PPSection>
+
+            <PPSection title="5. Política de Cookies">
+              <p>Ao utilizar o nosso site, você concorda com a utilização dos cookies. Cookies são arquivos de texto que visam facilitar ou aprimorar a experiência do usuário. Você pode alterar a configuração a qualquer tempo no seu navegador.</p>
+              <ul className="list-disc ml-5 mt-2 space-y-1 text-muted-foreground">
+                {["Preferências, recursos e serviços", "Plugins", "Publicidade personalizada", "Análise e pesquisa", "Usabilidade", "Essenciais"].map(c => <li key={c}>{c}</li>)}
+              </ul>
+            </PPSection>
+
+            <PPSection title="6. Controlador de Dados">
+              <div className="overflow-x-auto mt-2">
+                <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+                  <tbody className="divide-y divide-border">
+                    {([
+                      ["Nome", "Safeweb Segurança da Informação Ltda."],
+                      ["CNPJ", "01.579.286/0001-74"],
+                      ["Endereço", "Av. Princesa Isabel, 828 – Santana – Porto Alegre/RS – CEP 90620-000"],
+                      ["Encarregado (DPO)", "Gisele Strey"],
+                      ["E-mail", "privacidade@safeweb.com.br"],
+                      ["Telefones", "+55 0800-728-5900 | +55 51 3018-0300"],
+                    ] as [string, string][]).map(([k, v]) => (
+                      <tr key={k}>
+                        <td className="px-3 py-2 font-semibold text-foreground bg-muted w-1/3">{k}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{v}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </PPSection>
+
+            <PPSection title="7. Sobre o Tratamento dos Seus Dados Pessoais">
+              <PPSub title="7.1 Quais informações são coletadas?">
+                <ul className="list-disc ml-5 space-y-1 text-muted-foreground">
+                  {["Nome", "CPF, RG, CNH, Título de Eleitor, PIS, RNE ou passaporte", "Data de nascimento", "E-mail", "Número de telefone", "Endereço / código postal / país", "Dados biométricos (face, digitais e voz)", "Dados financeiros"].map(i => <li key={i}>{i}</li>)}
+                </ul>
+              </PPSub>
+              <PPSub title="7.4 Base Legal">
+                <ul className="list-disc ml-5 space-y-1 text-muted-foreground">
+                  {["Cumprimento da obrigação legal e regulatória pelo Controlador", "Garantia de prevenção à fraude e segurança do titular", "Para a execução dos serviços e produtos contratados", "Legítimo interesse do Controlador"].map(i => <li key={i}>{i}</li>)}
+                </ul>
+              </PPSub>
+              <PPSub title="7.7 Por quanto tempo armazenamos seus dados?">
+                <p>Para dados pessoais de titulares de certificação digital, por no mínimo 7 (sete) anos a partir da expiração ou revogação do Certificado Digital, conforme DOC-ICP-05, item 5.5.2.</p>
+              </PPSub>
+            </PPSection>
+
+            <PPSection title="8. Atualização da Política">
+              <p>A Safeweb se reserva ao direito de alterar essa Política periodicamente. Sempre que houver alterações que ensejem novas autorizações, será publicada uma nova versão sujeita a novo consentimento.</p>
+            </PPSection>
+
+            <PPSection title="9. Legislação Aplicável">
+              <p>Este documento é regido pela legislação brasileira. Foro da Comarca de Porto Alegre/RS para dirimir quaisquer questões oriundas do presente documento.</p>
+            </PPSection>
+
+            <PPSection title="10. Contato">
+              <p>Para dúvidas, entre em contato pelo e-mail <a href="mailto:privacidade@safeweb.com.br" className="text-primary underline">privacidade@safeweb.com.br</a> ou pelo <a href="https://portaldotitular.safecomply.com.br/safecomply/safeweb" target="_blank" rel="noopener noreferrer" className="text-primary underline">Portal de Atendimento ao Titular</a>.</p>
+            </PPSection>
+
+          </div>
         </DialogContent>
       </Dialog>
 
