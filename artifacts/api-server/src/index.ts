@@ -57,6 +57,18 @@ async function seed() {
   logger.info("Admin user created: CPF 00000000000 / senha admin123");
 }
 
+async function ensureSessionTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "session" (
+      "sid" varchar NOT NULL COLLATE "default",
+      "sess" json NOT NULL,
+      "expire" timestamp(6) NOT NULL,
+      CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
+    ) WITH (OIDS=FALSE);
+    CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+  `);
+}
+
 async function main() {
   logger.info("Running database migrations...");
   const migrationDb = drizzle(pool);
@@ -64,6 +76,7 @@ async function main() {
     migrationsFolder: path.join(__dirname, "../migrations"),
   });
   logger.info("Database migrations complete");
+  await ensureSessionTable();
 
   await seed();
 
