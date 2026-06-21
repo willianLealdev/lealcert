@@ -36,7 +36,10 @@ function maskPhone(v: string) {
 }
 
 function normalizeCrc(v: string): string {
-  return v.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  let s = v.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  // CRC sempre termina com letra de tipo (O, P, T…). Converte "0" final para "O".
+  if (s.length > 2 && s[s.length - 1] === "0") s = s.slice(0, -1) + "O";
+  return s;
 }
 
 interface CrcResult {
