@@ -63,9 +63,9 @@ interface CfcProfissional {
   Crc?: string;
 }
 
-async function consultarCfc(crcNormalized: string): Promise<CfcProfissional | null> {
+async function consultarCfc(identifier: string): Promise<CfcProfissional | null> {
   try {
-    const url = `https://sistemas.cfc.org.br/servico/api/Profissional/${encodeURIComponent(crcNormalized)}/teste`;
+    const url = `https://sistemas.cfc.org.br/servico/api/Profissional/${encodeURIComponent(identifier)}/teste`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!resp.ok) return null;
     const data = await resp.json() as CfcProfissional[];
@@ -74,6 +74,30 @@ async function consultarCfc(crcNormalized: string): Promise<CfcProfissional | nu
     return null;
   }
 }
+
+// ── GET /auth/lookup-crc?cpfCnpj=XXX — busca por CPF ou CNPJ ─────────────────
+router.get("/auth/lookup-crc", async (req, res): Promise<void> => {
+  const cpfCnpj = String(req.query.cpfCnpj ?? "").replace(/\D/g, "");
+  if (cpfCnpj.length !== 11 && cpfCnpj.length !== 14) {
+    res.status(400).json({ error: "CPF ou CNPJ inválido." });
+    return;
+  }
+  const prof = await consultarCfc(cpfCnpj);
+  if (!prof || !prof.Nome) {
+    res.json({ found: false });
+    return;
+  }
+  const ativo = prof.SituacaoCadastral?.toLowerCase() === "ativo";
+  res.json({
+    found: true,
+    valid: ativo,
+    nome: prof.Nome?.trim() ?? null,
+    crc: prof.Crc ?? null,
+    numeroRegistro: prof.NumeroRegistro ?? null,
+    situacao: prof.SituacaoCadastral ?? null,
+    categoria: prof.Categoria ?? null,
+  });
+});
 
 // ── GET /auth/validate-crc?crc=SP100000O ─────────────────────────────────────
 router.get("/auth/validate-crc", async (req, res): Promise<void> => {

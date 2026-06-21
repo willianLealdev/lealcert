@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useRegister } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, ArrowLeft, Briefcase, User, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowLeft, Briefcase, User, CheckCircle2, XCircle, AlertCircle, Search } from "lucide-react";
 
 function maskCpfCnpj(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 14);
@@ -48,6 +48,16 @@ interface CrcResult {
   crc: string | null;
 }
 
+interface LookupResult {
+  found: boolean;
+  valid?: boolean;
+  nome?: string | null;
+  crc?: string | null;
+  numeroRegistro?: string | null;
+  situacao?: string | null;
+  categoria?: string | null;
+}
+
 export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -65,6 +75,8 @@ export default function Register() {
 
   const [crcState, setCrcState] = useState<"idle" | "checking" | "valid" | "invalid" | "error">("idle");
   const [crcResult, setCrcResult] = useState<CrcResult | null>(null);
+  const [lookupState, setLookupState] = useState<"idle" | "searching" | "found" | "not_found">("idle");
+  const lookupDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const registerMutation = useRegister({
     mutation: {
@@ -81,6 +93,60 @@ export default function Register() {
   function set<K extends keyof typeof form>(k: K, v: typeof form[K]) {
     setForm(p => ({ ...p, [k]: v }));
   }
+
+  // Auto-lookup por CPF/CNPJ quando tipo for Contador
+  useEffect(() => {
+    if (form.userType !== "contador") return;
+    const digits = form.cpfCnpj.replace(/\D/g, "");
+    if (digits.length !== 11 && digits.length !== 14) {
+      setLookupState("idle");
+      return;
+    }
+
+    if (lookupDebounce.current) clearTimeout(lookupDebounce.current);
+    lookupDebounce.current = setTimeout(async () => {
+      setLookupState("searching");
+      setCrcState("idle");
+      setCrcResult(null);
+      try {
+        const resp = await fetch(`/api/auth/lookup-crc?cpfCnpj=${digits}`);
+        const data = await resp.json() as LookupResult;
+        if (data.found && data.nome) {
+          setLookupState("found");
+          if (data.nome) set("name", data.nome);
+          if (data.crc) {
+            set("crcNumber", data.crc);
+            // Se CRC encontrado e ativo, marca como verificado automaticamente
+            if (data.valid) {
+              setCrcState("valid");
+              setCrcResult({
+                valid: true,
+                situacao: data.situacao ?? "Ativo",
+                nome: data.nome ?? null,
+                numeroRegistro: data.numeroRegistro ?? null,
+                categoria: data.categoria ?? null,
+                crc: data.crc ?? null,
+              });
+            } else {
+              setCrcState("invalid");
+              setCrcResult({
+                valid: false,
+                situacao: data.situacao ?? "Inativo",
+                nome: data.nome ?? null,
+                numeroRegistro: data.numeroRegistro ?? null,
+                categoria: data.categoria ?? null,
+                crc: data.crc ?? null,
+              });
+            }
+          }
+        } else {
+          setLookupState("not_found");
+        }
+      } catch {
+        setLookupState("not_found");
+      }
+    }, 600);
+  }, [form.cpfCnpj, form.userType]);
 
   async function handleValidateCrc() {
     const crcNorm = normalizeCrc(form.crcNumber);
@@ -100,7 +166,7 @@ export default function Register() {
       }
       setCrcResult(data);
       setCrcState(data.valid ? "valid" : "invalid");
-      if (data.valid && data.nome) {
+      if (data.valid && data.nome && !form.name) {
         set("name", data.nome);
       }
     } catch {
@@ -121,7 +187,7 @@ export default function Register() {
         return;
       }
       if (crcState !== "valid") {
-        toast({ title: "CRC não verificado", description: "Clique em 'Verificar CRC' antes de continuar.", variant: "destructive" });
+        toast({ title: "CRC não verificado", description: "Verifique seu CRC antes de continuar.", variant: "destructive" });
         return;
       }
     }
@@ -184,7 +250,7 @@ export default function Register() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => { set("userType", "contador"); setCrcState("idle"); setCrcResult(null); }}
+                  onClick={() => { set("userType", "contador"); setCrcState("idle"); setCrcResult(null); setLookupState("idle"); }}
                   className="flex flex-col items-center gap-2 rounded-xl p-4 border-2 transition-all"
                   style={{
                     background: form.userType === "contador" ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.05)",
@@ -202,7 +268,7 @@ export default function Register() {
 
                 <button
                   type="button"
-                  onClick={() => { set("userType", "cliente"); setCrcState("idle"); setCrcResult(null); }}
+                  onClick={() => { set("userType", "cliente"); setCrcState("idle"); setCrcResult(null); setLookupState("idle"); }}
                   className="flex flex-col items-center gap-2 rounded-xl p-4 border-2 transition-all"
                   style={{
                     background: form.userType === "cliente" ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.05)",
@@ -218,6 +284,67 @@ export default function Register() {
                   </span>
                 </button>
               </div>
+            </div>
+
+            {/* CPF/CNPJ — quando Contador, dispara busca automática */}
+            <div className="space-y-2">
+              <Label className="text-blue-100/80 text-sm font-medium">
+                CPF ou CNPJ *
+                {form.userType === "contador" && (
+                  <span className="ml-2 text-blue-300/50 font-normal text-xs">— preencheremos o CRC automaticamente</span>
+                )}
+              </Label>
+              <div className="relative">
+                <Input
+                  value={form.cpfCnpj}
+                  onChange={e => {
+                    set("cpfCnpj", maskCpfCnpj(e.target.value));
+                    if (form.userType === "contador") {
+                      setCrcState("idle");
+                      setCrcResult(null);
+                      setLookupState("idle");
+                    }
+                  }}
+                  required
+                  placeholder="000.000.000-00"
+                  className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11 pr-10"
+                  style={inputStyle}
+                />
+                {form.userType === "contador" && lookupState === "searching" && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-400" />
+                )}
+                {form.userType === "contador" && lookupState === "found" && (
+                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-400" />
+                )}
+                {form.userType === "contador" && lookupState === "not_found" && (
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-400" />
+                )}
+              </div>
+
+              {/* Feedback do lookup */}
+              {form.userType === "contador" && lookupState === "found" && (
+                <p className="text-green-400/80 text-xs flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Dados encontrados no CFC e preenchidos automaticamente
+                </p>
+              )}
+              {form.userType === "contador" && lookupState === "not_found" && (
+                <p className="text-amber-400/70 text-xs flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> Não encontrado no CFC — preencha o CRC manualmente abaixo
+                </p>
+              )}
+            </div>
+
+            {/* Nome completo */}
+            <div className="space-y-2">
+              <Label className="text-blue-100/80 text-sm font-medium">Nome completo *</Label>
+              <Input
+                value={form.name}
+                onChange={e => set("name", e.target.value)}
+                required
+                placeholder="Seu nome completo"
+                className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
+                style={inputStyle}
+              />
             </div>
 
             {/* Campo CRC — somente para contador */}
@@ -242,15 +369,14 @@ export default function Register() {
                   <Button
                     type="button"
                     onClick={handleValidateCrc}
-                    disabled={crcState === "checking" || !form.crcNumber.trim()}
+                    disabled={crcState === "checking" || crcState === "valid" || !form.crcNumber.trim()}
                     className="h-11 px-4 shrink-0 font-medium"
-                    style={{ background: "rgba(37,99,235,0.7)", color: "white" }}
+                    style={{ background: crcState === "valid" ? "rgba(34,197,94,0.3)" : "rgba(37,99,235,0.7)", color: "white" }}
                   >
-                    {crcState === "checking" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verificar"}
+                    {crcState === "checking" ? <Loader2 className="h-4 w-4 animate-spin" /> : crcState === "valid" ? <CheckCircle2 className="h-4 w-4" /> : "Verificar"}
                   </Button>
                 </div>
 
-                {/* Resultado da verificação CRC */}
                 {crcState === "valid" && crcResult && (
                   <div className="rounded-lg p-3 flex items-start gap-3" style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.35)" }}>
                     <CheckCircle2 className="h-5 w-5 text-green-400 shrink-0 mt-0.5" />
@@ -276,24 +402,8 @@ export default function Register() {
                     <p className="text-sm text-amber-200/80">Não foi possível conectar ao CFC. Tente novamente.</p>
                   </div>
                 )}
-
-                <p className="text-blue-200/40 text-xs">
-                  Digite UF + número + tipo sem separadores (ex: SP100000O). Será validado na API do Conselho Federal de Contabilidade.
-                </p>
               </div>
             )}
-
-            <div className="space-y-2">
-              <Label className="text-blue-100/80 text-sm font-medium">Nome completo *</Label>
-              <Input
-                value={form.name}
-                onChange={e => set("name", e.target.value)}
-                required
-                placeholder="Seu nome completo"
-                className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
-                style={inputStyle}
-              />
-            </div>
 
             <div className="space-y-2">
               <Label className="text-blue-100/80 text-sm font-medium">E-mail *</Label>
@@ -303,18 +413,6 @@ export default function Register() {
                 onChange={e => set("email", e.target.value)}
                 required
                 placeholder="seu@email.com"
-                className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
-                style={inputStyle}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-blue-100/80 text-sm font-medium">CPF ou CNPJ *</Label>
-              <Input
-                value={form.cpfCnpj}
-                onChange={e => set("cpfCnpj", maskCpfCnpj(e.target.value))}
-                required
-                placeholder="000.000.000-00"
                 className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
                 style={inputStyle}
               />
