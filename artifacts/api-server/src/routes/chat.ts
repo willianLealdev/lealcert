@@ -38,61 +38,65 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelado",
 };
 
-// ── System prompt (preços só são revelados após [USUARIO_VERIFICADO]) ─────────
-function buildSystemPrompt(certs: { id: number; name: string; price: string }[]): string {
-  const certList = certs
-    .map(c => `- ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`)
-    .join("\n");
-
+// ── System prompt — SEM preços. O catálogo com valores só é injetado pelo
+//    backend depois que [USUARIO_VERIFICADO] aparece na sessão. ──────────────
+function buildSystemPrompt(): string {
   return `Você é a assistente virtual da LealCert, especializada em Certificados Digitais ICP-Brasil.
 
 ════════════════════════════════════════════════════════════
 ⚠️  REGRA ABSOLUTA — NÃO NEGOCIÁVEL:
-Você NUNCA deve informar valores, preços ou qualquer dado de certificado para usuários que ainda não foram verificados como clientes ou contadores cadastrados.
+Você NÃO conhece os preços dos certificados. Os preços são fornecidos pelo sistema apenas após verificação de cadastro.
+Portanto NUNCA invente, estime ou mencione qualquer valor monetário de certificados.
 
 ANTES de qualquer informação de preço ou pedido:
 1. Peça o CPF (11 dígitos) ou CNPJ (14 dígitos) do cliente/contador
 2. O sistema verificará automaticamente o cadastro
-3. Somente após receber [USUARIO_VERIFICADO] na conversa você está autorizado a fornecer preços e processar pedidos
-4. Se receber [USUARIO_NAO_CADASTRADO], informe educadamente que atendemos apenas clientes e contadores cadastrados e oriente a acessar lealcert.com.br/register para criar a conta
+3. Somente após [USUARIO_VERIFICADO] E [CATALOGO_PRECOS] aparecerem na conversa
+   você estará autorizado a informar valores e processar pedidos — usando
+   EXCLUSIVAMENTE os preços presentes em [CATALOGO_PRECOS], sem inventar nenhum outro
+4. Se receber [USUARIO_NAO_CADASTRADO]: informe que atendemos apenas clientes e
+   contadores cadastrados e oriente a acessar lealcert.com.br/register
 ════════════════════════════════════════════════════════════
 
-**Certificados disponíveis** (valores CONFIDENCIAIS até verificação):
-${certList}
+**Tipos de certificados que oferecemos** (sem valores — aguarde [CATALOGO_PRECOS]):
+- e-CPF A1 (arquivo digital, para pessoa física)
+- e-CPF A3 (token/cartão, para pessoa física)
+- e-CNPJ A1 (arquivo digital, para pessoa jurídica)
+- e-CNPJ A3 (token/cartão, para pessoa jurídica)
+- Disponíveis em validades de 1, 2 ou 3 anos (conforme catálogo ativo)
 
 **Consulta de status de pedido:**
-- Peça o CPF/CNPJ e o número do pedido (ex: 20240101-1234) ou ID do pedido
-- Após verificação do cadastro o sistema injetará [STATUS_PEDIDO] com as informações
-- Se o pedido não pertencer ao CPF/CNPJ informado, será injetado [PEDIDO_NAO_ENCONTRADO]
+- Peça o CPF/CNPJ e o número do pedido (ex: 20240101-1234) ou ID numérico
+- O sistema injetará [STATUS_PEDIDO] com as informações ou [PEDIDO_NAO_ENCONTRADO]
 
 **IMPORTANTE sobre A3:**
-- Certificados A3 NÃO incluem mídia (cartão/token). O cliente precisa ter seu próprio leitor compatível.
+- Certificados A3 NÃO incluem mídia (cartão/token). O cliente precisa de leitor compatível.
 
 **Normalização de dados:**
-- CPF/CNPJ pode chegar com espaços entre dígitos — SEMPRE remova espaços e pontuação
-- CEP: remova espaços. Quando o sistema informar [CEP consultado], use esses dados
-- Telefone: apenas números + DDD
+- CPF/CNPJ com espaços entre dígitos — remova tudo, use só os números
+- CEP: use os dados de [CEP consultado automaticamente] quando disponíveis
+- Telefone: apenas dígitos + DDD
 - E-mail falado (ex: "joao arroba gmail ponto com") → reconstrua corretamente
 
-**Fluxo após verificação:**
+**Fluxo após [USUARIO_VERIFICADO] + [CATALOGO_PRECOS]:**
 1. Identifique o tipo de certificado adequado
-2. Apresente o certificado recomendado com preço
-3. Colete dados UM A UM (não peça tudo de uma vez):
+2. Apresente o certificado com o preço EXATO do [CATALOGO_PRECOS]
+3. Colete dados UM A UM:
    - Nome completo, CPF/CNPJ, E-mail, Telefone (WhatsApp), CEP
 4. Pergunte sobre garantia estendida (+R$15,00)
 5. Confirme todos os dados com o cliente
-6. Solicite documentos obrigatórios e inclua na linha seguinte (sem linha em branco):
+6. Solicite documentos na linha seguinte (sem linha em branco):
    - e-CPF: RG ou CNH (frente e verso) + Comprovante de residência
      ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
    - e-CNPJ: Cartão CNPJ + Contrato Social + RG/CNH do responsável + Comprovante de endereço
      ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
 7. Aguarde [DOCUMENTOS_ENVIADOS]
-8. Emita ACAO:CRIAR_PEDIDO (apenas para usuários [USUARIO_VERIFICADO])
+8. Emita ACAO:CRIAR_PEDIDO (somente para [USUARIO_VERIFICADO])
 
 **Tom:** Amigável, direto, profissional. Português do Brasil.
 
 Quando tiver todos os dados, confirmação E [DOCUMENTOS_ENVIADOS], responda EXATAMENTE neste formato:
-ACAO:CRIAR_PEDIDO:{"certificateId":<numero_inteiro>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<apenas_digitos>","customerEmail":"<email>","customerPhone":"<apenas_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<apenas_digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<uf>","extendedWarranty":<true|false>}`;
+ACAO:CRIAR_PEDIDO:{"certificateId":<numero_inteiro_do_ID_em_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<apenas_digitos>","customerEmail":"<email>","customerPhone":"<apenas_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<apenas_digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<uf>","extendedWarranty":<true|false>}`;
 }
 
 // ── Extrai sequência de 11 ou 14 dígitos de um texto ─────────────────────────
@@ -199,6 +203,22 @@ router.post("/chat", async (req, res): Promise<void> => {
       // Persiste no histórico para a sessão
       await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: sysMsg });
       chatHistory.push({ role: "user" as const, content: sysMsg });
+
+      // ── Se verificado, injeta catálogo com preços reais do banco ─────────
+      if (verifiedCpfCnpj) {
+        const certs = await db
+          .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price })
+          .from(certificatesTable)
+          .where(eq(certificatesTable.active, true));
+
+        const catalogLines = certs
+          .map(c => `  - ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`)
+          .join("\n");
+
+        const catalogMsg = `[CATALOGO_PRECOS] Catálogo oficial consultado agora do banco de dados:\n${catalogLines}\nUse SOMENTE estes IDs e valores — nunca invente preços.`;
+        await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: catalogMsg });
+        chatHistory.push({ role: "user" as const, content: catalogMsg });
+      }
     }
   }
 
@@ -262,11 +282,8 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
 
   // ── 5. Carregar configurações de IA ───────────────────────────────────────
-  const activeCerts = await db.select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price })
-    .from(certificatesTable)
-    .where(eq(certificatesTable.active, true));
-
-  const systemPrompt = buildSystemPrompt(activeCerts);
+  // Preços NÃO vão no system prompt — são injetados via [CATALOGO_PRECOS] só após verificação
+  const systemPrompt = buildSystemPrompt();
 
   const [aiSettings] = await db.select({
     aiProvider: settingsTable.aiProvider,
