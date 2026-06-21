@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, asc, and, or } from "drizzle-orm";
-import { db, conversations, chatMessages, certificatesTable, usersTable, ordersTable, settingsTable } from "@workspace/db";
+import { db, conversations, chatMessages, certificatesTable, usersTable, ordersTable, settingsTable, ticketsTable, messagesTable } from "@workspace/db";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../lib/logger";
@@ -54,8 +54,8 @@ ANTES de qualquer informação de preço ou pedido:
 3. Somente após [USUARIO_VERIFICADO] E [CATALOGO_PRECOS] aparecerem na conversa
    você estará autorizado a informar valores e processar pedidos — usando
    EXCLUSIVAMENTE os preços presentes em [CATALOGO_PRECOS], sem inventar nenhum outro
-4. Se receber [USUARIO_NAO_CADASTRADO]: informe que atendemos apenas clientes e
-   contadores cadastrados e oriente a acessar lealcert.com.br/register
+4. Se receber [USUARIO_NAO_CADASTRADO]: informe que pode abrir um chamado de suporte
+   mesmo sem cadastro — pergunte nome e e-mail/telefone para contato
 ════════════════════════════════════════════════════════════
 
 **Tipos de certificados que oferecemos** (sem valores — aguarde [CATALOGO_PRECOS]):
@@ -92,6 +92,16 @@ ANTES de qualquer informação de preço ou pedido:
      ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
 7. Aguarde [DOCUMENTOS_ENVIADOS]
 8. Emita ACAO:CRIAR_PEDIDO (somente para [USUARIO_VERIFICADO])
+
+**Abertura de chamado de suporte (ACAO:CRIAR_CHAMADO):**
+- Qualquer pessoa pode abrir um chamado — com ou sem cadastro
+- Para clientes SEM cadastro ([USUARIO_NAO_CADASTRADO] ou CPF/CNPJ não informado):
+  colete nome completo + e-mail ou telefone para contato + assunto + descrição do problema
+- Para clientes COM cadastro ([USUARIO_VERIFICADO]):
+  colete apenas assunto + descrição (dados já conhecidos)
+- Quando tiver as informações, emita na linha seguinte (sem texto depois):
+  COM cadastro: ACAO:CRIAR_CHAMADO:{"subject":"<assunto>","message":"<descricao detalhada>"}
+  SEM cadastro: ACAO:CRIAR_CHAMADO:{"subject":"<assunto>","message":"<descricao detalhada>","guestName":"<nome>","guestContact":"<email ou telefone>"}
 
 **Tom:** Amigável, direto, profissional. Português do Brasil.
 
@@ -502,6 +512,66 @@ router.post("/chat", async (req, res): Promise<void> => {
         logger.error({ err: actionErr }, "Failed to process CRIAR_PEDIDO action");
         res.write(`data: ${JSON.stringify({ content: "\n\n❌ Ocorreu um erro ao criar o pedido. Por favor, tente novamente ou entre em contato com nosso suporte." })}\n\n`);
       }
+    }
+  }
+
+  // Ação: criar chamado de suporte (funciona com ou sem cadastro)
+  if (fullResponse.includes("ACAO:CRIAR_CHAMADO:")) {
+    try {
+      const jsonStr = fullResponse.split("ACAO:CRIAR_CHAMADO:")[1].trim();
+      const ticketData = JSON.parse(jsonStr) as {
+        subject: string;
+        message: string;
+        guestName?: string;
+        guestContact?: string;
+      };
+
+      if (!ticketData.subject || !ticketData.message) throw new Error("subject e message obrigatórios");
+
+      let ticketUserId: number;
+      let subjectPrefix = "";
+      let messagePrefix = "";
+
+      if (verifiedCpfCnpj) {
+        // Usuário com cadastro — abre como ele mesmo
+        const [u] = await db.select({ id: usersTable.id }).from(usersTable)
+          .where(eq(usersTable.cpfCnpj, verifiedCpfCnpj)).limit(1);
+        if (!u) throw new Error("Usuário verificado não encontrado");
+        ticketUserId = u.id;
+      } else {
+        // Sem cadastro — usa o admin (ID mais baixo com role=admin) como sistema
+        const [adminUser] = await db.select({ id: usersTable.id }).from(usersTable)
+          .where(eq(usersTable.role, "admin")).limit(1);
+        if (!adminUser) throw new Error("Usuário sistema não encontrado");
+        ticketUserId = adminUser.id;
+        subjectPrefix = "[Via Chatbot] ";
+        const name = ticketData.guestName ?? "Não informado";
+        const contact = ticketData.guestContact ?? "Não informado";
+        messagePrefix = `👤 **Abertura via chatbot**\nNome: ${name}\nContato: ${contact}\n\n`;
+      }
+
+      const [ticket] = await db.insert(ticketsTable).values({
+        userId: ticketUserId,
+        subject: `${subjectPrefix}${ticketData.subject}`,
+      }).returning();
+
+      await db.insert(messagesTable).values({
+        ticketId: ticket.id,
+        userId: ticketUserId,
+        content: `${messagePrefix}${ticketData.message}`,
+      });
+
+      const confirmMsg = verifiedCpfCnpj
+        ? `✅ **Chamado #${ticket.id} aberto com sucesso!**\n\nNossa equipe irá analisar sua solicitação e responderá em breve.\nVocê pode acompanhar o chamado em lealcert.com.br/suporte.`
+        : `✅ **Chamado #${ticket.id} aberto com sucesso!**\n\nNossa equipe entrará em contato pelo canal informado em breve.`;
+
+      res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
+      res.write(`data: ${JSON.stringify({ content: confirmMsg })}\n\n`);
+      res.write(`data: ${JSON.stringify({ action: "ticket_created", ticketId: ticket.id })}\n\n`);
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: confirmMsg });
+    } catch (ticketErr) {
+      logger.error({ err: ticketErr }, "Failed to process CRIAR_CHAMADO action");
+      res.write(`data: ${JSON.stringify({ content: "\n\n❌ Ocorreu um erro ao abrir o chamado. Tente novamente ou acesse lealcert.com.br/suporte." })}\n\n`);
     }
   }
 
