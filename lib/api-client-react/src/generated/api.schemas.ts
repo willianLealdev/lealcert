@@ -72,6 +72,21 @@ export interface RegisterInput {
   password: string;
   phone?: string;
   userType: RegisterInputUserType;
+  /** Número de registro CRC (obrigatório para contadores) */
+  crcNumber?: string;
+}
+
+export interface CrcValidationResult {
+  valid: boolean;
+  situacao: string;
+  /** @nullable */
+  nome?: string | null;
+  /** @nullable */
+  numeroRegistro?: string | null;
+  /** @nullable */
+  categoria?: string | null;
+  /** @nullable */
+  crc?: string | null;
 }
 
 export interface VerifyEmailInput {
@@ -1466,6 +1481,13 @@ export interface IpLogsResponse {
   page: number;
   limit: number;
 }
+
+export type ValidateCrcParams = {
+/**
+ * CRC number (e.g. SP100000O)
+ */
+crc: string;
+};
 
 export type ListCertificatesParams = {
 activeOnly?: boolean;

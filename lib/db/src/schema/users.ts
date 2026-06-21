@@ -22,6 +22,8 @@ export const usersTable = pgTable("users", {
   mustChangePassword: boolean("must_change_password").notNull().default(false),
   passwordResetToken: text("password_reset_token"),
   passwordResetExpiresAt: timestamp("password_reset_expires_at", { withTimezone: true }),
+  crcNumber: text("crc_number"),
+  crcVerified: boolean("crc_verified").notNull().default(false),
   registrationIp: text("registration_ip"),
   trustedIps: jsonb("trusted_ips").$type<string[]>().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

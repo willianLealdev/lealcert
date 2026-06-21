@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, ArrowLeft, Briefcase, User } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowLeft, Briefcase, User, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 
 function maskCpfCnpj(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 14);
@@ -35,6 +35,19 @@ function maskPhone(v: string) {
   );
 }
 
+function normalizeCrc(v: string): string {
+  return v.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+
+interface CrcResult {
+  valid: boolean;
+  situacao: string;
+  nome: string | null;
+  numeroRegistro: string | null;
+  categoria: string | null;
+  crc: string | null;
+}
+
 export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -47,7 +60,11 @@ export default function Register() {
     password: "",
     confirm: "",
     userType: "" as "contador" | "cliente" | "",
+    crcNumber: "",
   });
+
+  const [crcState, setCrcState] = useState<"idle" | "checking" | "valid" | "invalid" | "error">("idle");
+  const [crcResult, setCrcResult] = useState<CrcResult | null>(null);
 
   const registerMutation = useRegister({
     mutation: {
@@ -65,11 +82,48 @@ export default function Register() {
     setForm(p => ({ ...p, [k]: v }));
   }
 
+  async function handleValidateCrc() {
+    const crcNorm = normalizeCrc(form.crcNumber);
+    if (!/^[A-Z]{2}\d+[A-Z]$/.test(crcNorm)) {
+      toast({ title: "Formato inválido", description: "Use: UF + número + tipo. Ex: SP100000O", variant: "destructive" });
+      return;
+    }
+    setCrcState("checking");
+    setCrcResult(null);
+    try {
+      const resp = await fetch(`/api/auth/validate-crc?crc=${encodeURIComponent(crcNorm)}`);
+      const data = await resp.json() as CrcResult & { error?: string };
+      if (!resp.ok) {
+        setCrcState("error");
+        toast({ title: "Erro na consulta", description: data.error ?? "Não foi possível consultar o CFC.", variant: "destructive" });
+        return;
+      }
+      setCrcResult(data);
+      setCrcState(data.valid ? "valid" : "invalid");
+      if (data.valid && data.nome) {
+        set("name", data.nome);
+      }
+    } catch {
+      setCrcState("error");
+      toast({ title: "Erro de conexão", description: "Não foi possível conectar à API do CFC. Tente novamente.", variant: "destructive" });
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.userType) {
       toast({ title: "Selecione o tipo de cadastro", description: "Informe se você é Contador ou Cliente.", variant: "destructive" });
       return;
+    }
+    if (form.userType === "contador") {
+      if (!form.crcNumber.trim()) {
+        toast({ title: "CRC obrigatório", description: "Informe seu número de registro CRC.", variant: "destructive" });
+        return;
+      }
+      if (crcState !== "valid") {
+        toast({ title: "CRC não verificado", description: "Clique em 'Verificar CRC' antes de continuar.", variant: "destructive" });
+        return;
+      }
     }
     const cpfCnpjDigits = form.cpfCnpj.replace(/\D/g, "");
     if (cpfCnpjDigits.length !== 11 && cpfCnpjDigits.length !== 14) {
@@ -97,6 +151,7 @@ export default function Register() {
         password: form.password,
         phone: phoneDigits,
         userType: form.userType as "contador" | "cliente",
+        crcNumber: form.userType === "contador" ? normalizeCrc(form.crcNumber) : undefined,
       },
     });
   }
@@ -129,7 +184,7 @@ export default function Register() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => set("userType", "contador")}
+                  onClick={() => { set("userType", "contador"); setCrcState("idle"); setCrcResult(null); }}
                   className="flex flex-col items-center gap-2 rounded-xl p-4 border-2 transition-all"
                   style={{
                     background: form.userType === "contador" ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.05)",
@@ -147,7 +202,7 @@ export default function Register() {
 
                 <button
                   type="button"
-                  onClick={() => set("userType", "cliente")}
+                  onClick={() => { set("userType", "cliente"); setCrcState("idle"); setCrcResult(null); }}
                   className="flex flex-col items-center gap-2 rounded-xl p-4 border-2 transition-all"
                   style={{
                     background: form.userType === "cliente" ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.05)",
@@ -164,6 +219,69 @@ export default function Register() {
                 </button>
               </div>
             </div>
+
+            {/* Campo CRC — somente para contador */}
+            {form.userType === "contador" && (
+              <div className="space-y-2">
+                <Label className="text-blue-100/80 text-sm font-medium">
+                  Número de Registro CRC *
+                  <span className="ml-2 text-blue-300/50 font-normal text-xs">(ex: SP100000O)</span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={form.crcNumber}
+                    onChange={e => {
+                      set("crcNumber", e.target.value.toUpperCase());
+                      setCrcState("idle");
+                      setCrcResult(null);
+                    }}
+                    placeholder="SP100000O"
+                    className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11 font-mono tracking-wider"
+                    style={inputStyle}
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleValidateCrc}
+                    disabled={crcState === "checking" || !form.crcNumber.trim()}
+                    className="h-11 px-4 shrink-0 font-medium"
+                    style={{ background: "rgba(37,99,235,0.7)", color: "white" }}
+                  >
+                    {crcState === "checking" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verificar"}
+                  </Button>
+                </div>
+
+                {/* Resultado da verificação CRC */}
+                {crcState === "valid" && crcResult && (
+                  <div className="rounded-lg p-3 flex items-start gap-3" style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.35)" }}>
+                    <CheckCircle2 className="h-5 w-5 text-green-400 shrink-0 mt-0.5" />
+                    <div className="text-sm space-y-0.5">
+                      <p className="text-green-300 font-semibold">CRC Ativo ✓</p>
+                      {crcResult.nome && <p className="text-green-200/80">{crcResult.nome}</p>}
+                      {crcResult.numeroRegistro && <p className="text-green-200/60 text-xs">{crcResult.numeroRegistro} — {crcResult.categoria}</p>}
+                    </div>
+                  </div>
+                )}
+                {crcState === "invalid" && crcResult && (
+                  <div className="rounded-lg p-3 flex items-start gap-3" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.35)" }}>
+                    <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="text-red-300 font-semibold">CRC não ativo</p>
+                      <p className="text-red-200/70 text-xs">Situação: {crcResult.situacao}. Apenas profissionais com CRC ativo podem se cadastrar como contadores.</p>
+                    </div>
+                  </div>
+                )}
+                {crcState === "error" && (
+                  <div className="rounded-lg p-3 flex items-start gap-3" style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)" }}>
+                    <AlertCircle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-200/80">Não foi possível conectar ao CFC. Tente novamente.</p>
+                  </div>
+                )}
+
+                <p className="text-blue-200/40 text-xs">
+                  Digite UF + número + tipo sem separadores (ex: SP100000O). Será validado na API do Conselho Federal de Contabilidade.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label className="text-blue-100/80 text-sm font-medium">Nome completo *</Label>
@@ -248,10 +366,16 @@ export default function Register() {
               type="submit"
               className="w-full h-11 text-base font-semibold mt-2"
               style={{ background: "linear-gradient(135deg, hsl(214,80%,50%) 0%, hsl(214,80%,42%) 100%)", boxShadow: "0 4px 20px hsl(214,80%,46%,0.45)" }}
-              disabled={registerMutation.isPending}
+              disabled={registerMutation.isPending || (form.userType === "contador" && crcState !== "valid")}
             >
               {registerMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando conta...</> : "Criar conta"}
             </Button>
+
+            {form.userType === "contador" && crcState !== "valid" && (
+              <p className="text-amber-400/70 text-xs text-center">
+                Verifique seu CRC antes de criar a conta
+              </p>
+            )}
           </form>
 
           <div className="mt-6 pt-5 border-t border-white/10 flex items-center justify-center gap-2">

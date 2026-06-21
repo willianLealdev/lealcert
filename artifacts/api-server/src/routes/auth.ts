@@ -48,8 +48,64 @@ router.get("/auth/csrf-token", (req, res): void => {
   res.json({ csrfToken: req.session.csrfToken });
 });
 
+// ── Normaliza número CRC para formato da API do CFC: SP100000O ───────────────
+function normalizeCrc(input: string): string {
+  return input.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+
+// ── Consulta API do CFC ───────────────────────────────────────────────────────
+interface CfcProfissional {
+  Nome?: string;
+  Cpf?: string;
+  NumeroRegistro?: string;
+  SituacaoCadastral?: string;
+  Categoria?: string;
+  Crc?: string;
+}
+
+async function consultarCfc(crcNormalized: string): Promise<CfcProfissional | null> {
+  try {
+    const url = `https://sistemas.cfc.org.br/servico/api/Profissional/${encodeURIComponent(crcNormalized)}/teste`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) return null;
+    const data = await resp.json() as CfcProfissional[];
+    return Array.isArray(data) && data.length > 0 ? data[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+// ── GET /auth/validate-crc?crc=SP100000O ─────────────────────────────────────
+router.get("/auth/validate-crc", async (req, res): Promise<void> => {
+  const crcRaw = String(req.query.crc ?? "").trim();
+  if (!crcRaw) {
+    res.status(400).json({ error: "Parâmetro crc é obrigatório." });
+    return;
+  }
+  const crcNorm = normalizeCrc(crcRaw);
+  // Formato mínimo: 2 letras UF + pelo menos 1 dígito + 1 letra tipo
+  if (!/^[A-Z]{2}\d+[A-Z]$/.test(crcNorm)) {
+    res.status(400).json({ error: "Formato inválido. Use UF + número + tipo, ex: SP100000O" });
+    return;
+  }
+  const prof = await consultarCfc(crcNorm);
+  if (!prof) {
+    res.json({ valid: false, situacao: "Não encontrado", nome: null, numeroRegistro: null, categoria: null, crc: null });
+    return;
+  }
+  const ativo = prof.SituacaoCadastral?.toLowerCase() === "ativo";
+  res.json({
+    valid: ativo,
+    situacao: prof.SituacaoCadastral ?? "Desconhecido",
+    nome: prof.Nome?.trim() ?? null,
+    numeroRegistro: prof.NumeroRegistro ?? null,
+    categoria: prof.Categoria ?? null,
+    crc: prof.Crc ?? null,
+  });
+});
+
 router.post("/auth/register", async (req, res): Promise<void> => {
-  const { name, email, cpfCnpj, password, phone, userType } = req.body ?? {};
+  const { name, email, cpfCnpj, password, phone, userType, crcNumber } = req.body ?? {};
   if (!name || !email || !cpfCnpj || !password) {
     res.status(400).json({ error: "Nome, e-mail, CPF/CNPJ e senha são obrigatórios." });
     return;
@@ -59,6 +115,32 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
   const resolvedUserType = userType === "contador" ? "contador" : "cliente";
+
+  // ── Validação CRC obrigatória para contadores ─────────────────────────────
+  let crcNorm: string | null = null;
+  let crcVerifiedFlag = false;
+  if (resolvedUserType === "contador") {
+    if (!crcNumber) {
+      res.status(400).json({ error: "Número de registro CRC é obrigatório para contadores." });
+      return;
+    }
+    crcNorm = normalizeCrc(String(crcNumber));
+    if (!/^[A-Z]{2}\d+[A-Z]$/.test(crcNorm)) {
+      res.status(400).json({ error: "Formato de CRC inválido. Use UF + número + tipo, ex: SP100000O" });
+      return;
+    }
+    const prof = await consultarCfc(crcNorm);
+    if (!prof) {
+      // API indisponível — permite cadastro mas marca como não verificado
+      logger.warn({ crcNorm }, "CFC API unavailable during registration, crcVerified=false");
+    } else if (prof.SituacaoCadastral?.toLowerCase() !== "ativo") {
+      res.status(422).json({ error: `Registro CRC não está ativo. Situação: ${prof.SituacaoCadastral ?? "Desconhecido"}. Apenas profissionais ativos podem se cadastrar como contadores.` });
+      return;
+    } else {
+      crcVerifiedFlag = true;
+    }
+  }
+
   const digits = cpfCnpj.replace(/\D/g, "");
   const existing = await db
     .select({ id: usersTable.id })
@@ -85,6 +167,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     emailVerified: false,
     emailVerificationCode: code,
     emailVerificationExpiresAt: expiresAt,
+    crcNumber: crcNorm,
+    crcVerified: crcVerifiedFlag,
     registrationIp: clientIp,
     trustedIps: [clientIp],
   }).returning({ id: usersTable.id });

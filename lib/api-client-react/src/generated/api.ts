@@ -45,6 +45,7 @@ import type {
   Coupon,
   CouponInput,
   CouponValidateInput,
+  CrcValidationResult,
   CreateCampaignInput,
   CreateMarketingContactInput,
   DashboardStats,
@@ -147,6 +148,7 @@ import type {
   User,
   UserInput,
   UserUpdate,
+  ValidateCrcParams,
   ValidateEmailsInput,
   VerifyEmailInput,
   VerifyIp400,
@@ -732,6 +734,90 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getValidateCrcUrl = (params: ValidateCrcParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/auth/validate-crc?${stringifiedParams}` : `/api/auth/validate-crc`
+}
+
+/**
+ * @summary Validate a CRC number against the CFC API
+ */
+export const validateCrc = async (params: ValidateCrcParams, options?: RequestInit): Promise<CrcValidationResult> => {
+
+  return customFetch<CrcValidationResult>(getValidateCrcUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getValidateCrcQueryKey = (params?: ValidateCrcParams,) => {
+    return [
+    `/api/auth/validate-crc`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getValidateCrcQueryOptions = <TData = Awaited<ReturnType<typeof validateCrc>>, TError = ErrorType<ErrorResponse>>(params: ValidateCrcParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof validateCrc>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getValidateCrcQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof validateCrc>>> = ({ signal }) => validateCrc(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof validateCrc>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ValidateCrcQueryResult = NonNullable<Awaited<ReturnType<typeof validateCrc>>>
+export type ValidateCrcQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Validate a CRC number against the CFC API
+ */
+
+export function useValidateCrc<TData = Awaited<ReturnType<typeof validateCrc>>, TError = ErrorType<ErrorResponse>>(
+ params: ValidateCrcParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof validateCrc>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getValidateCrcQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

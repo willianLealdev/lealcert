@@ -118,6 +118,23 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Validate a CRC number against the CFC API
+ */
+export const ValidateCrcQueryParams = zod.object({
+  "crc": zod.coerce.string().describe('CRC number (e.g. SP100000O)')
+})
+
+export const ValidateCrcResponse = zod.object({
+  "valid": zod.boolean(),
+  "situacao": zod.string(),
+  "nome": zod.string().nullish(),
+  "numeroRegistro": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "crc": zod.string().nullish()
+})
+
+
+/**
  * @summary Register a new account
  */
 export const registerBodyPasswordMin = 6;
@@ -130,7 +147,8 @@ export const RegisterBody = zod.object({
   "cpfCnpj": zod.string(),
   "password": zod.string().min(registerBodyPasswordMin),
   "phone": zod.string().optional(),
-  "userType": zod.enum(['contador', 'cliente'])
+  "userType": zod.enum(['contador', 'cliente']),
+  "crcNumber": zod.string().optional().describe('Número de registro CRC (obrigatório para contadores)')
 })
 
 

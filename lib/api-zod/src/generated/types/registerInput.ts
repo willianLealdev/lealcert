@@ -15,4 +15,6 @@ export interface RegisterInput {
   password: string;
   phone?: string;
   userType: RegisterInputUserType;
+  /** Número de registro CRC (obrigatório para contadores) */
+  crcNumber?: string;
 }
