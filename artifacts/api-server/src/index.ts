@@ -35,7 +35,7 @@ async function seed() {
 
   await db.insert(usersTable).values([
     {
-      cpfCnpj: "00000000000",
+      cpfCnpj: "37147329856",
       name: "Admin",
       role: "admin",
       passwordHash: adminHash,
