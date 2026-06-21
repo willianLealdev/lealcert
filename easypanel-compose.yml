@@ -36,6 +36,14 @@ services:
     restart: unless-stopped
     depends_on:
       - api
+    networks:
+      - default
+      - easypanel
+
+networks:
+  default:
+  easypanel:
+    external: true
 
 volumes:
   postgres_data_v2:
