@@ -1,0 +1,155 @@
+db-1  | The files belonging to this database system will be owned by user "postgres".
+db-1   | This user must also own the server process.
+api-1  | {"level":40,"time":1782072736805,"pid":1,"hostname":"0d49e13c3731","msg":"SESSION_SECRET tem menos de 32 caracteres — recomendado mínimo 32 chars aleatórios"}
+api-1  | {"level":30,"time":1782072737187,"pid":1,"hostname":"0d49e13c3731","msg":"Running database migrations..."}
+api-1  | {"level":30,"time":1782072737293,"pid":1,"hostname":"0d49e13c3731","msg":"Database migrations complete"}
+api-1  | {"level":30,"time":1782072737307,"pid":1,"hostname":"0d49e13c3731","port":8080,"msg":"Server listening"}
+api-1  | {"level":30,"time":1782072737307,"pid":1,"hostname":"0d49e13c3731","msg":"Marketing scheduler started (60s interval)"}
+api-1  | {"level":30,"time":1782072737308,"pid":1,"hostname":"0d49e13c3731","msg":"Safeweb status sync started (5min interval)"}
+api-1  | {"level":30,"time":1782072741461,"pid":1,"hostname":"0d49e13c3731","req":{"id":1,"method":"GET","url":"/api/auth/me"},"res":{"statusCode":401},"responseTime":13,"msg":"request completed"}
+api-1  | {"level":30,"time":1782072741470,"pid":1,"hostname":"0d49e13c3731","req":{"id":2,"method":"GET","url":"/api/branding"},"res":{"statusCode":200},"responseTime":7,"msg":"request completed"}
+api-1  | {"level":30,"time":1782072746277,"pid":1,"hostname":"0d49e13c3731","req":{"id":4,"method":"GET","url":"/api/auth/me"},"res":{"statusCode":401},"responseTime":3,"msg":"request completed"}
+api-1  | {"level":30,"time":1782072746280,"pid":1,"hostname":"0d49e13c3731","req":{"id":3,"method":"GET","url":"/api/branding"},"res":{"statusCode":200},"responseTime":11,"msg":"request completed"}
+api-1  | {"level":50,"time":1782072762694,"pid":1,"hostname":"0d49e13c3731","err":{"type":"_DrizzleQueryError","message":"Failed query: select \"id\", \"name\", \"email\", \"cpf_cnpj\", \"password_hash\", \"role\", \"user_type\", \"phone\", \"is_active\", \"email_verified\", \"email_verification_code\", \"email_verification_expires_at\", \"must_change_password\", \"password_reset_token\", \"password_reset_expires_at\", \"crc_number\", \"crc_verified\", \"registration_ip\", \"trusted_ips\", \"created_at\", \"updated_at\" from \"users\" where \"users\".\"cpf_cnpj\" = $1 limit $2\nparams: 37147329856,1: column \"crc_number\" does not exist","stack":"Error: Failed query: select \"id\", \"name\", \"email\", \"cpf_cnpj\", \"password_hash\", \"role\", \"user_type\", \"phone\", \"is_active\", \"email_verified\", \"email_verification_code\", \"email_verification_expires_at\", \"must_change_password\", \"password_reset_token\", \"password_reset_expires_at\", \"crc_number\", \"crc_verified\", \"registration_ip\", \"trusted_ips\", \"created_at\", \"updated_at\" from \"users\" where \"users\".\"cpf_cnpj\" = $1 limit $2\nparams: 37147329856,1\n    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)\n    at async <anonymous> (/app/src/routes/auth.ts:302:18)\ncaused by: error: column \"crc_number\" does not exist\n    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:161:13)\n    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)\n    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)\n    at async <anonymous> (/app/src/routes/auth.ts:302:18)","query":"select \"id\", \"name\", \"email\", \"cpf_cnpj\", \"password_hash\", \"role\", \"user_type\", \"phone\", \"is_active\", \"email_verified\", \"email_verification_code\", \"email_verification_expires_at\", \"must_change_password\", \"password_reset_token\", \"password_reset_expires_at\", \"crc_number\", \"crc_verified\", \"registration_ip\", \"trusted_ips\", \"created_at\", \"updated_at\" from \"users\" where \"users\".\"cpf_cnpj\" = $1 limit $2","params":["37147329856",1]},"method":"POST","path":"/api/auth/login","msg":"Unhandled error"}
+api-1  | {"level":30,"time":1782072762698,"pid":1,"hostname":"0d49e13c3731","req":{"id":5,"method":"POST","url":"/api/auth/login"},"res":{"statusCode":500},"err":{"type":"Error","message":"failed with status code 500","stack":"Error: failed with status code 500\n    at onResFinished (/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)\n    at ServerResponse.onResponseComplete (/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)\n    at ServerResponse.emit (node:events:521:24)\n    at onFinish (node:_http_outgoing:1031:10)\n    at callback (node:internal/streams/writable:764:21)\n    at afterWrite (node:internal/streams/writable:708:5)\n    at afterWriteTick (node:internal/streams/writable:694:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)"},"responseTime":38,"msg":"request errored"}
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: using the "epoll" event method
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: nginx/1.27.5
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: built by gcc 14.2.0 (Alpine 14.2.0) 
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: OS: Linux 6.8.0-124-generic
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: start worker processes
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: start worker process 29
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: start worker process 30
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: start worker process 31
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: start worker process 32
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: start worker process 33
+web-1  | 2026/06/21 19:32:32 [notice] 1#1: start worker process 34
+web-1  | 10.11.1.66 - - [21/Jun/2026:19:34:17 +0000] "GET /api/auth/me HTTP/1.1" 401 29 "https://lealcert-cert.sbporu.easypanel.host/register" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:19:34:17 +0000] "GET /api/branding HTTP/1.1" 200 155 "https://lealcert-cert.sbporu.easypanel.host/register" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:19:34:24 +0000] "POST /api/auth/login HTTP/1.1" 401 41 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:19:34:30 +0000] "POST /api/auth/login HTTP/1.1" 423 165 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:19:34:32 +0000] "POST /api/auth/login HTTP/1.1" 423 165 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:19:34:35 +0000] "POST /api/auth/login HTTP/1.1" 423 165 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:19:34:51 +0000] "POST /api/auth/login HTTP/1.1" 423 165 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:19:35:09 +0000] "POST /api/auth/login HTTP/1.1" 423 165 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:04:48 +0000] "GET /api/auth/me HTTP/1.1" 401 29 "https://lealcert-cert.sbporu.easypanel.host/register" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:04:48 +0000] "GET /api/branding HTTP/1.1" 200 155 "https://lealcert-cert.sbporu.easypanel.host/register" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:05:05 +0000] "POST /api/auth/login HTTP/1.1" 423 165 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:21 +0000] "GET /api/auth/me HTTP/1.1" 401 29 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:21 +0000] "GET /api/branding HTTP/1.1" 200 155 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:24 +0000] "GET /login HTTP/1.1" 200 914 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:24 +0000] "GET /assets/index-4uCSUpL7.css HTTP/1.1" 200 30163 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:24 +0000] "GET /assets/index-CPHjbMR-.js HTTP/1.1" 200 415699 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:26 +0000] "GET /api/auth/me HTTP/1.1" 401 29 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:26 +0000] "GET /api/branding HTTP/1.1" 200 155 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:27 +0000] "GET /sw.js HTTP/1.1" 200 10336 "https://lealcert-cert.sbporu.easypanel.host/sw.js" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:28 +0000] "GET /index.html HTTP/1.1" 200 914 "https://lealcert-cert.sbporu.easypanel.host/sw.js" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:28 +0000] "GET /assets/index-CPHjbMR-.js HTTP/1.1" 200 415699 "https://lealcert-cert.sbporu.easypanel.host/sw.js" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:29 +0000] "GET /assets/index-4uCSUpL7.css HTTP/1.1" 200 30163 "https://lealcert-cert.sbporu.easypanel.host/sw.js" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+web-1  | 10.11.1.66 - - [21/Jun/2026:20:12:42 +0000] "POST /api/auth/login HTTP/1.1" 500 37 "https://lealcert-cert.sbporu.easypanel.host/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "24.253.2.159"
+db-1   | 
+db-1   | The database cluster will be initialized with locale "en_US.utf8".
+db-1   | The default database encoding has accordingly been set to "UTF8".
+db-1   | The default text search configuration will be set to "english".
+db-1   | 
+db-1   | Data page checksums are disabled.
+db-1   | 
+db-1   | fixing permissions on existing directory /var/lib/postgresql/data ... ok
+db-1   | creating subdirectories ... ok
+db-1   | selecting dynamic shared memory implementation ... posix
+db-1   | selecting default max_connections ... 100
+db-1   | selecting default shared_buffers ... 128MB
+db-1   | selecting default time zone ... Etc/UTC
+db-1   | creating configuration files ... ok
+db-1   | running bootstrap script ... ok
+db-1   | performing post-bootstrap initialization ... ok
+db-1   | initdb: warning: enabling "trust" authentication for local connections
+db-1   | initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+db-1   | syncing data to disk ... ok
+db-1   | 
+db-1   | 
+db-1   | Success. You can now start the database server using:
+db-1   | 
+db-1   |     pg_ctl -D /var/lib/postgresql/data -l logfile start
+db-1   | 
+db-1   | waiting for server to start....2026-06-21 01:57:40.250 UTC [48] LOG:  starting PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+db-1   | 2026-06-21 01:57:40.253 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+db-1   | 2026-06-21 01:57:40.265 UTC [51] LOG:  database system was shut down at 2026-06-21 01:57:39 UTC
+db-1   | 2026-06-21 01:57:40.281 UTC [48] LOG:  database system is ready to accept connections
+db-1   |  done
+db-1   | server started
+db-1   | CREATE DATABASE
+db-1   | 
+db-1   | 
+db-1   | /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+db-1   | 
+db-1   | waiting for server to shut down....2026-06-21 01:57:40.582 UTC [48] LOG:  received fast shutdown request
+db-1   | 2026-06-21 01:57:40.586 UTC [48] LOG:  aborting any active transactions
+db-1   | 2026-06-21 01:57:40.590 UTC [48] LOG:  background worker "logical replication launcher" (PID 54) exited with exit code 1
+db-1   | 2026-06-21 01:57:40.591 UTC [49] LOG:  shutting down
+db-1   | 2026-06-21 01:57:40.594 UTC [49] LOG:  checkpoint starting: shutdown immediate
+db-1   | 2026-06-21 01:57:40.737 UTC [49] LOG:  checkpoint complete: wrote 926 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.049 s, sync=0.077 s, total=0.147 s; sync files=301, longest=0.007 s, average=0.001 s; distance=4273 kB, estimate=4273 kB; lsn=0/191F0F0, redo lsn=0/191F0F0
+db-1   | 2026-06-21 01:57:40.759 UTC [48] LOG:  database system is shut down
+db-1   |  done
+db-1   | server stopped
+db-1   | 
+db-1   | PostgreSQL init process complete; ready for start up.
+db-1   | 
+db-1   | 2026-06-21 01:57:40.846 UTC [1] LOG:  starting PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+db-1   | 2026-06-21 01:57:40.848 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+db-1   | 2026-06-21 01:57:40.848 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+db-1   | 2026-06-21 01:57:40.855 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+db-1   | 2026-06-21 01:57:40.870 UTC [64] LOG:  database system was shut down at 2026-06-21 01:57:40 UTC
+db-1   | 2026-06-21 01:57:40.886 UTC [1] LOG:  database system is ready to accept connections
+db-1   | 2026-06-21 02:02:40.943 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 02:03:04.708 UTC [62] LOG:  checkpoint complete: wrote 237 buffers (1.4%); 0 WAL file(s) added, 0 removed, 0 recycled; write=23.622 s, sync=0.108 s, total=23.766 s; sync files=179, longest=0.007 s, average=0.001 s; distance=1280 kB, estimate=1280 kB; lsn=0/1A5F4E8, redo lsn=0/1A5F4B0
+db-1   | 2026-06-21 02:07:40.747 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 02:07:41.489 UTC [62] LOG:  checkpoint complete: wrote 8 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.711 s, sync=0.008 s, total=0.742 s; sync files=5, longest=0.005 s, average=0.002 s; distance=9 kB, estimate=1153 kB; lsn=0/1A61980, redo lsn=0/1A61948
+db-1   | 2026-06-21 02:12:40.507 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 02:12:42.950 UTC [62] LOG:  checkpoint complete: wrote 25 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=2.422 s, sync=0.009 s, total=2.443 s; sync files=18, longest=0.006 s, average=0.001 s; distance=18 kB, estimate=1040 kB; lsn=0/1A662D0, redo lsn=0/1A66298
+db-1   | 2026-06-21 02:17:41.050 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 02:17:41.784 UTC [62] LOG:  checkpoint complete: wrote 8 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.711 s, sync=0.006 s, total=0.734 s; sync files=8, longest=0.003 s, average=0.001 s; distance=3 kB, estimate=936 kB; lsn=0/1A66F30, redo lsn=0/1A66EF8
+db-1   | 2026-06-21 02:22:41.827 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 02:22:44.701 UTC [62] LOG:  checkpoint complete: wrote 29 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=2.832 s, sync=0.014 s, total=2.875 s; sync files=22, longest=0.007 s, average=0.001 s; distance=50 kB, estimate=847 kB; lsn=0/1A737A0, redo lsn=0/1A73768
+db-1   | 2026-06-21 02:27:41.802 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 02:27:42.328 UTC [62] LOG:  checkpoint complete: wrote 6 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.506 s, sync=0.006 s, total=0.527 s; sync files=6, longest=0.004 s, average=0.001 s; distance=12 kB, estimate=764 kB; lsn=0/1A76928, redo lsn=0/1A768F0
+db-1   | 2026-06-21 02:32:41.337 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 02:32:42.269 UTC [62] LOG:  checkpoint complete: wrote 10 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.911 s, sync=0.006 s, total=0.933 s; sync files=10, longest=0.003 s, average=0.001 s; distance=25 kB, estimate=690 kB; lsn=0/1A7CD68, redo lsn=0/1A7CD30
+db-1   | 2026-06-21 02:37:41.306 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 02:37:42.334 UTC [62] LOG:  checkpoint complete: wrote 11 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=1.008 s, sync=0.006 s, total=1.028 s; sync files=9, longest=0.004 s, average=0.001 s; distance=35 kB, estimate=624 kB; lsn=0/1A85A70, redo lsn=0/1A85A38
+db-1   | 2026-06-21 02:42:41.424 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 02:42:43.467 UTC [62] LOG:  checkpoint complete: wrote 21 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=2.020 s, sync=0.009 s, total=2.043 s; sync files=19, longest=0.004 s, average=0.001 s; distance=41 kB, estimate=566 kB; lsn=0/1A90128, redo lsn=0/1A900B8
+db-1   | 2026-06-21 02:47:41.567 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 02:47:42.392 UTC [62] LOG:  checkpoint complete: wrote 9 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.807 s, sync=0.005 s, total=0.825 s; sync files=9, longest=0.003 s, average=0.001 s; distance=20 kB, estimate=511 kB; lsn=0/1A952D0, redo lsn=0/1A95298
+db-1   | 2026-06-21 18:07:51.709 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 18:07:52.482 UTC [62] LOG:  checkpoint complete: wrote 8 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.722 s, sync=0.009 s, total=0.776 s; sync files=8, longest=0.006 s, average=0.002 s; distance=12 kB, estimate=461 kB; lsn=0/1A982D0, redo lsn=0/1A98298
+db-1   | 2026-06-21 18:12:51.512 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 18:12:52.269 UTC [62] LOG:  checkpoint complete: wrote 8 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.714 s, sync=0.007 s, total=0.757 s; sync files=8, longest=0.004 s, average=0.001 s; distance=13 kB, estimate=417 kB; lsn=0/1A9B708, redo lsn=0/1A9B6D0
+db-1   | 2026-06-21 18:37:51.594 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 18:37:52.638 UTC [62] LOG:  checkpoint complete: wrote 11 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=1.013 s, sync=0.007 s, total=1.045 s; sync files=11, longest=0.003 s, average=0.001 s; distance=17 kB, estimate=377 kB; lsn=0/1A9FCF0, redo lsn=0/1A9FCB8
+db-1   | 2026-06-21 18:57:51.929 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 18:57:52.368 UTC [62] LOG:  checkpoint complete: wrote 5 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.413 s, sync=0.007 s, total=0.441 s; sync files=5, longest=0.005 s, average=0.002 s; distance=9 kB, estimate=340 kB; lsn=0/1AA23A0, redo lsn=0/1AA2368
+db-1   | 2026-06-21 19:07:51.407 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 19:07:52.359 UTC [62] LOG:  checkpoint complete: wrote 10 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.914 s, sync=0.016 s, total=0.953 s; sync files=8, longest=0.009 s, average=0.002 s; distance=24 kB, estimate=308 kB; lsn=0/1AA8758, redo lsn=0/1AA8720
+db-1   | 2026-06-21 19:22:51.508 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 19:22:52.062 UTC [62] LOG:  checkpoint complete: wrote 6 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.517 s, sync=0.010 s, total=0.555 s; sync files=6, longest=0.008 s, average=0.002 s; distance=3 kB, estimate=278 kB; lsn=0/1AA9540, redo lsn=0/1AA9508
+db-1   | 2026-06-21 19:27:51.163 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 19:27:51.589 UTC [62] LOG:  checkpoint complete: wrote 5 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.410 s, sync=0.004 s, total=0.427 s; sync files=5, longest=0.003 s, average=0.001 s; distance=4 kB, estimate=250 kB; lsn=0/1AAA6A8, redo lsn=0/1AAA670
+db-1   | 2026-06-21 19:32:51.687 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 19:32:57.580 UTC [62] LOG:  checkpoint complete: wrote 59 buffers (0.4%); 0 WAL file(s) added, 0 removed, 0 recycled; write=5.861 s, sync=0.017 s, total=5.894 s; sync files=57, longest=0.004 s, average=0.001 s; distance=282 kB, estimate=282 kB; lsn=0/1AF1048, redo lsn=0/1AF0FD8
+db-1   | 2026-06-21 19:37:51.632 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 19:37:54.379 UTC [62] LOG:  checkpoint complete: wrote 28 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=2.720 s, sync=0.011 s, total=2.747 s; sync files=21, longest=0.005 s, average=0.001 s; distance=12 kB, estimate=255 kB; lsn=0/1AF4290, redo lsn=0/1AF4258
+db-1   | 2026-06-21 19:46:52.733 UTC [101839] FATAL:  role "root" does not exist
+db-1   | 2026-06-21 20:07:51.887 UTC [62] LOG:  checkpoint starting: time
+db-1   | 2026-06-21 20:07:52.522 UTC [62] LOG:  checkpoint complete: wrote 7 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.608 s, sync=0.007 s, total=0.636 s; sync files=7, longest=0.004 s, average=0.001 s; distance=2 kB, estimate=230 kB; lsn=0/1AF4B80, redo lsn=0/1AF4B48
+db-1   | 2026-06-21 20:12:42.690 UTC [104304] ERROR:  column "crc_number" does not exist at character 258
+db-1   | 2026-06-21 20:12:42.690 UTC [104304] STATEMENT:  select "id", "name", "email", "cpf_cnpj", "password_hash", "role", "user_type", "phone", "is_active", "email_verified", "email_verification_code", "email_verification_expires_at", "must_change_password", "password_reset_token", "password_reset_expires_at", "crc_number", "crc_verified", "registration_ip", "trusted_ips", "created_at", "updated_at" from "users" where "users"."cpf_cnpj" = $1 limit $2
