@@ -41,6 +41,7 @@ async function seed() {
       passwordHash: adminHash,
       email: "Willianlealusa@gmail.com",
       phone: "11999999999",
+      emailVerified: true,
     },
     {
       cpfCnpj: "12345678900",
@@ -49,6 +50,7 @@ async function seed() {
       passwordHash: contadorHash,
       email: "contador@lealcert.com.br",
       phone: "11888888888",
+      emailVerified: true,
     },
   ]);
 
