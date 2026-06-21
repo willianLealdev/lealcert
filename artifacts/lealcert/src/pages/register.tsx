@@ -256,8 +256,8 @@ export default function Register() {
   // ── Verificação manual de CRC ──────────────────────────────────────────────
   async function handleValidateCrc() {
     const crcNorm = normalizeCrc(form.crcNumber);
-    if (!/^[A-Z]{2}\d+[A-Z]$/.test(crcNorm)) {
-      toast({ title: "Formato inválido", description: "Use: UF + número + tipo. Ex: SP100000O", variant: "destructive" });
+    if (!/^[A-Z]{2}\d+[A-Z0-9]$/.test(crcNorm)) {
+      toast({ title: "Formato inválido", description: "Use: UF + número + tipo. Ex: SP100000O ou SP0229510", variant: "destructive" });
       return;
     }
     setCrcState("checking"); setCrcResult(null);
@@ -635,7 +635,7 @@ export default function Register() {
                     )}
 
                     {/* CRC do responsável técnico (PJ contador) */}
-                    {(responsibleState === "valid" || responsibleState === "invalid" || form.responsibleName) && !crcDuplicate && (
+                    {!crcDuplicate && (
                       <div className="space-y-1">
                         <Label className="text-blue-100/80 text-sm">
                           Número de Registro CRC
