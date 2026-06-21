@@ -39,7 +39,7 @@ async function seed() {
       name: "Admin",
       role: "admin",
       passwordHash: adminHash,
-      email: "admin@lealcert.com.br",
+      email: "Willianlealusa@gmail.com",
       phone: "11999999999",
     },
     {
