@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and, or } from "drizzle-orm";
 import { db, conversations, chatMessages, certificatesTable, usersTable, ordersTable, settingsTable } from "@workspace/db";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
@@ -25,61 +25,95 @@ const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024, files: 10
 
 const router = Router();
 
+// ── Status traduzido para o cliente ───────────────────────────────────────────
+const STATUS_LABELS: Record<string, string> = {
+  created: "Criado",
+  pending_payment: "Aguardando Pagamento",
+  paid: "Pago — Aguardando Agendamento",
+  protocol_assigned: "Protocolo Atribuído",
+  aguardando_validacao: "Aguardando Validação",
+  emitido: "Emitido",
+  revogado: "Revogado",
+  completed: "Concluído",
+  cancelled: "Cancelado",
+};
+
+// ── System prompt (preços só são revelados após [USUARIO_VERIFICADO]) ─────────
 function buildSystemPrompt(certs: { id: number; name: string; price: string }[]): string {
   const certList = certs
     .map(c => `- ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`)
     .join("\n");
 
-  return `Você é a assistente virtual de vendas da LealCert, uma empresa especializada em Certificados Digitais ICP-Brasil.
+  return `Você é a assistente virtual da LealCert, especializada em Certificados Digitais ICP-Brasil.
 
-Seu objetivo é guiar o cliente pelo processo de compra de forma amigável, profissional e eficiente, sem que ele precise fazer login.
+════════════════════════════════════════════════════════════
+⚠️  REGRA ABSOLUTA — NÃO NEGOCIÁVEL:
+Você NUNCA deve informar valores, preços ou qualquer dado de certificado para usuários que ainda não foram verificados como clientes ou contadores cadastrados.
 
-**Certificados disponíveis (apresente apenas quando o cliente perguntar ou demonstrar interesse):**
+ANTES de qualquer informação de preço ou pedido:
+1. Peça o CPF (11 dígitos) ou CNPJ (14 dígitos) do cliente/contador
+2. O sistema verificará automaticamente o cadastro
+3. Somente após receber [USUARIO_VERIFICADO] na conversa você está autorizado a fornecer preços e processar pedidos
+4. Se receber [USUARIO_NAO_CADASTRADO], informe educadamente que atendemos apenas clientes e contadores cadastrados e oriente a acessar lealcert.com.br/register para criar a conta
+════════════════════════════════════════════════════════════
+
+**Certificados disponíveis** (valores CONFIDENCIAIS até verificação):
 ${certList}
+
+**Consulta de status de pedido:**
+- Peça o CPF/CNPJ e o número do pedido (ex: 20240101-1234) ou ID do pedido
+- Após verificação do cadastro o sistema injetará [STATUS_PEDIDO] com as informações
+- Se o pedido não pertencer ao CPF/CNPJ informado, será injetado [PEDIDO_NAO_ENCONTRADO]
 
 **IMPORTANTE sobre A3:**
 - Certificados A3 NÃO incluem mídia (cartão/token). O cliente precisa ter seu próprio leitor compatível.
-- Sempre mencione isso quando o cliente escolher A3.
 
-**Normalização de dados falados por voz:**
-- CPF/CNPJ pode chegar com espaços entre os dígitos (ex: "123 456 789 00") — SEMPRE remova espaços e pontuação, use apenas os dígitos. CPF = 11 dígitos, CNPJ = 14 dígitos.
-- CEP pode chegar como "01310100" ou "0 1 3 1 0 1 0 0" — remova espaços. Quando o sistema informar o endereço via [CEP consultado], use esses dados diretamente sem perguntar novamente.
-- Telefone pode chegar com espaços entre dígitos — remova espaços e use só números + DDD.
-- E-mail pode chegar de várias formas faladas: "joao arroba gmail ponto com" ou "joao @ gmail . com" — SEMPRE reconstrua o e-mail corretamente removendo espaços ao redor de @ e pontos, e convertendo "arroba" em @ e "ponto" em . Exemplo: "joao silva arroba empresa ponto com ponto br" → "joaosilva@empresa.com.br". Se não conseguir montar um e-mail válido, peça para o cliente digitar ou soletrar.
+**Normalização de dados:**
+- CPF/CNPJ pode chegar com espaços entre dígitos — SEMPRE remova espaços e pontuação
+- CEP: remova espaços. Quando o sistema informar [CEP consultado], use esses dados
+- Telefone: apenas números + DDD
+- E-mail falado (ex: "joao arroba gmail ponto com") → reconstrua corretamente
 
-**Fluxo de venda — siga esta ordem:**
-1. Cumprimente e pergunte o que o cliente precisa
-2. Identifique o tipo de certificado adequado (CPF/CNPJ, A1/A3, validade)
-3. Apresente o certificado recomendado com preço
-4. Colete os dados necessários UM A UM (não peça tudo de uma vez):
-   - Nome completo
-   - CPF (se e-CPF) ou CNPJ + Razão Social (se e-CNPJ)
-   - E-mail
-   - Telefone (WhatsApp)
-   - CEP — quando o cliente informar, o sistema buscará o endereço automaticamente
-5. Pergunte se deseja garantia estendida (+R$15,00 — cobre falhas de mídia/suporte estendido)
-6. Quando tiver TODOS os dados, confirme com o cliente
-7. Solicite os documentos obrigatórios. Escreva uma mensagem amigável explicando quais documentos são necessários e, na linha imediatamente seguinte (sem linhas em branco entre elas), inclua a ação:
-   - e-CPF → precisa de: RG ou CNH (frente e verso) + Comprovante de residência
-     Use: ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
-   - e-CNPJ → precisa de: Cartão CNPJ + Contrato Social ou Requerimento de Empresário + RG/CNH do responsável (frente e verso) + Comprovante de endereço da empresa
-     Use: ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
-8. Aguarde o cliente enviar os documentos. Quando receber mensagem contendo [DOCUMENTOS_ENVIADOS], confirme brevemente o recebimento e prossiga para o próximo passo.
-9. Use a ação CRIAR_PEDIDO para registrar o pedido
-10. Apresente a chave PIX para pagamento
-11. Explique que após confirmação do pagamento, a equipe entrará em contato para agendamento
+**Fluxo após verificação:**
+1. Identifique o tipo de certificado adequado
+2. Apresente o certificado recomendado com preço
+3. Colete dados UM A UM (não peça tudo de uma vez):
+   - Nome completo, CPF/CNPJ, E-mail, Telefone (WhatsApp), CEP
+4. Pergunte sobre garantia estendida (+R$15,00)
+5. Confirme todos os dados com o cliente
+6. Solicite documentos obrigatórios e inclua na linha seguinte (sem linha em branco):
+   - e-CPF: RG ou CNH (frente e verso) + Comprovante de residência
+     ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
+   - e-CNPJ: Cartão CNPJ + Contrato Social + RG/CNH do responsável + Comprovante de endereço
+     ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
+7. Aguarde [DOCUMENTOS_ENVIADOS]
+8. Emita ACAO:CRIAR_PEDIDO (apenas para usuários [USUARIO_VERIFICADO])
 
-**Detecção de tipo de cliente:**
-- Se o e-mail informado já estiver cadastrado como contador no sistema, informe que o pedido será vinculado à conta dele
-- Se não tiver conta, processe normalmente como cliente avulso
+**Tom:** Amigável, direto, profissional. Português do Brasil.
 
-**Tom:** Amigável, direto ao ponto, profissional. Use linguagem simples em Português do Brasil.
-**NUNCA mostre preços espontaneamente** — apresente apenas quando o cliente perguntar ou quando chegar na etapa de oferta.
+Quando tiver todos os dados, confirmação E [DOCUMENTOS_ENVIADOS], responda EXATAMENTE neste formato:
+ACAO:CRIAR_PEDIDO:{"certificateId":<numero_inteiro>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<apenas_digitos>","customerEmail":"<email>","customerPhone":"<apenas_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<apenas_digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<uf>","extendedWarranty":<true|false>}`;
+}
 
-Quando tiver todos os dados, confirmação do cliente E documentos enviados ([DOCUMENTOS_ENVIADOS] recebido), responda EXATAMENTE neste formato (sem markdown, sem texto extra antes ou depois):
-ACAO:CRIAR_PEDIDO:{"certificateId":<numero_inteiro_do_ID>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<apenas_digitos>","customerEmail":"<email>","customerPhone":"<apenas_digitos_com_ddd>","companyName":"<razao_social_ou_null>","addressZipcode":"<apenas_digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<uf>","extendedWarranty":<true|false>}
+// ── Extrai sequência de 11 ou 14 dígitos de um texto ─────────────────────────
+function extractCpfCnpj(text: string): string | null {
+  // Remove non-digits and spaces between digits (voice input)
+  const normalized = text.replace(/[^0-9]/g, "");
+  // Prefer CNPJ (14 digits) then CPF (11 digits)
+  const cnpj = normalized.match(/\d{14}/)?.[0];
+  if (cnpj) return cnpj;
+  const cpf = normalized.match(/\d{11}/)?.[0];
+  return cpf ?? null;
+}
 
-ATENÇÃO: certificateId DEVE ser o número inteiro do ID listado acima (ex: 1, 2, 3...). NUNCA use texto ou slug. customerCpfCnpj, customerPhone e addressZipcode devem ter APENAS dígitos, sem pontos, traços ou espaços.`;
+// ── Extrai número do pedido do texto (formato YYYYMMDD-NNNN ou só dígitos) ───
+function extractOrderRef(text: string): { orderNumber?: string; orderId?: number } {
+  const orderNumberMatch = text.match(/\b(\d{8}-\d{4})\b/);
+  if (orderNumberMatch) return { orderNumber: orderNumberMatch[1] };
+  // "pedido 123" or "pedido #123"
+  const idMatch = text.match(/\bpedido\s+#?(\d+)\b/i);
+  if (idMatch) return { orderId: parseInt(idMatch[1], 10) };
+  return {};
 }
 
 router.post("/chat/session", async (req, res): Promise<void> => {
@@ -93,14 +127,11 @@ router.post("/chat/upload-docs", upload.array("files", 10), async (req, res): Pr
     res.status(400).json({ error: "Nenhum arquivo enviado" });
     return;
   }
-
   const fileMeta = files.map(f => ({
     name: f.originalname,
     key: `uploads/chat-docs/${f.filename}`,
     url: `/api/uploads/chat-docs/${f.filename}`,
   }));
-
-  // Persist structured doc metadata into the conversation so CRIAR_PEDIDO can find it
   const sessionId = req.body?.sessionId ? Number(req.body.sessionId) : null;
   if (sessionId && !isNaN(sessionId)) {
     try {
@@ -113,7 +144,6 @@ router.post("/chat/upload-docs", upload.array("files", 10), async (req, res): Pr
       logger.warn({ err: dbErr }, "Failed to persist doc metadata to chat history");
     }
   }
-
   res.json({ ok: true, files: files.map(f => f.originalname) });
 });
 
@@ -138,20 +168,81 @@ router.post("/chat", async (req, res): Promise<void> => {
     .orderBy(asc(chatMessages.createdAt))
     .limit(40);
 
-  const chatHistory = history.map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
+  const chatHistory = history.map(m => ({ role: m.role as "user" | "assistant" | "system", content: m.content }));
 
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
+  // ── 1. Verificar se o usuário já está verificado nesta sessão ──────────────
+  const verifiedMsg = chatHistory.find(m => m.content.startsWith("[USUARIO_VERIFICADO]"));
+  let verifiedCpfCnpj: string | null = null;
+  if (verifiedMsg) {
+    verifiedCpfCnpj = verifiedMsg.content.match(/CPF\/CNPJ: (\d+)/)?.[1] ?? null;
+  }
 
-  const activeCerts = await db.select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price })
-    .from(certificatesTable)
-    .where(eq(certificatesTable.active, true));
+  // ── 2. Tentar verificar CPF/CNPJ da mensagem atual (se ainda não verificado) ─
+  if (!verifiedCpfCnpj) {
+    const cpfCnpj = extractCpfCnpj(message);
+    if (cpfCnpj) {
+      const [user] = await db
+        .select({ id: usersTable.id, name: usersTable.name, role: usersTable.role, userType: usersTable.userType, isActive: usersTable.isActive, emailVerified: usersTable.emailVerified })
+        .from(usersTable)
+        .where(and(eq(usersTable.cpfCnpj, cpfCnpj), eq(usersTable.isActive, true)))
+        .limit(1);
 
-  const systemPrompt = buildSystemPrompt(activeCerts);
+      let sysMsg: string;
+      if (user && user.emailVerified) {
+        const tipo = user.role === "admin" ? "administrador" : user.userType ?? "cliente";
+        sysMsg = `[USUARIO_VERIFICADO] CPF/CNPJ: ${cpfCnpj} | Nome: ${user.name} | Tipo: ${tipo} | ID_INTERNO: ${user.id}`;
+        verifiedCpfCnpj = cpfCnpj;
+      } else {
+        sysMsg = `[USUARIO_NAO_CADASTRADO] CPF/CNPJ: ${cpfCnpj} — não encontrado no cadastro ou conta não confirmada. Oriente a acessar lealcert.com.br/register.`;
+      }
 
-  // Auto-lookup CEP if the user's message contains exactly 8 digits (possibly with spaces)
+      // Persiste no histórico para a sessão
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: sysMsg });
+      chatHistory.push({ role: "user" as const, content: sysMsg });
+    }
+  }
+
+  // ── 3. Consulta de status de pedido (somente para usuário verificado) ──────
+  if (verifiedCpfCnpj) {
+    const orderRef = extractOrderRef(message);
+    if (orderRef.orderNumber || orderRef.orderId) {
+      try {
+        const conditions = [eq(ordersTable.customerCpfCnpj, verifiedCpfCnpj)];
+        if (orderRef.orderNumber) conditions.push(eq(ordersTable.orderNumber, orderRef.orderNumber));
+        else if (orderRef.orderId) conditions.push(eq(ordersTable.id, orderRef.orderId));
+
+        const [order] = await db
+          .select({
+            id: ordersTable.id,
+            orderNumber: ordersTable.orderNumber,
+            status: ordersTable.status,
+            total: ordersTable.total,
+            createdAt: ordersTable.createdAt,
+            certificateId: ordersTable.certificateId,
+          })
+          .from(ordersTable)
+          .where(and(...conditions))
+          .limit(1);
+
+        let statusMsg: string;
+        if (order) {
+          const certName = (await db.select({ name: certificatesTable.name }).from(certificatesTable).where(eq(certificatesTable.id, order.certificateId)).limit(1))[0]?.name ?? "—";
+          const statusLabel = STATUS_LABELS[order.status] ?? order.status;
+          const dataStr = new Date(order.createdAt).toLocaleDateString("pt-BR");
+          statusMsg = `[STATUS_PEDIDO] Pedido #${order.orderNumber} | Produto: ${certName} | Status: ${statusLabel} | Total: R$ ${parseFloat(order.total).toFixed(2)} | Data: ${dataStr}`;
+        } else {
+          statusMsg = `[PEDIDO_NAO_ENCONTRADO] Nenhum pedido encontrado com esses dados para o CPF/CNPJ verificado.`;
+        }
+
+        await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: statusMsg });
+        chatHistory.push({ role: "user" as const, content: statusMsg });
+      } catch (orderErr) {
+        logger.warn({ err: orderErr }, "chat: falha ao consultar pedido");
+      }
+    }
+  }
+
+  // ── 4. Auto-lookup de CEP ──────────────────────────────────────────────────
   const cepDigits = message.replace(/\D/g, "");
   const cepMatch = cepDigits.match(/^(\d{8})$/) ?? message.replace(/\s/g, "").match(/\b(\d{8})\b/);
   if (cepMatch) {
@@ -159,9 +250,9 @@ router.post("/chat", async (req, res): Promise<void> => {
     try {
       const cepRes = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
       if (cepRes.ok) {
-        const cepData = await cepRes.json() as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string; complemento?: string };
+        const cepData = await cepRes.json() as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
         if (!cepData.erro && cepData.localidade) {
-          const addressNote = `[CEP consultado automaticamente] CEP ${cep}: ${cepData.logradouro ?? ""}, bairro ${cepData.bairro ?? ""}, ${cepData.localidade}-${cepData.uf}. Use estes dados para preencher o endereço do cliente (rua, bairro, cidade, estado). Pergunte apenas o número da residência/estabelecimento.`;
+          const addressNote = `[CEP consultado automaticamente] CEP ${cep}: ${cepData.logradouro ?? ""}, bairro ${cepData.bairro ?? ""}, ${cepData.localidade}-${cepData.uf}. Use estes dados para preencher o endereço. Pergunte apenas o número.`;
           chatHistory.push({ role: "user" as const, content: `[Sistema] ${addressNote}` });
         }
       }
@@ -170,7 +261,13 @@ router.post("/chat", async (req, res): Promise<void> => {
     }
   }
 
-  // Load AI provider settings from DB
+  // ── 5. Carregar configurações de IA ───────────────────────────────────────
+  const activeCerts = await db.select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price })
+    .from(certificatesTable)
+    .where(eq(certificatesTable.active, true));
+
+  const systemPrompt = buildSystemPrompt(activeCerts);
+
   const [aiSettings] = await db.select({
     aiProvider: settingsTable.aiProvider,
     openaiApiKey: settingsTable.openaiApiKey,
@@ -182,13 +279,16 @@ router.post("/chat", async (req, res): Promise<void> => {
   }).from(settingsTable).limit(1);
 
   const provider = aiSettings?.aiProvider || "openai";
-
-  // Validate that the selected provider has a key configured
-  const providerKey = {
+  const providerKey = ({
     openai: aiSettings?.openaiApiKey || "",
     deepseek: aiSettings?.deepseekApiKey || "",
     claude: aiSettings?.claudeApiKey || "",
-  }[provider] ?? "";
+  } as Record<string, string>)[provider] ?? "";
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
 
   if (!providerKey) {
     const names: Record<string, string> = { openai: "OpenAI", deepseek: "DeepSeek", claude: "Claude (Anthropic)" };
@@ -198,85 +298,73 @@ router.post("/chat", async (req, res): Promise<void> => {
     return;
   }
 
+  // ── 6. Chamar a IA ────────────────────────────────────────────────────────
   let fullResponse = "";
 
-  // ── Claude (Anthropic) ──────────────────────────────────────────────────
+  // Filtra mensagens system do histórico para o formato da IA (Claude/OpenAI não aceitam role=system no meio)
+  const aiMessages = chatHistory
+    .filter(m => m.role === "user" || m.role === "assistant")
+    .map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
+
   if (provider === "claude") {
     const anthropic = new Anthropic({ apiKey: providerKey });
     const claudeModel = aiSettings?.claudeModel || "claude-3-5-haiku-20241022";
-
     try {
       const stream = anthropic.messages.stream({
         model: claudeModel,
         max_tokens: 1024,
         system: systemPrompt,
-        messages: chatHistory,
+        messages: aiMessages,
       });
-
       for await (const event of stream) {
-        if (
-          event.type === "content_block_delta" &&
-          event.delta.type === "text_delta"
-        ) {
+        if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
           const content = event.delta.text;
-          if (content) {
-            fullResponse += content;
-            res.write(`data: ${JSON.stringify({ content })}\n\n`);
-          }
+          if (content) { fullResponse += content; res.write(`data: ${JSON.stringify({ content })}\n\n`); }
         }
       }
     } catch (claudeErr) {
       logger.error({ err: claudeErr }, "Claude streaming error");
       res.write(`data: ${JSON.stringify({ content: "\n\n⚠️ Erro ao conectar ao Claude. Verifique a chave de API." })}\n\n`);
     }
-
-    await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: fullResponse });
   } else {
-    // ── OpenAI / DeepSeek (OpenAI-compatible) ────────────────────────────
-    const baseURL = provider === "deepseek"
-      ? "https://api.deepseek.com"
-      : undefined;
+    const baseURL = provider === "deepseek" ? "https://api.deepseek.com" : undefined;
     const model = provider === "deepseek"
       ? (aiSettings?.deepseekModel || "deepseek-chat")
       : (aiSettings?.openaiModel || "gpt-4o-mini");
-
     const openai = new OpenAI({ apiKey: providerKey, ...(baseURL ? { baseURL } : {}) });
-
     try {
       const stream = await openai.chat.completions.create({
         model,
         max_completion_tokens: 1024,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...chatHistory,
-        ],
+        messages: [{ role: "system", content: systemPrompt }, ...aiMessages],
         stream: true,
       });
-
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          fullResponse += content;
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
-        }
+        if (content) { fullResponse += content; res.write(`data: ${JSON.stringify({ content })}\n\n`); }
       }
     } catch (openaiErr) {
       logger.error({ err: openaiErr }, "OpenAI/DeepSeek streaming error");
       res.write(`data: ${JSON.stringify({ content: "\n\n⚠️ Erro ao conectar à IA. Verifique a chave de API." })}\n\n`);
     }
-
-    await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: fullResponse });
   }
 
-    // Detect document request action
-    if (fullResponse.includes("ACAO:SOLICITAR_DOCS:")) {
-      const match = fullResponse.match(/ACAO:SOLICITAR_DOCS:\{"tipo":"(cpf|cnpj)"\}/);
-      if (match) {
-        res.write(`data: ${JSON.stringify({ action: "solicitar_docs", tipo: match[1] })}\n\n`);
-      }
-    }
+  await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: fullResponse });
 
-    if (fullResponse.includes("ACAO:CRIAR_PEDIDO:")) {
+  // ── 7. Processar ações emitidas pela IA ───────────────────────────────────
+
+  // Ação: solicitar documentos
+  if (fullResponse.includes("ACAO:SOLICITAR_DOCS:")) {
+    const match = fullResponse.match(/ACAO:SOLICITAR_DOCS:\{"tipo":"(cpf|cnpj)"\}/);
+    if (match) res.write(`data: ${JSON.stringify({ action: "solicitar_docs", tipo: match[1] })}\n\n`);
+  }
+
+  // Ação: criar pedido (somente se usuário verificado)
+  if (fullResponse.includes("ACAO:CRIAR_PEDIDO:")) {
+    if (!verifiedCpfCnpj) {
+      // Segurança extra: bloqueia criação de pedido se não verificado
+      res.write(`data: ${JSON.stringify({ content: "\n\n❌ Não é possível criar pedidos sem validação de cadastro. Informe seu CPF ou CNPJ para continuar." })}\n\n`);
+    } else {
       try {
         const jsonStr = fullResponse.split("ACAO:CRIAR_PEDIDO:")[1].trim();
         const orderData = JSON.parse(jsonStr) as {
@@ -315,32 +403,29 @@ router.post("/chat", async (req, res): Promise<void> => {
         const basePrice = parseFloat(cert.price);
         const total = basePrice + (orderData.extendedWarranty ? 15.0 : 0.0);
 
+        // Encontra o userId pelo CPF/CNPJ verificado na sessão
         let userId = 1;
-        if (orderData.customerEmail) {
-          const cleanEmail = orderData.customerEmail.toLowerCase().trim();
-          const [existingUser] = await db.select({ id: usersTable.id, role: usersTable.role })
-            .from(usersTable)
-            .where(eq(usersTable.email, cleanEmail))
-            .limit(1);
-          if (existingUser) userId = existingUser.id;
-        }
+        const [existingUser] = await db.select({ id: usersTable.id })
+          .from(usersTable)
+          .where(eq(usersTable.cpfCnpj, verifiedCpfCnpj))
+          .limit(1);
+        if (existingUser) userId = existingUser.id;
 
-        // Gather uploaded document metadata from chat history (stored by upload endpoint)
+        // Busca documentos enviados no histórico
         const allMsgs = await db.select().from(chatMessages)
           .where(eq(chatMessages.conversationId, sessionId))
           .orderBy(asc(chatMessages.createdAt));
-        const docKeyMsg = [...allMsgs].reverse().find((m) => m.content.startsWith("[DOC_KEYS]"));
-        const chatDocuments = docKeyMsg
-          ? docKeyMsg.content.replace("[DOC_KEYS] ", "").trim()
-          : null;
+        const docKeyMsg = [...allMsgs].reverse().find(m => m.content.startsWith("[DOC_KEYS]"));
+        const chatDocuments = docKeyMsg ? docKeyMsg.content.replace("[DOC_KEYS] ", "").trim() : null;
 
         let orderNumber: string;
-        do {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
           const rand = Math.floor(1000 + Math.random() * 9000);
           orderNumber = `${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${rand}`;
           const [existing] = await db.select({ id: ordersTable.id }).from(ordersTable).where(eq(ordersTable.orderNumber, orderNumber)).limit(1);
           if (!existing) break;
-        } while (true);
+        }
 
         const [order] = await db.insert(ordersTable).values({
           orderNumber,
@@ -365,21 +450,16 @@ router.post("/chat", async (req, res): Promise<void> => {
         }).returning();
 
         const [settings] = await db.select().from(settingsTable).limit(1);
-        const pixKey = (settings as Record<string, unknown> & typeof settings)["pixKey" as keyof typeof settings] as string | null | undefined ?? null;
-        let pixPayload: { pixKey: string; amount: number; orderNumber: string } | null = null;
-
-        if (pixKey) {
-          pixPayload = { pixKey, amount: total, orderNumber: order.orderNumber };
-        }
+        const pixKey = (settings as Record<string, unknown>)["pixKey"] as string | null ?? null;
+        const pixPayload = pixKey ? { pixKey, amount: total, orderNumber: order.orderNumber } : null;
 
         const confirmMsg = pixPayload
-          ? `✅ **Pedido #${order.orderNumber} criado com sucesso!**\n\nTotal: R$ ${total.toFixed(2)}\n\n**Pagamento via PIX:**\nChave PIX: \`${pixPayload.pixKey}\`\nValor: R$ ${total.toFixed(2)}\n\nApós o pagamento, nossa equipe entrará em contato em até 1 hora útil para agendar a emissão do certificado.\n\n📧 Você receberá atualizações por e-mail em **${orderData.customerEmail}**.`
-          : `✅ **Pedido #${order.orderNumber} criado com sucesso!**\n\nTotal: R$ ${total.toFixed(2)}\n\nNossa equipe enviará os dados de pagamento para **${orderData.customerEmail}** em breve.\n\nVocê também pode acessar e pagar diretamente em **lealcert.com.br/entrar** usando o mesmo e-mail.\n\n📧 Você receberá todas as atualizações por e-mail.`;
+          ? `✅ **Pedido #${order.orderNumber} criado com sucesso!**\n\nTotal: R$ ${total.toFixed(2)}\n\n**Pagamento via PIX:**\nChave PIX: \`${pixPayload.pixKey}\`\nValor: R$ ${total.toFixed(2)}\n\nApós o pagamento, nossa equipe entrará em contato em até 1 hora útil para agendar a emissão.\n\n📧 Atualizações por e-mail em **${orderData.customerEmail}**.`
+          : `✅ **Pedido #${order.orderNumber} criado com sucesso!**\n\nTotal: R$ ${total.toFixed(2)}\n\nNossa equipe enviará os dados de pagamento para **${orderData.customerEmail}** em breve.\n\n📧 Você pode acompanhar o pedido em lealcert.com.br/entrar.`;
 
         res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
         res.write(`data: ${JSON.stringify({ content: confirmMsg })}\n\n`);
         res.write(`data: ${JSON.stringify({ action: "order_created", orderId: order.id, orderNumber: order.orderNumber, pixPayload })}\n\n`);
-
         await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: confirmMsg });
 
         if (orderData.customerEmail) {
@@ -401,6 +481,7 @@ router.post("/chat", async (req, res): Promise<void> => {
         res.write(`data: ${JSON.stringify({ content: "\n\n❌ Ocorreu um erro ao criar o pedido. Por favor, tente novamente ou entre em contato com nosso suporte." })}\n\n`);
       }
     }
+  }
 
   res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
   res.end();
