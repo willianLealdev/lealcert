@@ -72,10 +72,19 @@ async function ensureSessionTable() {
 async function main() {
   logger.info("Running database migrations...");
   const migrationDb = drizzle(pool);
-  await migrate(migrationDb, {
-    migrationsFolder: path.join(__dirname, "../migrations"),
-  });
-  logger.info("Database migrations complete");
+  try {
+    await migrate(migrationDb, {
+      migrationsFolder: path.join(__dirname, "../migrations"),
+    });
+    logger.info("Database migrations complete");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("already exists")) {
+      logger.warn("Migration skipped — schema already present in database");
+    } else {
+      throw err;
+    }
+  }
   await ensureSessionTable();
 
   await seed();

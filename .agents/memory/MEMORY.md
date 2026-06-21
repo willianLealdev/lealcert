@@ -3,3 +3,4 @@
 - [OpenAPI Order schema](openapi-order-schema.md) — GAR fields (garPedido etc.) were absent from Order schema; any new provider fields must be added both to orderRow() and to openapi.yaml Order schema.
 - [Safeweb token format](safeweb-token-format.md) — Safeweb API uses raw JWE token (NO "Bearer" prefix); PSBio path is psbio/consulta/biometria/global; token field is tokenAcesso not access_token.
 - [Orval inline requestBody conflict](orval-inline-body.md) — inline requestBody schemas generate duplicate TS2308 export errors; always use named $ref schemas in components/schemas for request bodies and responses.
+- [Session cookie in production](session-cookie-prod.md) — custom-fetch.ts must use credentials:"include" in fetch(); without it cookies are never sent and every auth check returns 401 even after successful login.
