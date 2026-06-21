@@ -16,9 +16,8 @@ services:
       retries: 10
 
   api:
-    build:
-      context: .
-      dockerfile: docker/api.Dockerfile
+    image: willianlealdev/lealcert-api:latest
+    pull_policy: always
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://postgres:Leal2024Xpto@db:5432/lealcert
@@ -33,9 +32,8 @@ services:
       - uploads:/app/uploads
 
   web:
-    build:
-      context: .
-      dockerfile: docker/web.Dockerfile
+    image: willianlealdev/lealcert-web:latest
+    pull_policy: always
     restart: unless-stopped
     depends_on:
       - api
