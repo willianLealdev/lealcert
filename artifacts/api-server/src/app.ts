@@ -19,6 +19,8 @@ if (!sessionSecret || sessionSecret === INSECURE_DEFAULT) {
     process.exit(1);
   }
   logger.warn("SESSION_SECRET não definido — usando padrão inseguro (só desenvolvimento)");
+} else if (process.env.NODE_ENV === "production" && sessionSecret.length < 32) {
+  logger.warn("SESSION_SECRET tem menos de 32 caracteres — recomendado mínimo 32 chars aleatórios");
 }
 const secret = sessionSecret ?? INSECURE_DEFAULT;
 

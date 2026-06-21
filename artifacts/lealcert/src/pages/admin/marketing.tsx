@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import DOMPurify from "dompurify";
 import { useQueryClient } from "@tanstack/react-query";
 import type { MarketingStats } from "@workspace/api-client-react";
 import {
@@ -1205,7 +1206,7 @@ function RespostasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
 
                 <div className="flex-1 overflow-y-auto p-5">
                   {selectedReply.bodyHtml ? (
-                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: selectedReply.bodyHtml }} />
+                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedReply.bodyHtml) }} />
                   ) : (
                     <pre className="text-sm whitespace-pre-wrap font-sans">{selectedReply.bodyText ?? "(sem conteúdo)"}</pre>
                   )}

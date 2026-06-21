@@ -38,8 +38,13 @@ COPY --from=builder /workspace/artifacts/api-server/migrations ./migrations
 # Install externalized runtime packages not bundled by esbuild
 RUN npm install --save nodemailer
 
-# Create upload directory (persisted via Docker volume)
-RUN mkdir -p uploads/chat-docs
+# Create non-root user and upload directory
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 --ingroup appgroup appuser && \
+    mkdir -p uploads/chat-docs && \
+    chown -R appuser:appgroup /app
+
+USER appuser
 
 ENV NODE_ENV=production
 ENV PORT=8080

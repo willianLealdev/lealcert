@@ -30,4 +30,12 @@ FROM nginx:1.27-alpine
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /workspace/artifacts/lealcert/dist/public /usr/share/nginx/html
 
+# Nginx master runs as root (needed to bind port 80) but worker processes drop to nginx user
+# This is the standard secure nginx-alpine configuration
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    touch /var/run/nginx.pid && \
+    chown nginx:nginx /var/run/nginx.pid
+
 EXPOSE 80
