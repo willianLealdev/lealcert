@@ -50,7 +50,13 @@ router.get("/auth/csrf-token", (req, res): void => {
 
 // ── Normaliza número CRC para formato da API do CFC: SP100000O ───────────────
 function normalizeCrc(input: string): string {
-  return input.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  let s = input.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  // CRC sempre termina com letra de tipo (O, P, T…). Se terminar com "0" (zero),
+  // converte para "O" (letra), pois é confusão visual frequente.
+  if (s.length > 2 && s[s.length - 1] === "0") {
+    s = s.slice(0, -1) + "O";
+  }
+  return s;
 }
 
 // ── Consulta API do CFC ───────────────────────────────────────────────────────
