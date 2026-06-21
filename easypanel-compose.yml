@@ -24,7 +24,7 @@ services:
       SESSION_SECRET: LealCertKey2024
       PORT: "8080"
       NODE_ENV: production
-      ALLOWED_ORIGINS: "https://cert-web.sbporu.easypanel.host"
+      ALLOWED_ORIGINS: "https://lealcert-cert.sbporu.easypanel.host"
     depends_on:
       db:
         condition: service_healthy
