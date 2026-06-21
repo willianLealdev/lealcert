@@ -64,6 +64,14 @@ export const RegisterInputUserType = {
   cliente: 'cliente',
 } as const;
 
+export type RegisterInputPersonType = typeof RegisterInputPersonType[keyof typeof RegisterInputPersonType];
+
+
+export const RegisterInputPersonType = {
+  fisica: 'fisica',
+  juridica: 'juridica',
+} as const;
+
 export interface RegisterInput {
   name: string;
   email: string;
@@ -72,20 +80,29 @@ export interface RegisterInput {
   password: string;
   phone?: string;
   userType: RegisterInputUserType;
-  /** Número de registro CRC (obrigatório para contadores) */
+  personType: RegisterInputPersonType;
+  /** CRC do contador PF (obrigatório para contador pessoa física) */
   crcNumber?: string;
+  companyName?: string;
+  companyFantasyName?: string;
+  /** CPF do responsável técnico (contador PJ) */
+  responsibleCpf?: string;
+  responsibleName?: string;
+  zipCode?: string;
+  street?: string;
+  addressNumber?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  addressState?: string;
 }
 
 export interface CrcValidationResult {
   valid: boolean;
   situacao: string;
-  /** @nullable */
   nome?: string | null;
-  /** @nullable */
   numeroRegistro?: string | null;
-  /** @nullable */
   categoria?: string | null;
-  /** @nullable */
   crc?: string | null;
 }
 
@@ -130,9 +147,21 @@ export interface AuthUser {
   cpfCnpj: string;
   role: AuthUserRole;
   userType?: AuthUserUserType;
+  personType?: string | null;
   mustChangePassword?: boolean;
-  /** @nullable */
   phone?: string | null;
+  crcNumber?: string | null;
+  companyName?: string | null;
+  companyFantasyName?: string | null;
+  responsibleCpf?: string | null;
+  responsibleName?: string | null;
+  zipCode?: string | null;
+  street?: string | null;
+  addressNumber?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  addressState?: string | null;
   createdAt?: string;
 }
 
@@ -146,12 +175,32 @@ export interface ChangePasswordInput {
   newPassword: string;
 }
 
+export interface CnpjLookupResult {
+  found: boolean;
+  razaoSocial?: string | null;
+  nomeFantasia?: string | null;
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  municipio?: string | null;
+  uf?: string | null;
+}
+
 export interface ProfileUpdate {
   name?: string;
   email?: string;
   phone?: string;
   currentPassword?: string;
   newPassword?: string;
+  zipCode?: string;
+  street?: string;
+  addressNumber?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  addressState?: string;
 }
 
 export type UserRole = typeof UserRole[keyof typeof UserRole];
@@ -165,11 +214,9 @@ export const UserRole = {
 export interface User {
   id: number;
   name: string;
-  /** @nullable */
   email?: string | null;
   cpfCnpj: string;
   role: UserRole;
-  /** @nullable */
   phone?: string | null;
   isActive?: boolean;
   createdAt: string;
@@ -212,20 +259,14 @@ export interface UserUpdate {
 export interface Certificate {
   id: number;
   name: string;
-  /** @nullable */
   description?: string | null;
   price: number;
-  /** @nullable */
   priceContador?: number | null;
   active: boolean;
-  /** @nullable */
   garHashProduto?: string | null;
-  /** @nullable */
   safewebIdProduto?: string | null;
   validityMonths?: number;
-  /** @nullable */
   product?: string | null;
-  /** @nullable */
   issuanceType?: string | null;
   createdAt: string;
 }
@@ -273,107 +314,59 @@ export interface Order {
   id: number;
   orderNumber: string;
   userId: number;
-  /** @nullable */
   userName?: string | null;
   certificateId: number;
-  /** @nullable */
   certificateName?: string | null;
   status: OrderStatus;
   total: number;
   customerName: string;
   customerCpfCnpj: string;
-  /** @nullable */
   customerEmail?: string | null;
-  /** @nullable */
   customerPhone?: string | null;
-  /** @nullable */
   customerBirthDate?: string | null;
-  /** @nullable */
   hasPsbio?: boolean | null;
-  /** @nullable */
   clientType?: string | null;
-  /** @nullable */
   companyName?: string | null;
-  /** @nullable */
   inssNumber?: string | null;
-  /** @nullable */
   cnhPath?: string | null;
-  /** @nullable */
   cartaoCnpjPath?: string | null;
-  /** @nullable */
   fichaCadastralPath?: string | null;
-  /** @nullable */
   chatDocuments?: string | null;
-  /** @nullable */
   scheduledAt?: string | null;
-  /** @nullable */
   protocolNumber?: string | null;
   extendedWarranty?: boolean;
-  /** @nullable */
   addressZipcode?: string | null;
-  /** @nullable */
   addressStreet?: string | null;
-  /** @nullable */
   addressNumber?: string | null;
-  /** @nullable */
   addressComplement?: string | null;
-  /** @nullable */
   addressNeighborhood?: string | null;
-  /** @nullable */
   addressCity?: string | null;
-  /** @nullable */
   addressState?: string | null;
-  /** @nullable */
   representanteAddressZipcode?: string | null;
-  /** @nullable */
   representanteAddressStreet?: string | null;
-  /** @nullable */
   representanteAddressNumber?: string | null;
-  /** @nullable */
   representanteAddressComplement?: string | null;
-  /** @nullable */
   representanteAddressNeighborhood?: string | null;
-  /** @nullable */
   representanteAddressCity?: string | null;
-  /** @nullable */
   representanteAddressState?: string | null;
-  /** @nullable */
   mpPaymentId?: string | null;
-  /** @nullable */
   garPedido?: string | null;
-  /** @nullable */
   garProtocolo?: string | null;
-  /** @nullable */
   garHashVenda?: string | null;
-  /** @nullable */
   garStatus?: string | null;
-  /** @nullable */
   garAgendamentoLink?: string | null;
-  /** @nullable */
   garSyncedAt?: string | null;
-  /** @nullable */
   garAgendamentoLocalNome?: string | null;
-  /** @nullable */
   garAgendamentoLocalHash?: string | null;
-  /** @nullable */
   garAgendamentoSlotHash?: string | null;
-  /** @nullable */
   garAgendamentoDataHora?: string | null;
-  /** @nullable */
   representanteCpf?: string | null;
-  /** @nullable */
   representanteNascimento?: string | null;
-  /** @nullable */
   safewebSolicitacaoId?: string | null;
-  /** @nullable */
   safewebStatus?: string | null;
-  /** @nullable */
   safewebSyncedAt?: string | null;
-  /** @nullable */
   safewebAgendamentoId?: string | null;
-  /** @nullable */
   safewebAgendamentoDataHora?: string | null;
-  /** @nullable */
   safewebAgendamentoLocalNome?: string | null;
   createdAt: string;
   updatedAt?: string;
@@ -479,19 +472,6 @@ export interface ConsultaPreviaResult {
   customerName?: string | null;
 }
 
-export interface CnpjLookupResult {
-  razaoSocial: string;
-  nomeFantasia: string;
-  logradouro: string;
-  numero: string;
-  complemento?: string;
-  bairro: string;
-  municipio: string;
-  uf: string;
-  cep: string;
-  situacao: string;
-}
-
 export interface PaymentPreference {
   paymentId: string;
   pixQrCode: string;
@@ -521,7 +501,6 @@ export const TicketStatus = {
 export interface Ticket {
   id: number;
   userId: number;
-  /** @nullable */
   userName?: string | null;
   subject: string;
   status: TicketStatus;
@@ -544,9 +523,7 @@ export interface Message {
   id: number;
   ticketId: number;
   userId: number;
-  /** @nullable */
   userName?: string | null;
-  /** @nullable */
   userRole?: string | null;
   content: string;
   createdAt: string;
@@ -555,7 +532,6 @@ export interface Message {
 export interface TicketDetail {
   id: number;
   userId: number;
-  /** @nullable */
   userName?: string | null;
   subject: string;
   status: TicketDetailStatus;
@@ -583,110 +559,65 @@ export interface TestEmailResult {
 
 export interface BrandingInfo {
   appName: string;
-  /** @nullable */
   logoUrl?: string | null;
   primaryColor: string;
-  /** @nullable */
   siteUrl?: string | null;
-  /** @nullable */
   contactPhone?: string | null;
-  /** @nullable */
   contactWhatsapp?: string | null;
-  /** @nullable */
   contactEmailSupport?: string | null;
-  /** @nullable */
   contactAddress?: string | null;
 }
 
 export interface AppSettings {
   id: number;
   appName?: string;
-  /** @nullable */
   mpAccessToken?: string | null;
-  /** @nullable */
   mpPublicKey?: string | null;
-  /** @nullable */
   webhookSecret?: string | null;
-  /** @nullable */
   mailFrom?: string | null;
-  /** @nullable */
   siteUrl?: string | null;
   scheduleOpenDays?: string;
   scheduleOpenHour?: string;
   scheduleCloseHour?: string;
   scheduleStepMin?: string;
   scheduleClosedDates?: string;
-  /** @nullable */
   garApiKey?: string | null;
-  /** @nullable */
   garHashVendedor?: string | null;
-  /** @nullable */
   garHashTabela?: string | null;
   garFormaPagamento?: string;
   garPreferirVideoconferencia?: string;
-  /** @nullable */
   safewebUrl?: string | null;
-  /** @nullable */
   safewebUrlHomologacao?: string | null;
   safewebAmbiente?: string;
-  /** @nullable */
   safewebUsername?: string | null;
-  /** @nullable */
   safewebPassword?: string | null;
-  /** @nullable */
   safewebUsernameHomologacao?: string | null;
-  /** @nullable */
   safewebPasswordHomologacao?: string | null;
-  /** @nullable */
   safewebCnpjAr?: string | null;
-  /** @nullable */
   safewebCodigoParceiro?: string | null;
   activeProvider?: string;
-  /** @nullable */
   evolutionUrl?: string | null;
-  /** @nullable */
   evolutionApiKey?: string | null;
-  /** @nullable */
   evolutionInstance?: string | null;
-  /** @nullable */
   logoUrl?: string | null;
-  /** @nullable */
   primaryColor?: string | null;
-  /** @nullable */
   contactPhone?: string | null;
-  /** @nullable */
   contactWhatsapp?: string | null;
-  /** @nullable */
   contactEmailSupport?: string | null;
-  /** @nullable */
   contactAddress?: string | null;
-  /** @nullable */
   smtpHostDb?: string | null;
-  /** @nullable */
   smtpPortDb?: string | null;
-  /** @nullable */
   smtpUserDb?: string | null;
-  /** @nullable */
   smtpPassDb?: string | null;
-  /** @nullable */
   vapidSubject?: string | null;
-  /** @nullable */
   vapidPublicKey?: string | null;
-  /** @nullable */
   vapidPrivateKey?: string | null;
-  /** @nullable */
   aiProvider?: string | null;
-  /** @nullable */
   openaiApiKey?: string | null;
-  /** @nullable */
   openaiModel?: string | null;
-  /** @nullable */
   deepseekApiKey?: string | null;
-  /** @nullable */
   deepseekModel?: string | null;
-  /** @nullable */
   claudeApiKey?: string | null;
-  /** @nullable */
   claudeModel?: string | null;
   updatedAt?: string;
 }
@@ -984,7 +915,6 @@ export interface SafewebAgendarResult {
   ok: boolean;
   dataHora: string;
   localNome: string;
-  /** @nullable */
   agendamentoId?: string | null;
 }
 
@@ -1161,21 +1091,14 @@ export interface MarketingContact {
   type: MarketingContactType;
   name: string;
   email: string;
-  /** @nullable */
   phone?: string | null;
-  /** @nullable */
   tags?: string | null;
   status: string;
   emailStatus: MarketingContactEmailStatus;
-  /**
-     * Reason why email is invalid (bad_format, no_mx, disposable_domain)
-     * @nullable
-     */
+  /** Reason why email is invalid (bad_format, no_mx, disposable_domain) */
   emailInvalidReason?: string | null;
-  /** @nullable */
   emailValidatedAt?: string | null;
   bounced: boolean;
-  /** @nullable */
   unsubscribedAt?: string | null;
   createdAt: string;
 }
@@ -1194,16 +1117,12 @@ export interface MarketingCampaign {
   name: string;
   subject: string;
   bodyHtml: string;
-  /** @nullable */
   bodyText?: string | null;
   fromName: string;
   fromEmail: string;
-  /** @nullable */
   replyTo?: string | null;
   status: string;
-  /** @nullable */
   scheduledAt?: string | null;
-  /** @nullable */
   sentAt?: string | null;
   totalSent: number;
   totalDelivered: number;
@@ -1211,7 +1130,6 @@ export interface MarketingCampaign {
   totalClicked: number;
   totalBounced: number;
   totalReplied: number;
-  /** @nullable */
   filterTags?: string | null;
   targetType?: MarketingCampaignTargetType;
   createdAt: string;
@@ -1220,24 +1138,15 @@ export interface MarketingCampaign {
 
 export interface MarketingReply {
   id: number;
-  /** @nullable */
   sendId?: number | null;
-  /** @nullable */
   contactId?: number | null;
   fromEmail: string;
-  /** @nullable */
   fromName?: string | null;
-  /** @nullable */
   subject?: string | null;
-  /** @nullable */
   bodyText?: string | null;
-  /** @nullable */
   bodyHtml?: string | null;
-  /** @nullable */
   readAt?: string | null;
-  /** @nullable */
   repliedAt?: string | null;
-  /** @nullable */
   replyBody?: string | null;
   createdAt: string;
 }
@@ -1487,6 +1396,13 @@ export type ValidateCrcParams = {
  * CRC number (e.g. SP100000O)
  */
 crc: string;
+};
+
+export type LookupCnpjParams = {
+/**
+ * CNPJ (14 digits)
+ */
+cnpj: string;
 };
 
 export type ListCertificatesParams = {

@@ -135,6 +135,27 @@ export const ValidateCrcResponse = zod.object({
 
 
 /**
+ * @summary Lookup company data by CNPJ via BrasilAPI
+ */
+export const LookupCnpjQueryParams = zod.object({
+  "cnpj": zod.coerce.string().describe('CNPJ (14 digits)')
+})
+
+export const LookupCnpjResponse = zod.object({
+  "found": zod.boolean(),
+  "razaoSocial": zod.string().nullish(),
+  "nomeFantasia": zod.string().nullish(),
+  "cep": zod.string().nullish(),
+  "logradouro": zod.string().nullish(),
+  "numero": zod.string().nullish(),
+  "complemento": zod.string().nullish(),
+  "bairro": zod.string().nullish(),
+  "municipio": zod.string().nullish(),
+  "uf": zod.string().nullish()
+})
+
+
+/**
  * @summary Register a new account
  */
 export const registerBodyPasswordMin = 6;
@@ -148,7 +169,19 @@ export const RegisterBody = zod.object({
   "password": zod.string().min(registerBodyPasswordMin),
   "phone": zod.string().optional(),
   "userType": zod.enum(['contador', 'cliente']),
-  "crcNumber": zod.string().optional().describe('Número de registro CRC (obrigatório para contadores)')
+  "personType": zod.enum(['fisica', 'juridica']),
+  "crcNumber": zod.string().optional().describe('CRC do contador PF (obrigatório para contador pessoa física)'),
+  "companyName": zod.string().optional(),
+  "companyFantasyName": zod.string().optional(),
+  "responsibleCpf": zod.string().optional().describe('CPF do responsável técnico (contador PJ)'),
+  "responsibleName": zod.string().optional(),
+  "zipCode": zod.string().optional(),
+  "street": zod.string().optional(),
+  "addressNumber": zod.string().optional(),
+  "complement": zod.string().optional(),
+  "neighborhood": zod.string().optional(),
+  "city": zod.string().optional(),
+  "addressState": zod.string().optional()
 })
 
 
@@ -167,8 +200,21 @@ export const VerifyEmailResponse = zod.object({
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
+  "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "phone": zod.string().nullish(),
+  "crcNumber": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "companyFantasyName": zod.string().nullish(),
+  "responsibleCpf": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "street": zod.string().nullish(),
+  "addressNumber": zod.string().nullish(),
+  "complement": zod.string().nullish(),
+  "neighborhood": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "addressState": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -200,8 +246,21 @@ export const LoginResponse = zod.object({
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
+  "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "phone": zod.string().nullish(),
+  "crcNumber": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "companyFantasyName": zod.string().nullish(),
+  "responsibleCpf": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "street": zod.string().nullish(),
+  "addressNumber": zod.string().nullish(),
+  "complement": zod.string().nullish(),
+  "neighborhood": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "addressState": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -245,8 +304,21 @@ export const GetMeResponse = zod.object({
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
+  "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "phone": zod.string().nullish(),
+  "crcNumber": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "companyFantasyName": zod.string().nullish(),
+  "responsibleCpf": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "street": zod.string().nullish(),
+  "addressNumber": zod.string().nullish(),
+  "complement": zod.string().nullish(),
+  "neighborhood": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "addressState": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -259,7 +331,14 @@ export const UpdateProfileBody = zod.object({
   "email": zod.string().optional(),
   "phone": zod.string().optional(),
   "currentPassword": zod.string().optional(),
-  "newPassword": zod.string().optional()
+  "newPassword": zod.string().optional(),
+  "zipCode": zod.string().optional(),
+  "street": zod.string().optional(),
+  "addressNumber": zod.string().optional(),
+  "complement": zod.string().optional(),
+  "neighborhood": zod.string().optional(),
+  "city": zod.string().optional(),
+  "addressState": zod.string().optional()
 })
 
 export const UpdateProfileResponse = zod.object({
@@ -269,8 +348,21 @@ export const UpdateProfileResponse = zod.object({
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
+  "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "phone": zod.string().nullish(),
+  "crcNumber": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "companyFantasyName": zod.string().nullish(),
+  "responsibleCpf": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "street": zod.string().nullish(),
+  "addressNumber": zod.string().nullish(),
+  "complement": zod.string().nullish(),
+  "neighborhood": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "addressState": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -574,16 +666,16 @@ export const CnpjLookupQueryParams = zod.object({
 })
 
 export const CnpjLookupResponse = zod.object({
-  "razaoSocial": zod.string(),
-  "nomeFantasia": zod.string(),
-  "logradouro": zod.string(),
-  "numero": zod.string(),
-  "complemento": zod.string().optional(),
-  "bairro": zod.string(),
-  "municipio": zod.string(),
-  "uf": zod.string(),
-  "cep": zod.string(),
-  "situacao": zod.string()
+  "found": zod.boolean(),
+  "razaoSocial": zod.string().nullish(),
+  "nomeFantasia": zod.string().nullish(),
+  "cep": zod.string().nullish(),
+  "logradouro": zod.string().nullish(),
+  "numero": zod.string().nullish(),
+  "complemento": zod.string().nullish(),
+  "bairro": zod.string().nullish(),
+  "municipio": zod.string().nullish(),
+  "uf": zod.string().nullish()
 })
 
 

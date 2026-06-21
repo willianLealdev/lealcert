@@ -10,11 +10,9 @@ import type { UserRole } from './userRole';
 export interface User {
   id: number;
   name: string;
-  /** @nullable */
   email?: string | null;
   cpfCnpj: string;
   role: UserRole;
-  /** @nullable */
   phone?: string | null;
   isActive?: boolean;
   createdAt: string;

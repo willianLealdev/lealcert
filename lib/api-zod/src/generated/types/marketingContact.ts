@@ -13,21 +13,14 @@ export interface MarketingContact {
   type: MarketingContactType;
   name: string;
   email: string;
-  /** @nullable */
   phone?: string | null;
-  /** @nullable */
   tags?: string | null;
   status: string;
   emailStatus: MarketingContactEmailStatus;
-  /**
-     * Reason why email is invalid (bad_format, no_mx, disposable_domain)
-     * @nullable
-     */
+  /** Reason why email is invalid (bad_format, no_mx, disposable_domain) */
   emailInvalidReason?: string | null;
-  /** @nullable */
   emailValidatedAt?: string | null;
   bounced: boolean;
-  /** @nullable */
   unsubscribedAt?: string | null;
   createdAt: string;
 }

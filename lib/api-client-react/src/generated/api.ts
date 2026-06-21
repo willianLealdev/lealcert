@@ -99,6 +99,7 @@ import type {
   ListOrdersParams,
   ListSlotsParams,
   LoginInput,
+  LookupCnpjParams,
   MarketingCampaign,
   MarketingContact,
   MarketingReply,
@@ -818,6 +819,90 @@ export function useValidateCrc<TData = Awaited<ReturnType<typeof validateCrc>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getValidateCrcQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getLookupCnpjUrl = (params: LookupCnpjParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/auth/lookup-cnpj?${stringifiedParams}` : `/api/auth/lookup-cnpj`
+}
+
+/**
+ * @summary Lookup company data by CNPJ via BrasilAPI
+ */
+export const lookupCnpj = async (params: LookupCnpjParams, options?: RequestInit): Promise<CnpjLookupResult> => {
+
+  return customFetch<CnpjLookupResult>(getLookupCnpjUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLookupCnpjQueryKey = (params?: LookupCnpjParams,) => {
+    return [
+    `/api/auth/lookup-cnpj`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getLookupCnpjQueryOptions = <TData = Awaited<ReturnType<typeof lookupCnpj>>, TError = ErrorType<ErrorResponse>>(params: LookupCnpjParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof lookupCnpj>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLookupCnpjQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof lookupCnpj>>> = ({ signal }) => lookupCnpj(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof lookupCnpj>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type LookupCnpjQueryResult = NonNullable<Awaited<ReturnType<typeof lookupCnpj>>>
+export type LookupCnpjQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Lookup company data by CNPJ via BrasilAPI
+ */
+
+export function useLookupCnpj<TData = Awaited<ReturnType<typeof lookupCnpj>>, TError = ErrorType<ErrorResponse>>(
+ params: LookupCnpjParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof lookupCnpj>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getLookupCnpjQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

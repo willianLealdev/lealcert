@@ -11,7 +11,6 @@ import type { TicketDetailStatus } from './ticketDetailStatus';
 export interface TicketDetail {
   id: number;
   userId: number;
-  /** @nullable */
   userName?: string | null;
   subject: string;
   status: TicketDetailStatus;

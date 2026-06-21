@@ -10,6 +10,5 @@ export interface SafewebAgendarResult {
   ok: boolean;
   dataHora: string;
   localNome: string;
-  /** @nullable */
   agendamentoId?: string | null;
 }

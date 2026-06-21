@@ -24,6 +24,23 @@ export const usersTable = pgTable("users", {
   passwordResetExpiresAt: timestamp("password_reset_expires_at", { withTimezone: true }),
   crcNumber: text("crc_number"),
   crcVerified: boolean("crc_verified").notNull().default(false),
+  // Pessoa física ou jurídica
+  personType: text("person_type"),
+  // Campos pessoa jurídica
+  companyCnpj: text("company_cnpj"),
+  companyName: text("company_name"),
+  companyFantasyName: text("company_fantasy_name"),
+  // Responsável técnico (contador PJ)
+  responsibleCpf: text("responsible_cpf"),
+  responsibleName: text("responsible_name"),
+  // Endereço
+  zipCode: text("zip_code"),
+  street: text("street"),
+  addressNumber: text("address_number"),
+  complement: text("complement"),
+  neighborhood: text("neighborhood"),
+  city: text("city"),
+  addressState: text("address_state"),
   registrationIp: text("registration_ip"),
   trustedIps: jsonb("trusted_ips").$type<string[]>().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

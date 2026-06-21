@@ -8,24 +8,15 @@
 
 export interface MarketingReply {
   id: number;
-  /** @nullable */
   sendId?: number | null;
-  /** @nullable */
   contactId?: number | null;
   fromEmail: string;
-  /** @nullable */
   fromName?: string | null;
-  /** @nullable */
   subject?: string | null;
-  /** @nullable */
   bodyText?: string | null;
-  /** @nullable */
   bodyHtml?: string | null;
-  /** @nullable */
   readAt?: string | null;
-  /** @nullable */
   repliedAt?: string | null;
-  /** @nullable */
   replyBody?: string | null;
   createdAt: string;
 }

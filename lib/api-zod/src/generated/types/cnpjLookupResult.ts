@@ -7,14 +7,14 @@
  */
 
 export interface CnpjLookupResult {
-  razaoSocial: string;
-  nomeFantasia: string;
-  logradouro: string;
-  numero: string;
-  complemento?: string;
-  bairro: string;
-  municipio: string;
-  uf: string;
-  cep: string;
-  situacao: string;
+  found: boolean;
+  razaoSocial?: string | null;
+  nomeFantasia?: string | null;
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  municipio?: string | null;
+  uf?: string | null;
 }

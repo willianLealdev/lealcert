@@ -10,7 +10,6 @@ import type { TicketStatus } from './ticketStatus';
 export interface Ticket {
   id: number;
   userId: number;
-  /** @nullable */
   userName?: string | null;
   subject: string;
   status: TicketStatus;

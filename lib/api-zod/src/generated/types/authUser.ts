@@ -15,8 +15,20 @@ export interface AuthUser {
   cpfCnpj: string;
   role: AuthUserRole;
   userType?: AuthUserUserType;
+  personType?: string | null;
   mustChangePassword?: boolean;
-  /** @nullable */
   phone?: string | null;
+  crcNumber?: string | null;
+  companyName?: string | null;
+  companyFantasyName?: string | null;
+  responsibleCpf?: string | null;
+  responsibleName?: string | null;
+  zipCode?: string | null;
+  street?: string | null;
+  addressNumber?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  addressState?: string | null;
   createdAt?: string;
 }

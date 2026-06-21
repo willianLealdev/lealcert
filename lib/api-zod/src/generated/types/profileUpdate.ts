@@ -12,4 +12,11 @@ export interface ProfileUpdate {
   phone?: string;
   currentPassword?: string;
   newPassword?: string;
+  zipCode?: string;
+  street?: string;
+  addressNumber?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  addressState?: string;
 }

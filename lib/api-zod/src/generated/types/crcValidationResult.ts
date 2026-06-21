@@ -9,12 +9,8 @@
 export interface CrcValidationResult {
   valid: boolean;
   situacao: string;
-  /** @nullable */
   nome?: string | null;
-  /** @nullable */
   numeroRegistro?: string | null;
-  /** @nullable */
   categoria?: string | null;
-  /** @nullable */
   crc?: string | null;
 }

@@ -30,8 +30,21 @@ function userResponse(user: typeof usersTable.$inferSelect) {
     cpfCnpj: user.cpfCnpj,
     role: user.role,
     userType: user.userType,
+    personType: user.personType ?? null,
     mustChangePassword: user.mustChangePassword,
     phone: user.phone,
+    crcNumber: user.crcNumber ?? null,
+    companyName: user.companyName ?? null,
+    companyFantasyName: user.companyFantasyName ?? null,
+    responsibleCpf: user.responsibleCpf ?? null,
+    responsibleName: user.responsibleName ?? null,
+    zipCode: user.zipCode ?? null,
+    street: user.street ?? null,
+    addressNumber: user.addressNumber ?? null,
+    complement: user.complement ?? null,
+    neighborhood: user.neighborhood ?? null,
+    city: user.city ?? null,
+    addressState: user.addressState ?? null,
     createdAt: user.createdAt,
   };
 }
@@ -134,8 +147,46 @@ router.get("/auth/validate-crc", async (req, res): Promise<void> => {
   });
 });
 
+// ── GET /auth/lookup-cnpj?cnpj=XXX — dados da empresa via BrasilAPI ───────────
+router.get("/auth/lookup-cnpj", async (req, res): Promise<void> => {
+  const cnpj = String(req.query.cnpj ?? "").replace(/\D/g, "");
+  if (cnpj.length !== 14) {
+    res.status(400).json({ error: "CNPJ inválido." });
+    return;
+  }
+  try {
+    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { "User-Agent": "LealCert/1.0" },
+    });
+    if (!resp.ok) { res.json({ found: false }); return; }
+    const data = await resp.json() as Record<string, unknown>;
+    res.json({
+      found: true,
+      razaoSocial: data.razao_social ?? null,
+      nomeFantasia: data.nome_fantasia ?? null,
+      cep: String(data.cep ?? "").replace(/\D/g, "") || null,
+      logradouro: data.logradouro ?? null,
+      numero: data.numero ?? null,
+      complemento: data.complemento ?? null,
+      bairro: data.bairro ?? null,
+      municipio: data.municipio ?? null,
+      uf: data.uf ?? null,
+    });
+  } catch {
+    res.json({ found: false });
+  }
+});
+
 router.post("/auth/register", async (req, res): Promise<void> => {
-  const { name, email, cpfCnpj, password, phone, userType, crcNumber } = req.body ?? {};
+  const {
+    name, email, cpfCnpj, password, phone, userType,
+    personType,
+    crcNumber,
+    companyName, companyFantasyName,
+    responsibleCpf, responsibleName,
+    zipCode, street, addressNumber, complement, neighborhood, city, addressState,
+  } = req.body ?? {};
   if (!name || !email || !cpfCnpj || !password) {
     res.status(400).json({ error: "Nome, e-mail, CPF/CNPJ e senha são obrigatórios." });
     return;
@@ -145,13 +196,14 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
   const resolvedUserType = userType === "contador" ? "contador" : "cliente";
+  const resolvedPersonType = personType === "juridica" ? "juridica" : "fisica";
 
-  // ── Validação CRC obrigatória para contadores ─────────────────────────────
+  // ── Validação CRC: obrigatória para contador pessoa física ────────────────
   let crcNorm: string | null = null;
   let crcVerifiedFlag = false;
-  if (resolvedUserType === "contador") {
+  if (resolvedUserType === "contador" && resolvedPersonType === "fisica") {
     if (!crcNumber) {
-      res.status(400).json({ error: "Número de registro CRC é obrigatório para contadores." });
+      res.status(400).json({ error: "Número de registro CRC é obrigatório para contadores pessoa física." });
       return;
     }
     crcNorm = normalizeCrc(String(crcNumber));
@@ -161,10 +213,9 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     }
     const prof = await consultarCfc(crcNorm);
     if (!prof) {
-      // API indisponível — permite cadastro mas marca como não verificado
       logger.warn({ crcNorm }, "CFC API unavailable during registration, crcVerified=false");
     } else if (prof.SituacaoCadastral?.toLowerCase() !== "ativo") {
-      res.status(422).json({ error: `Registro CRC não está ativo. Situação: ${prof.SituacaoCadastral ?? "Desconhecido"}. Apenas profissionais ativos podem se cadastrar como contadores.` });
+      res.status(422).json({ error: `Registro CRC não está ativo. Situação: ${prof.SituacaoCadastral ?? "Desconhecido"}.` });
       return;
     } else {
       crcVerifiedFlag = true;
@@ -193,12 +244,24 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     phone: phone || null,
     role: "contador",
     userType: resolvedUserType,
+    personType: resolvedPersonType,
     isActive: true,
     emailVerified: false,
     emailVerificationCode: code,
     emailVerificationExpiresAt: expiresAt,
     crcNumber: crcNorm,
     crcVerified: crcVerifiedFlag,
+    companyName: companyName?.trim() || null,
+    companyFantasyName: companyFantasyName?.trim() || null,
+    responsibleCpf: responsibleCpf ? String(responsibleCpf).replace(/\D/g, "") || null : null,
+    responsibleName: responsibleName?.trim() || null,
+    zipCode: zipCode ? String(zipCode).replace(/\D/g, "") || null : null,
+    street: street?.trim() || null,
+    addressNumber: addressNumber?.trim() || null,
+    complement: complement?.trim() || null,
+    neighborhood: neighborhood?.trim() || null,
+    city: city?.trim() || null,
+    addressState: addressState?.trim() || null,
     registrationIp: clientIp,
     trustedIps: [clientIp],
   }).returning({ id: usersTable.id });
@@ -576,11 +639,19 @@ router.patch("/auth/profile", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Não autenticado." });
     return;
   }
-  const { name, email, phone, currentPassword, newPassword } = req.body ?? {};
+  const { name, email, phone, currentPassword, newPassword,
+          zipCode, street, addressNumber, complement, neighborhood, city, addressState } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (name) updates.name = name;
   if (email) updates.email = email;
   if (phone) updates.phone = phone;
+  if (zipCode !== undefined) updates.zipCode = zipCode ? String(zipCode).replace(/\D/g, "") : null;
+  if (street !== undefined) updates.street = street || null;
+  if (addressNumber !== undefined) updates.addressNumber = addressNumber || null;
+  if (complement !== undefined) updates.complement = complement || null;
+  if (neighborhood !== undefined) updates.neighborhood = neighborhood || null;
+  if (city !== undefined) updates.city = city || null;
+  if (addressState !== undefined) updates.addressState = addressState || null;
 
   if (newPassword) {
     if (newPassword.length < 8) {

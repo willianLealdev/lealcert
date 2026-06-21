@@ -11,107 +11,59 @@ export interface Order {
   id: number;
   orderNumber: string;
   userId: number;
-  /** @nullable */
   userName?: string | null;
   certificateId: number;
-  /** @nullable */
   certificateName?: string | null;
   status: OrderStatus;
   total: number;
   customerName: string;
   customerCpfCnpj: string;
-  /** @nullable */
   customerEmail?: string | null;
-  /** @nullable */
   customerPhone?: string | null;
-  /** @nullable */
   customerBirthDate?: string | null;
-  /** @nullable */
   hasPsbio?: boolean | null;
-  /** @nullable */
   clientType?: string | null;
-  /** @nullable */
   companyName?: string | null;
-  /** @nullable */
   inssNumber?: string | null;
-  /** @nullable */
   cnhPath?: string | null;
-  /** @nullable */
   cartaoCnpjPath?: string | null;
-  /** @nullable */
   fichaCadastralPath?: string | null;
-  /** @nullable */
   chatDocuments?: string | null;
-  /** @nullable */
   scheduledAt?: string | null;
-  /** @nullable */
   protocolNumber?: string | null;
   extendedWarranty?: boolean;
-  /** @nullable */
   addressZipcode?: string | null;
-  /** @nullable */
   addressStreet?: string | null;
-  /** @nullable */
   addressNumber?: string | null;
-  /** @nullable */
   addressComplement?: string | null;
-  /** @nullable */
   addressNeighborhood?: string | null;
-  /** @nullable */
   addressCity?: string | null;
-  /** @nullable */
   addressState?: string | null;
-  /** @nullable */
   representanteAddressZipcode?: string | null;
-  /** @nullable */
   representanteAddressStreet?: string | null;
-  /** @nullable */
   representanteAddressNumber?: string | null;
-  /** @nullable */
   representanteAddressComplement?: string | null;
-  /** @nullable */
   representanteAddressNeighborhood?: string | null;
-  /** @nullable */
   representanteAddressCity?: string | null;
-  /** @nullable */
   representanteAddressState?: string | null;
-  /** @nullable */
   mpPaymentId?: string | null;
-  /** @nullable */
   garPedido?: string | null;
-  /** @nullable */
   garProtocolo?: string | null;
-  /** @nullable */
   garHashVenda?: string | null;
-  /** @nullable */
   garStatus?: string | null;
-  /** @nullable */
   garAgendamentoLink?: string | null;
-  /** @nullable */
   garSyncedAt?: string | null;
-  /** @nullable */
   garAgendamentoLocalNome?: string | null;
-  /** @nullable */
   garAgendamentoLocalHash?: string | null;
-  /** @nullable */
   garAgendamentoSlotHash?: string | null;
-  /** @nullable */
   garAgendamentoDataHora?: string | null;
-  /** @nullable */
   representanteCpf?: string | null;
-  /** @nullable */
   representanteNascimento?: string | null;
-  /** @nullable */
   safewebSolicitacaoId?: string | null;
-  /** @nullable */
   safewebStatus?: string | null;
-  /** @nullable */
   safewebSyncedAt?: string | null;
-  /** @nullable */
   safewebAgendamentoId?: string | null;
-  /** @nullable */
   safewebAgendamentoDataHora?: string | null;
-  /** @nullable */
   safewebAgendamentoLocalNome?: string | null;
   createdAt: string;
   updatedAt?: string;

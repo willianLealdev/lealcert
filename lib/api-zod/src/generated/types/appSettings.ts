@@ -9,92 +9,53 @@
 export interface AppSettings {
   id: number;
   appName?: string;
-  /** @nullable */
   mpAccessToken?: string | null;
-  /** @nullable */
   mpPublicKey?: string | null;
-  /** @nullable */
   webhookSecret?: string | null;
-  /** @nullable */
   mailFrom?: string | null;
-  /** @nullable */
   siteUrl?: string | null;
   scheduleOpenDays?: string;
   scheduleOpenHour?: string;
   scheduleCloseHour?: string;
   scheduleStepMin?: string;
   scheduleClosedDates?: string;
-  /** @nullable */
   garApiKey?: string | null;
-  /** @nullable */
   garHashVendedor?: string | null;
-  /** @nullable */
   garHashTabela?: string | null;
   garFormaPagamento?: string;
   garPreferirVideoconferencia?: string;
-  /** @nullable */
   safewebUrl?: string | null;
-  /** @nullable */
   safewebUrlHomologacao?: string | null;
   safewebAmbiente?: string;
-  /** @nullable */
   safewebUsername?: string | null;
-  /** @nullable */
   safewebPassword?: string | null;
-  /** @nullable */
   safewebUsernameHomologacao?: string | null;
-  /** @nullable */
   safewebPasswordHomologacao?: string | null;
-  /** @nullable */
   safewebCnpjAr?: string | null;
-  /** @nullable */
   safewebCodigoParceiro?: string | null;
   activeProvider?: string;
-  /** @nullable */
   evolutionUrl?: string | null;
-  /** @nullable */
   evolutionApiKey?: string | null;
-  /** @nullable */
   evolutionInstance?: string | null;
-  /** @nullable */
   logoUrl?: string | null;
-  /** @nullable */
   primaryColor?: string | null;
-  /** @nullable */
   contactPhone?: string | null;
-  /** @nullable */
   contactWhatsapp?: string | null;
-  /** @nullable */
   contactEmailSupport?: string | null;
-  /** @nullable */
   contactAddress?: string | null;
-  /** @nullable */
   smtpHostDb?: string | null;
-  /** @nullable */
   smtpPortDb?: string | null;
-  /** @nullable */
   smtpUserDb?: string | null;
-  /** @nullable */
   smtpPassDb?: string | null;
-  /** @nullable */
   vapidSubject?: string | null;
-  /** @nullable */
   vapidPublicKey?: string | null;
-  /** @nullable */
   vapidPrivateKey?: string | null;
-  /** @nullable */
   aiProvider?: string | null;
-  /** @nullable */
   openaiApiKey?: string | null;
-  /** @nullable */
   openaiModel?: string | null;
-  /** @nullable */
   deepseekApiKey?: string | null;
-  /** @nullable */
   deepseekModel?: string | null;
-  /** @nullable */
   claudeApiKey?: string | null;
-  /** @nullable */
   claudeModel?: string | null;
   updatedAt?: string;
 }

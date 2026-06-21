@@ -12,16 +12,12 @@ export interface MarketingCampaign {
   name: string;
   subject: string;
   bodyHtml: string;
-  /** @nullable */
   bodyText?: string | null;
   fromName: string;
   fromEmail: string;
-  /** @nullable */
   replyTo?: string | null;
   status: string;
-  /** @nullable */
   scheduledAt?: string | null;
-  /** @nullable */
   sentAt?: string | null;
   totalSent: number;
   totalDelivered: number;
@@ -29,7 +25,6 @@ export interface MarketingCampaign {
   totalClicked: number;
   totalBounced: number;
   totalReplied: number;
-  /** @nullable */
   filterTags?: string | null;
   targetType?: MarketingCampaignTargetType;
   createdAt: string;

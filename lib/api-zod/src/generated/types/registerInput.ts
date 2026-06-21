@@ -5,6 +5,7 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { RegisterInputPersonType } from './registerInputPersonType';
 import type { RegisterInputUserType } from './registerInputUserType';
 
 export interface RegisterInput {
@@ -15,6 +16,19 @@ export interface RegisterInput {
   password: string;
   phone?: string;
   userType: RegisterInputUserType;
-  /** Número de registro CRC (obrigatório para contadores) */
+  personType: RegisterInputPersonType;
+  /** CRC do contador PF (obrigatório para contador pessoa física) */
   crcNumber?: string;
+  companyName?: string;
+  companyFantasyName?: string;
+  /** CPF do responsável técnico (contador PJ) */
+  responsibleCpf?: string;
+  responsibleName?: string;
+  zipCode?: string;
+  street?: string;
+  addressNumber?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  addressState?: string;
 }

@@ -8,17 +8,11 @@
 
 export interface BrandingInfo {
   appName: string;
-  /** @nullable */
   logoUrl?: string | null;
   primaryColor: string;
-  /** @nullable */
   siteUrl?: string | null;
-  /** @nullable */
   contactPhone?: string | null;
-  /** @nullable */
   contactWhatsapp?: string | null;
-  /** @nullable */
   contactEmailSupport?: string | null;
-  /** @nullable */
   contactAddress?: string | null;
 }

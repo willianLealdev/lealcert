@@ -212,6 +212,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /auth/lookup-cnpj:
+    get:
+      operationId: lookupCnpj
+      tags: [auth]
+      summary: Lookup company data by CNPJ via BrasilAPI
+      parameters:
+        - in: query
+          name: cnpj
+          required: true
+          schema:
+            type: string
+          description: CNPJ (14 digits)
+      responses:
+        "200":
+          description: Company data or not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CnpjLookupResult"
+        "400":
+          description: Invalid CNPJ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /auth/register:
     post:
       operationId: register
@@ -2381,7 +2407,7 @@ components:
 
     RegisterInput:
       type: object
-      required: [name, email, cpfCnpj, password, userType]
+      required: [name, email, cpfCnpj, password, userType, personType]
       properties:
         name:
           type: string
@@ -2398,9 +2424,35 @@ components:
         userType:
           type: string
           enum: [contador, cliente]
+        personType:
+          type: string
+          enum: [fisica, juridica]
         crcNumber:
           type: string
-          description: Número de registro CRC (obrigatório para contadores)
+          description: CRC do contador PF (obrigatório para contador pessoa física)
+        companyName:
+          type: string
+        companyFantasyName:
+          type: string
+        responsibleCpf:
+          type: string
+          description: CPF do responsável técnico (contador PJ)
+        responsibleName:
+          type: string
+        zipCode:
+          type: string
+        street:
+          type: string
+        addressNumber:
+          type: string
+        complement:
+          type: string
+        neighborhood:
+          type: string
+        city:
+          type: string
+        addressState:
+          type: string
 
     CrcValidationResult:
       type: object
@@ -2411,13 +2463,17 @@ components:
         situacao:
           type: string
         nome:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         numeroRegistro:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         categoria:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         crc:
-          type: ["string", "null"]
+          type: string
+          nullable: true
 
     VerifyEmailInput:
       type: object
@@ -2469,10 +2525,50 @@ components:
         userType:
           type: string
           enum: [contador, cliente]
+        personType:
+          type: string
+          nullable: true
         mustChangePassword:
           type: boolean
         phone:
-          type: ["string", "null"]
+          type: string
+          nullable: true
+        crcNumber:
+          type: string
+          nullable: true
+        companyName:
+          type: string
+          nullable: true
+        companyFantasyName:
+          type: string
+          nullable: true
+        responsibleCpf:
+          type: string
+          nullable: true
+        responsibleName:
+          type: string
+          nullable: true
+        zipCode:
+          type: string
+          nullable: true
+        street:
+          type: string
+          nullable: true
+        addressNumber:
+          type: string
+          nullable: true
+        complement:
+          type: string
+          nullable: true
+        neighborhood:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        addressState:
+          type: string
+          nullable: true
         createdAt:
           type: string
 
@@ -2493,6 +2589,40 @@ components:
           type: string
           minLength: 6
 
+    CnpjLookupResult:
+      type: object
+      required: [found]
+      properties:
+        found:
+          type: boolean
+        razaoSocial:
+          type: string
+          nullable: true
+        nomeFantasia:
+          type: string
+          nullable: true
+        cep:
+          type: string
+          nullable: true
+        logradouro:
+          type: string
+          nullable: true
+        numero:
+          type: string
+          nullable: true
+        complemento:
+          type: string
+          nullable: true
+        bairro:
+          type: string
+          nullable: true
+        municipio:
+          type: string
+          nullable: true
+        uf:
+          type: string
+          nullable: true
+
     ProfileUpdate:
       type: object
       properties:
@@ -2506,6 +2636,20 @@ components:
           type: string
         newPassword:
           type: string
+        zipCode:
+          type: string
+        street:
+          type: string
+        addressNumber:
+          type: string
+        complement:
+          type: string
+        neighborhood:
+          type: string
+        city:
+          type: string
+        addressState:
+          type: string
 
     User:
       type: object
@@ -2516,14 +2660,16 @@ components:
         name:
           type: string
         email:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         cpfCnpj:
           type: string
         role:
           type: string
           enum: [admin, contador]
         phone:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         isActive:
           type: boolean
         createdAt:
@@ -2573,23 +2719,29 @@ components:
         name:
           type: string
         description:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         price:
           type: number
         priceContador:
-          type: ["number", "null"]
+          type: number
+          nullable: true
         active:
           type: boolean
         garHashProduto:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebIdProduto:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         validityMonths:
           type: integer
         product:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         issuanceType:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         createdAt:
           type: string
 
@@ -2649,11 +2801,13 @@ components:
         userId:
           type: integer
         userName:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         certificateId:
           type: integer
         certificateName:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         status:
           type: string
           enum: [created, pending_payment, paid, protocol_assigned, aguardando_validacao, emitido, revogado, completed, cancelled]
@@ -2664,99 +2818,145 @@ components:
         customerCpfCnpj:
           type: string
         customerEmail:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         customerPhone:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         customerBirthDate:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         hasPsbio:
-          type: ["boolean", "null"]
+          type: boolean
+          nullable: true
         clientType:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         companyName:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         inssNumber:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         cnhPath:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         cartaoCnpjPath:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         fichaCadastralPath:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         chatDocuments:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         scheduledAt:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         protocolNumber:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         extendedWarranty:
           type: boolean
         addressZipcode:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         addressStreet:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         addressNumber:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         addressComplement:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         addressNeighborhood:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         addressCity:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         addressState:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         representanteAddressZipcode:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         representanteAddressStreet:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         representanteAddressNumber:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         representanteAddressComplement:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         representanteAddressNeighborhood:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         representanteAddressCity:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         representanteAddressState:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         mpPaymentId:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garPedido:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garProtocolo:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garHashVenda:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garStatus:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garAgendamentoLink:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garSyncedAt:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garAgendamentoLocalNome:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garAgendamentoLocalHash:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garAgendamentoSlotHash:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garAgendamentoDataHora:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         representanteCpf:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         representanteNascimento:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebSolicitacaoId:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebStatus:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebSyncedAt:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebAgendamentoId:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebAgendamentoDataHora:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebAgendamentoLocalNome:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         createdAt:
           type: string
         updatedAt:
@@ -2892,31 +3092,6 @@ components:
           type: string
           nullable: true
 
-    CnpjLookupResult:
-      type: object
-      required: [razaoSocial, nomeFantasia, logradouro, numero, bairro, municipio, uf, cep, situacao]
-      properties:
-        razaoSocial:
-          type: string
-        nomeFantasia:
-          type: string
-        logradouro:
-          type: string
-        numero:
-          type: string
-        complemento:
-          type: string
-        bairro:
-          type: string
-        municipio:
-          type: string
-        uf:
-          type: string
-        cep:
-          type: string
-        situacao:
-          type: string
-
     PaymentPreference:
       type: object
       required: [paymentId, pixQrCode, pixQrCodeBase64]
@@ -2957,7 +3132,8 @@ components:
         userId:
           type: integer
         userName:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         subject:
           type: string
         status:
@@ -2981,7 +3157,8 @@ components:
         userId:
           type: integer
         userName:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         subject:
           type: string
         status:
@@ -3014,9 +3191,11 @@ components:
         userId:
           type: integer
         userName:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         userRole:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         content:
           type: string
         createdAt:
@@ -3049,19 +3228,25 @@ components:
         appName:
           type: string
         logoUrl:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         primaryColor:
           type: string
         siteUrl:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         contactPhone:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         contactWhatsapp:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         contactEmailSupport:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         contactAddress:
-          type: ["string", "null"]
+          type: string
+          nullable: true
 
     AppSettings:
       type: object
@@ -3072,15 +3257,20 @@ components:
         appName:
           type: string
         mpAccessToken:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         mpPublicKey:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         webhookSecret:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         mailFrom:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         siteUrl:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         scheduleOpenDays:
           type: string
         scheduleOpenHour:
@@ -3092,81 +3282,115 @@ components:
         scheduleClosedDates:
           type: string
         garApiKey:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garHashVendedor:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garHashTabela:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         garFormaPagamento:
           type: string
         garPreferirVideoconferencia:
           type: string
         safewebUrl:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebUrlHomologacao:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebAmbiente:
           type: string
         safewebUsername:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebPassword:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebUsernameHomologacao:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebPasswordHomologacao:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebCnpjAr:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         safewebCodigoParceiro:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         activeProvider:
           type: string
         evolutionUrl:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         evolutionApiKey:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         evolutionInstance:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         logoUrl:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         primaryColor:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         contactPhone:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         contactWhatsapp:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         contactEmailSupport:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         contactAddress:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         smtpHostDb:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         smtpPortDb:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         smtpUserDb:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         smtpPassDb:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         vapidSubject:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         vapidPublicKey:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         vapidPrivateKey:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         aiProvider:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         openaiApiKey:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         openaiModel:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         deepseekApiKey:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         deepseekModel:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         claudeApiKey:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         claudeModel:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         updatedAt:
           type: string
 
@@ -3612,7 +3836,8 @@ components:
         localNome:
           type: string
         agendamentoId:
-          type: ["string", "null"]
+          type: string
+          nullable: true
 
     GenerateSlotsInput:
       type: object
@@ -3873,23 +4098,28 @@ components:
         email:
           type: string
         phone:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         tags:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         status:
           type: string
         emailStatus:
           type: string
           enum: [unknown, valid, invalid, disposable]
         emailInvalidReason:
-          type: ["string", "null"]
+          type: string
+          nullable: true
           description: Reason why email is invalid (bad_format, no_mx, disposable_domain)
         emailValidatedAt:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         bounced:
           type: boolean
         unsubscribedAt:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         createdAt:
           type: string
 
@@ -3906,19 +4136,23 @@ components:
         bodyHtml:
           type: string
         bodyText:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         fromName:
           type: string
         fromEmail:
           type: string
         replyTo:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         status:
           type: string
         scheduledAt:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         sentAt:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         totalSent:
           type: integer
         totalDelivered:
@@ -3932,7 +4166,8 @@ components:
         totalReplied:
           type: integer
         filterTags:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         targetType:
           type: string
           enum: [all, cliente, contador]
@@ -3948,25 +4183,34 @@ components:
         id:
           type: integer
         sendId:
-          type: ["integer", "null"]
+          type: integer
+          nullable: true
         contactId:
-          type: ["integer", "null"]
+          type: integer
+          nullable: true
         fromEmail:
           type: string
         fromName:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         subject:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         bodyText:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         bodyHtml:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         readAt:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         repliedAt:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         replyBody:
-          type: ["string", "null"]
+          type: string
+          nullable: true
         createdAt:
           type: string
 

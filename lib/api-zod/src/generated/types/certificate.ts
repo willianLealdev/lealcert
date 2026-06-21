@@ -9,20 +9,14 @@
 export interface Certificate {
   id: number;
   name: string;
-  /** @nullable */
   description?: string | null;
   price: number;
-  /** @nullable */
   priceContador?: number | null;
   active: boolean;
-  /** @nullable */
   garHashProduto?: string | null;
-  /** @nullable */
   safewebIdProduto?: string | null;
   validityMonths?: number;
-  /** @nullable */
   product?: string | null;
-  /** @nullable */
   issuanceType?: string | null;
   createdAt: string;
 }

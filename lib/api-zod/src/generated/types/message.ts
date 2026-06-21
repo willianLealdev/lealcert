@@ -10,9 +10,7 @@ export interface Message {
   id: number;
   ticketId: number;
   userId: number;
-  /** @nullable */
   userName?: string | null;
-  /** @nullable */
   userRole?: string | null;
   content: string;
   createdAt: string;
