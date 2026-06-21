@@ -190,7 +190,7 @@ router.post("/settings/test-email", requireAdmin, async (req, res): Promise<void
     const transporter = nodemailer.createTransport({
       host, port, secure: port === 465,
       auth: { user, pass },
-      tls: { rejectUnauthorized: process.env.NODE_ENV === "production" },
+      tls: { rejectUnauthorized: false },
     });
     await transporter.verify();
     await transporter.sendMail({
