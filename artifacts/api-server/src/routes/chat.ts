@@ -211,11 +211,16 @@ router.post("/chat", async (req, res): Promise<void> => {
           .from(certificatesTable)
           .where(eq(certificatesTable.active, true));
 
-        const catalogLines = certs
-          .map(c => `  - ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`)
-          .join("\n");
+        let catalogMsg: string;
+        if (certs.length === 0) {
+          catalogMsg = `[CATALOGO_VAZIO] Nenhum certificado está disponível para venda no momento. NÃO ofereça nenhum produto nem mencione preços. Informe ao cliente que o catálogo está temporariamente indisponível e que ele pode entrar em contato pelo suporte.`;
+        } else {
+          const catalogLines = certs
+            .map(c => `  - ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`)
+            .join("\n");
+          catalogMsg = `[CATALOGO_PRECOS] Catálogo oficial consultado agora do banco de dados:\n${catalogLines}\nUse SOMENTE estes IDs e valores — nunca invente preços.`;
+        }
 
-        const catalogMsg = `[CATALOGO_PRECOS] Catálogo oficial consultado agora do banco de dados:\n${catalogLines}\nUse SOMENTE estes IDs e valores — nunca invente preços.`;
         await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: catalogMsg });
         chatHistory.push({ role: "user" as const, content: catalogMsg });
       }
