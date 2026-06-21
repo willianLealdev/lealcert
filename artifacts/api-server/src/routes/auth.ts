@@ -217,7 +217,14 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     req.session.userId = user.id;
     req.session.role = user.role;
     req.session.userType = user.userType;
-    res.json(userData);
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        logger.error({ err: saveErr }, "Session save failed after login");
+        res.status(500).json({ error: "Erro interno ao salvar sessão." });
+        return;
+      }
+      res.json(userData);
+    });
   });
 });
 
