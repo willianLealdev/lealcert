@@ -34,8 +34,6 @@ services:
     image: willianlealdev/lealcert-web:latest
     pull_policy: always
     restart: unless-stopped
-    ports:
-      - "8090:80"
     depends_on:
       - api
 
