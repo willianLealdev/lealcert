@@ -9,6 +9,11 @@ services:
       POSTGRES_PASSWORD: Leal2024Xpto
     volumes:
       - postgres_data_v2:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lealcert"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   api:
     image: willianlealdev/lealcert-api:latest
@@ -20,7 +25,8 @@ services:
       PORT: "8080"
       NODE_ENV: production
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - uploads:/app/uploads
 
@@ -28,6 +34,8 @@ services:
     image: willianlealdev/lealcert-web:latest
     pull_policy: always
     restart: unless-stopped
+    ports:
+      - "8090:80"
     depends_on:
       - api
 
