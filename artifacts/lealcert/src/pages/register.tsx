@@ -98,11 +98,15 @@ export default function Register() {
   const responsibleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cepDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [crcDuplicate, setCrcDuplicate] = useState(false);
+
   const registerMutation = useRegister({
     mutation: {
       onSuccess: () => setLocation(`/verify-email?email=${encodeURIComponent(form.email)}`),
       onError: (err: unknown) => {
-        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao criar conta.";
+        const data = (err as { data?: { error?: string; crcDuplicate?: boolean } })?.data;
+        if (data?.crcDuplicate) { setCrcDuplicate(true); return; }
+        const msg = data?.error ?? (err as Error)?.message ?? "Erro ao criar conta.";
         toast({ title: "Erro no cadastro", description: msg, variant: "destructive" });
       },
     },
@@ -115,7 +119,7 @@ export default function Register() {
   function resetTypeSelection() {
     setPersonType("");
     setForm(p => ({ ...p, cpfCnpj: "", name: "", crcNumber: "", companyName: "", companyFantasyName: "", responsibleCpf: "", responsibleName: "" }));
-    setCrcState("idle"); setCrcResult(null); setCnpjState("idle"); setResponsibleState("idle");
+    setCrcState("idle"); setCrcResult(null); setCnpjState("idle"); setResponsibleState("idle"); setCrcDuplicate(false);
   }
 
   // ── Auto-lookup CNPJ (jurídica) ────────────────────────────────────────────
@@ -251,6 +255,11 @@ export default function Register() {
     if (userType === "contador" && personType === "fisica") {
       if (!form.crcNumber.trim()) { toast({ title: "CRC obrigatório", variant: "destructive" }); return; }
       if (crcState !== "valid") { toast({ title: "Verifique seu CRC antes de continuar", variant: "destructive" }); return; }
+    }
+    if (userType === "contador" && personType === "juridica") {
+      const respDigits = form.responsibleCpf.replace(/\D/g, "");
+      if (respDigits.length !== 11) { toast({ title: "CPF do responsável técnico obrigatório", variant: "destructive" }); return; }
+      if (responsibleState !== "valid") { toast({ title: "O responsável técnico deve ter CRC ativo no CFC para prosseguir.", variant: "destructive" }); return; }
     }
     if (!form.name.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
     if (!form.email.trim()) { toast({ title: "E-mail obrigatório", variant: "destructive" }); return; }
@@ -486,15 +495,28 @@ export default function Register() {
                 {/* ── Seção 2: Responsável técnico (contador PJ) ──────────────── */}
                 {userType === "contador" && personType === "juridica" && (
                   <div style={sectionStyle} className="space-y-3">
-                    <p className="text-blue-300/70 text-xs font-semibold uppercase tracking-wider">Responsável Técnico (CFC)</p>
-                    <p className="text-blue-200/50 text-xs">CPF do contador responsável pelo escritório</p>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-blue-300/70 text-xs font-semibold uppercase tracking-wider">
+                          Responsável Técnico (CFC) *
+                        </p>
+                        <p className="text-blue-200/50 text-xs mt-1">
+                          O escritório deve ter um contador com CRC <strong className="text-amber-400/80">ativo</strong> vinculado. O CRC não pode estar cadastrado em outro escritório.
+                        </p>
+                      </div>
+                    </div>
 
                     <div className="space-y-1">
                       <Label className="text-blue-100/80 text-sm">CPF do Responsável *</Label>
                       <div className="relative">
                         <Input
                           value={form.responsibleCpf}
-                          onChange={e => { set("responsibleCpf", maskCpf(e.target.value)); setResponsibleState("idle"); set("responsibleName", ""); }}
+                          onChange={e => {
+                            set("responsibleCpf", maskCpf(e.target.value));
+                            setResponsibleState("idle");
+                            set("responsibleName", "");
+                            setCrcDuplicate(false);
+                          }}
                           placeholder="000.000.000-00"
                           className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11 pr-10"
                           style={inputStyle}
@@ -505,7 +527,29 @@ export default function Register() {
                       </div>
                     </div>
 
-                    {form.responsibleName && (
+                    {/* CRC Duplicado */}
+                    {crcDuplicate && (
+                      <div className="rounded-lg p-3 space-y-2" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.40)" }}>
+                        <div className="flex items-start gap-2">
+                          <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-red-300 text-sm font-semibold">CRC já vinculado a outro cadastro</p>
+                            <p className="text-red-300/70 text-xs mt-1">
+                              Este CRC já está registrado em outra conta na plataforma. Se você acredita que isso é um erro ou deseja transferir o cadastro, entre em contato com nosso suporte.
+                            </p>
+                          </div>
+                        </div>
+                        <a
+                          href="/suporte"
+                          className="flex items-center justify-center gap-2 rounded-lg py-2 px-3 text-sm font-medium transition-colors"
+                          style={{ background: "rgba(239,68,68,0.25)", color: "rgba(252,165,165,1)", border: "1px solid rgba(239,68,68,0.50)" }}
+                        >
+                          Abrir chamado no suporte →
+                        </a>
+                      </div>
+                    )}
+
+                    {form.responsibleName && !crcDuplicate && (
                       <div className="rounded-lg p-3 flex items-start gap-3" style={{
                         background: responsibleState === "valid" ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
                         border: `1px solid ${responsibleState === "valid" ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)"}`,
@@ -518,14 +562,14 @@ export default function Register() {
                             {form.responsibleName}
                           </p>
                           <p className="text-xs mt-0.5" style={{ color: responsibleState === "valid" ? "rgba(134,239,172,0.7)" : "rgba(253,230,138,0.7)" }}>
-                            {responsibleState === "valid" ? "CRC ativo no CFC" : "Situação irregular no CFC — verifique"}
+                            {responsibleState === "valid" ? "CRC ativo no CFC ✓" : "CRC não está ativo no CFC — cadastro não permitido"}
                           </p>
                         </div>
                       </div>
                     )}
                     {responsibleState === "invalid" && !form.responsibleName && (
                       <p className="text-red-400/70 text-xs flex items-center gap-1">
-                        <XCircle className="h-3 w-3" /> CPF não encontrado no CFC
+                        <XCircle className="h-3 w-3" /> CPF não encontrado no cadastro do CFC
                       </p>
                     )}
                   </div>
@@ -700,18 +744,25 @@ export default function Register() {
                 </div>
 
                 {/* ── Submit ─────────────────────────────────────────────────── */}
-                <Button
-                  type="submit"
-                  className="w-full h-11 text-base font-semibold"
-                  style={{ background: "linear-gradient(135deg, hsl(214,80%,50%) 0%, hsl(214,80%,42%) 100%)", boxShadow: "0 4px 20px hsl(214,80%,46%,0.45)" }}
-                  disabled={registerMutation.isPending || (userType === "contador" && personType === "fisica" && crcState !== "valid")}
-                >
-                  {registerMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando conta...</> : "Criar conta"}
-                </Button>
-
-                {userType === "contador" && personType === "fisica" && crcState !== "valid" && (
-                  <p className="text-amber-400/70 text-xs text-center">Verifique seu CRC antes de criar a conta</p>
-                )}
+                {(() => {
+                  const pfBlocked = userType === "contador" && personType === "fisica" && crcState !== "valid";
+                  const pjBlocked = userType === "contador" && personType === "juridica" && responsibleState !== "valid";
+                  const blocked = pfBlocked || pjBlocked || crcDuplicate;
+                  return (
+                    <>
+                      <Button
+                        type="submit"
+                        className="w-full h-11 text-base font-semibold"
+                        style={{ background: "linear-gradient(135deg, hsl(214,80%,50%) 0%, hsl(214,80%,42%) 100%)", boxShadow: "0 4px 20px hsl(214,80%,46%,0.45)" }}
+                        disabled={registerMutation.isPending || blocked}
+                      >
+                        {registerMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando conta...</> : "Criar conta"}
+                      </Button>
+                      {pfBlocked && <p className="text-amber-400/70 text-xs text-center">Verifique seu CRC antes de criar a conta</p>}
+                      {pjBlocked && !crcDuplicate && <p className="text-amber-400/70 text-xs text-center">O responsável técnico deve ter CRC ativo no CFC para continuar</p>}
+                    </>
+                  );
+                })()}
               </>
             )}
 

@@ -198,10 +198,12 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const resolvedUserType = userType === "contador" ? "contador" : "cliente";
   const resolvedPersonType = personType === "juridica" ? "juridica" : "fisica";
 
-  // ── Validação CRC: obrigatória para contador pessoa física ────────────────
+  // ── Validação CRC: obrigatória para contador (PF e PJ) ───────────────────
   let crcNorm: string | null = null;
   let crcVerifiedFlag = false;
+
   if (resolvedUserType === "contador" && resolvedPersonType === "fisica") {
+    // PF: valida o próprio CRC do contador
     if (!crcNumber) {
       res.status(400).json({ error: "Número de registro CRC é obrigatório para contadores pessoa física." });
       return;
@@ -219,6 +221,42 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       return;
     } else {
       crcVerifiedFlag = true;
+    }
+  }
+
+  if (resolvedUserType === "contador" && resolvedPersonType === "juridica") {
+    // PJ: valida o CRC do responsável técnico — obrigatório e deve estar ativo
+    if (!responsibleCpf) {
+      res.status(400).json({ error: "O CPF do responsável técnico é obrigatório para o cadastro de escritórios contábeis." });
+      return;
+    }
+    const respDigits = String(responsibleCpf).replace(/\D/g, "");
+    const prof = await consultarCfc(respDigits);
+    if (!prof) {
+      res.status(503).json({ error: "Não foi possível verificar o CRC do responsável técnico junto ao CFC. Tente novamente em instantes." });
+      return;
+    }
+    if (prof.SituacaoCadastral?.toLowerCase() !== "ativo") {
+      res.status(422).json({ error: `O CRC do responsável técnico não está ativo no CFC. Situação: ${prof.SituacaoCadastral ?? "Desconhecido"}. Apenas escritórios com profissional ativo podem se cadastrar.` });
+      return;
+    }
+    crcNorm = prof.Crc ? normalizeCrc(prof.Crc) : null;
+    crcVerifiedFlag = true;
+  }
+
+  // ── Verificação de CRC duplicado ──────────────────────────────────────────
+  if (crcNorm) {
+    const existingCrc = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.crcNumber, crcNorm))
+      .limit(1);
+    if (existingCrc.length > 0) {
+      res.status(409).json({
+        error: "Este CRC já está vinculado a outro cadastro na plataforma. Se você acredita que isso é um erro, abra um chamado pelo chat de suporte.",
+        crcDuplicate: true,
+      });
+      return;
     }
   }
 
