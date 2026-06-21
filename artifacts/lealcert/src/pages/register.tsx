@@ -33,9 +33,11 @@ function maskCep(v: string) {
   return d.replace(/(\d{5})(\d{0,3})/, (_, a, b) => (b ? `${a}-${b}` : a));
 }
 function normalizeCrc(v: string): string {
-  let s = v.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-  if (s.length > 2 && s[s.length - 1] === "0") s = s.slice(0, -1) + "O";
-  return s;
+  return v.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+function maskDate(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  return d.replace(/(\d{2})(\d{2})(\d{0,4})/, (_, a, b, c) => c ? `${a}/${b}/${c}` : b ? `${a}/${b}` : a);
 }
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -78,6 +80,7 @@ export default function Register() {
     companyFantasyName: "",
     responsibleCpf: "",
     responsibleName: "",
+    birthDate: "",
     zipCode: "",
     street: "",
     addressNumber: "",
@@ -92,11 +95,13 @@ export default function Register() {
   const [cnpjState, setCnpjState] = useState<"idle" | "searching" | "found" | "not_found">("idle");
   const [cepState, setCepState] = useState<"idle" | "searching" | "found" | "not_found">("idle");
   const [responsibleState, setResponsibleState] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
+  const [cpfLookupState, setCpfLookupState] = useState<"idle" | "searching" | "found" | "not_found">("idle");
 
   const cnpjDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cpfCfcDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const responsibleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cepDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cpfLookupDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [crcDuplicate, setCrcDuplicate] = useState(false);
 
@@ -118,8 +123,8 @@ export default function Register() {
 
   function resetTypeSelection() {
     setPersonType("");
-    setForm(p => ({ ...p, cpfCnpj: "", name: "", crcNumber: "", companyName: "", companyFantasyName: "", responsibleCpf: "", responsibleName: "" }));
-    setCrcState("idle"); setCrcResult(null); setCnpjState("idle"); setResponsibleState("idle"); setCrcDuplicate(false);
+    setForm(p => ({ ...p, cpfCnpj: "", name: "", crcNumber: "", companyName: "", companyFantasyName: "", responsibleCpf: "", responsibleName: "", birthDate: "" }));
+    setCrcState("idle"); setCrcResult(null); setCnpjState("idle"); setResponsibleState("idle"); setCrcDuplicate(false); setCpfLookupState("idle");
   }
 
   // ── Auto-lookup CNPJ (jurídica) ────────────────────────────────────────────
@@ -183,7 +188,7 @@ export default function Register() {
   useEffect(() => {
     if (userType !== "contador" || personType !== "juridica") return;
     const digits = form.responsibleCpf.replace(/\D/g, "");
-    if (digits.length !== 11) { setResponsibleState("idle"); set("responsibleName", ""); return; }
+    if (digits.length !== 11) { setResponsibleState("idle"); set("responsibleName", ""); set("crcNumber", ""); setCrcState("idle"); setCrcResult(null); return; }
     if (responsibleDebounce.current) clearTimeout(responsibleDebounce.current);
     responsibleDebounce.current = setTimeout(async () => {
       setResponsibleState("checking");
@@ -193,6 +198,11 @@ export default function Register() {
         if (data.found && data.nome) {
           set("responsibleName", data.nome);
           setResponsibleState(data.valid ? "valid" : "invalid");
+          if (data.crc) {
+            set("crcNumber", data.crc);
+            setCrcState(data.valid ? "valid" : "invalid");
+            setCrcResult({ valid: data.valid ?? false, situacao: data.situacao ?? "", nome: data.nome });
+          }
         } else {
           setResponsibleState("invalid");
           set("responsibleName", "");
@@ -200,6 +210,28 @@ export default function Register() {
       } catch { setResponsibleState("invalid"); }
     }, 700);
   }, [form.responsibleCpf, userType, personType]);
+
+  // ── Auto-lookup CPF via Safeweb (cliente PF) ───────────────────────────────
+  useEffect(() => {
+    if (userType !== "cliente" || personType !== "fisica") return;
+    const digits = form.cpfCnpj.replace(/\D/g, "");
+    const dateDigits = form.birthDate.replace(/\D/g, "");
+    if (digits.length !== 11 || dateDigits.length !== 8) { setCpfLookupState("idle"); return; }
+    if (cpfLookupDebounce.current) clearTimeout(cpfLookupDebounce.current);
+    cpfLookupDebounce.current = setTimeout(async () => {
+      setCpfLookupState("searching");
+      try {
+        const resp = await fetch(`/api/auth/lookup-cpf?cpf=${digits}&birthDate=${encodeURIComponent(form.birthDate)}`);
+        const data = await resp.json() as { found: boolean; nome?: string };
+        if (data.found && data.nome) {
+          set("name", data.nome);
+          setCpfLookupState("found");
+        } else {
+          setCpfLookupState("not_found");
+        }
+      } catch { setCpfLookupState("not_found"); }
+    }, 700);
+  }, [form.cpfCnpj, form.birthDate, userType, personType]);
 
   // ── Auto-lookup CEP ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -451,6 +483,35 @@ export default function Register() {
                     </>
                   )}
 
+                  {/* Cliente PF: data de nascimento para consulta Safeweb */}
+                  {userType === "cliente" && personType === "fisica" && (
+                    <div className="space-y-1">
+                      <Label className="text-blue-100/80 text-sm">Data de nascimento *</Label>
+                      <div className="relative">
+                        <Input
+                          value={form.birthDate}
+                          onChange={e => { set("birthDate", maskDate(e.target.value)); setCpfLookupState("idle"); }}
+                          placeholder="DD/MM/AAAA"
+                          className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11 pr-10"
+                          style={inputStyle}
+                        />
+                        {cpfLookupState === "searching" && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-blue-400" />}
+                        {cpfLookupState === "found" && <CheckCircle2 className="absolute right-3 top-3.5 h-4 w-4 text-green-400" />}
+                        {cpfLookupState === "not_found" && <AlertCircle className="absolute right-3 top-3.5 h-4 w-4 text-amber-400" />}
+                      </div>
+                      {cpfLookupState === "found" && (
+                        <p className="text-green-400/80 text-xs flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Dados encontrados e preenchidos automaticamente
+                        </p>
+                      )}
+                      {cpfLookupState === "not_found" && (
+                        <p className="text-amber-400/70 text-xs flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> CPF/data não encontrados — preencha o nome manualmente
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Contador PF: CRC ao lado do CPF (nome auto-preenchido pelo CFC) */}
                   {userType === "contador" && personType === "fisica" && (
                     <div className="space-y-1">
@@ -571,6 +632,61 @@ export default function Register() {
                       <p className="text-red-400/70 text-xs flex items-center gap-1">
                         <XCircle className="h-3 w-3" /> CPF não encontrado no cadastro do CFC
                       </p>
+                    )}
+
+                    {/* CRC do responsável técnico (PJ contador) */}
+                    {(responsibleState === "valid" || responsibleState === "invalid" || form.responsibleName) && !crcDuplicate && (
+                      <div className="space-y-1">
+                        <Label className="text-blue-100/80 text-sm">
+                          Número de Registro CRC
+                          <span className="ml-2 text-blue-300/50 font-normal text-xs">(preenchido automaticamente ou ajuste manualmente)</span>
+                        </Label>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Input
+                              value={form.crcNumber}
+                              onChange={e => { set("crcNumber", normalizeCrc(e.target.value)); setCrcState("idle"); setCrcResult(null); }}
+                              placeholder="SP000000O"
+                              maxLength={12}
+                              className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11 pr-10"
+                              style={inputStyle}
+                            />
+                            {crcState === "checking" && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-blue-400" />}
+                            {crcState === "valid" && <CheckCircle2 className="absolute right-3 top-3.5 h-4 w-4 text-green-400" />}
+                            {(crcState === "invalid" || crcState === "error") && <XCircle className="absolute right-3 top-3.5 h-4 w-4 text-red-400" />}
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={handleValidateCrc}
+                            disabled={crcState === "checking" || !form.crcNumber}
+                            className="h-11 px-4 text-sm font-medium shrink-0"
+                            style={{ background: "#2563eb", color: "white", border: "none" }}
+                          >
+                            {crcState === "checking" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verificar"}
+                          </Button>
+                        </div>
+                        {crcResult && (
+                          <div className="rounded-lg p-2 flex items-start gap-2" style={{
+                            background: crcResult.valid ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.10)",
+                            border: `1px solid ${crcResult.valid ? "rgba(34,197,94,0.30)" : "rgba(239,68,68,0.30)"}`,
+                          }}>
+                            {crcResult.valid
+                              ? <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />
+                              : <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />}
+                            <div>
+                              {crcResult.nome && <p className={`text-xs font-semibold ${crcResult.valid ? "text-green-300" : "text-amber-300"}`}>{crcResult.nome}</p>}
+                              <p className="text-xs" style={{ color: crcResult.valid ? "rgba(134,239,172,0.7)" : "rgba(253,230,138,0.7)" }}>
+                                {crcResult.valid ? "CRC ativo ✓" : `Situação: ${crcResult.situacao}`}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {crcState === "error" && !crcResult && (
+                          <p className="text-red-400/70 text-xs flex items-center gap-1">
+                            <XCircle className="h-3 w-3" /> Erro ao consultar o CFC. Verifique o número digitado.
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

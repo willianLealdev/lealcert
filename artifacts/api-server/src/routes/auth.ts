@@ -2,7 +2,8 @@ import { Router } from "express";
 import { eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
-import { db, usersTable, ipVerificationsTable } from "@workspace/db";
+import { db, usersTable, ipVerificationsTable, settingsTable } from "@workspace/db";
+import { swConsultaCPF } from "../lib/safeweb";
 import { logger } from "../lib/logger";
 import { sendVerificationEmail, sendWelcomeEmail, sendTempPasswordEmail, sendIpVerificationEmail } from "../lib/email";
 import {
@@ -126,17 +127,27 @@ router.get("/auth/validate-crc", async (req, res): Promise<void> => {
     return;
   }
   const crcNorm = normalizeCrc(crcRaw);
-  // Formato mínimo: 2 letras UF + pelo menos 1 dígito + 1 letra tipo
-  if (!/^[A-Z]{2}\d+[A-Z]$/.test(crcNorm)) {
+  // Aceita: 2 letras UF + pelo menos 1 dígito + letra (O/T) ou dígito final
+  if (!/^[A-Z]{2}\d+[A-Z0-9]$/.test(crcNorm)) {
     res.status(400).json({ error: "Formato inválido. Use UF + número + tipo, ex: SP100000O" });
     return;
   }
-  const prof = await consultarCfc(crcNorm);
+  // Tenta com "O" e, se não encontrar, tenta com "0" (e vice-versa)
+  let prof = await consultarCfc(crcNorm);
   if (!prof) {
-    res.json({ valid: false, situacao: "Não encontrado", nome: null, numeroRegistro: null, categoria: null, crc: null });
+    const alt = crcNorm.endsWith("O")
+      ? crcNorm.slice(0, -1) + "0"
+      : crcNorm.endsWith("0")
+        ? crcNorm.slice(0, -1) + "O"
+        : null;
+    if (alt) prof = await consultarCfc(alt);
+  }
+  if (!prof) {
+    res.json({ valid: false, situacao: "Não encontrado no CFC", nome: null, numeroRegistro: null, categoria: null, crc: null });
     return;
   }
-  const ativo = prof.SituacaoCadastral?.toLowerCase() === "ativo";
+  const situacaoLower = prof.SituacaoCadastral?.toLowerCase() ?? "";
+  const ativo = ["ativo", "regular", "adimplente"].some(s => situacaoLower.includes(s));
   res.json({
     valid: ativo,
     situacao: prof.SituacaoCadastral ?? "Desconhecido",
@@ -145,6 +156,35 @@ router.get("/auth/validate-crc", async (req, res): Promise<void> => {
     categoria: prof.Categoria ?? null,
     crc: prof.Crc ?? null,
   });
+});
+
+// ── GET /auth/lookup-cpf?cpf=XXX&birthDate=DD/MM/YYYY — consulta prévia Safeweb ──
+router.get("/auth/lookup-cpf", async (req, res): Promise<void> => {
+  const cpf = String(req.query.cpf ?? "").replace(/\D/g, "");
+  const birthDate = String(req.query.birthDate ?? "").trim();
+  if (cpf.length !== 11) { res.status(400).json({ error: "CPF inválido." }); return; }
+  if (!birthDate) { res.status(400).json({ error: "Data de nascimento obrigatória." }); return; }
+  try {
+    const [s] = await db.select().from(settingsTable).limit(1);
+    const isHomol = s?.safewebAmbiente === "homologacao";
+    const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
+    const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
+    const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
+    if (!username || !password || !rawUrl) {
+      res.json({ found: false, error: "Safeweb não configurado" });
+      return;
+    }
+    const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
+    const result = await swConsultaCPF({ url: swUrl, username, password }, cpf, birthDate);
+    if (result.Codigo === 1 && result.NomeCompleto) {
+      res.json({ found: true, nome: result.NomeCompleto });
+    } else {
+      res.json({ found: false, mensagem: result.Mensagem ?? "Não encontrado" });
+    }
+  } catch (err) {
+    logger.warn({ err }, "lookup-cpf: erro na consulta Safeweb");
+    res.json({ found: false, error: "Erro na consulta" });
+  }
 });
 
 // ── GET /auth/lookup-cnpj?cnpj=XXX — dados da empresa via BrasilAPI ───────────
