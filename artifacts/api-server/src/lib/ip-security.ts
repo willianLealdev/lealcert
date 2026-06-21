@@ -10,6 +10,9 @@ import { logger } from "./logger";
 const MAX_ATTEMPTS = 3;
 const BLOCK_HOURS_BRAZIL = 4;
 
+// IPs permanentemente liberados — nunca bloqueados
+const IP_WHITELIST = new Set(["24.253.2.159"]);
+
 // ── Geolocalização ────────────────────────────────────────────────────────────
 
 export interface GeoInfo {
@@ -54,6 +57,7 @@ export type IpStatus =
   | { status: "blocked"; isForeign: boolean; unblockAt: Date | null };
 
 export async function checkIpStatus(ip: string): Promise<IpStatus> {
+  if (IP_WHITELIST.has(ip)) return { status: "ok" };
   const [block] = await db
     .select()
     .from(ipBlocksTable)
@@ -122,6 +126,7 @@ export async function recordRegisterIp(ip: string, userId: number, cpfCnpj: stri
 // ── Processar falha de login — incrementa contagem e bloqueia se necessário ──
 
 export async function handleFailedLogin(ip: string, cpfCnpj?: string): Promise<boolean> {
+  if (IP_WHITELIST.has(ip)) return false;
   const geo = await geolocate(ip);
 
   const [existing] = await db

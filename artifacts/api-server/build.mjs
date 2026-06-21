@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm, copyFile } from "node:fs/promises";
+import { rm, copyFile, access } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -46,6 +46,7 @@ async function buildAll() {
       "dtrace-provider",
       "isolated-vm",
       "lightningcss",
+      "nodemailer",
       "pg-native",
       "oracledb",
       "mongodb-client-encryption",
@@ -118,9 +119,10 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     },
   });
 
-  await copyFile(
-    path.resolve(artifactDir, "src/lib/logo-email.png"),
-    path.resolve(distDir, "logo-email.png")
+  const logoSrc = path.resolve(artifactDir, "src/lib/logo-email.png");
+  await access(logoSrc).then(
+    () => copyFile(logoSrc, path.resolve(distDir, "logo-email.png")),
+    () => { /* logo-email.png não existe — ignorado */ }
   );
 }
 
