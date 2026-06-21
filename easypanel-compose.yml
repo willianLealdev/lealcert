@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: Leal2024Xpto
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_v2:/var/lib/postgresql/data
 
   api:
     image: willianlealdev/lealcert-api:latest
@@ -28,11 +28,9 @@ services:
     image: willianlealdev/lealcert-web:latest
     pull_policy: always
     restart: unless-stopped
-    ports:
-      - "8090:80"
     depends_on:
       - api
 
 volumes:
-  postgres_data:
+  postgres_data_v2:
   uploads:
