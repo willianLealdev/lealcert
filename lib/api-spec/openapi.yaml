@@ -1537,6 +1537,171 @@ paths:
                   ok:
                     type: boolean
 
+  /auth/verify-ip:
+    post:
+      operationId: verifyIp
+      tags: [auth]
+      summary: Verify IP with code sent to email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cpfCnpj, code]
+              properties:
+                cpfCnpj:
+                  type: string
+                code:
+                  type: string
+      responses:
+        "200":
+          description: Verified and logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid or expired code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /admin/ip-logs:
+    get:
+      operationId: listIpLogs
+      tags: [admin]
+      summary: List IP access logs (admin only)
+      parameters:
+        - in: query
+          name: ip
+          schema:
+            type: string
+        - in: query
+          name: action
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: IP logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IpLogsResponse"
+
+  /admin/ip-blocks:
+    get:
+      operationId: listIpBlocks
+      tags: [admin]
+      summary: List blocked/banned IPs (admin only)
+      parameters:
+        - in: query
+          name: banned
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Blocked IPs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IpBlock"
+
+  /admin/ip-blocks/{ip}/unblock:
+    post:
+      operationId: unblockIp
+      tags: [admin]
+      summary: Unblock a temporarily blocked IP (admin only)
+      parameters:
+        - in: path
+          name: ip
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+
+  /admin/ip-blocks/{ip}/ban:
+    post:
+      operationId: banIp
+      tags: [admin]
+      summary: Permanently ban an IP (admin only)
+      parameters:
+        - in: path
+          name: ip
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+
+  /admin/ip-blocks/{ip}/unban:
+    post:
+      operationId: unbanIp
+      tags: [admin]
+      summary: Revert a permanent IP ban (admin only)
+      parameters:
+        - in: path
+          name: ip
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+
   /push/test:
     post:
       operationId: sendTestPush
@@ -4021,3 +4186,100 @@ components:
         sessionId:
           type: integer
           description: Conversation/session ID returned by createChatSession
+
+    IpLog:
+      type: object
+      required: [id, ip, action, createdAt]
+      properties:
+        id:
+          type: integer
+        ip:
+          type: string
+        userId:
+          type: integer
+          nullable: true
+        cpfCnpj:
+          type: string
+          nullable: true
+        action:
+          type: string
+        country:
+          type: string
+          nullable: true
+        countryCode:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        isBrazil:
+          type: boolean
+          nullable: true
+        success:
+          type: boolean
+          nullable: true
+        blocked:
+          type: boolean
+          nullable: true
+        userName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    IpBlock:
+      type: object
+      required: [id, ip, attempts, isBanned, isForeign, blockedAt]
+      properties:
+        id:
+          type: integer
+        ip:
+          type: string
+        attempts:
+          type: integer
+        isBanned:
+          type: boolean
+        isForeign:
+          type: boolean
+        blockedAt:
+          type: string
+          format: date-time
+        unblockAt:
+          type: string
+          format: date-time
+          nullable: true
+        unblockedAt:
+          type: string
+          format: date-time
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        countryCode:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        unblockedByName:
+          type: string
+          nullable: true
+
+    IpLogsResponse:
+      type: object
+      required: [logs, total, page, limit]
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/IpLog"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer

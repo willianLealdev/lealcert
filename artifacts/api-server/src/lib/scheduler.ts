@@ -137,4 +137,9 @@ export function startScheduler() {
   setInterval(syncSafewebStatuses, 5 * 60_000);
   // Primeira verificação após 30s para não sobrecarregar o boot
   setTimeout(() => syncSafewebStatuses().catch(err => logger.error({ err }, "Initial Safeweb sync error")), 30_000);
+
+  // Auto-desbloquear IPs do Brasil após 4h (roda a cada 10 minutos)
+  const runAutoUnblock = () => import("./ip-security").then(m => m.autoUnblockExpiredIps()).catch(err => logger.error({ err }, "ip-security: auto-unblock error"));
+  setInterval(runAutoUnblock, 10 * 60_000);
+  setTimeout(runAutoUnblock, 60_000);
 }

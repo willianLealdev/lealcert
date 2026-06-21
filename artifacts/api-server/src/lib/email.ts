@@ -310,6 +310,39 @@ export async function sendTempPasswordEmail(to: string, name: string, tempPasswo
   logger.info({ to }, "Temp password email sent");
 }
 
+export async function sendIpVerificationEmail(to: string, name: string, code: string): Promise<void> {
+  const cfg = await getEmailConfig();
+  const subject = `Acesso de novo endereço — confirme sua identidade | ${cfg.appName}`;
+  const html = emailWrapper(`
+    <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+      <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">Olá, ${name}!</h2>
+      <p style="color:#475569;margin:0 0 16px;">Detectamos uma tentativa de acesso à sua conta a partir de um endereço de rede diferente do habitual.</p>
+      <div style="background:#fef3c7;border:1px solid #f59e0b40;border-radius:8px;padding:14px;margin-bottom:20px;font-size:13px;color:#92400e;">
+        ⚠️ <strong>Se não foi você</strong>, ignore este e-mail e sua conta permanecerá protegida.
+      </div>
+      <p style="color:#475569;margin:0 0 16px;">Para confirmar que é você e liberar o acesso, use o código abaixo:</p>
+      <div style="background:#0f172a;border-radius:10px;padding:24px;text-align:center;margin-bottom:20px;">
+        <p style="color:#94a3b8;font-size:12px;margin:0 0 8px;letter-spacing:1px;text-transform:uppercase;">Código de verificação</p>
+        <span style="font-size:42px;font-weight:900;letter-spacing:12px;color:#ffffff;">${code}</span>
+      </div>
+      <p style="color:#94a3b8;font-size:13px;margin:0;text-align:center;">Válido por <strong>15 minutos</strong>. Não compartilhe com ninguém.</p>
+    </div>
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Olá, ${name}!\n\nAcesso detectado de novo endereço de rede.\nCódigo de verificação: ${code}\nVálido por 15 minutos.\n\nSe não foi você, ignore este e-mail.`;
+
+  const transporter = await createTransporter(cfg);
+  if (!transporter) {
+    logger.info({ to, code }, "📧 [DEV] IP verification email (SMTP not configured)");
+    return;
+  }
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to, subject, html, text,
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
+  logger.info({ to }, "IP verification email sent");
+}
+
 export async function sendVerificationEmail(to: string, name: string, code: string): Promise<void> {
   const cfg = await getEmailConfig();
   const subject = `Código de verificação — ${cfg.appName}`;

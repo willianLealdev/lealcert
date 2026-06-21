@@ -72,19 +72,39 @@ async function ensureSessionTable() {
 async function main() {
   logger.info("Running database migrations...");
   const migrationDb = drizzle(pool);
-  try {
-    await migrate(migrationDb, {
-      migrationsFolder: path.join(__dirname, "../migrations"),
-    });
-    logger.info("Database migrations complete");
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("already exists")) {
-      logger.warn("Migration skipped — schema already present in database");
-    } else {
-      throw err;
+
+  // If the DB was bootstrapped via drizzle-kit push (no tracking table),
+  // seed the migration tracking so Drizzle only runs new migrations.
+  await pool.query(`CREATE SCHEMA IF NOT EXISTS drizzle`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
+      id SERIAL PRIMARY KEY,
+      hash text NOT NULL,
+      created_at bigint
+    )
+  `);
+  const { rows: existingMigrations } = await pool.query(
+    `SELECT created_at FROM drizzle.__drizzle_migrations ORDER BY created_at DESC LIMIT 1`,
+  );
+  if (existingMigrations.length === 0) {
+    // Check if the schema is already present (bootstrapped via push)
+    const { rows: typeRows } = await pool.query(
+      `SELECT 1 FROM pg_type WHERE typname = 'role' AND typtype = 'e' LIMIT 1`,
+    );
+    if (typeRows.length > 0) {
+      // Schema exists but migration tracking is empty — seed the 0000 entry
+      logger.warn("Schema already present but migration tracking is empty — seeding 0000 migration record");
+      await pool.query(
+        `INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)`,
+        ["bfa8f0711944c5051e127a100a8abbbceffe8b68e6361c7536b6e126251f9574", 1781994430142],
+      );
     }
   }
+
+  await migrate(migrationDb, {
+    migrationsFolder: path.join(__dirname, "../migrations"),
+  });
+  logger.info("Database migrations complete");
   await ensureSessionTable();
 
   await seed();

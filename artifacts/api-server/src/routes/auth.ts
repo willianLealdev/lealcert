@@ -2,9 +2,14 @@ import { Router } from "express";
 import { eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, ipVerificationsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
-import { sendVerificationEmail, sendWelcomeEmail, sendTempPasswordEmail } from "../lib/email";
+import { sendVerificationEmail, sendWelcomeEmail, sendTempPasswordEmail, sendIpVerificationEmail } from "../lib/email";
+import {
+  getClientIp, checkIpStatus, recordLoginAttempt, recordRegisterIp,
+  handleFailedLogin, clearFailedAttempts, isIpTrusted, addTrustedIp,
+  generateIpVerificationCode,
+} from "../lib/ip-security";
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -67,7 +72,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const passwordHash = await bcrypt.hash(password, 10);
   const code = generateCode();
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
-  await db.insert(usersTable).values({
+  const clientIp = getClientIp(req as Parameters<typeof getClientIp>[0]);
+  const [newUser] = await db.insert(usersTable).values({
     name: name.trim(),
     email: email.toLowerCase().trim(),
     cpfCnpj: digits,
@@ -79,7 +85,10 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     emailVerified: false,
     emailVerificationCode: code,
     emailVerificationExpiresAt: expiresAt,
-  });
+    registrationIp: clientIp,
+    trustedIps: [clientIp],
+  }).returning({ id: usersTable.id });
+  if (newUser) recordRegisterIp(clientIp, newUser.id, digits).catch(() => {});
   try {
     await sendVerificationEmail(email, name, code);
   } catch (err) {
@@ -179,6 +188,32 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     res.status(400).json({ error: "CPF/CNPJ e senha são obrigatórios." });
     return;
   }
+
+  const clientIp = getClientIp(req as Parameters<typeof getClientIp>[0]);
+
+  // ── 1. Verificar se IP está banido ou bloqueado ───────────────────────────
+  const ipStatus = await checkIpStatus(clientIp);
+  if (ipStatus.status === "banned") {
+    await recordLoginAttempt({ ip: clientIp, cpfCnpj, success: false, blocked: true });
+    res.status(403).json({
+      error: "Seu IP foi permanentemente banido. Entre em contato com o suporte para contestar.",
+      code: "ip_banned",
+    });
+    return;
+  }
+  if (ipStatus.status === "blocked") {
+    await recordLoginAttempt({ ip: clientIp, cpfCnpj, success: false, blocked: true });
+    res.status(423).json({
+      error: ipStatus.isForeign
+        ? "Acesso bloqueado por IP suspeito (origem estrangeira). Abra um chamado de suporte para desbloquear."
+        : "IP bloqueado temporariamente por excesso de tentativas. Abra um chamado ou aguarde até 4 horas.",
+      code: "ip_blocked",
+      isForeign: ipStatus.isForeign,
+      unblockAt: ipStatus.unblockAt,
+    });
+    return;
+  }
+
   const digits = cpfCnpj.replace(/\D/g, "");
   const [user] = await db
     .select()
@@ -187,8 +222,9 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .limit(1);
 
   if (!user) {
-    // Use constant-time comparison to prevent user enumeration timing attacks
     await bcrypt.compare(password, "$2a$10$invalidhashfortimingprotection00000000000000000000000");
+    await handleFailedLogin(clientIp, digits);
+    await recordLoginAttempt({ ip: clientIp, cpfCnpj: digits, success: false });
     res.status(401).json({ error: "CPF/CNPJ ou senha inválidos." });
     return;
   }
@@ -200,13 +236,51 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     res.status(403).json({ error: "E-mail não verificado. Verifique sua caixa de entrada.", email: user.email });
     return;
   }
+
+  // ── 2. Validar senha ──────────────────────────────────────────────────────
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
-    res.status(401).json({ error: "CPF/CNPJ ou senha inválidos." });
+    const nowBlocked = await handleFailedLogin(clientIp, digits);
+    await recordLoginAttempt({ ip: clientIp, cpfCnpj: digits, userId: user.id, success: false, blocked: nowBlocked });
+    if (nowBlocked) {
+      const freshStatus = await checkIpStatus(clientIp);
+      res.status(423).json({
+        error: "IP bloqueado após múltiplas tentativas incorretas. Abra um chamado ou aguarde até 4 horas.",
+        code: "ip_blocked",
+        isForeign: freshStatus.status === "blocked" ? freshStatus.isForeign : false,
+      });
+    } else {
+      res.status(401).json({ error: "CPF/CNPJ ou senha inválidos." });
+    }
     return;
   }
 
-  // Regenerate session ID after successful login (prevents session fixation attacks)
+  // ── 3. Login bem-sucedido — limpar tentativas ─────────────────────────────
+  await clearFailedAttempts(clientIp);
+  await recordLoginAttempt({ ip: clientIp, cpfCnpj: digits, userId: user.id, success: true });
+
+  // ── 4. Verificar se IP é confiável ────────────────────────────────────────
+  const trusted = await isIpTrusted(user.id, clientIp);
+  if (!trusted && user.email) {
+    // IP diferente do cadastrado — enviar código de verificação por e-mail
+    const code = generateIpVerificationCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+    await db.insert(ipVerificationsTable).values({
+      userId: user.id,
+      ip: clientIp,
+      code,
+      expiresAt,
+    });
+    try {
+      await sendIpVerificationEmail(user.email, user.name, code);
+    } catch (err) {
+      logger.error({ err }, "Falha ao enviar e-mail de verificação de IP");
+    }
+    res.status(202).json({ requiresIpVerification: true });
+    return;
+  }
+
+  // ── 5. Criar sessão ───────────────────────────────────────────────────────
   const userData = userResponse(user);
   req.session.regenerate((err) => {
     if (err) {
@@ -220,6 +294,67 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     req.session.save((saveErr) => {
       if (saveErr) {
         logger.error({ err: saveErr }, "Session save failed after login");
+        res.status(500).json({ error: "Erro interno ao salvar sessão." });
+        return;
+      }
+      res.json(userData);
+    });
+  });
+});
+
+// ── POST /auth/verify-ip — Validar código de verificação de IP novo ───────────
+router.post("/auth/verify-ip", async (req, res): Promise<void> => {
+  const { cpfCnpj, code } = req.body ?? {};
+  if (!cpfCnpj || !code) {
+    res.status(400).json({ error: "CPF/CNPJ e código são obrigatórios." });
+    return;
+  }
+  const clientIp = getClientIp(req as Parameters<typeof getClientIp>[0]);
+  const digits = cpfCnpj.replace(/\D/g, "");
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.cpfCnpj, digits)).limit(1);
+  if (!user) {
+    res.status(400).json({ error: "Código inválido ou expirado." });
+    return;
+  }
+
+  const now = new Date();
+  const [verification] = await db
+    .select()
+    .from(ipVerificationsTable)
+    .where(
+      eq(ipVerificationsTable.userId, user.id),
+    )
+    .orderBy(ipVerificationsTable.createdAt)
+    .limit(1);
+
+  if (
+    !verification ||
+    verification.ip !== clientIp ||
+    verification.code !== String(code).trim() ||
+    verification.usedAt ||
+    verification.expiresAt < now
+  ) {
+    res.status(400).json({ error: "Código inválido ou expirado. Tente fazer login novamente." });
+    return;
+  }
+
+  // Marcar como usado e adicionar IP à lista de confiáveis
+  await db.update(ipVerificationsTable).set({ usedAt: now }).where(eq(ipVerificationsTable.id, verification.id));
+  await addTrustedIp(user.id, clientIp);
+  await recordLoginAttempt({ ip: clientIp, cpfCnpj: digits, userId: user.id, success: true });
+
+  const userData = userResponse(user);
+  req.session.regenerate((err) => {
+    if (err) {
+      res.status(500).json({ error: "Erro interno ao iniciar sessão." });
+      return;
+    }
+    req.session.userId = user.id;
+    req.session.role = user.role;
+    req.session.userType = user.userType;
+    req.session.save((saveErr) => {
+      if (saveErr) {
         res.status(500).json({ error: "Erro interno ao salvar sessão." });
         return;
       }

@@ -29,6 +29,7 @@ import AdminSettings from "@/pages/admin/settings";
 import AdminMarketing from "@/pages/admin/marketing";
 import AdminRenovacoes from "@/pages/admin/renovacoes";
 import AdminCoupons from "@/pages/admin/coupons";
+import AdminIpSecurity from "@/pages/admin/ip-security";
 import PrivacyPolicy from "@/pages/privacy-policy";
 
 const queryClient = new QueryClient({
@@ -92,6 +93,7 @@ function Router() {
       <Route path="/admin/marketing" component={() => <ProtectedRoute component={AdminMarketing} adminOnly />} />
       <Route path="/admin/renovacoes" component={() => <ProtectedRoute component={AdminRenovacoes} adminOnly />} />
       <Route path="/admin/coupons" component={() => <ProtectedRoute component={AdminCoupons} adminOnly />} />
+      <Route path="/admin/ip-security" component={() => <ProtectedRoute component={AdminIpSecurity} adminOnly />} />
       <Route component={NotFound} />
     </Switch>
   );

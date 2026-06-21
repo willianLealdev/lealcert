@@ -1511,6 +1511,126 @@ export const UnsubscribePushResponse = zod.object({
 
 
 /**
+ * @summary Verify IP with code sent to email
+ */
+export const VerifyIpBody = zod.object({
+  "cpfCnpj": zod.string(),
+  "code": zod.string()
+})
+
+export const VerifyIpResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "cpfCnpj": zod.string(),
+  "role": zod.enum(['admin', 'contador']),
+  "phone": zod.string().nullish(),
+  "isActive": zod.boolean().optional(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary List IP access logs (admin only)
+ */
+export const ListIpLogsQueryParams = zod.object({
+  "ip": zod.coerce.string().optional(),
+  "action": zod.coerce.string().optional(),
+  "page": zod.coerce.number().optional(),
+  "limit": zod.coerce.number().optional()
+})
+
+export const ListIpLogsResponse = zod.object({
+  "logs": zod.array(zod.object({
+  "id": zod.number(),
+  "ip": zod.string(),
+  "userId": zod.number().nullish(),
+  "cpfCnpj": zod.string().nullish(),
+  "action": zod.string(),
+  "country": zod.string().nullish(),
+  "countryCode": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "isBrazil": zod.boolean().nullish(),
+  "success": zod.boolean().nullish(),
+  "blocked": zod.boolean().nullish(),
+  "userName": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})),
+  "total": zod.number(),
+  "page": zod.number(),
+  "limit": zod.number()
+})
+
+
+/**
+ * @summary List blocked/banned IPs (admin only)
+ */
+export const ListIpBlocksQueryParams = zod.object({
+  "banned": zod.coerce.string().optional()
+})
+
+export const ListIpBlocksResponseItem = zod.object({
+  "id": zod.number(),
+  "ip": zod.string(),
+  "attempts": zod.number(),
+  "isBanned": zod.boolean(),
+  "isForeign": zod.boolean(),
+  "blockedAt": zod.coerce.date(),
+  "unblockAt": zod.coerce.date().nullish(),
+  "unblockedAt": zod.coerce.date().nullish(),
+  "country": zod.string().nullish(),
+  "countryCode": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "unblockedByName": zod.string().nullish()
+})
+export const ListIpBlocksResponse = zod.array(ListIpBlocksResponseItem)
+
+
+/**
+ * @summary Unblock a temporarily blocked IP (admin only)
+ */
+export const UnblockIpParams = zod.object({
+  "ip": zod.coerce.string()
+})
+
+export const UnblockIpResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary Permanently ban an IP (admin only)
+ */
+export const BanIpParams = zod.object({
+  "ip": zod.coerce.string()
+})
+
+export const BanIpBody = zod.object({
+  "notes": zod.string().optional()
+})
+
+export const BanIpResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary Revert a permanent IP ban (admin only)
+ */
+export const UnbanIpParams = zod.object({
+  "ip": zod.coerce.string()
+})
+
+export const UnbanIpResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "message": zod.string().optional()
+})
+
+
+/**
  * @summary Send a test push notification (admin only)
  */
 export const SendTestPushBody = zod.object({

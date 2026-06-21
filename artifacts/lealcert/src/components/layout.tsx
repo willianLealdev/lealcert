@@ -25,6 +25,7 @@ import {
   BellOff,
   BellRing,
   Loader2,
+  ShieldCheck,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 
@@ -41,6 +42,7 @@ const adminNav = [
   { name: "Renovações", href: "/admin/renovacoes", icon: RefreshCw },
   { name: "Descontos", href: "/admin/coupons", icon: Tag },
   { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
+  { name: "Segurança de IP", href: "/admin/ip-security", icon: ShieldCheck },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 

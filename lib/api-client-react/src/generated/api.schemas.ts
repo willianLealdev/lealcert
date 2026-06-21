@@ -1428,6 +1428,45 @@ export interface ChatMessageInput {
   sessionId: number;
 }
 
+export interface IpLog {
+  id: number;
+  ip: string;
+  userId?: number | null;
+  cpfCnpj?: string | null;
+  action: string;
+  country?: string | null;
+  countryCode?: string | null;
+  city?: string | null;
+  isBrazil?: boolean | null;
+  success?: boolean | null;
+  blocked?: boolean | null;
+  userName?: string | null;
+  createdAt: string;
+}
+
+export interface IpBlock {
+  id: number;
+  ip: string;
+  attempts: number;
+  isBanned: boolean;
+  isForeign: boolean;
+  blockedAt: string;
+  unblockAt?: string | null;
+  unblockedAt?: string | null;
+  country?: string | null;
+  countryCode?: string | null;
+  city?: string | null;
+  notes?: string | null;
+  unblockedByName?: string | null;
+}
+
+export interface IpLogsResponse {
+  logs: IpLog[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export type ListCertificatesParams = {
 activeOnly?: boolean;
 };
@@ -1518,6 +1557,45 @@ export type SubscribePush200 = {
 
 export type UnsubscribePush200 = {
   ok?: boolean;
+};
+
+export type VerifyIpBody = {
+  cpfCnpj: string;
+  code: string;
+};
+
+export type VerifyIp400 = {
+  error?: string;
+};
+
+export type ListIpLogsParams = {
+ip?: string;
+action?: string;
+page?: number;
+limit?: number;
+};
+
+export type ListIpBlocksParams = {
+banned?: string;
+};
+
+export type UnblockIp200 = {
+  ok?: boolean;
+  message?: string;
+};
+
+export type BanIpBody = {
+  notes?: string;
+};
+
+export type BanIp200 = {
+  ok?: boolean;
+  message?: string;
+};
+
+export type UnbanIp200 = {
+  ok?: boolean;
+  message?: string;
 };
 
 export type SendTestPush200 = {

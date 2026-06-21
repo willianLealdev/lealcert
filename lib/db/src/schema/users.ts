@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, pgEnum, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -22,6 +22,8 @@ export const usersTable = pgTable("users", {
   mustChangePassword: boolean("must_change_password").notNull().default(false),
   passwordResetToken: text("password_reset_token"),
   passwordResetExpiresAt: timestamp("password_reset_expires_at", { withTimezone: true }),
+  registrationIp: text("registration_ip"),
+  trustedIps: jsonb("trusted_ips").$type<string[]>().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -19,6 +19,7 @@ import cnpjLookupRouter from "./cnpj-lookup";
 import couponsRouter from "./coupons";
 import brandingRouter from "./branding";
 import pushRouter from "./push";
+import ipSecurityRouter from "./ip-security";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(marketingRouter);
 router.use(renewalsRouter);
 router.use(cnpjLookupRouter);
 router.use(couponsRouter);
+router.use(ipSecurityRouter);
 
 export default router;

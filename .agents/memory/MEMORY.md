@@ -4,3 +4,5 @@
 - [Safeweb token format](safeweb-token-format.md) — Safeweb API uses raw JWE token (NO "Bearer" prefix); PSBio path is psbio/consulta/biometria/global; token field is tokenAcesso not access_token.
 - [Orval inline requestBody conflict](orval-inline-body.md) — inline requestBody schemas generate duplicate TS2308 export errors; always use named $ref schemas in components/schemas for request bodies and responses.
 - [Session cookie in production](session-cookie-prod.md) — custom-fetch.ts must use credentials:"include" in fetch(); without it cookies are never sent and every auth check returns 401 even after successful login.
+- [Drizzle migration when schema bootstrapped via push](drizzle-migration-push.md) — schema created by drizzle-kit push has no tracking table; seed drizzle.__drizzle_migrations before calling migrate().
+- [IP Security system](ip-security-system.md) — login protection: 3 fails→block, Brazil 4h auto-unblock, foreign manual, new IP→email code verification, admin dashboard.

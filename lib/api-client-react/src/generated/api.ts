@@ -26,6 +26,8 @@ import type {
   AppSettings,
   AppSettingsUpdate,
   AuthUser,
+  BanIp200,
+  BanIpBody,
   BrandingInfo,
   BulkDeleteContactsInput,
   BulkDeleteContactsResult,
@@ -85,7 +87,11 @@ import type {
   HealthStatus,
   ImportSafewebCertificates200,
   InboundWebhookInput,
+  IpBlock,
+  IpLogsResponse,
   ListCertificatesParams,
+  ListIpBlocksParams,
+  ListIpLogsParams,
   ListMarketingContacts200,
   ListMarketingContactsParams,
   ListMarketingRepliesParams,
@@ -134,13 +140,17 @@ import type {
   Ticket,
   TicketDetail,
   TicketInput,
+  UnbanIp200,
+  UnblockIp200,
   UnsubscribePush200,
   UpdateMarketingContactInput,
   User,
   UserInput,
   UserUpdate,
   ValidateEmailsInput,
-  VerifyEmailInput
+  VerifyEmailInput,
+  VerifyIp400,
+  VerifyIpBody
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -5985,6 +5995,457 @@ export const useUnsubscribePush = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUnsubscribePushMutationOptions(options));
+    }
+
+export const getVerifyIpUrl = () => {
+
+
+
+
+  return `/api/auth/verify-ip`
+}
+
+/**
+ * @summary Verify IP with code sent to email
+ */
+export const verifyIp = async (verifyIpBody: VerifyIpBody, options?: RequestInit): Promise<User> => {
+
+  return customFetch<User>(getVerifyIpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      verifyIpBody,)
+  }
+);}
+
+
+
+
+export const getVerifyIpMutationOptions = <TError = ErrorType<VerifyIp400>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyIp>>, TError,{data: BodyType<VerifyIpBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyIp>>, TError,{data: BodyType<VerifyIpBody>}, TContext> => {
+
+const mutationKey = ['verifyIp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyIp>>, {data: BodyType<VerifyIpBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyIp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyIpMutationResult = NonNullable<Awaited<ReturnType<typeof verifyIp>>>
+    export type VerifyIpMutationBody = BodyType<VerifyIpBody>
+    export type VerifyIpMutationError = ErrorType<VerifyIp400>
+
+    /**
+ * @summary Verify IP with code sent to email
+ */
+export const useVerifyIp = <TError = ErrorType<VerifyIp400>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyIp>>, TError,{data: BodyType<VerifyIpBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyIp>>,
+        TError,
+        {data: BodyType<VerifyIpBody>},
+        TContext
+      > => {
+      return useMutation(getVerifyIpMutationOptions(options));
+    }
+
+export const getListIpLogsUrl = (params?: ListIpLogsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/ip-logs?${stringifiedParams}` : `/api/admin/ip-logs`
+}
+
+/**
+ * @summary List IP access logs (admin only)
+ */
+export const listIpLogs = async (params?: ListIpLogsParams, options?: RequestInit): Promise<IpLogsResponse> => {
+
+  return customFetch<IpLogsResponse>(getListIpLogsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListIpLogsQueryKey = (params?: ListIpLogsParams,) => {
+    return [
+    `/api/admin/ip-logs`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListIpLogsQueryOptions = <TData = Awaited<ReturnType<typeof listIpLogs>>, TError = ErrorType<unknown>>(params?: ListIpLogsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIpLogs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListIpLogsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listIpLogs>>> = ({ signal }) => listIpLogs(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listIpLogs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListIpLogsQueryResult = NonNullable<Awaited<ReturnType<typeof listIpLogs>>>
+export type ListIpLogsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List IP access logs (admin only)
+ */
+
+export function useListIpLogs<TData = Awaited<ReturnType<typeof listIpLogs>>, TError = ErrorType<unknown>>(
+ params?: ListIpLogsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIpLogs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListIpLogsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListIpBlocksUrl = (params?: ListIpBlocksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/ip-blocks?${stringifiedParams}` : `/api/admin/ip-blocks`
+}
+
+/**
+ * @summary List blocked/banned IPs (admin only)
+ */
+export const listIpBlocks = async (params?: ListIpBlocksParams, options?: RequestInit): Promise<IpBlock[]> => {
+
+  return customFetch<IpBlock[]>(getListIpBlocksUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListIpBlocksQueryKey = (params?: ListIpBlocksParams,) => {
+    return [
+    `/api/admin/ip-blocks`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListIpBlocksQueryOptions = <TData = Awaited<ReturnType<typeof listIpBlocks>>, TError = ErrorType<unknown>>(params?: ListIpBlocksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIpBlocks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListIpBlocksQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listIpBlocks>>> = ({ signal }) => listIpBlocks(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listIpBlocks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListIpBlocksQueryResult = NonNullable<Awaited<ReturnType<typeof listIpBlocks>>>
+export type ListIpBlocksQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List blocked/banned IPs (admin only)
+ */
+
+export function useListIpBlocks<TData = Awaited<ReturnType<typeof listIpBlocks>>, TError = ErrorType<unknown>>(
+ params?: ListIpBlocksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIpBlocks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListIpBlocksQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUnblockIpUrl = (ip: string,) => {
+
+
+
+
+  return `/api/admin/ip-blocks/${ip}/unblock`
+}
+
+/**
+ * @summary Unblock a temporarily blocked IP (admin only)
+ */
+export const unblockIp = async (ip: string, options?: RequestInit): Promise<UnblockIp200> => {
+
+  return customFetch<UnblockIp200>(getUnblockIpUrl(ip),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getUnblockIpMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unblockIp>>, TError,{ip: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unblockIp>>, TError,{ip: string}, TContext> => {
+
+const mutationKey = ['unblockIp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unblockIp>>, {ip: string}> = (props) => {
+          const {ip} = props ?? {};
+
+          return  unblockIp(ip,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnblockIpMutationResult = NonNullable<Awaited<ReturnType<typeof unblockIp>>>
+
+    export type UnblockIpMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Unblock a temporarily blocked IP (admin only)
+ */
+export const useUnblockIp = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unblockIp>>, TError,{ip: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unblockIp>>,
+        TError,
+        {ip: string},
+        TContext
+      > => {
+      return useMutation(getUnblockIpMutationOptions(options));
+    }
+
+export const getBanIpUrl = (ip: string,) => {
+
+
+
+
+  return `/api/admin/ip-blocks/${ip}/ban`
+}
+
+/**
+ * @summary Permanently ban an IP (admin only)
+ */
+export const banIp = async (ip: string,
+    banIpBody?: BanIpBody, options?: RequestInit): Promise<BanIp200> => {
+
+  return customFetch<BanIp200>(getBanIpUrl(ip),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      banIpBody,)
+  }
+);}
+
+
+
+
+export const getBanIpMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof banIp>>, TError,{ip: string;data?: BodyType<BanIpBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof banIp>>, TError,{ip: string;data?: BodyType<BanIpBody>}, TContext> => {
+
+const mutationKey = ['banIp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof banIp>>, {ip: string;data?: BodyType<BanIpBody>}> = (props) => {
+          const {ip,data} = props ?? {};
+
+          return  banIp(ip,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BanIpMutationResult = NonNullable<Awaited<ReturnType<typeof banIp>>>
+    export type BanIpMutationBody = BodyType<BanIpBody> | undefined
+    export type BanIpMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Permanently ban an IP (admin only)
+ */
+export const useBanIp = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof banIp>>, TError,{ip: string;data?: BodyType<BanIpBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof banIp>>,
+        TError,
+        {ip: string;data?: BodyType<BanIpBody>},
+        TContext
+      > => {
+      return useMutation(getBanIpMutationOptions(options));
+    }
+
+export const getUnbanIpUrl = (ip: string,) => {
+
+
+
+
+  return `/api/admin/ip-blocks/${ip}/unban`
+}
+
+/**
+ * @summary Revert a permanent IP ban (admin only)
+ */
+export const unbanIp = async (ip: string, options?: RequestInit): Promise<UnbanIp200> => {
+
+  return customFetch<UnbanIp200>(getUnbanIpUrl(ip),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getUnbanIpMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unbanIp>>, TError,{ip: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unbanIp>>, TError,{ip: string}, TContext> => {
+
+const mutationKey = ['unbanIp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unbanIp>>, {ip: string}> = (props) => {
+          const {ip} = props ?? {};
+
+          return  unbanIp(ip,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnbanIpMutationResult = NonNullable<Awaited<ReturnType<typeof unbanIp>>>
+
+    export type UnbanIpMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Revert a permanent IP ban (admin only)
+ */
+export const useUnbanIp = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unbanIp>>, TError,{ip: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unbanIp>>,
+        TError,
+        {ip: string},
+        TContext
+      > => {
+      return useMutation(getUnbanIpMutationOptions(options));
     }
 
 export const getSendTestPushUrl = () => {
