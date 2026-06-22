@@ -22,7 +22,7 @@ services:
     stop_grace_period: 30s
     environment:
       DATABASE_URL: postgresql://postgres:Leal2024Xpto@db:5432/lealcert
-      SESSION_SECRET: LealCertKey2024XptoSecureSession
+      SESSION_SECRET: 21fc81ee4bf33b3ec7e768f0ffcac4172b0d0dfd46962a890e7d1d56c8024245
       PORT: "8080"
       NODE_ENV: production
       ALLOWED_ORIGINS: "https://lealcert.com.br"
