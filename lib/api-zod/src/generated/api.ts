@@ -902,6 +902,26 @@ export const SyncPaymentOrderResponse = zod.object({
 
 
 /**
+ * @summary Retorna configuração de agenda do local Safeweb (dias/horários de atendimento)
+ */
+export const GetSafewebConfigParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetSafewebConfigQueryParams = zod.object({
+  "idLocal": zod.coerce.number().describe('ID do local de atendimento')
+})
+
+export const GetSafewebConfigResponse = zod.object({
+  "diasSemana": zod.array(zod.number()).optional().describe('Dias da semana disponíveis (1=Segunda, 2=Terça, ... 7=Domingo)'),
+  "horarioInicio": zod.string().optional().describe('Horário de início (HH:mm)'),
+  "horarioFim": zod.string().optional().describe('Horário de fim (HH:mm)'),
+  "intervalo": zod.number().optional().describe('Intervalo entre atendimentos em minutos'),
+  "tiposAtendimento": zod.array(zod.string()).optional().describe('Tipos de atendimento disponíveis (ex: presencial, videoconferência)')
+}).describe('Configuração de agenda do local Safeweb (estrutura retornada diretamente pela API Safeweb)')
+
+
+/**
  * @summary Lista locais de atendimento Safeweb (por CNPJ AR)
  */
 export const GetSafewebLocaisParams = zod.object({
@@ -912,10 +932,15 @@ export const GetSafewebLocaisResponse = zod.object({
   "locais": zod.array(zod.object({
   "id": zod.number(),
   "titulo": zod.string(),
+  "cnpj": zod.string().optional(),
   "endereco": zod.string().optional(),
+  "bairro": zod.string().optional(),
   "cidade": zod.string().optional(),
   "estado": zod.string().optional(),
-  "uf": zod.string().optional()
+  "uf": zod.string().optional(),
+  "cep": zod.string().optional(),
+  "tiposAtendimento": zod.array(zod.string()).optional().describe('Tipos de atendimento disponíveis'),
+  "rawData": zod.record(zod.string(), zod.unknown()).optional().describe('Dados brutos retornados pela Safeweb para diagnóstico')
 }))
 })
 

@@ -16,6 +16,8 @@ import {
   useGetSafewebLocais,
   useGetSafewebSlots,
   getGetSafewebSlotsQueryKey,
+  useGetSafewebConfig,
+  getGetSafewebConfigQueryKey,
   useGetOrderEvents,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -652,13 +654,28 @@ function SchedulingDialog({
 }
 
 // ── LocaisAndDateDialogBody — busca locais Safeweb e permite escolha + data ───
-type SwLocalItem = { id: number; titulo: string; endereco?: string; cidade?: string; estado?: string; uf?: string };
+type SwLocalItem = {
+  id: number;
+  titulo: string;
+  cnpj?: string;
+  endereco?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  uf?: string;
+  cep?: string;
+  tiposAtendimento?: string[];
+  rawData?: Record<string, unknown>;
+};
 type AgendarSelection = { idLocal: number; localNome: string; data: string; horarioInicio: string; horarioFim?: string };
 
 // Converte Date → "YYYY-MM-DD" no fuso local
 function toLocalDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+// Converte dia Safeweb (ISO: 1=Seg…7=Dom) para JS getDay() (0=Dom…6=Sáb)
+function swDiaToJs(d: number): number { return d === 7 ? 0 : d; }
 
 function LocaisAndDateDialogBody({ orderId, onSelect }: {
   orderId: number;
@@ -673,8 +690,32 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
   const [selectedDate, setSelectedDate] = useState<string>(toLocalDateStr(today));
   const [selectedSlot, setSelectedSlot] = useState<{ horarioInicio: string; horarioFim?: string } | null>(null);
 
-  // Data máxima = 30 dias à frente
-  const maxDate = new Date(today); maxDate.setDate(today.getDate() + 30);
+  // Data máxima = fim do ano corrente (a Safeweb opera até 31/12)
+  const maxDate = new Date(today.getFullYear(), 11, 31);
+
+  // Busca configuração do local selecionado (dias/horários de atendimento)
+  const configParams = { idLocal: selectedLocal?.id ?? 0 };
+  const { data: configData } = useGetSafewebConfig(
+    orderId,
+    configParams,
+    { query: { queryKey: getGetSafewebConfigQueryKey(orderId, configParams), enabled: !!selectedLocal } },
+  );
+
+  // Dias da semana disponíveis (JS: 0=Dom…6=Sáb)
+  // Safeweb retorna campo diasSemana com ISO days (1=Seg…7=Dom) — convertemos
+  // Se não houver dado do sistema: padrão seg–sex (1–5)
+  const availableJsDays: number[] = (() => {
+    if (!configData) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = configData as any;
+    const dias: unknown =
+      raw.diasSemana ?? raw.DiasSemana ?? raw.diasDaSemana ?? raw.DiasDaSemana ??
+      raw.weekDays ?? raw.WeekDays ?? null;
+    if (Array.isArray(dias) && dias.length > 0) {
+      return (dias as number[]).map(swDiaToJs);
+    }
+    return [];
+  })();
 
   // Busca slots após selecionar local E data
   const slotsParams = selectedLocal ? { idLocal: selectedLocal.id, date: selectedDate } : { idLocal: 0 };
@@ -737,9 +778,12 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           1. Escolha o local de atendimento
         </p>
-        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
           {locais.map((l) => {
             const isSelected = selectedLocal?.id === l.id;
+            const tipos = l.tiposAtendimento ?? [];
+            const enderecoCompleto = [l.endereco, l.bairro].filter(Boolean).join(", ");
+            const localidade = [l.cidade, l.uf].filter(Boolean).join(" — ");
             return (
               <button
                 key={l.id}
@@ -751,10 +795,18 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
                     : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
                 ].join(" ")}
               >
-                <p className="font-semibold">{l.titulo}</p>
-                {l.endereco && <p className="text-xs text-muted-foreground mt-0.5">{l.endereco}</p>}
-                {(l.cidade || l.uf) && (
-                  <p className="text-xs text-muted-foreground">{[l.cidade, l.uf].filter(Boolean).join(" — ")}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold leading-tight">{l.titulo}</p>
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">ID {l.id}</span>
+                </div>
+                {enderecoCompleto && <p className="text-xs text-muted-foreground mt-0.5">{enderecoCompleto}</p>}
+                {localidade && <p className="text-xs text-muted-foreground">{localidade}{l.cep ? ` · CEP ${l.cep}` : ""}</p>}
+                {tipos.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {tipos.map((t) => (
+                      <span key={t} className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{t}</span>
+                    ))}
+                  </div>
                 )}
               </button>
             );
@@ -780,7 +832,13 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
               }}
               disabled={(d) => {
                 const dd = new Date(d); dd.setHours(0, 0, 0, 0);
-                return dd < today || dd > maxDate;
+                if (dd < today || dd > maxDate) return true;
+                const jsDay = dd.getDay(); // 0=Dom, 1=Seg … 6=Sáb
+                // Sempre desabilita sábado e domingo
+                if (jsDay === 0 || jsDay === 6) return true;
+                // Se o sistema retornou dias de atendimento, desabilita outros dias
+                if (availableJsDays.length > 0 && !availableJsDays.includes(jsDay)) return true;
+                return false;
               }}
               initialFocus
             />

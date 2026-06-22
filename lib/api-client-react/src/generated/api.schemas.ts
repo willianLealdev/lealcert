@@ -889,13 +889,42 @@ export interface SafewebSlotsResult {
   slots: SafewebSlotsResultSlotsItem[];
 }
 
+/**
+ * Configuração de agenda do local Safeweb (estrutura retornada diretamente pela API Safeweb)
+ */
+export interface SafewebConfigResult {
+  /** Dias da semana disponíveis (1=Segunda, 2=Terça, ... 7=Domingo) */
+  diasSemana?: number[];
+  /** Horário de início (HH:mm) */
+  horarioInicio?: string;
+  /** Horário de fim (HH:mm) */
+  horarioFim?: string;
+  /** Intervalo entre atendimentos em minutos */
+  intervalo?: number;
+  /** Tipos de atendimento disponíveis (ex: presencial, videoconferência) */
+  tiposAtendimento?: string[];
+  [key: string]: unknown;
+ }
+
+/**
+ * Dados brutos retornados pela Safeweb para diagnóstico
+ */
+export type SafewebLocaisResultLocaisItemRawData = { [key: string]: unknown };
+
 export type SafewebLocaisResultLocaisItem = {
   id: number;
   titulo: string;
+  cnpj?: string;
   endereco?: string;
+  bairro?: string;
   cidade?: string;
   estado?: string;
   uf?: string;
+  cep?: string;
+  /** Tipos de atendimento disponíveis */
+  tiposAtendimento?: string[];
+  /** Dados brutos retornados pela Safeweb para diagnóstico */
+  rawData?: SafewebLocaisResultLocaisItemRawData;
 };
 
 export interface SafewebLocaisResult {
@@ -1457,6 +1486,13 @@ export type SyncPaymentOrder200 = {
   ok: boolean;
   status?: string;
   error?: string;
+};
+
+export type GetSafewebConfigParams = {
+/**
+ * ID do local de atendimento
+ */
+idLocal: number;
 };
 
 export type GetSafewebSlotsParams = {

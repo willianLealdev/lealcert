@@ -709,6 +709,43 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   res.json({ ok: true, dataHora, localNome: nomeLocal, agendamentoId });
 });
 
+// ── GET /orders/:id/safeweb-config — configuração de agenda do local Safeweb ──
+router.get("/orders/:id/safeweb-config", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const idLocal = parseInt(String(req.query.idLocal ?? ""), 10);
+  if (isNaN(idLocal)) { res.status(400).json({ error: "idLocal obrigatório" }); return; }
+
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const [s] = await db.select().from(settingsTable).limit(1);
+  const isHomol = s?.safewebAmbiente === "homologacao";
+  const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
+  const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
+  const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
+
+  if (!username || !password || !rawUrl) {
+    res.status(503).json({ error: "Credenciais Safeweb não configuradas" }); return;
+  }
+
+  try {
+    const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
+    const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined };
+    const { swAgendaConfiguracao } = await import("../lib/safeweb");
+    const result = await swAgendaConfiguracao(sw, idLocal);
+    req.log.info({ orderId: id, idLocal, result }, "safeweb-config: resposta da API");
+    res.json(result ?? {});
+  } catch (err) {
+    const msg = (err as Error).message ?? "";
+    req.log.error({ err, orderId: id, idLocal }, "safeweb-config: erro");
+    res.status(502).json({ error: `Erro ao consultar configuração: ${msg}` });
+  }
+});
+
 // ── GET /orders/:id/safeweb-locais — locais de atendimento na Safeweb ─────────
 router.get("/orders/:id/safeweb-locais", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
@@ -737,15 +774,34 @@ router.get("/orders/:id/safeweb-locais", requireAuth, async (req, res): Promise<
 
     // A API retorna um array direto ou null
     const rawList = Array.isArray(result) ? result : [];
-    const locais = rawList.map((l) => ({
-      id: l.idLocalAtendimento,
-      titulo: l.Nome ?? l.RazaoSocial ?? `Local ${l.idLocalAtendimento}`,
-      endereco: [l.Endereco?.Logradouro, l.Endereco?.Numero, l.Endereco?.Complemento].filter(Boolean).join(", "),
-      bairro: l.Endereco?.Bairro ?? "",
-      cidade: l.Endereco?.Municipio?.Nome ?? "",
-      uf: l.Endereco?.Municipio?.UF?.Sigla ?? "",
-      cep: l.Endereco?.CEP ?? "",
-    }));
+    const locais = rawList.map((l) => {
+      // Tipos de atendimento: tenta vários campos que a Safeweb pode retornar
+      const tiposAtendimento: string[] = [];
+      if (Array.isArray(l.TiposAtendimento)) {
+        for (const t of l.TiposAtendimento) {
+          if (typeof t === "string") tiposAtendimento.push(t);
+          else if (t && typeof t.Nome === "string") tiposAtendimento.push(t.Nome);
+        }
+      } else if (typeof l.TipoAtendimento === "string") {
+        tiposAtendimento.push(l.TipoAtendimento);
+      } else if (Array.isArray(l.Modalidades)) {
+        tiposAtendimento.push(...(l.Modalidades as string[]));
+      }
+
+      return {
+        id: l.idLocalAtendimento,
+        titulo: l.Nome ?? l.RazaoSocial ?? `Local ${l.idLocalAtendimento}`,
+        cnpj: l.CNPJ ?? "",
+        endereco: [l.Endereco?.Logradouro, l.Endereco?.Numero, l.Endereco?.Complemento].filter(Boolean).join(", "),
+        bairro: l.Endereco?.Bairro ?? "",
+        cidade: l.Endereco?.Municipio?.Nome ?? "",
+        uf: l.Endereco?.Municipio?.UF?.Sigla ?? "",
+        cep: l.Endereco?.CEP ?? "",
+        tiposAtendimento,
+        // Dados brutos para diagnóstico no frontend (quais campos a Safeweb realmente retornou)
+        rawData: l,
+      };
+    });
 
     res.json({ locais });
   } catch (err) {

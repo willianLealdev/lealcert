@@ -5,12 +5,20 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { SafewebLocaisResultLocaisItemRawData } from './safewebLocaisResultLocaisItemRawData';
 
 export type SafewebLocaisResultLocaisItem = {
   id: number;
   titulo: string;
+  cnpj?: string;
   endereco?: string;
+  bairro?: string;
   cidade?: string;
   estado?: string;
   uf?: string;
+  cep?: string;
+  /** Tipos de atendimento disponíveis */
+  tiposAtendimento?: string[];
+  /** Dados brutos retornados pela Safeweb para diagnóstico */
+  rawData?: SafewebLocaisResultLocaisItemRawData;
 };

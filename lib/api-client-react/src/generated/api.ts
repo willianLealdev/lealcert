@@ -88,6 +88,7 @@ import type {
   GetGarTiposProdutoParams,
   GetGarValidadesParams,
   GetMeStatsParams,
+  GetSafewebConfigParams,
   GetSafewebSlotsParams,
   HealthStatus,
   ImportSafewebCertificates200,
@@ -130,6 +131,7 @@ import type {
   SafewebAgendarResult,
   SafewebCancelarInput,
   SafewebCancelarResult,
+  SafewebConfigResult,
   SafewebLocaisResult,
   SafewebSlotsResult,
   SendCampaignInput,
@@ -3037,6 +3039,95 @@ export const useSyncPaymentOrder = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getSyncPaymentOrderMutationOptions(options));
     }
+
+export const getGetSafewebConfigUrl = (id: number,
+    params: GetSafewebConfigParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/orders/${id}/safeweb-config?${stringifiedParams}` : `/api/orders/${id}/safeweb-config`
+}
+
+/**
+ * @summary Retorna configuração de agenda do local Safeweb (dias/horários de atendimento)
+ */
+export const getSafewebConfig = async (id: number,
+    params: GetSafewebConfigParams, options?: RequestInit): Promise<SafewebConfigResult> => {
+
+  return customFetch<SafewebConfigResult>(getGetSafewebConfigUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSafewebConfigQueryKey = (id: number,
+    params?: GetSafewebConfigParams,) => {
+    return [
+    `/api/orders/${id}/safeweb-config`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSafewebConfigQueryOptions = <TData = Awaited<ReturnType<typeof getSafewebConfig>>, TError = ErrorType<unknown>>(id: number,
+    params: GetSafewebConfigParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSafewebConfigQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSafewebConfig>>> = ({ signal }) => getSafewebConfig(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSafewebConfig>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSafewebConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getSafewebConfig>>>
+export type GetSafewebConfigQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Retorna configuração de agenda do local Safeweb (dias/horários de atendimento)
+ */
+
+export function useGetSafewebConfig<TData = Awaited<ReturnType<typeof getSafewebConfig>>, TError = ErrorType<unknown>>(
+ id: number,
+    params: GetSafewebConfigParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSafewebConfigQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetSafewebLocaisUrl = (id: number,) => {
 

@@ -867,6 +867,31 @@ paths:
                   error:
                     type: string
 
+  /orders/{id}/safeweb-config:
+    get:
+      operationId: getSafewebConfig
+      tags: [orders]
+      summary: Retorna configuração de agenda do local Safeweb (dias/horários de atendimento)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: idLocal
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: ID do local de atendimento
+      responses:
+        "200":
+          description: Configuração do local
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafewebConfigResult"
+
   /orders/{id}/safeweb-locais:
     get:
       operationId: getSafewebLocais
@@ -3850,6 +3875,31 @@ components:
               agendado:
                 type: boolean
 
+    SafewebConfigResult:
+      type: object
+      description: Configuração de agenda do local Safeweb (estrutura retornada diretamente pela API Safeweb)
+      properties:
+        diasSemana:
+          type: array
+          items:
+            type: integer
+          description: "Dias da semana disponíveis (1=Segunda, 2=Terça, ... 7=Domingo)"
+        horarioInicio:
+          type: string
+          description: "Horário de início (HH:mm)"
+        horarioFim:
+          type: string
+          description: "Horário de fim (HH:mm)"
+        intervalo:
+          type: integer
+          description: "Intervalo entre atendimentos em minutos"
+        tiposAtendimento:
+          type: array
+          items:
+            type: string
+          description: "Tipos de atendimento disponíveis (ex: presencial, videoconferência)"
+      additionalProperties: true
+
     SafewebLocaisResult:
       type: object
       required: [locais]
@@ -3864,7 +3914,11 @@ components:
                 type: integer
               titulo:
                 type: string
+              cnpj:
+                type: string
               endereco:
+                type: string
+              bairro:
                 type: string
               cidade:
                 type: string
@@ -3872,6 +3926,17 @@ components:
                 type: string
               uf:
                 type: string
+              cep:
+                type: string
+              tiposAtendimento:
+                type: array
+                items:
+                  type: string
+                description: "Tipos de atendimento disponíveis"
+              rawData:
+                type: object
+                additionalProperties: true
+                description: "Dados brutos retornados pela Safeweb para diagnóstico"
 
     SafewebCancelarInput:
       type: object

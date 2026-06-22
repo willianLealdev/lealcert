@@ -170,6 +170,12 @@ export interface SwLocal {
     };
   };
   Status?: number;
+  // Campos adicionais que a API pode retornar (tipos de atendimento, modalidades, etc.)
+  TiposAtendimento?: Array<{ id?: number; Nome?: string; [key: string]: unknown }>;
+  Modalidades?: string[];
+  Agendamento?: boolean;
+  TipoAtendimento?: string | number;
+  [key: string]: unknown;
 }
 // A API retorna um array direto ou null
 export type SwLocaisResult = SwLocal[] | null;
