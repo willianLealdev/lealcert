@@ -3322,6 +3322,10 @@ components:
         contactAddress:
           type: string
           nullable: true
+        safewebAmbiente:
+          type: string
+          nullable: true
+          description: "Ambiente Safeweb ativo: producao | homologacao | null (não configurado)"
 
     AppSettings:
       type: object

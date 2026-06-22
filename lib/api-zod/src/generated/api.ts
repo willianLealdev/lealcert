@@ -1793,7 +1793,8 @@ export const GetBrandingResponse = zod.object({
   "contactPhone": zod.string().nullish(),
   "contactWhatsapp": zod.string().nullish(),
   "contactEmailSupport": zod.string().nullish(),
-  "contactAddress": zod.string().nullish()
+  "contactAddress": zod.string().nullish(),
+  "safewebAmbiente": zod.string().nullish().describe('Ambiente Safeweb ativo: producao | homologacao | null (não configurado)')
 })
 
 

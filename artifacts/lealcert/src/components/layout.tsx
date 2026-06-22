@@ -56,6 +56,36 @@ const adminNav = [
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 
+function SafewebAmbienteDot({ ambiente }: { ambiente: string | null }) {
+  const cfg =
+    ambiente === "producao"
+      ? { color: "bg-emerald-500", label: "Produção" }
+      : ambiente === "homologacao"
+      ? { color: "bg-orange-400", label: "Homologação" }
+      : { color: "bg-red-500", label: "Não configurado" };
+  return (
+    <span
+      title={`Safeweb: ${cfg.label}`}
+      className={`inline-block h-2.5 w-2.5 rounded-full ${cfg.color} ring-2 ring-sidebar-border/40 shrink-0`}
+    />
+  );
+}
+
+function SafewebAmbienteBadge({ ambiente }: { ambiente: string | null }) {
+  const cfg =
+    ambiente === "producao"
+      ? { color: "text-emerald-400", dotColor: "bg-emerald-500", label: "Produção" }
+      : ambiente === "homologacao"
+      ? { color: "text-orange-400", dotColor: "bg-orange-400", label: "Homologação" }
+      : { color: "text-red-400", dotColor: "bg-red-500", label: "Não configurado" };
+  return (
+    <div className={`flex items-center gap-1.5 ${cfg.color}`}>
+      <span className={`h-2 w-2 rounded-full ${cfg.dotColor} shrink-0`} />
+      <span className="text-[10px] font-medium uppercase tracking-wider">Safeweb: {cfg.label}</span>
+    </div>
+  );
+}
+
 function NavItem({
   href, icon: Icon, name, active, collapsed, onClick,
 }: {
@@ -309,19 +339,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        {/* Safeweb certifier badge */}
-        {!collapsed && (
-          <div className="px-3 py-2 border-t border-sidebar-border/30">
-            <div className="flex items-center gap-2">
-              <span className="text-sidebar-foreground/30 text-[10px] uppercase tracking-wider whitespace-nowrap">Certificado por</span>
-              <img
-                src="/safeweb-logo.png"
-                alt="Safeweb"
-                className="h-5 w-auto object-contain brightness-0 invert opacity-40"
-              />
+        {/* Safeweb certifier badge + ambiente indicator */}
+        <div className="px-3 py-2 border-t border-sidebar-border/30">
+          {collapsed ? (
+            /* Modo colapsado: só a bolinha */
+            <div className="flex justify-center">
+              <SafewebAmbienteDot ambiente={branding.safewebAmbiente ?? null} />
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sidebar-foreground/30 text-[10px] uppercase tracking-wider whitespace-nowrap">Certificado por</span>
+                <img
+                  src="/safeweb-logo.png"
+                  alt="Safeweb"
+                  className="h-5 w-auto object-contain brightness-0 invert opacity-40"
+                />
+              </div>
+              <SafewebAmbienteBadge ambiente={branding.safewebAmbiente ?? null} />
+            </div>
+          )}
+        </div>
 
         {/* User footer */}
         <div className="p-2 border-t border-sidebar-border/50 space-y-0.5">

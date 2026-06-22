@@ -15,4 +15,6 @@ export interface BrandingInfo {
   contactWhatsapp?: string | null;
   contactEmailSupport?: string | null;
   contactAddress?: string | null;
+  /** Ambiente Safeweb ativo: producao | homologacao | null (não configurado) */
+  safewebAmbiente?: string | null;
 }
