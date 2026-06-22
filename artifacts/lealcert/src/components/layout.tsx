@@ -83,22 +83,32 @@ function PushBellButton({ collapsed }: { collapsed: boolean }) {
 
   let icon: React.ReactNode;
   let title: string;
+  let label: string;
   let cls = "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent";
 
   if (push.loading) {
     icon = <Loader2 className="h-4 w-4 animate-spin" />;
     title = "Processando...";
+    label = "Processando...";
+  } else if (push.error) {
+    icon = <BellOff className="h-4 w-4 text-red-400" />;
+    title = push.error;
+    label = "Erro nas notificações";
+    cls = "text-red-400 hover:text-red-300 hover:bg-sidebar-accent";
   } else if (push.permission === "denied") {
     icon = <BellOff className="h-4 w-4" />;
     title = "Notificações bloqueadas pelo navegador";
+    label = "Notificações bloqueadas";
     cls = "text-sidebar-foreground/30 cursor-not-allowed";
   } else if (push.subscribed) {
     icon = <BellRing className="h-4 w-4 text-emerald-400" />;
     title = "Notificações ativas — clique para desativar";
+    label = "Notificações ativas";
     cls = "text-emerald-400 hover:text-emerald-300 hover:bg-sidebar-accent";
   } else {
     icon = <Bell className="h-4 w-4" />;
     title = "Ativar notificações push";
+    label = "Ativar notificações";
   }
 
   return (
@@ -111,9 +121,7 @@ function PushBellButton({ collapsed }: { collapsed: boolean }) {
     >
       {icon}
       {!collapsed && (
-        <span className="truncate text-xs">
-          {push.subscribed ? "Notificações ativas" : "Ativar notificações"}
-        </span>
+        <span className="truncate text-xs">{label}</span>
       )}
     </button>
   );

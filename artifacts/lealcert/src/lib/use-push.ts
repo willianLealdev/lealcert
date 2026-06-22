@@ -61,6 +61,20 @@ async function removeSubscription(endpoint: string): Promise<void> {
   }).catch(() => undefined);
 }
 
+/** Returns the active SW registration, or throws a user-friendly error with a 5s timeout. */
+async function getSwRegistration(): Promise<ServiceWorkerRegistration> {
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  if (registrations.length === 0) {
+    throw new Error("Service Worker não registrado. Recarregue a página e tente novamente.");
+  }
+
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Tempo esgotado aguardando Service Worker. Recarregue a página.")), 5000)
+  );
+
+  return Promise.race([navigator.serviceWorker.ready, timeout]);
+}
+
 export function usePush() {
   const [state, setState] = useState<PushState>({
     supported: false,
@@ -71,7 +85,6 @@ export function usePush() {
   });
   const initialized = useRef(false);
 
-  // Check support and existing subscription on mount
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -88,10 +101,16 @@ export function usePush() {
 
     if (perm === "granted") {
       void (async () => {
-        const reg = await navigator.serviceWorker.ready;
-        const existing = await reg.pushManager.getSubscription();
-        if (existing) {
-          setState(s => ({ ...s, subscribed: true }));
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          if (!registrations.length) return;
+          const reg = await navigator.serviceWorker.ready;
+          const existing = await reg.pushManager.getSubscription();
+          if (existing) {
+            setState(s => ({ ...s, subscribed: true }));
+          }
+        } catch {
+          // Silently ignore — SW may not be active in dev
         }
       })();
     }
@@ -101,17 +120,18 @@ export function usePush() {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
       const publicKey = await getPublicKey();
-      if (!publicKey) throw new Error("VAPID public key não configurada no servidor.");
+      if (!publicKey) throw new Error("Chave VAPID não configurada no servidor.");
 
       const permission = await Notification.requestPermission();
       setState(s => ({ ...s, permission }));
 
       if (permission !== "granted") {
-        setState(s => ({ ...s, loading: false, error: "Permissão de notificação negada." }));
+        setState(s => ({ ...s, loading: false, error: "Permissão de notificação negada pelo navegador." }));
         return;
       }
 
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await getSwRegistration();
+
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
@@ -127,13 +147,16 @@ export function usePush() {
   }, []);
 
   const unsubscribe = useCallback(async () => {
-    setState(s => ({ ...s, loading: true }));
+    setState(s => ({ ...s, loading: true, error: null }));
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      if (sub) {
-        await removeSubscription(sub.endpoint);
-        await sub.unsubscribe();
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      if (registrations.length > 0) {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await removeSubscription(sub.endpoint);
+          await sub.unsubscribe();
+        }
       }
       setState(s => ({ ...s, subscribed: false, loading: false }));
     } catch (err) {
