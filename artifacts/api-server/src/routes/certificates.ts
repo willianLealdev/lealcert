@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import { db, certificatesTable, settingsTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { swListarProdutos, type SafewebSettings } from "../lib/safeweb";
@@ -218,6 +218,20 @@ router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> 
     return;
   }
   res.json(certRow(cert));
+});
+
+router.post("/certificates/batch-toggle", requireAdmin, async (req, res): Promise<void> => {
+  const { product, issuanceType, active } = req.body ?? {};
+  if (!product || !issuanceType || active === undefined) {
+    res.status(400).json({ error: "product, issuanceType e active são obrigatórios." });
+    return;
+  }
+  const updated = await db
+    .update(certificatesTable)
+    .set({ active })
+    .where(and(eq(certificatesTable.product, product), eq(certificatesTable.issuanceType, issuanceType)))
+    .returning();
+  res.json({ updated: updated.length });
 });
 
 router.delete("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {

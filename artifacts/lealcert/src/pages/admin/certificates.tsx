@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListCertificates, useCreateCertificate, useUpdateCertificate, useDeleteCertificate, useGetGarProdutos, useImportSafewebCertificates } from "@workspace/api-client-react";
+import { useListCertificates, useCreateCertificate, useUpdateCertificate, useDeleteCertificate, useGetGarProdutos, useImportSafewebCertificates, useBatchToggleCertificates } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,6 +82,7 @@ export default function AdminCertificates() {
   const create = useCreateCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo criado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const update = useUpdateCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo atualizado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const toggleActive = useUpdateCertificate({ mutation: { onSuccess: () => refetch(), onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
+  const batchToggle = useBatchToggleCertificates({ mutation: { onSuccess: () => refetch(), onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const del = useDeleteCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo removido." }); setDeleteId(null); refetch(); } } });
   const importSafeweb = useImportSafewebCertificates({
     mutation: {
@@ -176,6 +177,71 @@ export default function AdminCertificates() {
           </Button>
         </div>
       </div>
+
+      {/* Disponibilidade por Produto */}
+      {!isLoading && (certs?.length ?? 0) > 0 && (
+        <div className="border rounded-xl overflow-hidden">
+          <div className="px-4 py-3 bg-muted/40 border-b">
+            <p className="text-sm font-semibold">Disponibilidade para Clientes</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Ative ou desative cada tipo de emissão por produto. Afeta diretamente o formulário de pedidos.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/20">
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground w-32">Produto</th>
+                  {ISSUANCE_OPTIONS.map(iso => (
+                    <th key={iso} className="text-center px-4 py-2 font-medium text-muted-foreground">
+                      <div className="flex flex-col items-center gap-1">
+                        {iso === "Videoconferência" && <Video className="h-3.5 w-3.5 text-violet-500" />}
+                        {iso === "Presencial" && <MapPin className="h-3.5 w-3.5 text-sky-500" />}
+                        {iso === "Renovação" && <RefreshCw className="h-3.5 w-3.5 text-amber-500" />}
+                        {iso === "Fast" && <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />}
+                        <span className="text-xs">{iso}</span>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {PRODUCT_OPTIONS.map(prod => {
+                  const hasProd = (certs ?? []).some(c => c.product === prod);
+                  if (!hasProd) return null;
+                  return (
+                    <tr key={prod} className="border-b last:border-0 hover:bg-muted/10">
+                      <td className="px-4 py-3 font-semibold text-primary">{prod}</td>
+                      {ISSUANCE_OPTIONS.map(iso => {
+                        const matching = (certs ?? []).filter(c => c.product === prod && c.issuanceType === iso);
+                        const hasAny = matching.length > 0;
+                        const allActive = hasAny && matching.every(c => c.active);
+                        const someActive = hasAny && matching.some(c => c.active) && !allActive;
+                        return (
+                          <td key={iso} className="px-4 py-3 text-center">
+                            {hasAny ? (
+                              <div className="flex flex-col items-center gap-1">
+                                <Switch
+                                  checked={allActive || someActive}
+                                  onCheckedChange={v => batchToggle.mutate({ data: { product: prod, issuanceType: iso, active: v } })}
+                                  className={someActive ? "opacity-60" : ""}
+                                />
+                                <span className="text-[10px] text-muted-foreground">
+                                  {allActive ? "Ativo" : someActive ? "Parcial" : "Inativo"}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground/30 text-xs">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/40 border rounded-xl">

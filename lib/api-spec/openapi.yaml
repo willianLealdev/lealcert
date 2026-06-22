@@ -577,6 +577,29 @@ paths:
               schema:
                 $ref: "#/components/schemas/Certificate"
 
+  /certificates/batch-toggle:
+    post:
+      operationId: batchToggleCertificates
+      tags: [certificates]
+      summary: Activate or deactivate all certificates matching product + issuanceType (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchToggleCertificatesInput"
+      responses:
+        "200":
+          description: Number of updated certificates
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [updated]
+                properties:
+                  updated:
+                    type: integer
+
   /certificates/import-safeweb:
     post:
       operationId: importSafewebCertificates
@@ -2709,6 +2732,17 @@ components:
           type: boolean
         password:
           type: string
+
+    BatchToggleCertificatesInput:
+      type: object
+      required: [product, issuanceType, active]
+      properties:
+        product:
+          type: string
+        issuanceType:
+          type: string
+        active:
+          type: boolean
 
     Certificate:
       type: object

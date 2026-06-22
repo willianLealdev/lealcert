@@ -21,6 +21,8 @@ export * from './authUser';
 export * from './authUserRole';
 export * from './authUserUserType';
 export * from './banIp200';
+export * from './batchToggleCertificates200';
+export * from './batchToggleCertificatesInput';
 export * from './brandingInfo';
 export * from './bulkDeleteContactsInput';
 export * from './bulkDeleteContactsResult';

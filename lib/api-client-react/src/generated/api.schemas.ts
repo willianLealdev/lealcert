@@ -256,6 +256,12 @@ export interface UserUpdate {
   password?: string;
 }
 
+export interface BatchToggleCertificatesInput {
+  product: string;
+  issuanceType: string;
+  active: boolean;
+}
+
 export interface Certificate {
   id: number;
   name: string;
@@ -1410,6 +1416,10 @@ cnpj: string;
 
 export type ListCertificatesParams = {
 activeOnly?: boolean;
+};
+
+export type BatchToggleCertificates200 = {
+  updated: number;
 };
 
 export type ImportSafewebCertificates200 = {

@@ -28,6 +28,8 @@ import type {
   AuthUser,
   BanIp200,
   BanIpBody,
+  BatchToggleCertificates200,
+  BatchToggleCertificatesInput,
   BrandingInfo,
   BulkDeleteContactsInput,
   BulkDeleteContactsResult,
@@ -2079,6 +2081,77 @@ export const useCreateCertificate = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateCertificateMutationOptions(options));
+    }
+
+export const getBatchToggleCertificatesUrl = () => {
+
+
+
+
+  return `/api/certificates/batch-toggle`
+}
+
+/**
+ * @summary Activate or deactivate all certificates matching product + issuanceType (admin only)
+ */
+export const batchToggleCertificates = async (batchToggleCertificatesInput: BatchToggleCertificatesInput, options?: RequestInit): Promise<BatchToggleCertificates200> => {
+
+  return customFetch<BatchToggleCertificates200>(getBatchToggleCertificatesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      batchToggleCertificatesInput,)
+  }
+);}
+
+
+
+
+export const getBatchToggleCertificatesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof batchToggleCertificates>>, TError,{data: BodyType<BatchToggleCertificatesInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof batchToggleCertificates>>, TError,{data: BodyType<BatchToggleCertificatesInput>}, TContext> => {
+
+const mutationKey = ['batchToggleCertificates'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof batchToggleCertificates>>, {data: BodyType<BatchToggleCertificatesInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  batchToggleCertificates(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BatchToggleCertificatesMutationResult = NonNullable<Awaited<ReturnType<typeof batchToggleCertificates>>>
+    export type BatchToggleCertificatesMutationBody = BodyType<BatchToggleCertificatesInput>
+    export type BatchToggleCertificatesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Activate or deactivate all certificates matching product + issuanceType (admin only)
+ */
+export const useBatchToggleCertificates = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof batchToggleCertificates>>, TError,{data: BodyType<BatchToggleCertificatesInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof batchToggleCertificates>>,
+        TError,
+        {data: BodyType<BatchToggleCertificatesInput>},
+        TContext
+      > => {
+      return useMutation(getBatchToggleCertificatesMutationOptions(options));
     }
 
 export const getImportSafewebCertificatesUrl = () => {

@@ -492,6 +492,20 @@ export const CreateCertificateBody = zod.object({
 
 
 /**
+ * @summary Activate or deactivate all certificates matching product + issuanceType (admin only)
+ */
+export const BatchToggleCertificatesBody = zod.object({
+  "product": zod.string(),
+  "issuanceType": zod.string(),
+  "active": zod.boolean()
+})
+
+export const BatchToggleCertificatesResponse = zod.object({
+  "updated": zod.number()
+})
+
+
+/**
  * @summary Import certificate models from Safeweb API (admin only)
  */
 export const ImportSafewebCertificatesResponse = zod.object({
