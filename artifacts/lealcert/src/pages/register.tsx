@@ -254,19 +254,35 @@ export default function Register() {
 
   // ── Verificação manual de CRC ──────────────────────────────────────────────
   async function handleValidateCrc() {
-    const crcNorm = normalizeCrc(form.crcNumber);
-    if (crcNorm.length < 4 || !/^[A-Z]{2}/.test(crcNorm)) {
-      toast({ title: "Formato inválido", description: "Informe o CRC com UF + número + tipo. Ex: SP123456O", variant: "destructive" });
+    if (!form.crcNumber.trim()) {
+      toast({ title: "Informe o número de registro CRC", variant: "destructive" });
       return;
     }
     setCrcState("checking"); setCrcResult(null);
     try {
-      const resp = await fetch(`/api/auth/validate-crc?crc=${encodeURIComponent(crcNorm)}`);
+      // Preferência: validar pelo CPF (API do CFC aceita CPF/CNPJ de forma confiável)
+      const cpfDigits = form.cpfCnpj.replace(/\D/g, "");
+      if (cpfDigits.length === 11) {
+        const resp = await fetch(`/api/auth/lookup-crc?cpfCnpj=${cpfDigits}`);
+        const data = await resp.json() as LookupResult;
+        if (data.found) {
+          const result: CrcResult = { valid: data.valid ?? false, situacao: data.situacao ?? "", nome: data.nome ?? null };
+          setCrcResult(result);
+          setCrcState(data.valid ? "valid" : "invalid");
+          if (data.valid && data.nome && !form.name) set("name", data.nome);
+          if (data.crc) set("crcNumber", data.crc);
+          return;
+        }
+      }
+      // Fallback: tentar pelo número CRC diretamente
+      const crcNorm = normalizeCrc(form.crcNumber);
+      const resp = await fetch(`/api/auth/validate-crc?crc=${encodeURIComponent(form.crcNumber.trim().toUpperCase())}`);
       const data = await resp.json() as CrcResult & { error?: string };
       if (!resp.ok) { setCrcState("error"); toast({ title: "Erro", description: data.error, variant: "destructive" }); return; }
       setCrcResult(data);
       setCrcState(data.valid ? "valid" : "invalid");
       if (data.valid && data.nome && !form.name) set("name", data.nome);
+      void crcNorm; // usado só para normalização interna
     } catch { setCrcState("error"); }
   }
 

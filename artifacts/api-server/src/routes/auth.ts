@@ -87,10 +87,13 @@ async function consultarCfc(identifier: string): Promise<CfcProfissional | null>
   try {
     const url = `https://sistemas.cfc.org.br/servico/api/Profissional/${encodeURIComponent(identifier)}/teste`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    logger.info({ identifier, status: resp.status }, "consultarCfc: resposta CFC");
     if (!resp.ok) return null;
     const data = await resp.json() as CfcProfissional[];
+    logger.info({ identifier, count: Array.isArray(data) ? data.length : "not-array", first: Array.isArray(data) ? data[0] : data }, "consultarCfc: dados CFC");
     return Array.isArray(data) && data.length > 0 ? data[0] : null;
-  } catch {
+  } catch (err) {
+    logger.warn({ identifier, err }, "consultarCfc: erro");
     return null;
   }
 }
@@ -122,7 +125,7 @@ router.get("/auth/lookup-crc", async (req, res): Promise<void> => {
 
 // ── GET /auth/validate-crc?crc=SP100000O ─────────────────────────────────────
 router.get("/auth/validate-crc", async (req, res): Promise<void> => {
-  const crcRaw = String(req.query.crc ?? "").trim();
+  const crcRaw = String(req.query.crc ?? "").trim().toUpperCase();
   if (!crcRaw) {
     res.status(400).json({ error: "Parâmetro crc é obrigatório." });
     return;
@@ -132,16 +135,27 @@ router.get("/auth/validate-crc", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Formato inválido. Use UF + número + tipo, ex: SP100000O" });
     return;
   }
-  // Tenta com "O" e, se não encontrar, tenta com "0" (e vice-versa)
-  let prof = await consultarCfc(crcNorm);
-  if (!prof) {
-    const alt = crcNorm.endsWith("O")
-      ? crcNorm.slice(0, -1) + "0"
-      : crcNorm.endsWith("0")
-        ? crcNorm.slice(0, -1) + "O"
-        : null;
-    if (alt) prof = await consultarCfc(alt);
+
+  // Monta lista de formatos a tentar, do mais específico ao mais genérico:
+  // 1) valor original digitado (ex: SP-022951/O)
+  // 2) normalizado sem formatação (ex: SP022951O)
+  // 3) normalizado com swap O↔0 (ex: SP0229510)
+  const candidates: string[] = [];
+  candidates.push(crcRaw); // original com formatação
+  if (!candidates.includes(crcNorm)) candidates.push(crcNorm);
+  const swapped = crcNorm.endsWith("O")
+    ? crcNorm.slice(0, -1) + "0"
+    : crcNorm.endsWith("0")
+      ? crcNorm.slice(0, -1) + "O"
+      : null;
+  if (swapped && !candidates.includes(swapped)) candidates.push(swapped);
+
+  let prof: CfcProfissional | null = null;
+  for (const candidate of candidates) {
+    prof = await consultarCfc(candidate);
+    if (prof) break;
   }
+
   if (!prof) {
     res.json({ valid: false, situacao: "Não encontrado no CFC", nome: null, numeroRegistro: null, categoria: null, crc: null });
     return;
