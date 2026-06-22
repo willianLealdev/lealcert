@@ -1,7 +1,8 @@
-import { eq, lte, and, isNotNull, notInArray } from "drizzle-orm";
+import { eq, lte, and, isNotNull, notInArray, gte, lt } from "drizzle-orm";
 import { db, marketingCampaignsTable, ordersTable, settingsTable, certificatesTable, type InsertOrder } from "@workspace/db";
 import { logger } from "./logger";
 import { dispatchCampaign } from "../routes/marketing";
+import { sendDailySalesReport } from "./email";
 
 let running = false;
 
@@ -128,6 +129,65 @@ async function syncSafewebStatuses() {
   }
 }
 
+// ── Daily Sales Report ────────────────────────────────────────────────────────
+const SALES_REPORT_TO = "willianlealusa@gmail.com";
+
+async function sendDailySalesReportJob() {
+  try {
+    // Ontem no horário de Brasília (UTC-3)
+    const nowBrt = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const yesterday = new Date(nowBrt);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const dayStart = new Date(Date.UTC(yesterday.getUTCFullYear(), yesterday.getUTCMonth(), yesterday.getUTCDate(), 3, 0, 0)); // 00:00 BRT = 03:00 UTC
+    const dayEnd   = new Date(Date.UTC(yesterday.getUTCFullYear(), yesterday.getUTCMonth(), yesterday.getUTCDate() + 1, 3, 0, 0));
+
+    const rows = await db
+      .select({ total: ordersTable.total, certName: certificatesTable.name })
+      .from(ordersTable)
+      .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
+      .where(and(
+        eq(ordersTable.status, "paid"),
+        gte(ordersTable.createdAt, dayStart),
+        lt(ordersTable.createdAt, dayEnd),
+      ));
+
+    let cpfCount = 0, cnpjCount = 0, otherCount = 0, totalValue = 0;
+    for (const r of rows) {
+      const name = (r.certName ?? "").toUpperCase();
+      if (name.includes("CPF"))       cpfCount++;
+      else if (name.includes("CNPJ")) cnpjCount++;
+      else                            otherCount++;
+      totalValue += parseFloat(r.total ?? "0");
+    }
+
+    await sendDailySalesReport({
+      to: SALES_REPORT_TO,
+      date: yesterday,
+      cpfCount,
+      cnpjCount,
+      otherCount,
+      totalValue,
+      orderCount: rows.length,
+    });
+
+    logger.info({ cpfCount, cnpjCount, otherCount, totalValue, to: SALES_REPORT_TO }, "Daily sales report sent");
+  } catch (err) {
+    logger.error({ err }, "Daily sales report: erro ao enviar");
+  }
+}
+
+/** Calcula ms até a próxima 08:00 horário de Brasília (UTC-3). */
+function msUntilNext8amBrt(): number {
+  const nowUtc = Date.now();
+  const nowBrt = new Date(nowUtc - 3 * 60 * 60 * 1000);
+  const next8 = new Date(Date.UTC(
+    nowBrt.getUTCFullYear(), nowBrt.getUTCMonth(), nowBrt.getUTCDate(),
+    11, 0, 0, // 08:00 BRT = 11:00 UTC
+  ));
+  if (nowUtc >= next8.getTime()) next8.setUTCDate(next8.getUTCDate() + 1);
+  return next8.getTime() - nowUtc;
+}
+
 export function startScheduler() {
   logger.info("Marketing scheduler started (60s interval)");
   setInterval(checkScheduledCampaigns, 60_000);
@@ -135,11 +195,18 @@ export function startScheduler() {
 
   logger.info("Safeweb status sync started (5min interval)");
   setInterval(syncSafewebStatuses, 5 * 60_000);
-  // Primeira verificação após 30s para não sobrecarregar o boot
   setTimeout(() => syncSafewebStatuses().catch(err => logger.error({ err }, "Initial Safeweb sync error")), 30_000);
 
   // Auto-desbloquear IPs do Brasil após 4h (roda a cada 10 minutos)
   const runAutoUnblock = () => import("./ip-security").then(m => m.autoUnblockExpiredIps()).catch(err => logger.error({ err }, "ip-security: auto-unblock error"));
   setInterval(runAutoUnblock, 10 * 60_000);
   setTimeout(runAutoUnblock, 60_000);
+
+  // E-mail de vendas do dia — dispara às 08:00 BRT, depois a cada 24h
+  const msFirst = msUntilNext8amBrt();
+  logger.info({ nextInMs: msFirst, nextInMin: Math.round(msFirst / 60_000) }, "Daily sales report scheduled");
+  setTimeout(() => {
+    sendDailySalesReportJob().catch(err => logger.error({ err }, "Daily sales report: erro inicial"));
+    setInterval(sendDailySalesReportJob, 24 * 60 * 60_000);
+  }, msFirst);
 }

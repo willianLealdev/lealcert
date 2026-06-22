@@ -343,6 +343,75 @@ export async function sendIpVerificationEmail(to: string, name: string, code: st
   logger.info({ to }, "IP verification email sent");
 }
 
+export async function sendDailySalesReport(opts: {
+  to: string;
+  date: Date;
+  cpfCount: number;
+  cnpjCount: number;
+  otherCount: number;
+  totalValue: number;
+  orderCount: number;
+}): Promise<void> {
+  const cfg = await getEmailConfig();
+  const dateStr = opts.date.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  const subject = `📊 Relatório de Vendas — ${opts.date.toLocaleDateString("pt-BR")} | ${cfg.appName}`;
+
+  const totalFormatted = opts.totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const hasOrders = opts.orderCount > 0;
+
+  const html = emailWrapper(`
+    <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+      <h2 style="color:#0f172a;margin:0 0 4px;font-size:20px;">📊 Relatório de Vendas</h2>
+      <p style="color:#64748b;margin:0 0 24px;font-size:14px;text-transform:capitalize;">${dateStr}</p>
+
+      ${hasOrders ? `
+      <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:120px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#0284c7;">${opts.cpfCount}</div>
+          <div style="font-size:12px;color:#0369a1;font-weight:600;margin-top:4px;">e-CPF</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#16a34a;">${opts.cnpjCount}</div>
+          <div style="font-size:12px;color:#15803d;font-weight:600;margin-top:4px;">e-CNPJ</div>
+        </div>
+        ${opts.otherCount > 0 ? `
+        <div style="flex:1;min-width:120px;background:#fafafa;border:1px solid #e2e8f0;border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#64748b;">${opts.otherCount}</div>
+          <div style="font-size:12px;color:#64748b;font-weight:600;margin-top:4px;">Outros</div>
+        </div>` : ""}
+      </div>
+
+      <div style="background:#0f172a;border-radius:10px;padding:20px;text-align:center;margin-bottom:20px;">
+        <div style="color:#94a3b8;font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Total arrecadado</div>
+        <div style="color:#f59e0b;font-size:32px;font-weight:900;">${totalFormatted}</div>
+        <div style="color:#64748b;font-size:12px;margin-top:4px;">${opts.orderCount} pedido${opts.orderCount !== 1 ? "s" : ""} confirmado${opts.orderCount !== 1 ? "s" : ""}</div>
+      </div>` : `
+      <div style="background:#f8fafc;border-radius:10px;padding:32px;text-align:center;border:1px solid #e2e8f0;margin-bottom:20px;">
+        <div style="font-size:32px;margin-bottom:8px;">😴</div>
+        <div style="color:#64748b;font-size:15px;">Nenhuma venda registrada ontem.</div>
+      </div>`}
+
+      <a href="${cfg.siteUrl}/orders" style="display:block;text-align:center;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;padding:12px;font-weight:600;font-size:14px;">
+        Ver todos os pedidos →
+      </a>
+    </div>
+  `, cfg.appName, cfg.logoUrl);
+
+  const text = `Relatório ${dateStr}\n\ne-CPF: ${opts.cpfCount}\ne-CNPJ: ${opts.cnpjCount}${opts.otherCount > 0 ? `\nOutros: ${opts.otherCount}` : ""}\nTotal: ${totalFormatted}\n\n${opts.orderCount} pedido(s) confirmado(s).`;
+
+  const transporter = await createTransporter(cfg);
+  if (!transporter) {
+    logger.info({ to: opts.to, cpf: opts.cpfCount, cnpj: opts.cnpjCount, total: opts.totalValue }, "📧 [DEV] Daily sales report (SMTP not configured)");
+    return;
+  }
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to: opts.to, subject, html, text,
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
+  logger.info({ to: opts.to }, "Daily sales report sent");
+}
+
 export async function sendVerificationEmail(to: string, name: string, code: string): Promise<void> {
   const cfg = await getEmailConfig();
   const subject = `Código de verificação — ${cfg.appName}`;

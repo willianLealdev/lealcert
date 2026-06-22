@@ -2,6 +2,8 @@ import { Router } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db, ticketsTable, messagesTable, usersTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
+import { sendPushToAdmins } from "../lib/push";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -41,6 +43,16 @@ router.post("/support", requireAuth, async (req, res): Promise<void> => {
   }
   const [ticket] = await db.insert(ticketsTable).values({ userId, subject }).returning();
   await db.insert(messagesTable).values({ ticketId: ticket.id, userId, content: message });
+
+  // Push para todos os admins
+  const [user] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
+  sendPushToAdmins({
+    title: "🎫 Novo chamado de suporte",
+    body: `${user?.name ?? "Cliente"}: ${subject}`,
+    tag: `ticket-${ticket.id}`,
+    url: `/admin/support/${ticket.id}`,
+  }).catch((err: unknown) => logger.error({ err }, "support: erro ao enviar push aos admins"));
+
   res.status(201).json({
     id: ticket.id,
     userId: ticket.userId,
