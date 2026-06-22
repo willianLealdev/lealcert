@@ -116,7 +116,7 @@ router.get("/auth/lookup-crc", async (req, res): Promise<void> => {
     found: true,
     valid: ativo,
     nome: prof.Nome?.trim() ?? null,
-    crc: prof.Crc ?? null,
+    crc: prof.NumeroRegistro ? normalizeCrc(prof.NumeroRegistro) : null,
     numeroRegistro: prof.NumeroRegistro ?? null,
     situacao: prof.SituacaoCadastral ?? null,
     categoria: prof.Categoria ?? null,
@@ -168,7 +168,7 @@ router.get("/auth/validate-crc", async (req, res): Promise<void> => {
     nome: prof.Nome?.trim() ?? null,
     numeroRegistro: prof.NumeroRegistro ?? null,
     categoria: prof.Categoria ?? null,
-    crc: prof.Crc ?? null,
+    crc: prof.NumeroRegistro ? normalizeCrc(prof.NumeroRegistro) : null,
   });
 });
 
@@ -295,7 +295,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       res.status(422).json({ error: `O CRC do responsável técnico não está ativo no CFC. Situação: ${prof.SituacaoCadastral ?? "Desconhecido"}. Apenas escritórios com profissional ativo podem se cadastrar.` });
       return;
     }
-    crcNorm = prof.Crc ? normalizeCrc(prof.Crc) : null;
+    crcNorm = prof.NumeroRegistro ? normalizeCrc(prof.NumeroRegistro) : null;
     crcVerifiedFlag = true;
   }
 

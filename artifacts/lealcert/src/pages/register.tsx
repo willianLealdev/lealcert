@@ -253,27 +253,21 @@ export default function Register() {
   }, [form.zipCode]);
 
   // ── Verificação manual de CRC ──────────────────────────────────────────────
-  // A API do CFC não suporta busca por número CRC — só por CPF/CNPJ.
   async function handleValidateCrc() {
-    const cpfDigits = form.cpfCnpj.replace(/\D/g, "");
-    if (cpfDigits.length !== 11) {
-      toast({ title: "Preencha o CPF primeiro", description: "A consulta ao CFC é feita pelo CPF do contador.", variant: "destructive" });
+    const crcRaw = form.crcNumber.trim();
+    if (!crcRaw) {
+      toast({ title: "Preencha o número do CRC", description: "Informe o CRC no formato SP100000O.", variant: "destructive" });
       return;
     }
     setCrcState("checking"); setCrcResult(null);
     try {
-      const resp = await fetch(`/api/auth/lookup-crc?cpfCnpj=${cpfDigits}`);
-      const data = await resp.json() as LookupResult;
-      if (data.found) {
-        const result: CrcResult = { valid: data.valid ?? false, situacao: data.situacao ?? "", nome: data.nome ?? null };
-        setCrcResult(result);
-        setCrcState(data.valid ? "valid" : "invalid");
-        if (data.nome) set("name", data.nome);
-        if (data.crc) set("crcNumber", data.crc);
-      } else {
-        setCrcState("error");
-        toast({ title: "CPF não encontrado no CFC", description: "Verifique o CPF informado.", variant: "destructive" });
-      }
+      const resp = await fetch(`/api/auth/validate-crc?crc=${encodeURIComponent(crcRaw)}`);
+      const data = await resp.json() as { valid: boolean; situacao: string; nome: string | null; crc: string | null };
+      const result: CrcResult = { valid: data.valid, situacao: data.situacao, nome: data.nome };
+      setCrcResult(result);
+      setCrcState(data.valid ? "valid" : "invalid");
+      if (data.nome) set("name", data.nome);
+      if (data.crc) set("crcNumber", data.crc);
     } catch { setCrcState("error"); }
   }
 
