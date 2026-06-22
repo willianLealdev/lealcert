@@ -253,36 +253,27 @@ export default function Register() {
   }, [form.zipCode]);
 
   // ── Verificação manual de CRC ──────────────────────────────────────────────
+  // A API do CFC não suporta busca por número CRC — só por CPF/CNPJ.
   async function handleValidateCrc() {
-    if (!form.crcNumber.trim()) {
-      toast({ title: "Informe o número de registro CRC", variant: "destructive" });
+    const cpfDigits = form.cpfCnpj.replace(/\D/g, "");
+    if (cpfDigits.length !== 11) {
+      toast({ title: "Preencha o CPF primeiro", description: "A consulta ao CFC é feita pelo CPF do contador.", variant: "destructive" });
       return;
     }
     setCrcState("checking"); setCrcResult(null);
     try {
-      // Preferência: validar pelo CPF (API do CFC aceita CPF/CNPJ de forma confiável)
-      const cpfDigits = form.cpfCnpj.replace(/\D/g, "");
-      if (cpfDigits.length === 11) {
-        const resp = await fetch(`/api/auth/lookup-crc?cpfCnpj=${cpfDigits}`);
-        const data = await resp.json() as LookupResult;
-        if (data.found) {
-          const result: CrcResult = { valid: data.valid ?? false, situacao: data.situacao ?? "", nome: data.nome ?? null };
-          setCrcResult(result);
-          setCrcState(data.valid ? "valid" : "invalid");
-          if (data.valid && data.nome && !form.name) set("name", data.nome);
-          if (data.crc) set("crcNumber", data.crc);
-          return;
-        }
+      const resp = await fetch(`/api/auth/lookup-crc?cpfCnpj=${cpfDigits}`);
+      const data = await resp.json() as LookupResult;
+      if (data.found) {
+        const result: CrcResult = { valid: data.valid ?? false, situacao: data.situacao ?? "", nome: data.nome ?? null };
+        setCrcResult(result);
+        setCrcState(data.valid ? "valid" : "invalid");
+        if (data.nome) set("name", data.nome);
+        if (data.crc) set("crcNumber", data.crc);
+      } else {
+        setCrcState("error");
+        toast({ title: "CPF não encontrado no CFC", description: "Verifique o CPF informado.", variant: "destructive" });
       }
-      // Fallback: tentar pelo número CRC diretamente
-      const crcNorm = normalizeCrc(form.crcNumber);
-      const resp = await fetch(`/api/auth/validate-crc?crc=${encodeURIComponent(form.crcNumber.trim().toUpperCase())}`);
-      const data = await resp.json() as CrcResult & { error?: string };
-      if (!resp.ok) { setCrcState("error"); toast({ title: "Erro", description: data.error, variant: "destructive" }); return; }
-      setCrcResult(data);
-      setCrcState(data.valid ? "valid" : "invalid");
-      if (data.valid && data.nome && !form.name) set("name", data.nome);
-      void crcNorm; // usado só para normalização interna
     } catch { setCrcState("error"); }
   }
 
