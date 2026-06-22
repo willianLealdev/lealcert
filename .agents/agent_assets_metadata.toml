@@ -6,3 +6,9 @@ id = "YMgRqX7TFrfqOq9DGCp90"
 uri = "file://contatos-marketing.csv"
 type = "table"
 title = "Contatos Marketing — 5.286 registros"
+
+[[outputs]]
+id = "EOfgbfXGXYjjmNi0_6fCz"
+uri = "file://import_marketing.sql.gz"
+type = "unspecified"
+title = "Contatos Marketing — SQL para produção (5.286 registros)"
