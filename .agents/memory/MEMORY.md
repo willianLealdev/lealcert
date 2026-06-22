@@ -1,4 +1,5 @@
 - [Safeweb integration](safeweb-integration.md) — provider toggle (gestaoar|safeweb) in settings drives mp-webhook.ts dispatch; Safeweb auto-buy in sw-auto.ts mirrors gar-auto.ts pattern.
+- [Safeweb agenda paths](safeweb-agenda-paths.md) — official Safeweb agenda endpoints are under MicroService/Agenda/Agendamentos/api/Integracao/ NOT Shared/Schedule — docs at h-acsafeweb.safewebpss.com.br.
 - [OrderRow fields](orderrow-fields.md) — orderRow() in orders.ts must explicitly list every field returned to frontend; GAR + Safeweb fields were missing and had to be added.
 - [OpenAPI Order schema](openapi-order-schema.md) — GAR fields (garPedido etc.) were absent from Order schema; any new provider fields must be added both to orderRow() and to openapi.yaml Order schema.
 - [Safeweb token format](safeweb-token-format.md) — Safeweb API uses raw JWE token (NO "Bearer" prefix); PSBio path is psbio/consulta/biometria/global; token field is tokenAcesso not access_token.

@@ -314,37 +314,44 @@ router.post("/safeweb/safeid/certificado", requireAuth, async (req, res): Promis
 router.get("/safeweb/agenda/horarios", requireAuth, async (req, res): Promise<void> => {
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
-  const { cnpjAr, idProduto } = req.query as Record<string, string>;
-  try { res.json(await swAgendaListarHorarios(sw, cnpjAr, idProduto ? { idProduto } : undefined)); }
+  const { localAtendimentoId, data } = req.query as Record<string, string>;
+  const idLocal = parseInt(localAtendimentoId, 10);
+  if (isNaN(idLocal)) { res.status(400).json({ error: "localAtendimentoId obrigatório" }); return; }
+  try { res.json(await swAgendaListarHorarios(sw, idLocal, data)); }
   catch (err) { handleErr(res, err, "Safeweb Agenda ListarHorarios error"); }
 });
 
 router.post("/safeweb/agenda/agendar", requireAuth, async (req, res): Promise<void> => {
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
-  try { res.json(await swAgendaAgendar(sw, req.body ?? {})); }
+  const { localAtendimentoId, protocolo, data, catalogoProdutoId } = req.body ?? {};
+  if (!localAtendimentoId || !protocolo || !data) { res.status(400).json({ error: "localAtendimentoId, protocolo e data são obrigatórios" }); return; }
+  try { res.json(await swAgendaAgendar(sw, { localAtendimentoId: Number(localAtendimentoId), protocolo: String(protocolo), data: String(data), catalogoProdutoId: catalogoProdutoId ? String(catalogoProdutoId) : undefined })); }
   catch (err) { handleErr(res, err, "Safeweb Agenda Agendar error"); }
 });
 
-router.delete("/safeweb/agenda/:id", requireAuth, async (req, res): Promise<void> => {
+router.delete("/safeweb/agenda/:protocolo", requireAuth, async (req, res): Promise<void> => {
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
-  try { res.json(await swAgendaCancelar(sw, Number(req.params.id))); }
+  const { catalogoProdutoId } = req.query as Record<string, string>;
+  try { res.json(await swAgendaCancelar(sw, String(req.params.protocolo), catalogoProdutoId)); }
   catch (err) { handleErr(res, err, "Safeweb Agenda Cancelar error"); }
 });
 
 router.get("/safeweb/agenda/configuracao", requireAuth, async (req, res): Promise<void> => {
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
-  const { cnpjAr } = req.query as Record<string, string>;
-  try { res.json(await swAgendaConfiguracao(sw, cnpjAr)); }
+  const { localAtendimentoId } = req.query as Record<string, string>;
+  const idLocal = parseInt(localAtendimentoId, 10);
+  if (isNaN(idLocal)) { res.status(400).json({ error: "localAtendimentoId obrigatório" }); return; }
+  try { res.json(await swAgendaConfiguracao(sw, idLocal)); }
   catch (err) { handleErr(res, err, "Safeweb Agenda Configuracao error"); }
 });
 
-router.get("/safeweb/agenda/:id/informacoes", requireAuth, async (req, res): Promise<void> => {
+router.get("/safeweb/agenda/:protocolo/informacoes", requireAuth, async (req, res): Promise<void> => {
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
-  try { res.json(await swAgendaInformacoes(sw, Number(req.params.id))); }
+  try { res.json(await swAgendaInformacoes(sw, String(req.params.protocolo))); }
   catch (err) { handleErr(res, err, "Safeweb Agenda Informacoes error"); }
 });
 

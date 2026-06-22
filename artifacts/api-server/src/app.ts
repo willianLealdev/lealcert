@@ -89,7 +89,7 @@ const generalLimiter = rateLimit({
     // Nunca limitar webhook e push
     if (req.path === "/api/mp/webhook" || req.path.startsWith("/api/push")) return true;
     // Não limitar usuários já autenticados (sessão válida)
-    if ((req.session as Record<string, unknown>)?.userId) return true;
+    if ((req.session as unknown as Record<string, unknown>)?.userId) return true;
     return false;
   },
   message: { error: "Muitas requisições. Tente novamente em alguns minutos." },

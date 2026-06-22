@@ -8,7 +8,11 @@
 
 export type GetSafewebSlotsParams = {
 /**
- * ID do local de atendimento para filtrar horários
+ * ID do local de atendimento
  */
-idLocal?: number;
+idLocal: number;
+/**
+ * Data no formato YYYY-MM-DD (padrão: hoje)
+ */
+date?: string;
 };

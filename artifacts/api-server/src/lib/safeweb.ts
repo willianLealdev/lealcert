@@ -26,11 +26,13 @@ const SAFEID_VALIDATE_PATH = "/Service/Microservice/Shared/SafeID/api/ValidateCe
 const SAFEID_PRODUCTS_PATH = "/Service/Microservice/Shared/SafeID/api/GetProducts"; // [INFERRED]
 const SAFEID_ADD_REQUEST_PATH = "/Service/Microservice/Shared/SafeID/api/AddRequest"; // [INFERRED]
 const SAFEID_ADD_CERT_PATH = "/Service/Microservice/Shared/SafeID/api/AddCertificate"; // [INFERRED]
-const AGENDA_LIST_PATH = "/Service/Microservice/Shared/Schedule/api/GetAvailableSchedules"; // [INFERRED]
-const AGENDA_ADD_PATH = "/Service/Microservice/Shared/Schedule/api/Add"; // [INFERRED]
-const AGENDA_CANCEL_PATH = "/Service/Microservice/Shared/Schedule/api/Cancel"; // [INFERRED]
-const AGENDA_CONFIG_PATH = "/Service/Microservice/Shared/Schedule/api/GetConfiguration"; // [INFERRED]
-const AGENDA_INFO_PATH = "/Service/Microservice/Shared/Schedule/api/GetInformation"; // [INFERRED]
+// AGENDA — paths documentados oficialmente pela Safeweb
+// Ref: https://h-acsafeweb.safewebpss.com.br/hotsite/documentacao-safeweb/home/#/docs/integracao-agenda/
+const AGENDA_HORARIOS_PATH = "/Service/MicroService/Agenda/Agendamentos/api/Integracao/horarios"; // GET /{localAtendimentoId}/{data}
+const AGENDA_ADD_PATH = "/Service/MicroService/Agenda/Agendamentos/api/Integracao/agendamento"; // POST
+const AGENDA_CANCEL_AGENDAMENTO_PATH = "/Service/MicroService/Agenda/Agendamentos/api/Integracao/agendamento"; // DELETE /{protocolo}/{catalogoProdutoId}
+const AGENDA_CONFIG_PATH = "/Service/MicroService/Agenda/Agendamentos/api/Integracao/configuracao"; // GET /{localAtendimentoId}
+const AGENDA_INFO_PATH = "/Service/MicroService/Agenda/Agendamentos/api/Integracao/informacoes"; // GET /{protocolo}
 const HOPE_FIRST_EMISSION_PATH = "/Service/Microservice/Shared/Hope/api/FirstEmission"; // [INFERRED]
 
 // ── Settings ──────────────────────────────────────────────────────────────────
@@ -255,24 +257,39 @@ export async function swSafeIDIncluirCertificado(settings: SafewebSettings, data
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// INTEGRAÇÃO AGENDA
+// INTEGRAÇÃO AGENDA — paths documentados oficialmente pela Safeweb
+// GET horarios/{localAtendimentoId}/{data}  → retorna {atendimentos:[{horarioInicio,horarioFim,bloqueado,agendado}]}
+// POST agendamento                          → body: {localAtendimentoId,protocolo,data,catalogoProdutoId}
+// DELETE agendamento/{protocolo}/{catalogoProdutoId}
+// GET configuracao/{localAtendimentoId}
+// GET informacoes/{protocolo}
 // ═══════════════════════════════════════════════════════════════════════════════
-export async function swAgendaListarHorarios(settings: SafewebSettings, cnpjAr?: string, data?: Record<string, unknown>): Promise<SwResult> {
-  const cnpj = cnpjAr ?? settings.cnpjAr ?? "";
-  return swGet<SwResult>(settings, `${AGENDA_LIST_PATH}/${cnpj}${data?.idProduto ? `?idProduto=${data.idProduto}` : ""}`);
+export async function swAgendaListarHorarios(settings: SafewebSettings, localAtendimentoId: number, data?: string): Promise<SwResult> {
+  const path = data
+    ? `${AGENDA_HORARIOS_PATH}/${localAtendimentoId}/${data}`
+    : `${AGENDA_HORARIOS_PATH}/${localAtendimentoId}`;
+  return swGet<SwResult>(settings, path);
 }
-export async function swAgendaAgendar(settings: SafewebSettings, data: Record<string, unknown>): Promise<SwResult> {
-  if (!data.CnpjAR) data.CnpjAR = settings.cnpjAr ?? "";
-  return swPost<SwResult>(settings, AGENDA_ADD_PATH, data);
+export interface SwAgendaAgendarInput {
+  localAtendimentoId: number;
+  protocolo: string;
+  data: string;
+  catalogoProdutoId?: string;
 }
-export async function swAgendaCancelar(settings: SafewebSettings, idAgendamento: number): Promise<SwResult> {
-  return swDelete<SwResult>(settings, `${AGENDA_CANCEL_PATH}/${idAgendamento}`);
+export async function swAgendaAgendar(settings: SafewebSettings, input: SwAgendaAgendarInput): Promise<SwResult> {
+  return swPost<SwResult>(settings, AGENDA_ADD_PATH, input);
 }
-export async function swAgendaConfiguracao(settings: SafewebSettings, cnpjAr?: string): Promise<SwResult> {
-  return swGet<SwResult>(settings, `${AGENDA_CONFIG_PATH}/${cnpjAr ?? settings.cnpjAr ?? ""}`);
+export async function swAgendaCancelar(settings: SafewebSettings, protocolo: string, catalogoProdutoId?: string): Promise<SwResult> {
+  const path = catalogoProdutoId
+    ? `${AGENDA_CANCEL_AGENDAMENTO_PATH}/${protocolo}/${catalogoProdutoId}`
+    : `${AGENDA_CANCEL_AGENDAMENTO_PATH}/${protocolo}`;
+  return swDelete<SwResult>(settings, path);
 }
-export async function swAgendaInformacoes(settings: SafewebSettings, idAgendamento: number): Promise<SwResult> {
-  return swGet<SwResult>(settings, `${AGENDA_INFO_PATH}/${idAgendamento}`);
+export async function swAgendaConfiguracao(settings: SafewebSettings, localAtendimentoId: number): Promise<SwResult> {
+  return swGet<SwResult>(settings, `${AGENDA_CONFIG_PATH}/${localAtendimentoId}`);
+}
+export async function swAgendaInformacoes(settings: SafewebSettings, protocolo: string): Promise<SwResult> {
+  return swGet<SwResult>(settings, `${AGENDA_INFO_PATH}/${protocolo}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

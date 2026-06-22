@@ -7,8 +7,10 @@
  */
 
 export type SafewebSlotsResultSlotsItem = {
-  idAgendamento?: string | number;
-  dataHora: string;
-  local: string;
-  disponivel?: boolean;
+  /** Horário de início (HH:mm) */
+  horarioInicio: string;
+  /** Horário de fim (HH:mm) */
+  horarioFim: string;
+  bloqueado?: boolean;
+  agendado?: boolean;
 };

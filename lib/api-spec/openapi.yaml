@@ -899,10 +899,16 @@ paths:
             type: integer
         - name: idLocal
           in: query
-          required: false
+          required: true
           schema:
             type: integer
-          description: ID do local de atendimento para filtrar horários
+          description: ID do local de atendimento
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Data no formato YYYY-MM-DD (padrão: hoje)"
       responses:
         "200":
           description: Horários disponíveis
@@ -3827,21 +3833,18 @@ components:
           type: array
           items:
             type: object
-            required: [dataHora, local]
+            required: [horarioInicio, horarioFim]
             properties:
-              idAgendamento:
-                oneOf:
-                  - type: string
-                  - type: integer
-              dataHora:
+              horarioInicio:
                 type: string
-              local:
+                description: "Horário de início (HH:mm)"
+              horarioFim:
                 type: string
-              disponivel:
+                description: "Horário de fim (HH:mm)"
+              bloqueado:
                 type: boolean
-        raw:
-          type: object
-          additionalProperties: true
+              agendado:
+                type: boolean
 
     SafewebLocaisResult:
       type: object
@@ -3883,16 +3886,22 @@ components:
 
     SafewebAgendarInput:
       type: object
-      required: [dataHora]
+      required: [idLocal, data, horarioInicio]
       properties:
-        dataHora:
-          type: string
-        localNome:
-          type: string
         idLocal:
           type: integer
-        idAgendamento:
+          description: ID do local de atendimento
+        localNome:
           type: string
+        data:
+          type: string
+          description: "Data no formato YYYY-MM-DD"
+        horarioInicio:
+          type: string
+          description: "Horário de início (HH:mm)"
+        horarioFim:
+          type: string
+          description: "Horário de fim (HH:mm)"
 
     SafewebAgendarResult:
       type: object

@@ -275,7 +275,7 @@ export async function swSyncStatus(orderId: number): Promise<{ ok: boolean; stat
       if (!isNaN(agendId)) {
         const { swAgendaInformacoes } = await import("./safeweb");
         try {
-          const info = await swAgendaInformacoes(sw, agendId) as Record<string, unknown>;
+          const info = await swAgendaInformacoes(sw, String(agendId)) as Record<string, unknown>;
           const statusLabel = String(
             info?.Status ?? info?.status ?? info?.Situacao ?? info?.situacao ?? currentStatus
           );

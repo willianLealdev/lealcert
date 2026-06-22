@@ -652,7 +652,20 @@ function SchedulingDialog({
 
 // ── LocaisAndDateDialogBody — busca locais Safeweb e permite escolha + data ───
 type SwLocalItem = { id: number; titulo: string; endereco?: string; cidade?: string; estado?: string; uf?: string };
-type AgendarSelection = { idLocal: number; localNome: string; dataHora: string };
+type AgendarSelection = { idLocal: number; localNome: string; data: string; horarioInicio: string; horarioFim?: string };
+
+// Gera os próximos N dias a partir de hoje (YYYY-MM-DD)
+function getNextDays(n: number): { label: string; value: string }[] {
+  const days: { label: string; value: string }[] = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const value = d.toISOString().split("T")[0];
+    const label = i === 0 ? "Hoje" : d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+    days.push({ label, value });
+  }
+  return days;
+}
 
 function LocaisAndDateDialogBody({ orderId, onSelect }: {
   orderId: number;
@@ -662,10 +675,13 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
   const locais: SwLocalItem[] = (locaisData?.locais ?? []) as SwLocalItem[];
 
   const [selectedLocal, setSelectedLocal] = useState<SwLocalItem | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+  const [selectedSlot, setSelectedSlot] = useState<{ horarioInicio: string; horarioFim?: string } | null>(null);
 
-  // Busca slots somente após selecionar um local
-  const slotsParams = selectedLocal ? { idLocal: selectedLocal.id } : undefined;
+  const days = getNextDays(7);
+
+  // Busca slots após selecionar local E data
+  const slotsParams = selectedLocal ? { idLocal: selectedLocal.id, date: selectedDate } : { idLocal: 0 };
   const { data: slotsData, isLoading: slotsLoading, isError: slotsError, refetch: refetchSlots } = useGetSafewebSlots(
     orderId,
     slotsParams,
@@ -673,15 +689,15 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
   );
   const slots = slotsData?.slots ?? [];
 
-  // Notifica pai quando um slot é selecionado; limpa quando local muda
+  // Limpa slot quando local ou data mudam
   useEffect(() => {
     setSelectedSlot(null);
     onSelect(null);
-  }, [selectedLocal]);
+  }, [selectedLocal, selectedDate]);
 
   useEffect(() => {
     if (selectedLocal && selectedSlot) {
-      onSelect({ idLocal: selectedLocal.id, localNome: selectedLocal.titulo, dataHora: selectedSlot });
+      onSelect({ idLocal: selectedLocal.id, localNome: selectedLocal.titulo, data: selectedDate, horarioInicio: selectedSlot.horarioInicio, horarioFim: selectedSlot.horarioFim });
     }
   }, [selectedSlot]);
 
@@ -750,11 +766,36 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
         </div>
       </div>
 
-      {/* Passo 2: Horários disponíveis — só aparece após escolher um local */}
+      {/* Passo 2: Escolha a data — só aparece após escolher um local */}
       {selectedLocal && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            2. Escolha o horário disponível
+            2. Escolha a data
+          </p>
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {days.map(d => (
+              <button
+                key={d.value}
+                onClick={() => setSelectedDate(d.value)}
+                className={[
+                  "flex-shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
+                  selectedDate === d.value
+                    ? "border-primary bg-primary/10 ring-2 ring-primary text-primary"
+                    : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
+                ].join(" ")}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Passo 3: Horários disponíveis — só aparece após escolher local e data */}
+      {selectedLocal && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            3. Escolha o horário disponível
           </p>
 
           {slotsLoading && (
@@ -777,8 +818,8 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
               <div>
                 <p className="text-sm font-medium">Nenhum horário disponível</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Não há horários disponíveis para este local no momento.<br />
-                  Tente outro local ou entre em contato com a Safeweb.
+                  Não há horários disponíveis para este local nesta data.<br />
+                  Tente outra data ou outro local.
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={() => refetchSlots()}>
@@ -789,32 +830,25 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
           )}
 
           {!slotsLoading && slots.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
               {slots.map((sl, i) => {
-                const isSelected = selectedSlot === sl.dataHora;
-                const dtLabel = (() => {
-                  try {
-                    const d = new Date(sl.dataHora);
-                    return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-                  } catch {
-                    return sl.dataHora;
-                  }
-                })();
+                const isSelected = selectedSlot?.horarioInicio === sl.horarioInicio;
+                const label = sl.horarioFim ? `${sl.horarioInicio} – ${sl.horarioFim}` : sl.horarioInicio;
                 return (
                   <button
-                    key={`${sl.idAgendamento ?? i}-${sl.dataHora}`}
-                    onClick={() => sl.disponivel !== false && setSelectedSlot(sl.dataHora)}
-                    disabled={sl.disponivel === false}
+                    key={`${i}-${sl.horarioInicio}`}
+                    onClick={() => !sl.bloqueado && setSelectedSlot({ horarioInicio: sl.horarioInicio, horarioFim: sl.horarioFim })}
+                    disabled={sl.bloqueado}
                     className={[
                       "rounded-lg border p-2.5 text-center text-sm transition-all",
-                      sl.disponivel === false
+                      sl.bloqueado
                         ? "border-border bg-muted/50 text-muted-foreground opacity-50 cursor-not-allowed"
                         : isSelected
                           ? "border-primary bg-primary/10 ring-2 ring-primary font-semibold"
                           : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
                     ].join(" ")}
                   >
-                    {dtLabel}
+                    {label}
                   </button>
                 );
               })}
@@ -930,7 +964,8 @@ function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamen
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
                 <span>
                   <span className="font-medium text-foreground">{selection.localNome}</span>
-                  {" — "}{new Date(selection.dataHora).toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  {" — "}{new Date(selection.data + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })}
+                  {" "}{selection.horarioFim ? `${selection.horarioInicio} – ${selection.horarioFim}` : selection.horarioInicio}
                 </span>
               </div>
             </div>
@@ -945,9 +980,11 @@ function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamen
                 agendar.mutate({
                   id: orderId,
                   data: {
-                    dataHora: selection.dataHora,
-                    localNome: selection.localNome,
                     idLocal: selection.idLocal,
+                    localNome: selection.localNome,
+                    data: selection.data,
+                    horarioInicio: selection.horarioInicio,
+                    horarioFim: selection.horarioFim,
                   },
                 });
               }}

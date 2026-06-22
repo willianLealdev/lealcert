@@ -98,7 +98,7 @@ async function syncSafewebStatuses() {
         const { swAgendaInformacoes } = await import("./safeweb");
         let info: Record<string, unknown>;
         try {
-          info = await swAgendaInformacoes(sw, agendId) as Record<string, unknown>;
+          info = await swAgendaInformacoes(sw, String(agendId)) as Record<string, unknown>;
         } catch {
           continue; // endpoint falhou — aguarda próximo ciclo
         }

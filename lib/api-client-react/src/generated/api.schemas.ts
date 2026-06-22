@@ -875,17 +875,16 @@ export interface GarPsBioInput {
 }
 
 export type SafewebSlotsResultSlotsItem = {
-  idAgendamento?: string | number;
-  dataHora: string;
-  local: string;
-  disponivel?: boolean;
+  /** Horário de início (HH:mm) */
+  horarioInicio: string;
+  /** Horário de fim (HH:mm) */
+  horarioFim: string;
+  bloqueado?: boolean;
+  agendado?: boolean;
 };
-
-export type SafewebSlotsResultRaw = { [key: string]: unknown };
 
 export interface SafewebSlotsResult {
   slots: SafewebSlotsResultSlotsItem[];
-  raw?: SafewebSlotsResultRaw;
 }
 
 export type SafewebLocaisResultLocaisItem = {
@@ -911,10 +910,15 @@ export interface SafewebCancelarResult {
 }
 
 export interface SafewebAgendarInput {
-  dataHora: string;
+  /** ID do local de atendimento */
+  idLocal: number;
   localNome?: string;
-  idLocal?: number;
-  idAgendamento?: string;
+  /** Data no formato YYYY-MM-DD */
+  data: string;
+  /** Horário de início (HH:mm) */
+  horarioInicio: string;
+  /** Horário de fim (HH:mm) */
+  horarioFim?: string;
 }
 
 export interface SafewebAgendarResult {
@@ -1455,9 +1459,13 @@ export type SyncPaymentOrder200 = {
 
 export type GetSafewebSlotsParams = {
 /**
- * ID do local de atendimento para filtrar horários
+ * ID do local de atendimento
  */
-idLocal?: number;
+idLocal: number;
+/**
+ * Data no formato YYYY-MM-DD (padrão: hoje)
+ */
+date?: string;
 };
 
 export type ListSlotsParams = {

@@ -928,17 +928,17 @@ export const GetSafewebSlotsParams = zod.object({
 })
 
 export const GetSafewebSlotsQueryParams = zod.object({
-  "idLocal": zod.coerce.number().optional().describe('ID do local de atendimento para filtrar horários')
+  "idLocal": zod.coerce.number().describe('ID do local de atendimento'),
+  "date": zod.coerce.string().optional().describe('Data no formato YYYY-MM-DD (padrão: hoje)')
 })
 
 export const GetSafewebSlotsResponse = zod.object({
   "slots": zod.array(zod.object({
-  "idAgendamento": zod.union([zod.string(),zod.number()]).optional(),
-  "dataHora": zod.string(),
-  "local": zod.string(),
-  "disponivel": zod.boolean().optional()
-})),
-  "raw": zod.record(zod.string(), zod.unknown()).optional()
+  "horarioInicio": zod.string().describe('Horário de início (HH:mm)'),
+  "horarioFim": zod.string().describe('Horário de fim (HH:mm)'),
+  "bloqueado": zod.boolean().optional(),
+  "agendado": zod.boolean().optional()
+}))
 })
 
 
@@ -950,10 +950,11 @@ export const AgendarSafewebOrderParams = zod.object({
 })
 
 export const AgendarSafewebOrderBody = zod.object({
-  "dataHora": zod.string(),
+  "idLocal": zod.number().describe('ID do local de atendimento'),
   "localNome": zod.string().optional(),
-  "idLocal": zod.number().optional(),
-  "idAgendamento": zod.string().optional()
+  "data": zod.string().describe('Data no formato YYYY-MM-DD'),
+  "horarioInicio": zod.string().describe('Horário de início (HH:mm)'),
+  "horarioFim": zod.string().optional().describe('Horário de fim (HH:mm)')
 })
 
 export const AgendarSafewebOrderResponse = zod.object({

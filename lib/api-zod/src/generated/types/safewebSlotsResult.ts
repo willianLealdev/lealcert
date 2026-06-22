@@ -5,10 +5,8 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
-import type { SafewebSlotsResultRaw } from './safewebSlotsResultRaw';
 import type { SafewebSlotsResultSlotsItem } from './safewebSlotsResultSlotsItem';
 
 export interface SafewebSlotsResult {
   slots: SafewebSlotsResultSlotsItem[];
-  raw?: SafewebSlotsResultRaw;
 }

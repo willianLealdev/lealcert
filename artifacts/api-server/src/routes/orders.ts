@@ -626,8 +626,16 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
     return;
   }
 
-  const { dataHora, localNome, idLocal } = req.body ?? {};
-  if (!dataHora) { res.status(400).json({ error: "dataHora obrigatório" }); return; }
+  // Endpoint oficial Safeweb: POST /agendamento
+  // Body: { localAtendimentoId, protocolo, data, catalogoProdutoId }
+  // Ref: https://h-acsafeweb.safewebpss.com.br/hotsite/documentacao-safeweb/home/#/docs/integracao-agenda/agendar
+  const { idLocal, localNome, data: dataAgenda, horarioInicio, horarioFim } = req.body ?? {};
+  if (!idLocal) { res.status(400).json({ error: "idLocal obrigatório" }); return; }
+  if (!dataAgenda) { res.status(400).json({ error: "data obrigatório (YYYY-MM-DD)" }); return; }
+  if (!horarioInicio) { res.status(400).json({ error: "horarioInicio obrigatório" }); return; }
+
+  // Monta dataHora para salvar no pedido (ex: "2024-07-23T08:00:00")
+  const dataHora = `${dataAgenda}T${horarioInicio}:00`;
 
   const isReagendar = !!order.safewebAgendamentoId;
 
@@ -638,36 +646,43 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
   const { swAgendaAgendar, swAgendaCancelar } = await import("../lib/safeweb");
 
+  // Busca catalogoProdutoId (safewebIdProduto) do certificado
+  const [certRow] = await db
+    .select({ safewebIdProduto: certificatesTable.safewebIdProduto })
+    .from(certificatesTable)
+    .where(eq(certificatesTable.id, order.certificateId!))
+    .limit(1);
+  const catalogoProdutoId = certRow?.safewebIdProduto ?? undefined;
+
   let agendamentoId: string | null = null;
 
-  if (username && password && rawUrl) {
+  if (username && password && rawUrl && order.safewebSolicitacaoId) {
     const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
-    const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined, codigoParceiro: s?.safewebCodigoParceiro ?? undefined };
+    const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined };
 
-    // Se já há agendamento anterior e é um ID numérico real (não "manual-..."), cancela antes de reagendar
-    if (isReagendar && order.safewebAgendamentoId && !order.safewebAgendamentoId.startsWith("manual-") && !order.safewebAgendamentoId.startsWith("sw-")) {
-      const oldId = parseInt(order.safewebAgendamentoId, 10);
-      if (!isNaN(oldId)) {
-        try {
-          await swAgendaCancelar(sw, oldId);
-          req.log.info({ orderId: id, oldAgendamentoId: oldId }, "safeweb-agendar: agendamento anterior cancelado na Safeweb");
-        } catch (err) {
-          req.log.warn({ orderId: id, err }, "safeweb-agendar: não foi possível cancelar agendamento anterior, prosseguindo mesmo assim");
-        }
+    // Se já há agendamento anterior, cancela antes de reagendar
+    // DELETE /agendamento/{protocolo}/{catalogoProdutoId}
+    if (isReagendar && order.safewebAgendamentoId && !order.safewebAgendamentoId.startsWith("manual-")) {
+      try {
+        await swAgendaCancelar(sw, order.safewebSolicitacaoId, catalogoProdutoId);
+        req.log.info({ orderId: id }, "safeweb-agendar: agendamento anterior cancelado na Safeweb");
+      } catch (err) {
+        req.log.warn({ orderId: id, err }, "safeweb-agendar: não foi possível cancelar agendamento anterior, prosseguindo mesmo assim");
       }
     }
 
     try {
       const result = await swAgendaAgendar(sw, {
-        idSolicitacao: Number(order.safewebSolicitacaoId),
-        DataHora: dataHora,
-        CnpjAR: sw.cnpjAr ?? "",
-        ...(idLocal ? { IdLocal: idLocal } : {}),
-        ...(localNome ? { Local: localNome } : {}),
+        localAtendimentoId: Number(idLocal),
+        protocolo: order.safewebSolicitacaoId,
+        data: dataAgenda,
+        ...(catalogoProdutoId ? { catalogoProdutoId } : {}),
       });
       req.log.info({ orderId: id, result }, "safeweb-agendar: resposta da API");
       if (result.sucesso !== false) {
-        agendamentoId = String(result.idAgendamento ?? result.IdAgendamento ?? result.id ?? result.Id ?? `sw-${Date.now()}`);
+        agendamentoId = String(result.id ?? result.Id ?? result.idAgendamento ?? result.IdAgendamento ?? `sw-${Date.now()}`);
+      } else {
+        agendamentoId = `manual-${Date.now()}`;
       }
     } catch (err) {
       req.log.warn({ orderId: id, err }, "safeweb-agendar: erro na API Safeweb, salvando agendamento manualmente");
@@ -678,6 +693,7 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   }
 
   const nomeLocal = localNome || "Videoconferência";
+  const horarioLabel = horarioFim ? `${horarioInicio} – ${horarioFim}` : horarioInicio;
   await db.update(ordersTable).set({
     safewebAgendamentoId: agendamentoId,
     safewebAgendamentoDataHora: dataHora,
@@ -688,7 +704,7 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
 
   const { logEvent } = await import("../lib/order-events");
   const acao = isReagendar ? "Agendamento alterado" : "Atendimento agendado";
-  await logEvent(id, "scheduling_confirmed", `${acao}: ${nomeLocal} — ${new Date(dataHora).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`, { agendamentoId, dataHora, isReagendar });
+  await logEvent(id, "scheduling_confirmed", `${acao}: ${nomeLocal} — ${dataAgenda} ${horarioLabel}`, { agendamentoId, dataHora, isReagendar });
 
   res.json({ ok: true, dataHora, localNome: nomeLocal, agendamentoId });
 });
@@ -777,71 +793,43 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
     const token = await swGetToken(sw);
     const H: Record<string, string> = { Authorization: token, "Content-Type": "application/json" };
 
-    // Tenta os caminhos conhecidos e inferidos da API Safeweb
-    const candidatePaths: string[] = [];
-    if (idLocalParam) {
-      candidatePaths.push(
-        // Padrão documentado Safeweb (Schedule module)
-        `/Service/Microservice/Shared/Schedule/api/GetAvailableSchedules/${idLocalParam}`,
-        `/Service/Microservice/Shared/Schedule/api/GetAvailableSchedulesByAttendancePlaceId/${idLocalParam}`,
-        `/Service/Microservice/Shared/Schedule/api/GetSchedulesByAttendancePlaceId/${idLocalParam}`,
-        `/Service/Microservice/Shared/Schedule/api/GetListByAttendancePlaceId/${idLocalParam}`,
-        `/Service/Microservice/Shared/Schedule/api/GetListByLocalId/${idLocalParam}`,
-        `/Service/Microservice/Shared/Schedule/api/GetList/${idLocalParam}`,
-        // Padrão AttendancePlace — mesma família que funciona para locais
-        `/Service/Microservice/Shared/AttendancePlace/api/GetSchedules/${idLocalParam}`,
-        `/Service/Microservice/Shared/AttendancePlace/api/GetAvailableSchedules/${idLocalParam}`,
-        `/Service/Microservice/Shared/AttendancePlace/api/GetSchedulesByAttendancePlaceId/${idLocalParam}`,
-        // Alternativas com query param
-      );
-    }
-    if (sw.cnpjAr) {
-      candidatePaths.push(
-        `/Service/Microservice/Shared/Schedule/api/GetAvailableSchedules/${sw.cnpjAr}`,
-        `/Service/Microservice/Shared/Schedule/api/GetListByCnpjAR/${sw.cnpjAr}`,
-        `/Service/Microservice/Shared/Schedule/api/GetListByAR/${sw.cnpjAr}`,
-        `/Service/Microservice/Shared/Schedule/api/GetListByCnpjAr/${sw.cnpjAr}`,
-      );
+    // Endpoint oficial Safeweb: GET /horarios/{localAtendimentoId}/{data}
+    // Ref: https://h-acsafeweb.safewebpss.com.br/hotsite/documentacao-safeweb/home/#/docs/integracao-agenda/listar
+    if (!idLocalParam) {
+      res.status(400).json({ error: "idLocal obrigatório para buscar horários" }); return;
     }
 
-    let rawResult: unknown = null;
-    let foundPath = "";
-    for (const path of candidatePaths) {
-      const r = await fetch(`${sw.url}${path}`, { headers: H });
-      const bodyText = await r.text();
-      req.log.info({ orderId: id, path, status: r.status, body: bodyText.slice(0, 300) }, "safeweb-slots: tentativa");
-      if (r.ok && bodyText.trim().startsWith("[") || (r.ok && bodyText.trim().startsWith("{"))) {
-        try { rawResult = JSON.parse(bodyText); foundPath = path; break; } catch { /* ignore */ }
-      }
+    const dateParam = req.query.date ? String(req.query.date) : new Date().toISOString().split("T")[0];
+    const slotsUrl = `${sw.url}/Service/MicroService/Agenda/Agendamentos/api/Integracao/horarios/${idLocalParam}/${dateParam}`;
+    req.log.info({ orderId: id, url: slotsUrl, date: dateParam }, "safeweb-slots: chamando API");
+
+    const r = await fetch(slotsUrl, { headers: H });
+    const bodyText = await r.text();
+    req.log.info({ orderId: id, status: r.status, body: bodyText.slice(0, 500) }, "safeweb-slots: resposta");
+
+    if (!r.ok) {
+      req.log.warn({ orderId: id, status: r.status, body: bodyText }, "safeweb-slots: API retornou erro");
+      res.json({ slots: [] }); return;
     }
 
-    if (!rawResult) {
-      req.log.warn({ orderId: id }, "safeweb-slots: nenhum path retornou dados — verifique logs INFO acima");
-    } else {
-      req.log.info({ orderId: id, foundPath }, "safeweb-slots: endpoint de horários encontrado");
-    }
+    let raw: Record<string, unknown> = {};
+    try { raw = JSON.parse(bodyText) as Record<string, unknown>; } catch { /* ignore */ }
 
-    // Normaliza resposta — pode ser array direto ou objeto com chave de lista
-    const rawList = Array.isArray(rawResult)
-      ? rawResult
-      : ((rawResult as Record<string, unknown> | null)?.horarios
-        ?? (rawResult as Record<string, unknown> | null)?.slots
-        ?? (rawResult as Record<string, unknown> | null)?.schedules
-        ?? (rawResult as Record<string, unknown> | null)?.Schedules
-        ?? (rawResult as Record<string, unknown> | null)?.Horarios
-        ?? []) as unknown[];
-
-    const slots = (rawList as Record<string, unknown>[]).map((sl) => ({
-      idAgendamento: sl.IdAgendamento ?? sl.idAgendamento ?? sl.Id ?? sl.id,
-      dataHora: sl.DataHora ?? sl.dataHora ?? sl.Data ?? sl.data ?? sl.DateTime ?? sl.dateTime,
-      local: String(sl.Local ?? sl.local ?? sl.NomeLocal ?? sl.nomeLocal ?? sl.Nome ?? ""),
-      disponivel: sl.Disponivel ?? sl.disponivel ?? sl.Available ?? sl.available ?? true,
-    })).filter(sl => sl.dataHora);
+    // Resposta: { localAtendimentoId, data, atendimentos: [{horarioInicio, horarioFim, bloqueado, agendado}] }
+    const atendimentos = (Array.isArray(raw?.atendimentos) ? raw.atendimentos : []) as Record<string, unknown>[];
+    const slots = atendimentos
+      .filter(a => !a.bloqueado)
+      .map(a => ({
+        horarioInicio: String(a.horarioInicio ?? ""),
+        horarioFim: String(a.horarioFim ?? ""),
+        bloqueado: Boolean(a.bloqueado),
+        agendado: Boolean(a.agendado),
+      }))
+      .filter(s => s.horarioInicio);
 
     res.json({ slots });
   } catch (err) {
-    const msg = (err as Error).message ?? "";
-    req.log.warn({ orderId: id, err }, "safeweb-slots: erro ao listar horários, retornando lista vazia");
+    req.log.warn({ orderId: id, err }, "safeweb-slots: erro ao listar horários");
     res.json({ slots: [] });
   }
 });

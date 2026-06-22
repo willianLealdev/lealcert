@@ -7,8 +7,13 @@
  */
 
 export interface SafewebAgendarInput {
-  dataHora: string;
+  /** ID do local de atendimento */
+  idLocal: number;
   localNome?: string;
-  idLocal?: number;
-  idAgendamento?: string;
+  /** Data no formato YYYY-MM-DD */
+  data: string;
+  /** Horário de início (HH:mm) */
+  horarioInicio: string;
+  /** Horário de fim (HH:mm) */
+  horarioFim?: string;
 }

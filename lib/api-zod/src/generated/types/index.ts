@@ -159,7 +159,6 @@ export * from './safewebCancelarResult';
 export * from './safewebLocaisResult';
 export * from './safewebLocaisResultLocaisItem';
 export * from './safewebSlotsResult';
-export * from './safewebSlotsResultRaw';
 export * from './safewebSlotsResultSlotsItem';
 export * from './sendCampaignInput';
 export * from './sendCampaignInputManualRecipientsItem';

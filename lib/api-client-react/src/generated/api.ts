@@ -3116,7 +3116,7 @@ export function useGetSafewebLocais<TData = Awaited<ReturnType<typeof getSafeweb
 
 
 export const getGetSafewebSlotsUrl = (id: number,
-    params?: GetSafewebSlotsParams,) => {
+    params: GetSafewebSlotsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -3135,7 +3135,7 @@ export const getGetSafewebSlotsUrl = (id: number,
  * @summary Lista horários disponíveis na Safeweb para agendamento
  */
 export const getSafewebSlots = async (id: number,
-    params?: GetSafewebSlotsParams, options?: RequestInit): Promise<SafewebSlotsResult> => {
+    params: GetSafewebSlotsParams, options?: RequestInit): Promise<SafewebSlotsResult> => {
 
   return customFetch<SafewebSlotsResult>(getGetSafewebSlotsUrl(id,params),
   {
@@ -3159,7 +3159,7 @@ export const getGetSafewebSlotsQueryKey = (id: number,
 
 
 export const getGetSafewebSlotsQueryOptions = <TData = Awaited<ReturnType<typeof getSafewebSlots>>, TError = ErrorType<unknown>>(id: number,
-    params?: GetSafewebSlotsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+    params: GetSafewebSlotsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -3187,7 +3187,7 @@ export type GetSafewebSlotsQueryError = ErrorType<unknown>
 
 export function useGetSafewebSlots<TData = Awaited<ReturnType<typeof getSafewebSlots>>, TError = ErrorType<unknown>>(
  id: number,
-    params?: GetSafewebSlotsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+    params: GetSafewebSlotsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafewebSlots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
