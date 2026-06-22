@@ -2,6 +2,16 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
@@ -78,6 +88,7 @@ function NavItem({
 
 function PushBellButton({ collapsed }: { collapsed: boolean }) {
   const push = usePush();
+  const [dialog, setDialog] = useState<"activate" | "deactivate" | null>(null);
 
   if (!push.supported) return null;
 
@@ -93,11 +104,11 @@ function PushBellButton({ collapsed }: { collapsed: boolean }) {
   } else if (push.error) {
     icon = <BellOff className="h-4 w-4 text-red-400" />;
     title = push.error;
-    label = "Erro nas notificações";
+    label = "Erro — clique para tentar novamente";
     cls = "text-red-400 hover:text-red-300 hover:bg-sidebar-accent";
   } else if (push.permission === "denied") {
     icon = <BellOff className="h-4 w-4" />;
-    title = "Notificações bloqueadas pelo navegador";
+    title = "Notificações bloqueadas — desbloqueie nas configurações do navegador";
     label = "Notificações bloqueadas";
     cls = "text-sidebar-foreground/30 cursor-not-allowed";
   } else if (push.subscribed) {
@@ -106,24 +117,80 @@ function PushBellButton({ collapsed }: { collapsed: boolean }) {
     label = "Notificações ativas";
     cls = "text-emerald-400 hover:text-emerald-300 hover:bg-sidebar-accent";
   } else {
-    icon = <Bell className="h-4 w-4" />;
-    title = "Ativar notificações push";
-    label = "Ativar notificações";
+    icon = <BellOff className="h-4 w-4" />;
+    title = "Notificações desativadas — clique para ativar";
+    label = "Notificações desativadas";
   }
 
+  const handleClick = () => {
+    if (push.loading || push.permission === "denied") return;
+    if (push.subscribed) {
+      setDialog("deactivate");
+    } else {
+      setDialog("activate");
+    }
+  };
+
   return (
-    <button
-      type="button"
-      title={title}
-      disabled={push.loading || push.permission === "denied"}
-      onClick={() => push.subscribed ? push.unsubscribe() : push.subscribe()}
-      className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all select-none ${cls} ${collapsed ? "justify-center px-0" : ""}`}
-    >
-      {icon}
-      {!collapsed && (
-        <span className="truncate text-xs">{label}</span>
-      )}
-    </button>
+    <>
+      <button
+        type="button"
+        title={title}
+        disabled={push.loading || push.permission === "denied"}
+        onClick={handleClick}
+        className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all select-none ${cls} ${collapsed ? "justify-center px-0" : ""}`}
+      >
+        {icon}
+        {!collapsed && (
+          <span className="truncate text-xs">{label}</span>
+        )}
+      </button>
+
+      <AlertDialog open={dialog === "activate"} onOpenChange={(open) => !open && setDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              Ativar notificações push
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Você receberá alertas sobre seus pedidos, status de certificados e mensagens de suporte diretamente neste dispositivo. O navegador pedirá sua permissão em seguida.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setDialog(null); void push.subscribe(); }}
+            >
+              Ativar notificações
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={dialog === "deactivate"} onOpenChange={(open) => !open && setDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <BellOff className="h-5 w-5 text-muted-foreground" />
+              Desativar notificações push
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Você deixará de receber alertas neste dispositivo. Pode reativar a qualquer momento pelo mesmo botão.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { setDialog(null); void push.unsubscribe(); }}
+            >
+              Desativar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

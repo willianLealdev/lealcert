@@ -80,7 +80,8 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2}"],
       },
       devOptions: {
-        enabled: false,
+        enabled: true,
+        type: "module",
       },
     }),
     ...(process.env.NODE_ENV !== "production" &&
