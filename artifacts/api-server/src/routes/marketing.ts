@@ -333,13 +333,16 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
 
 router.patch("/marketing/contacts/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const { status, tags } = req.body ?? {};
+  const { name, email, phone, status, tags } = req.body ?? {};
   const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = String(name).trim();
+  if (email !== undefined) updates.email = String(email).toLowerCase().trim();
+  if (phone !== undefined) updates.phone = String(phone).replace(/\D/g, "").slice(0, 20) || null;
+  if (tags !== undefined) updates.tags = tags || null;
   if (status !== undefined) {
     updates.status = status;
     if (status === "unsubscribed") updates.unsubscribedAt = new Date();
   }
-  if (tags !== undefined) updates.tags = tags;
   const [contact] = await db.update(marketingContactsTable).set(updates).where(eq(marketingContactsTable.id, id)).returning();
   res.json(contact);
 });

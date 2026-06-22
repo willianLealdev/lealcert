@@ -32,7 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Megaphone, Users, Mail, MailOpen, Send, Upload, Plus, Trash2,
+  Megaphone, Users, Mail, MailOpen, Send, Upload, Plus, Trash2, Pencil,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
   ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy, MousePointerClick,
 } from "lucide-react";
@@ -769,6 +769,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
   const [page, setPage] = useState(1);
   const [emailStatusFilter, setEmailStatusFilter] = useState<EmailStatusFilter>("all");
   const [showAdd, setShowAdd] = useState(false);
+  const [editContact, setEditContact] = useState<{ id: number; name: string; email: string; phone?: string | null; tags?: string | null } | null>(null);
   const [importing, setImporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1001,6 +1002,10 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
                     Descadastrar
                   </button>
                 )}
+                <button onClick={() => setEditContact({ id: c.id, name: c.name, email: c.email, phone: c.phone, tags: c.tags })}
+                  className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors">
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
                 <button onClick={() => { if (confirm(`Remover ${c.name}?`)) deleteMutation.mutate({ id: c.id }); }}
                   className="text-destructive/70 hover:text-destructive p-1 rounded hover:bg-destructive/10 transition-colors">
                   <Trash2 className="h-3.5 w-3.5" />
@@ -1061,6 +1066,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
       </div>
 
       {showAdd && <AddContactDialog type={type} onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); invalidate(); }} toast={toast} />}
+      {editContact && <EditContactDialog contact={editContact} type={type} onClose={() => setEditContact(null)} onSaved={() => { setEditContact(null); invalidate(); }} toast={toast} />}
     </div>
   );
 }
@@ -1094,6 +1100,53 @@ function AddContactDialog({ type, onClose, onSaved, toast }: { type: "cliente" |
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button disabled={mutation.isPending} onClick={handleSave}>
             {mutation.isPending ? "Adicionando…" : "Adicionar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditContactDialog({ contact, type, onClose, onSaved, toast }: {
+  contact: { id: number; name: string; email: string; phone?: string | null; tags?: string | null };
+  type: "cliente" | "contador";
+  onClose: () => void;
+  onSaved: () => void;
+  toast: ReturnType<typeof useToast>["toast"];
+}) {
+  const isCliente = type === "cliente";
+  const [form, setForm] = useState({
+    name: contact.name,
+    email: contact.email,
+    phone: contact.phone ?? "",
+    tags: contact.tags ?? "",
+  });
+  const mutation = useUpdateMarketingContact({ mutation: {
+    onSuccess: () => { toast({ title: "Contato atualizado!" }); onSaved(); },
+    onError: () => toast({ title: "Erro ao atualizar", variant: "destructive" }),
+  }});
+
+  function set(k: keyof typeof form, v: string) { setForm(p => ({ ...p, [k]: v })); }
+
+  const handleSave = () => mutation.mutate({
+    id: contact.id,
+    data: { name: form.name, email: form.email, phone: form.phone || undefined, tags: form.tags || undefined },
+  });
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Editar {isCliente ? "Cliente" : "Contador"}</DialogTitle></DialogHeader>
+        <form className="space-y-3 py-2" onSubmit={e => { e.preventDefault(); handleSave(); }}>
+          <div className="space-y-1.5"><Label>{isCliente ? "Nome *" : "Nome / Escritório *"}</Label><Input required value={form.name} onChange={e => set("name", e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>E-mail *</Label><Input required type="email" value={form.email} onChange={e => set("email", e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Telefone</Label><Input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="(11) 99999-0000" /></div>
+          <div className="space-y-1.5"><Label>Tags / Estado (separados por vírgula)</Label><Input value={form.tags} onChange={e => set("tags", e.target.value)} placeholder="SP, vip" /></div>
+        </form>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button disabled={mutation.isPending} onClick={handleSave}>
+            {mutation.isPending ? "Salvando…" : "Salvar"}
           </Button>
         </DialogFooter>
       </DialogContent>

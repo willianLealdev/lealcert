@@ -2265,6 +2265,9 @@ export const UpdateMarketingContactParams = zod.object({
 })
 
 export const UpdateMarketingContactBody = zod.object({
+  "name": zod.string().optional(),
+  "email": zod.string().optional(),
+  "phone": zod.string().optional(),
   "status": zod.string().optional(),
   "tags": zod.string().optional()
 })

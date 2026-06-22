@@ -4302,6 +4302,12 @@ components:
     UpdateMarketingContactInput:
       type: object
       properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
         status:
           type: string
         tags:
