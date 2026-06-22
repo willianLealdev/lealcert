@@ -777,32 +777,48 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
     const token = await swGetToken(sw);
     const H: Record<string, string> = { Authorization: token, "Content-Type": "application/json" };
 
-    // Tenta os caminhos mais prováveis para obter horários disponíveis
-    // O path correto será confirmado pela Safeweb — adaptar quando documentação chegar
+    // Tenta os caminhos conhecidos e inferidos da API Safeweb
     const candidatePaths: string[] = [];
     if (idLocalParam) {
       candidatePaths.push(
+        // Padrão documentado Safeweb (Schedule module)
         `/Service/Microservice/Shared/Schedule/api/GetAvailableSchedules/${idLocalParam}`,
+        `/Service/Microservice/Shared/Schedule/api/GetAvailableSchedulesByAttendancePlaceId/${idLocalParam}`,
+        `/Service/Microservice/Shared/Schedule/api/GetSchedulesByAttendancePlaceId/${idLocalParam}`,
+        `/Service/Microservice/Shared/Schedule/api/GetListByAttendancePlaceId/${idLocalParam}`,
+        `/Service/Microservice/Shared/Schedule/api/GetListByLocalId/${idLocalParam}`,
         `/Service/Microservice/Shared/Schedule/api/GetList/${idLocalParam}`,
-        `/Service/Microservice/Shared/Schedule/api/GetByAttendancePlace/${idLocalParam}`,
+        // Padrão AttendancePlace — mesma família que funciona para locais
+        `/Service/Microservice/Shared/AttendancePlace/api/GetSchedules/${idLocalParam}`,
+        `/Service/Microservice/Shared/AttendancePlace/api/GetAvailableSchedules/${idLocalParam}`,
+        `/Service/Microservice/Shared/AttendancePlace/api/GetSchedulesByAttendancePlaceId/${idLocalParam}`,
+        // Alternativas com query param
       );
     }
     if (sw.cnpjAr) {
       candidatePaths.push(
         `/Service/Microservice/Shared/Schedule/api/GetAvailableSchedules/${sw.cnpjAr}`,
+        `/Service/Microservice/Shared/Schedule/api/GetListByCnpjAR/${sw.cnpjAr}`,
         `/Service/Microservice/Shared/Schedule/api/GetListByAR/${sw.cnpjAr}`,
+        `/Service/Microservice/Shared/Schedule/api/GetListByCnpjAr/${sw.cnpjAr}`,
       );
     }
 
     let rawResult: unknown = null;
+    let foundPath = "";
     for (const path of candidatePaths) {
       const r = await fetch(`${sw.url}${path}`, { headers: H });
-      if (r.ok) {
-        rawResult = await r.json();
-        req.log.info({ orderId: id, path }, "safeweb-slots: endpoint de horários encontrado");
-        break;
+      const bodyText = await r.text();
+      req.log.info({ orderId: id, path, status: r.status, body: bodyText.slice(0, 300) }, "safeweb-slots: tentativa");
+      if (r.ok && bodyText.trim().startsWith("[") || (r.ok && bodyText.trim().startsWith("{"))) {
+        try { rawResult = JSON.parse(bodyText); foundPath = path; break; } catch { /* ignore */ }
       }
-      req.log.debug({ orderId: id, path, status: r.status }, "safeweb-slots: path sem resposta");
+    }
+
+    if (!rawResult) {
+      req.log.warn({ orderId: id }, "safeweb-slots: nenhum path retornou dados — verifique logs INFO acima");
+    } else {
+      req.log.info({ orderId: id, foundPath }, "safeweb-slots: endpoint de horários encontrado");
     }
 
     // Normaliza resposta — pode ser array direto ou objeto com chave de lista
@@ -811,13 +827,15 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
       : ((rawResult as Record<string, unknown> | null)?.horarios
         ?? (rawResult as Record<string, unknown> | null)?.slots
         ?? (rawResult as Record<string, unknown> | null)?.schedules
+        ?? (rawResult as Record<string, unknown> | null)?.Schedules
+        ?? (rawResult as Record<string, unknown> | null)?.Horarios
         ?? []) as unknown[];
 
     const slots = (rawList as Record<string, unknown>[]).map((sl) => ({
-      idAgendamento: sl.IdAgendamento ?? sl.idAgendamento ?? sl.id,
-      dataHora: sl.DataHora ?? sl.dataHora ?? sl.Data ?? sl.data,
-      local: String(sl.Local ?? sl.local ?? sl.NomeLocal ?? sl.nomeLocal ?? ""),
-      disponivel: sl.Disponivel ?? sl.disponivel ?? true,
+      idAgendamento: sl.IdAgendamento ?? sl.idAgendamento ?? sl.Id ?? sl.id,
+      dataHora: sl.DataHora ?? sl.dataHora ?? sl.Data ?? sl.data ?? sl.DateTime ?? sl.dateTime,
+      local: String(sl.Local ?? sl.local ?? sl.NomeLocal ?? sl.nomeLocal ?? sl.Nome ?? ""),
+      disponivel: sl.Disponivel ?? sl.disponivel ?? sl.Available ?? sl.available ?? true,
     })).filter(sl => sl.dataHora);
 
     res.json({ slots });

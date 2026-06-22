@@ -1016,8 +1016,10 @@ export default function OrderDetail() {
       setPixData(null);
       toast({
         title: "✅ Pagamento confirmado!",
-        description: "Seu pedido foi atualizado automaticamente.",
+        description: "Carregando dados do pedido...",
       });
+      // Recarrega a página para buscar dados do provedor (Safeweb/agenda) atualizados
+      setTimeout(() => { window.location.reload(); }, 1500);
     }
     prevStatusRef.current = order.status;
   }, [order?.status]);

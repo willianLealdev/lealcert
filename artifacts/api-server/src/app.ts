@@ -82,10 +82,16 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 // General: 200 req / 15 min per IP
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path === "/api/mp/webhook" || req.path.startsWith("/api/push"),
+  skip: (req) => {
+    // Nunca limitar webhook e push
+    if (req.path === "/api/mp/webhook" || req.path.startsWith("/api/push")) return true;
+    // Não limitar usuários já autenticados (sessão válida)
+    if ((req.session as Record<string, unknown>)?.userId) return true;
+    return false;
+  },
   message: { error: "Muitas requisições. Tente novamente em alguns minutos." },
 });
 
