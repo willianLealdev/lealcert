@@ -217,7 +217,11 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
       const ws = wb.Sheets[wb.SheetNames[0]];
       records = xlsx.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
     } else {
-      records = parse(req.file.buffer.toString("utf-8"), { columns: true, skip_empty_lines: true, trim: true, bom: true }) as Record<string, string>[];
+      const text = req.file.buffer.toString("utf-8");
+      // Auto-detecta separador: ponto-e-vírgula (Excel BR) ou vírgula
+      const firstLine = text.split(/\r?\n/)[0] ?? "";
+      const delimiter = firstLine.includes(";") ? ";" : ",";
+      records = parse(text, { columns: true, skip_empty_lines: true, trim: true, bom: true, delimiter }) as Record<string, string>[];
     }
   } catch {
     res.status(400).json({ error: "Arquivo inválido. Use CSV ou XLSX." }); return;
@@ -228,15 +232,29 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
   const errors: string[] = [];
 
   for (const row of records) {
-    // Suporta colunas da planilha de Clientes (NOME/EMAIL) e de Contadores (CONTATO/E-MAIL/TELEFONE)
-    const email = String(row["E-MAIL"] ?? row["e-mail"] ?? row.email ?? row.Email ?? row.EMAIL ?? "").toLowerCase().trim();
-    const name = String(row.CONTATO ?? row.contato ?? row.NOME ?? row.nome ?? row.name ?? row.Nome ?? row.NAME ?? "").trim();
-    const rawPhone = String(row.TELEFONE ?? row.telefone ?? row.phone ?? row.Phone ?? "");
+    // Suporta: planilha exportada do sistema (Nome/Email/Telefone/Tipo),
+    // planilha de clientes (NOME/EMAIL), planilha de contadores (CONTATO/E-MAIL/TELEFONE)
+    const pick = (...keys: string[]) => {
+      for (const k of keys) if (row[k] !== undefined && row[k] !== "") return String(row[k]);
+      return "";
+    };
+
+    const email = pick("Email","email","E-MAIL","e-mail","EMAIL","E_MAIL").toLowerCase().trim();
+    const name  = pick("Nome","nome","NOME","CONTATO","contato","name","Name","NAME");
+    const rawPhone = pick("Telefone","telefone","TELEFONE","phone","Phone","PHONE");
     const phone = rawPhone.replace(/\D/g, "").slice(0, 20) || undefined;
-    const tags = row.tags ?? row.Tags ?? undefined;
+    const tags  = pick("Tags","tags","TAGS") || undefined;
+
+    // Tipo da linha pode vir do CSV (exportado) ou do campo do formulário
+    const rowType = pick("Tipo","tipo","type","Type");
+    const finalType = (rowType === "contador" || rowType === "cliente") ? rowType : contactType;
+
     if (!email || !name) { skipped++; continue; }
+
     try {
-      await db.insert(marketingContactsTable).values({ name, email, phone, tags, type: contactType }).onConflictDoNothing();
+      await db.insert(marketingContactsTable)
+        .values({ name, email, phone, tags, type: finalType })
+        .onConflictDoNothing();
       imported++;
     } catch {
       errors.push(email);
