@@ -355,7 +355,7 @@ export interface Order {
   representanteAddressNeighborhood?: string | null;
   representanteAddressCity?: string | null;
   representanteAddressState?: string | null;
-  mpPaymentId?: string | null;
+  mpPaymentId: string | null;
   garPedido?: string | null;
   garProtocolo?: string | null;
   garHashVenda?: string | null;
