@@ -176,10 +176,11 @@ router.get("/auth/lookup-cpf", async (req, res): Promise<void> => {
     }
     const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
     const result = await swConsultaCPF({ url: swUrl, username, password }, cpf, birthDate);
-    if (result.Codigo === 1 && result.NomeCompleto) {
+    logger.info({ codigo: result.Codigo, mensagem: result.Mensagem, temNome: !!result.NomeCompleto }, "lookup-cpf: resposta Safeweb");
+    if (result.NomeCompleto) {
       res.json({ found: true, nome: result.NomeCompleto });
     } else {
-      res.json({ found: false, mensagem: result.Mensagem ?? "Não encontrado" });
+      res.json({ found: false, mensagem: result.Mensagem ?? "Não encontrado", codigo: result.Codigo });
     }
   } catch (err) {
     logger.warn({ err }, "lookup-cpf: erro na consulta Safeweb");

@@ -142,7 +142,6 @@ export default function Register() {
           setCnpjState("found");
           if (data.razaoSocial) set("companyName", data.razaoSocial);
           if (data.nomeFantasia) set("companyFantasyName", data.nomeFantasia);
-          if (data.razaoSocial && !form.name) set("name", data.razaoSocial);
           if (data.cep) set("zipCode", maskCep(data.cep));
           if (data.logradouro) set("street", data.logradouro);
           if (data.numero && data.numero !== "S/N") set("addressNumber", data.numero);
