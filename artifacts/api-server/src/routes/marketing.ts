@@ -239,11 +239,23 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
       return "";
     };
 
-    const email = pick("Email","email","E-MAIL","e-mail","EMAIL","E_MAIL").toLowerCase().trim();
-    const name  = pick("Nome","nome","NOME","CONTATO","contato","name","Name","NAME");
-    const rawPhone = pick("Telefone","telefone","TELEFONE","phone","Phone","PHONE");
+    const email = pick("Email","email","E-MAIL","e-mail","EMAIL","E_MAIL","E-Mail").toLowerCase().trim();
+    const name  = pick(
+      "Nome da Empresa","nome da empresa","NOME DA EMPRESA",
+      "Nome da Assessoria","NOME DA ASSESSORIA",
+      "Razão Social","RAZÃO SOCIAL","Razao Social","RAZAO SOCIAL",
+      "Nome","nome","NOME",
+      "CONTATO","contato","Contato",
+      "name","Name","NAME",
+    );
+    const rawPhone = pick("Telefone","telefone","TELEFONE","Fone","fone","FONE","phone","Phone","PHONE","Celular","celular","CELULAR");
     const phone = rawPhone.replace(/\D/g, "").slice(0, 20) || undefined;
-    const tags  = pick("Tags","tags","TAGS") || undefined;
+    // Estado/Cidade armazenados como tags para consulta futura
+    const estado = pick("Estado","estado","ESTADO","UF","uf");
+    const cidade = pick("Cidade","cidade","CIDADE","Município","municipio");
+    const rawTags = pick("Tags","tags","TAGS");
+    const tagsArr = [rawTags, estado, cidade].filter(Boolean);
+    const tags = tagsArr.length > 0 ? tagsArr.join(", ") : undefined;
 
     // Tipo da linha pode vir do CSV (exportado) ou do campo do formulário
     const rowType = pick("Tipo","tipo","type","Type");
