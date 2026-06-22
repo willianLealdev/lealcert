@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, or } from "drizzle-orm";
+import { eq, or, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { db, usersTable, ipVerificationsTable, settingsTable } from "@workspace/db";
@@ -595,7 +595,7 @@ router.post("/auth/verify-ip", async (req, res): Promise<void> => {
     .where(
       eq(ipVerificationsTable.userId, user.id),
     )
-    .orderBy(ipVerificationsTable.createdAt)
+    .orderBy(desc(ipVerificationsTable.createdAt))
     .limit(1);
 
   if (
