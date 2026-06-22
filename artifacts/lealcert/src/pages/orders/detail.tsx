@@ -1,4 +1,5 @@
 import { useParams } from "wouter";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import {
   useGetOrder,
   useUpdateOrder,
@@ -654,17 +655,9 @@ function SchedulingDialog({
 type SwLocalItem = { id: number; titulo: string; endereco?: string; cidade?: string; estado?: string; uf?: string };
 type AgendarSelection = { idLocal: number; localNome: string; data: string; horarioInicio: string; horarioFim?: string };
 
-// Gera os próximos N dias a partir de hoje (YYYY-MM-DD)
-function getNextDays(n: number): { label: string; value: string }[] {
-  const days: { label: string; value: string }[] = [];
-  for (let i = 0; i < n; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    const value = d.toISOString().split("T")[0];
-    const label = i === 0 ? "Hoje" : d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
-    days.push({ label, value });
-  }
-  return days;
+// Converte Date → "YYYY-MM-DD" no fuso local
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function LocaisAndDateDialogBody({ orderId, onSelect }: {
@@ -675,10 +668,13 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
   const locais: SwLocalItem[] = (locaisData?.locais ?? []) as SwLocalItem[];
 
   const [selectedLocal, setSelectedLocal] = useState<SwLocalItem | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const [calendarDate, setCalendarDate] = useState<Date>(today);
+  const [selectedDate, setSelectedDate] = useState<string>(toLocalDateStr(today));
   const [selectedSlot, setSelectedSlot] = useState<{ horarioInicio: string; horarioFim?: string } | null>(null);
 
-  const days = getNextDays(7);
+  // Data máxima = 30 dias à frente
+  const maxDate = new Date(today); maxDate.setDate(today.getDate() + 30);
 
   // Busca slots após selecionar local E data
   const slotsParams = selectedLocal ? { idLocal: selectedLocal.id, date: selectedDate } : { idLocal: 0 };
@@ -741,7 +737,7 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           1. Escolha o local de atendimento
         </p>
-        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
           {locais.map((l) => {
             const isSelected = selectedLocal?.id === l.id;
             return (
@@ -766,36 +762,42 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
         </div>
       </div>
 
-      {/* Passo 2: Escolha a data — só aparece após escolher um local */}
+      {/* Passo 2: Calendário — só aparece após escolher um local */}
       {selectedLocal && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             2. Escolha a data
           </p>
-          <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {days.map(d => (
-              <button
-                key={d.value}
-                onClick={() => setSelectedDate(d.value)}
-                className={[
-                  "flex-shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
-                  selectedDate === d.value
-                    ? "border-primary bg-primary/10 ring-2 ring-primary text-primary"
-                    : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
-                ].join(" ")}
-              >
-                {d.label}
-              </button>
-            ))}
+          <div className="flex justify-center rounded-lg border bg-card p-2">
+            <CalendarPicker
+              mode="single"
+              selected={calendarDate}
+              onSelect={(d) => {
+                if (!d) return;
+                d.setHours(0, 0, 0, 0);
+                setCalendarDate(d);
+                setSelectedDate(toLocalDateStr(d));
+              }}
+              disabled={(d) => {
+                const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+                return dd < today || dd > maxDate;
+              }}
+              initialFocus
+            />
           </div>
+          <p className="text-center text-xs text-muted-foreground">
+            Data selecionada: <span className="font-medium text-foreground">
+              {calendarDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+            </span>
+          </p>
         </div>
       )}
 
-      {/* Passo 3: Horários disponíveis — só aparece após escolher local e data */}
+      {/* Passo 3: Horários disponíveis */}
       {selectedLocal && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            3. Escolha o horário disponível
+            3. Horários disponíveis
           </p>
 
           {slotsLoading && (
@@ -813,15 +815,10 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
           )}
 
           {!slotsLoading && !slotsError && slots.length === 0 && (
-            <div className="flex flex-col items-center gap-3 py-5 text-center rounded-lg border border-dashed bg-muted/30">
-              <AlertCircle className="h-7 w-7 text-muted-foreground/50" />
-              <div>
-                <p className="text-sm font-medium">Nenhum horário disponível</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Não há horários disponíveis para este local nesta data.<br />
-                  Tente outra data ou outro local.
-                </p>
-              </div>
+            <div className="flex flex-col items-center gap-2 py-4 text-center rounded-lg border border-dashed bg-muted/30">
+              <AlertCircle className="h-6 w-6 text-muted-foreground/50" />
+              <p className="text-sm font-medium">Nenhum horário disponível</p>
+              <p className="text-xs text-muted-foreground">Nenhum horário livre nesta data. Escolha outro dia.</p>
               <Button variant="outline" size="sm" onClick={() => refetchSlots()}>
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 Atualizar
@@ -830,25 +827,23 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
           )}
 
           {!slotsLoading && slots.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+            <div className="grid grid-cols-3 gap-2">
               {slots.map((sl, i) => {
                 const isSelected = selectedSlot?.horarioInicio === sl.horarioInicio;
-                const label = sl.horarioFim ? `${sl.horarioInicio} – ${sl.horarioFim}` : sl.horarioInicio;
+                const label = sl.horarioFim ? `${sl.horarioInicio}\n${sl.horarioFim}` : sl.horarioInicio;
                 return (
                   <button
                     key={`${i}-${sl.horarioInicio}`}
-                    onClick={() => !sl.bloqueado && setSelectedSlot({ horarioInicio: sl.horarioInicio, horarioFim: sl.horarioFim })}
-                    disabled={sl.bloqueado}
+                    onClick={() => setSelectedSlot({ horarioInicio: sl.horarioInicio, horarioFim: sl.horarioFim })}
                     className={[
-                      "rounded-lg border p-2.5 text-center text-sm transition-all",
-                      sl.bloqueado
-                        ? "border-border bg-muted/50 text-muted-foreground opacity-50 cursor-not-allowed"
-                        : isSelected
-                          ? "border-primary bg-primary/10 ring-2 ring-primary font-semibold"
-                          : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
+                      "rounded-lg border p-2 text-center text-xs leading-tight transition-all",
+                      isSelected
+                        ? "border-primary bg-primary/10 ring-2 ring-primary font-semibold text-primary"
+                        : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer",
                     ].join(" ")}
                   >
-                    {label}
+                    <span className="block font-semibold">{sl.horarioInicio}</span>
+                    {sl.horarioFim && <span className="block text-muted-foreground">{sl.horarioFim}</span>}
                   </button>
                 );
               })}

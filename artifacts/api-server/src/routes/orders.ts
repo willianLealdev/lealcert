@@ -720,13 +720,13 @@ router.get("/orders/:id/safeweb-locais", requireAuth, async (req, res): Promise<
   if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const [s] = await db.select().from(settingsTable).limit(1);
-  const isHomol = s?.safewebAmbiente === "homologacao";
-  const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
-  const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
-  const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
+  // Agenda só funciona em homologação — sempre preferir credenciais de homologação
+  const username = s?.safewebUsernameHomologacao ?? s?.safewebUsername;
+  const password = s?.safewebPasswordHomologacao ?? s?.safewebPassword;
+  const rawUrl = s?.safewebUrlHomologacao ?? s?.safewebUrl;
 
   if (!username || !password || !rawUrl) {
-    res.status(503).json({ error: "Credenciais Safeweb não configuradas" }); return;
+    res.status(503).json({ error: "Credenciais Safeweb (homologação) não configuradas" }); return;
   }
 
   try {
@@ -775,13 +775,13 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
   }
 
   const [s] = await db.select().from(settingsTable).limit(1);
-  const isHomol = s?.safewebAmbiente === "homologacao";
-  const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
-  const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
-  const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
+  // Agenda só funciona em homologação — sempre preferir credenciais de homologação
+  const username = s?.safewebUsernameHomologacao ?? s?.safewebUsername;
+  const password = s?.safewebPasswordHomologacao ?? s?.safewebPassword;
+  const rawUrl = s?.safewebUrlHomologacao ?? s?.safewebUrl;
 
   if (!username || !password || !rawUrl) {
-    res.status(503).json({ error: "Credenciais Safeweb não configuradas" }); return;
+    res.status(503).json({ error: "Credenciais Safeweb (homologação) não configuradas" }); return;
   }
 
   const idLocalParam = req.query.idLocal ? parseInt(String(req.query.idLocal), 10) : null;
@@ -818,7 +818,7 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
     // Resposta: { localAtendimentoId, data, atendimentos: [{horarioInicio, horarioFim, bloqueado, agendado}] }
     const atendimentos = (Array.isArray(raw?.atendimentos) ? raw.atendimentos : []) as Record<string, unknown>[];
     const slots = atendimentos
-      .filter(a => !a.bloqueado)
+      .filter(a => !a.bloqueado && !a.agendado)
       .map(a => ({
         horarioInicio: String(a.horarioInicio ?? ""),
         horarioFim: String(a.horarioFim ?? ""),
