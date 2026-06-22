@@ -7,18 +7,10 @@
  */
 
 /**
- * Configuração de agenda do local Safeweb (estrutura retornada diretamente pela API Safeweb)
+ * Configuração de agenda do local Safeweb. Docs oficiais: retorna apenas {existeAgendaConfigurada: bool}
  */
 export interface SafewebConfigResult {
-  /** Dias da semana disponíveis (1=Segunda, 2=Terça, ... 7=Domingo) */
-  diasSemana?: number[];
-  /** Horário de início (HH:mm) */
-  horarioInicio?: string;
-  /** Horário de fim (HH:mm) */
-  horarioFim?: string;
-  /** Intervalo entre atendimentos em minutos */
-  intervalo?: number;
-  /** Tipos de atendimento disponíveis (ex: presencial, videoconferência) */
-  tiposAtendimento?: string[];
+  /** True se o local possui agenda configurada no sistema Safeweb */
+  existeAgendaConfigurada?: boolean;
   [key: string]: unknown;
  }

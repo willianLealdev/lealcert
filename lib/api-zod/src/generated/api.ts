@@ -913,12 +913,8 @@ export const GetSafewebConfigQueryParams = zod.object({
 })
 
 export const GetSafewebConfigResponse = zod.object({
-  "diasSemana": zod.array(zod.number()).optional().describe('Dias da semana disponíveis (1=Segunda, 2=Terça, ... 7=Domingo)'),
-  "horarioInicio": zod.string().optional().describe('Horário de início (HH:mm)'),
-  "horarioFim": zod.string().optional().describe('Horário de fim (HH:mm)'),
-  "intervalo": zod.number().optional().describe('Intervalo entre atendimentos em minutos'),
-  "tiposAtendimento": zod.array(zod.string()).optional().describe('Tipos de atendimento disponíveis (ex: presencial, videoconferência)')
-}).describe('Configuração de agenda do local Safeweb (estrutura retornada diretamente pela API Safeweb)')
+  "existeAgendaConfigurada": zod.boolean().optional().describe('True se o local possui agenda configurada no sistema Safeweb')
+}).describe('Configuração de agenda do local Safeweb. Docs oficiais: retorna apenas {existeAgendaConfigurada: bool}')
 
 
 /**
@@ -959,11 +955,12 @@ export const GetSafewebSlotsQueryParams = zod.object({
 
 export const GetSafewebSlotsResponse = zod.object({
   "slots": zod.array(zod.object({
-  "data": zod.string().optional().describe('Data do atendimento (YYYY-MM-DD) — presente quando buscado sem data específica (todos os horários disponíveis)'),
+  "data": zod.string().optional().describe('Data do atendimento (YYYY-MM-DD)'),
   "horarioInicio": zod.string().describe('Horário de início (HH:mm)'),
   "horarioFim": zod.string().describe('Horário de fim (HH:mm)'),
   "bloqueado": zod.boolean().optional(),
-  "agendado": zod.boolean().optional()
+  "agendado": zod.boolean().optional(),
+  "tipoIdentificacaoId": zod.number().optional().describe('Tipo de identificação: 0=Todos 1=Presencial 3=Videoconferência')
 }))
 })
 

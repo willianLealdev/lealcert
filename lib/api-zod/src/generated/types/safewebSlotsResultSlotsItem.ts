@@ -7,7 +7,7 @@
  */
 
 export type SafewebSlotsResultSlotsItem = {
-  /** Data do atendimento (YYYY-MM-DD) — presente quando buscado sem data específica (todos os horários disponíveis) */
+  /** Data do atendimento (YYYY-MM-DD) */
   data?: string;
   /** Horário de início (HH:mm) */
   horarioInicio: string;
@@ -15,4 +15,6 @@ export type SafewebSlotsResultSlotsItem = {
   horarioFim: string;
   bloqueado?: boolean;
   agendado?: boolean;
+  /** Tipo de identificação: 0=Todos 1=Presencial 3=Videoconferência */
+  tipoIdentificacaoId?: number;
 };

@@ -685,32 +685,44 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
   const locais: SwLocalItem[] = (locaisData?.locais ?? []) as SwLocalItem[];
 
   const [selectedLocal, setSelectedLocal] = useState<SwLocalItem | null>(null);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const [calendarDate, setCalendarDate] = useState<Date | undefined>(undefined);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedSlot, setSelectedSlot] = useState<{ horarioInicio: string; horarioFim?: string } | null>(null);
 
-  // Busca TODOS os horários disponíveis do local (sem data → Safeweb retorna tudo que existe na agenda)
-  const allSlotsParams = { idLocal: selectedLocal?.id ?? 0 };
+  // 1. Verifica se o local tem agenda configurada (existeAgendaConfigurada)
+  const configParams = { idLocal: selectedLocal?.id ?? 0 };
+  const { data: configData, isLoading: configLoading, isError: configError } = useGetSafewebConfig(
+    orderId,
+    configParams,
+    { query: { queryKey: getGetSafewebConfigQueryKey(orderId, configParams), enabled: !!selectedLocal } },
+  );
+  const temAgendaConfigurada = configData?.existeAgendaConfigurada ?? false;
+
+  // 2. Busca horários de uma data específica (só após escolher data)
+  const slotsParams = selectedLocal && selectedDate
+    ? { idLocal: selectedLocal.id, date: selectedDate }
+    : { idLocal: 0 };
   const { data: slotsData, isLoading: slotsLoading, isError: slotsError, refetch: refetchSlots } = useGetSafewebSlots(
     orderId,
-    allSlotsParams,
-    { query: { queryKey: getGetSafewebSlotsQueryKey(orderId, allSlotsParams), enabled: !!selectedLocal } },
+    slotsParams,
+    { query: { queryKey: getGetSafewebSlotsQueryKey(orderId, slotsParams), enabled: !!selectedLocal && !!selectedDate } },
   );
-  const allSlots = slotsData?.slots ?? [];
+  const slots = slotsData?.slots ?? [];
 
-  // Datas únicas disponíveis vindas da Safeweb (ex: {"2026-07-01", "2026-07-02", ...})
-  const availableDates = new Set(allSlots.map(s => s.data).filter(Boolean));
+  // Limpa slot e data quando troca de local
+  useEffect(() => {
+    setSelectedSlot(null);
+    setSelectedDate("");
+    setCalendarDate(undefined);
+    onSelect(null);
+  }, [selectedLocal]);
 
-  // Slots do dia selecionado
-  const slotsForDate = selectedDate
-    ? allSlots.filter(s => s.data === selectedDate)
-    : [];
-
-  // Limpa slot quando local ou data mudam
+  // Limpa slot quando troca de data
   useEffect(() => {
     setSelectedSlot(null);
     onSelect(null);
-  }, [selectedLocal, selectedDate]);
+  }, [selectedDate]);
 
   useEffect(() => {
     if (selectedLocal && selectedSlot && selectedDate) {
@@ -794,40 +806,33 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
         </div>
       </div>
 
-      {/* Passo 2: Calendário — só aparece após localizar os slots do local */}
+      {/* Passo 2: Calendário — aparece após confirmar que o local tem agenda configurada */}
       {selectedLocal && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             2. Escolha a data
           </p>
 
-          {slotsLoading && (
+          {/* Verificando configuração do local */}
+          {configLoading && (
             <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Buscando agenda disponível na Safeweb...
+              Verificando disponibilidade do local...
             </div>
           )}
 
-          {slotsError && (
-            <div className="space-y-2 py-2">
-              <p className="text-sm text-destructive">Erro ao buscar agenda.</p>
-              <Button variant="outline" size="sm" onClick={() => refetchSlots()}>Tentar novamente</Button>
-            </div>
-          )}
-
-          {!slotsLoading && !slotsError && availableDates.size === 0 && (
+          {!configLoading && (configError || !temAgendaConfigurada) && (
             <div className="flex flex-col items-center gap-2 py-4 text-center rounded-lg border border-dashed bg-muted/30">
               <AlertCircle className="h-6 w-6 text-muted-foreground/50" />
-              <p className="text-sm font-medium">Nenhuma data disponível</p>
-              <p className="text-xs text-muted-foreground">Este local não possui horários configurados no momento.</p>
-              <Button variant="outline" size="sm" onClick={() => refetchSlots()}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                Atualizar
-              </Button>
+              <p className="text-sm font-medium">Agenda não configurada</p>
+              <p className="text-xs text-muted-foreground">
+                Este local não possui agenda de atendimento configurada no sistema Safeweb.
+              </p>
             </div>
           )}
 
-          {!slotsLoading && !slotsError && availableDates.size > 0 && (
+          {/* Local tem agenda — exibe calendário para o usuário escolher a data */}
+          {!configLoading && temAgendaConfigurada && (
             <>
               <div className="flex justify-center rounded-lg border bg-card p-2">
                 <CalendarPicker
@@ -838,11 +843,11 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
                     d.setHours(0, 0, 0, 0);
                     setCalendarDate(d);
                     setSelectedDate(toLocalDateStr(d));
-                    setSelectedSlot(null);
                   }}
                   disabled={(d) => {
-                    // Habilita APENAS as datas que a Safeweb tem disponível — sem gerar nada
-                    return !availableDates.has(toLocalDateStr(new Date(d)));
+                    // Desabilita datas passadas — o restante fica a cargo da Safeweb
+                    const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+                    return dd < today;
                   }}
                   initialFocus
                 />
@@ -859,24 +864,42 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
         </div>
       )}
 
-      {/* Passo 3: Horários do dia selecionado */}
+      {/* Passo 3: Horários do dia selecionado — busca no sistema Safeweb */}
       {selectedLocal && selectedDate && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             3. Horários disponíveis
           </p>
 
-          {slotsForDate.length === 0 && (
+          {slotsLoading && (
+            <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Buscando horários na Safeweb...
+            </div>
+          )}
+
+          {slotsError && (
+            <div className="space-y-2 py-2">
+              <p className="text-sm text-destructive">Erro ao buscar horários.</p>
+              <Button variant="outline" size="sm" onClick={() => refetchSlots()}>Tentar novamente</Button>
+            </div>
+          )}
+
+          {!slotsLoading && !slotsError && slots.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-4 text-center rounded-lg border border-dashed bg-muted/30">
               <AlertCircle className="h-6 w-6 text-muted-foreground/50" />
               <p className="text-sm font-medium">Nenhum horário disponível nesta data</p>
               <p className="text-xs text-muted-foreground">Escolha outro dia no calendário.</p>
+              <Button variant="outline" size="sm" onClick={() => refetchSlots()}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                Atualizar
+              </Button>
             </div>
           )}
 
-          {slotsForDate.length > 0 && (
+          {!slotsLoading && !slotsError && slots.length > 0 && (
             <div className="grid grid-cols-3 gap-2">
-              {slotsForDate.map((sl, i) => {
+              {slots.map((sl, i) => {
                 const isSelected = selectedSlot?.horarioInicio === sl.horarioInicio;
                 return (
                   <button

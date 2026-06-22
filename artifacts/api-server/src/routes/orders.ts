@@ -672,10 +672,11 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
     }
 
     try {
+      // Docs oficiais: campo "data" deve ser datetime ISO completo (ex: "2024-07-24T11:00:00")
       const result = await swAgendaAgendar(sw, {
         localAtendimentoId: Number(idLocal),
         protocolo: order.safewebSolicitacaoId,
-        data: dataAgenda,
+        data: dataHora,  // datetime completo "YYYY-MM-DDTHH:mm:ss"
         ...(catalogoProdutoId ? { catalogoProdutoId } : {}),
       });
       req.log.info({ orderId: id, result }, "safeweb-agendar: resposta da API");
@@ -855,72 +856,41 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
       res.status(400).json({ error: "idLocal obrigatório para buscar horários" }); return;
     }
 
-    // Se `date` for passado → busca horários de um dia específico
-    // Se `date` NÃO for passado → busca TODOS os horários disponíveis (Safeweb retorna com campo `data` em cada slot)
-    const dateParam = req.query.date ? String(req.query.date) : null;
-    const slotsUrl = dateParam
-      ? `${sw.url}/Service/MicroService/Agenda/Agendamentos/api/Integracao/horarios/${idLocalParam}/${dateParam}`
-      : `${sw.url}/Service/MicroService/Agenda/Agendamentos/api/Integracao/horarios/${idLocalParam}`;
+    // Endpoint oficial: GET /horarios/{localAtendimentoId}/{data}
+    // A data é parte do PATH (não query). Se omitida, Safeweb retorna horários de HOJE.
+    // Resposta: { localAtendimentoId, data, atendimentos:[{horarioInicio,horarioFim,bloqueado,agendado,tipoIdentificacaoId}] }
+    const dateParam = req.query.date ? String(req.query.date) : new Date().toISOString().split("T")[0];
+    const slotsUrl = `${sw.url}/Service/MicroService/Agenda/Agendamentos/api/Integracao/horarios/${idLocalParam}/${dateParam}`;
 
     req.log.info({ orderId: id, url: slotsUrl, date: dateParam }, "safeweb-slots: chamando API");
 
     const r = await fetch(slotsUrl, { headers: H });
     const bodyText = await r.text();
-    req.log.info({ orderId: id, status: r.status, body: bodyText.slice(0, 1000) }, "safeweb-slots: resposta bruta");
+    req.log.info({ orderId: id, status: r.status, body: bodyText.slice(0, 1000) }, "safeweb-slots: resposta");
 
     if (!r.ok) {
       req.log.warn({ orderId: id, status: r.status, body: bodyText }, "safeweb-slots: API retornou erro");
       res.json({ slots: [] }); return;
     }
 
-    let raw: unknown;
-    try { raw = JSON.parse(bodyText); } catch { raw = null; }
+    let raw: Record<string, unknown> = {};
+    try { raw = JSON.parse(bodyText) as Record<string, unknown>; } catch { /* ignore */ }
 
-    // A Safeweb pode retornar dois formatos:
-    // Formato A (um dia específico):
-    //   { localAtendimentoId, data, atendimentos: [{horarioInicio, horarioFim, bloqueado, agendado}] }
-    // Formato B (todos os dias, sem data no request):
-    //   Array de { data, atendimentos: [...] }  OU  { atendimentos: [{data, horarioInicio, horarioFim, ...}] }
-    interface RawSlot { data?: string; horarioInicio?: unknown; horarioFim?: unknown; bloqueado?: unknown; agendado?: unknown; [k: string]: unknown }
-    interface RawDay  { data?: string; atendimentos?: RawSlot[]; [k: string]: unknown }
+    // Resposta: { localAtendimentoId, data, atendimentos:[{horarioInicio,horarioFim,bloqueado,agendado,tipoIdentificacaoId}] }
+    const atendimentos = (Array.isArray(raw?.atendimentos) ? raw.atendimentos : []) as Record<string, unknown>[];
+    const slots = atendimentos
+      .filter(a => !a.bloqueado && !a.agendado)
+      .map(a => ({
+        data: dateParam,
+        horarioInicio: String(a.horarioInicio ?? ""),
+        horarioFim: String(a.horarioFim ?? ""),
+        bloqueado: Boolean(a.bloqueado),
+        agendado: Boolean(a.agendado),
+        tipoIdentificacaoId: a.tipoIdentificacaoId as number | undefined,
+      }))
+      .filter(s => s.horarioInicio);
 
-    const normalizeSlot = (a: RawSlot, fallbackData?: string) => ({
-      data: String(a.data ?? fallbackData ?? ""),
-      horarioInicio: String(a.horarioInicio ?? ""),
-      horarioFim: String(a.horarioFim ?? ""),
-      bloqueado: Boolean(a.bloqueado),
-      agendado: Boolean(a.agendado),
-    });
-
-    let allSlots: ReturnType<typeof normalizeSlot>[] = [];
-
-    if (Array.isArray(raw)) {
-      // Formato B array: [{data, atendimentos:[...]}, ...]
-      for (const day of raw as RawDay[]) {
-        const dayData = String(day.data ?? "");
-        const items = Array.isArray(day.atendimentos) ? day.atendimentos : [];
-        for (const a of items) allSlots.push(normalizeSlot(a, dayData));
-      }
-    } else if (raw && typeof raw === "object") {
-      const obj = raw as RawDay;
-      const topData = String(obj.data ?? dateParam ?? "");
-      if (Array.isArray(obj.atendimentos)) {
-        for (const a of obj.atendimentos) {
-          // Cada atendimento pode ter `data` própria (formato sem data) ou herda do topo
-          allSlots.push(normalizeSlot(a, topData || undefined));
-        }
-      }
-    }
-
-    const slots = allSlots
-      .filter(s => !s.bloqueado && !s.agendado && s.horarioInicio)
-      .sort((a, b) => {
-        if (a.data < b.data) return -1;
-        if (a.data > b.data) return 1;
-        return a.horarioInicio.localeCompare(b.horarioInicio);
-      });
-
-    req.log.info({ orderId: id, totalSlots: slots.length }, "safeweb-slots: slots disponíveis");
+    req.log.info({ orderId: id, totalSlots: slots.length, date: dateParam }, "safeweb-slots: horários disponíveis");
     res.json({ slots });
   } catch (err) {
     req.log.warn({ orderId: id, err }, "safeweb-slots: erro ao listar horários");

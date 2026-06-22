@@ -3866,7 +3866,7 @@ components:
             properties:
               data:
                 type: string
-                description: "Data do atendimento (YYYY-MM-DD) — presente quando buscado sem data específica (todos os horários disponíveis)"
+                description: "Data do atendimento (YYYY-MM-DD)"
               horarioInicio:
                 type: string
                 description: "Horário de início (HH:mm)"
@@ -3877,30 +3877,17 @@ components:
                 type: boolean
               agendado:
                 type: boolean
+              tipoIdentificacaoId:
+                type: integer
+                description: "Tipo de identificação: 0=Todos 1=Presencial 3=Videoconferência"
 
     SafewebConfigResult:
       type: object
-      description: Configuração de agenda do local Safeweb (estrutura retornada diretamente pela API Safeweb)
+      description: "Configuração de agenda do local Safeweb. Docs oficiais: retorna apenas {existeAgendaConfigurada: bool}"
       properties:
-        diasSemana:
-          type: array
-          items:
-            type: integer
-          description: "Dias da semana disponíveis (1=Segunda, 2=Terça, ... 7=Domingo)"
-        horarioInicio:
-          type: string
-          description: "Horário de início (HH:mm)"
-        horarioFim:
-          type: string
-          description: "Horário de fim (HH:mm)"
-        intervalo:
-          type: integer
-          description: "Intervalo entre atendimentos em minutos"
-        tiposAtendimento:
-          type: array
-          items:
-            type: string
-          description: "Tipos de atendimento disponíveis (ex: presencial, videoconferência)"
+        existeAgendaConfigurada:
+          type: boolean
+          description: "True se o local possui agenda configurada no sistema Safeweb"
       additionalProperties: true
 
     SafewebLocaisResult:
