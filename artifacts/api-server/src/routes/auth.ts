@@ -600,11 +600,11 @@ router.post("/auth/verify-ip", async (req, res): Promise<void> => {
 
   if (
     !verification ||
-    verification.ip !== clientIp ||
     verification.code !== String(code).trim() ||
     verification.usedAt ||
     verification.expiresAt < now
   ) {
+    logger.warn({ userId: user.id, storedIp: verification?.ip, clientIp, hasCode: !!code, expired: verification ? verification.expiresAt < now : null, alreadyUsed: !!verification?.usedAt }, "verify-ip: falha na validação");
     res.status(400).json({ error: "Código inválido ou expirado. Tente fazer login novamente." });
     return;
   }
