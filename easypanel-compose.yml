@@ -20,6 +20,9 @@ services:
     pull_policy: always
     restart: unless-stopped
     stop_grace_period: 30s
+    command: >
+      sh -c "mkdir -p /app/uploads/cnh /app/uploads/cartao-cnpj /app/uploads/ficha-cadastral /app/uploads/chat-docs
+      && node --enable-source-maps ./dist/index.mjs"
     environment:
       DATABASE_URL: postgresql://postgres:Leal2024Xpto@db:5432/lealcert
       SESSION_SECRET: 21fc81ee4bf33b3ec7e768f0ffcac4172b0d0dfd46962a890e7d1d56c8024245
