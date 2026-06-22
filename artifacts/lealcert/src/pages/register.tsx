@@ -255,8 +255,8 @@ export default function Register() {
   // ── Verificação manual de CRC ──────────────────────────────────────────────
   async function handleValidateCrc() {
     const crcNorm = normalizeCrc(form.crcNumber);
-    if (!/^[A-Z]{2}\d+[A-Z0-9]$/.test(crcNorm)) {
-      toast({ title: "Formato inválido", description: "Use: UF + número + tipo. Ex: SP100000O ou SP0229510", variant: "destructive" });
+    if (crcNorm.length < 4 || !/^[A-Z]{2}/.test(crcNorm)) {
+      toast({ title: "Formato inválido", description: "Informe o CRC com UF + número + tipo. Ex: SP123456O", variant: "destructive" });
       return;
     }
     setCrcState("checking"); setCrcResult(null);

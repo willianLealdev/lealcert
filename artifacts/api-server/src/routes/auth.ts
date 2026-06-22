@@ -107,7 +107,8 @@ router.get("/auth/lookup-crc", async (req, res): Promise<void> => {
     res.json({ found: false });
     return;
   }
-  const ativo = prof.SituacaoCadastral?.toLowerCase() === "ativo";
+  const situacaoLower = prof.SituacaoCadastral?.toLowerCase() ?? "";
+  const ativo = ["ativo", "regular", "adimplente"].some(s => situacaoLower.includes(s));
   res.json({
     found: true,
     valid: ativo,
@@ -127,8 +128,7 @@ router.get("/auth/validate-crc", async (req, res): Promise<void> => {
     return;
   }
   const crcNorm = normalizeCrc(crcRaw);
-  // Aceita: 2 letras UF + pelo menos 1 dígito + letra (O/T) ou dígito final
-  if (!/^[A-Z]{2}\d+[A-Z0-9]$/.test(crcNorm)) {
+  if (crcNorm.length < 4 || !/^[A-Z]{2}/.test(crcNorm)) {
     res.status(400).json({ error: "Formato inválido. Use UF + número + tipo, ex: SP100000O" });
     return;
   }
