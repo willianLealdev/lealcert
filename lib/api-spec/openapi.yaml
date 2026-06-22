@@ -3864,6 +3864,9 @@ components:
             type: object
             required: [horarioInicio, horarioFim]
             properties:
+              data:
+                type: string
+                description: "Data do atendimento (YYYY-MM-DD) — presente quando buscado sem data específica (todos os horários disponíveis)"
               horarioInicio:
                 type: string
                 description: "Horário de início (HH:mm)"

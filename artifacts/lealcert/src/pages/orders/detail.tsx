@@ -685,46 +685,26 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
   const locais: SwLocalItem[] = (locaisData?.locais ?? []) as SwLocalItem[];
 
   const [selectedLocal, setSelectedLocal] = useState<SwLocalItem | null>(null);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const [calendarDate, setCalendarDate] = useState<Date>(today);
-  const [selectedDate, setSelectedDate] = useState<string>(toLocalDateStr(today));
+  const [calendarDate, setCalendarDate] = useState<Date | undefined>(undefined);
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedSlot, setSelectedSlot] = useState<{ horarioInicio: string; horarioFim?: string } | null>(null);
 
-  // Data máxima = fim do ano corrente (a Safeweb opera até 31/12)
-  const maxDate = new Date(today.getFullYear(), 11, 31);
-
-  // Busca configuração do local selecionado (dias/horários de atendimento)
-  const configParams = { idLocal: selectedLocal?.id ?? 0 };
-  const { data: configData } = useGetSafewebConfig(
-    orderId,
-    configParams,
-    { query: { queryKey: getGetSafewebConfigQueryKey(orderId, configParams), enabled: !!selectedLocal } },
-  );
-
-  // Dias da semana disponíveis (JS: 0=Dom…6=Sáb)
-  // Safeweb retorna campo diasSemana com ISO days (1=Seg…7=Dom) — convertemos
-  // Se não houver dado do sistema: padrão seg–sex (1–5)
-  const availableJsDays: number[] = (() => {
-    if (!configData) return [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = configData as any;
-    const dias: unknown =
-      raw.diasSemana ?? raw.DiasSemana ?? raw.diasDaSemana ?? raw.DiasDaSemana ??
-      raw.weekDays ?? raw.WeekDays ?? null;
-    if (Array.isArray(dias) && dias.length > 0) {
-      return (dias as number[]).map(swDiaToJs);
-    }
-    return [];
-  })();
-
-  // Busca slots após selecionar local E data
-  const slotsParams = selectedLocal ? { idLocal: selectedLocal.id, date: selectedDate } : { idLocal: 0 };
+  // Busca TODOS os horários disponíveis do local (sem data → Safeweb retorna tudo que existe na agenda)
+  const allSlotsParams = { idLocal: selectedLocal?.id ?? 0 };
   const { data: slotsData, isLoading: slotsLoading, isError: slotsError, refetch: refetchSlots } = useGetSafewebSlots(
     orderId,
-    slotsParams,
-    { query: { queryKey: getGetSafewebSlotsQueryKey(orderId, slotsParams), enabled: !!selectedLocal } },
+    allSlotsParams,
+    { query: { queryKey: getGetSafewebSlotsQueryKey(orderId, allSlotsParams), enabled: !!selectedLocal } },
   );
-  const slots = slotsData?.slots ?? [];
+  const allSlots = slotsData?.slots ?? [];
+
+  // Datas únicas disponíveis vindas da Safeweb (ex: {"2026-07-01", "2026-07-02", ...})
+  const availableDates = new Set(allSlots.map(s => s.data).filter(Boolean));
+
+  // Slots do dia selecionado
+  const slotsForDate = selectedDate
+    ? allSlots.filter(s => s.data === selectedDate)
+    : [];
 
   // Limpa slot quando local ou data mudam
   useEffect(() => {
@@ -733,7 +713,7 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
   }, [selectedLocal, selectedDate]);
 
   useEffect(() => {
-    if (selectedLocal && selectedSlot) {
+    if (selectedLocal && selectedSlot && selectedDate) {
       onSelect({ idLocal: selectedLocal.id, localNome: selectedLocal.titulo, data: selectedDate, horarioInicio: selectedSlot.horarioInicio, horarioFim: selectedSlot.horarioFim });
     }
   }, [selectedSlot]);
@@ -814,69 +794,32 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
         </div>
       </div>
 
-      {/* Passo 2: Calendário — só aparece após escolher um local */}
+      {/* Passo 2: Calendário — só aparece após localizar os slots do local */}
       {selectedLocal && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             2. Escolha a data
           </p>
-          <div className="flex justify-center rounded-lg border bg-card p-2">
-            <CalendarPicker
-              mode="single"
-              selected={calendarDate}
-              onSelect={(d) => {
-                if (!d) return;
-                d.setHours(0, 0, 0, 0);
-                setCalendarDate(d);
-                setSelectedDate(toLocalDateStr(d));
-              }}
-              disabled={(d) => {
-                const dd = new Date(d); dd.setHours(0, 0, 0, 0);
-                if (dd < today || dd > maxDate) return true;
-                const jsDay = dd.getDay(); // 0=Dom, 1=Seg … 6=Sáb
-                // Sempre desabilita sábado e domingo
-                if (jsDay === 0 || jsDay === 6) return true;
-                // Se o sistema retornou dias de atendimento, desabilita outros dias
-                if (availableJsDays.length > 0 && !availableJsDays.includes(jsDay)) return true;
-                return false;
-              }}
-              initialFocus
-            />
-          </div>
-          <p className="text-center text-xs text-muted-foreground">
-            Data selecionada: <span className="font-medium text-foreground">
-              {calendarDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-            </span>
-          </p>
-        </div>
-      )}
-
-      {/* Passo 3: Horários disponíveis */}
-      {selectedLocal && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            3. Horários disponíveis
-          </p>
 
           {slotsLoading && (
             <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Buscando horários disponíveis...
+              Buscando agenda disponível na Safeweb...
             </div>
           )}
 
           {slotsError && (
             <div className="space-y-2 py-2">
-              <p className="text-sm text-destructive">Erro ao buscar horários.</p>
+              <p className="text-sm text-destructive">Erro ao buscar agenda.</p>
               <Button variant="outline" size="sm" onClick={() => refetchSlots()}>Tentar novamente</Button>
             </div>
           )}
 
-          {!slotsLoading && !slotsError && slots.length === 0 && (
+          {!slotsLoading && !slotsError && availableDates.size === 0 && (
             <div className="flex flex-col items-center gap-2 py-4 text-center rounded-lg border border-dashed bg-muted/30">
               <AlertCircle className="h-6 w-6 text-muted-foreground/50" />
-              <p className="text-sm font-medium">Nenhum horário disponível</p>
-              <p className="text-xs text-muted-foreground">Nenhum horário livre nesta data. Escolha outro dia.</p>
+              <p className="text-sm font-medium">Nenhuma data disponível</p>
+              <p className="text-xs text-muted-foreground">Este local não possui horários configurados no momento.</p>
               <Button variant="outline" size="sm" onClick={() => refetchSlots()}>
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 Atualizar
@@ -884,11 +827,57 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
             </div>
           )}
 
-          {!slotsLoading && slots.length > 0 && (
+          {!slotsLoading && !slotsError && availableDates.size > 0 && (
+            <>
+              <div className="flex justify-center rounded-lg border bg-card p-2">
+                <CalendarPicker
+                  mode="single"
+                  selected={calendarDate}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    d.setHours(0, 0, 0, 0);
+                    setCalendarDate(d);
+                    setSelectedDate(toLocalDateStr(d));
+                    setSelectedSlot(null);
+                  }}
+                  disabled={(d) => {
+                    // Habilita APENAS as datas que a Safeweb tem disponível — sem gerar nada
+                    return !availableDates.has(toLocalDateStr(new Date(d)));
+                  }}
+                  initialFocus
+                />
+              </div>
+              {calendarDate && (
+                <p className="text-center text-xs text-muted-foreground">
+                  Data selecionada: <span className="font-medium text-foreground">
+                    {calendarDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                  </span>
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Passo 3: Horários do dia selecionado */}
+      {selectedLocal && selectedDate && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            3. Horários disponíveis
+          </p>
+
+          {slotsForDate.length === 0 && (
+            <div className="flex flex-col items-center gap-2 py-4 text-center rounded-lg border border-dashed bg-muted/30">
+              <AlertCircle className="h-6 w-6 text-muted-foreground/50" />
+              <p className="text-sm font-medium">Nenhum horário disponível nesta data</p>
+              <p className="text-xs text-muted-foreground">Escolha outro dia no calendário.</p>
+            </div>
+          )}
+
+          {slotsForDate.length > 0 && (
             <div className="grid grid-cols-3 gap-2">
-              {slots.map((sl, i) => {
+              {slotsForDate.map((sl, i) => {
                 const isSelected = selectedSlot?.horarioInicio === sl.horarioInicio;
-                const label = sl.horarioFim ? `${sl.horarioInicio}\n${sl.horarioFim}` : sl.horarioInicio;
                 return (
                   <button
                     key={`${i}-${sl.horarioInicio}`}

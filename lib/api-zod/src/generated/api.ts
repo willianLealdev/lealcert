@@ -959,6 +959,7 @@ export const GetSafewebSlotsQueryParams = zod.object({
 
 export const GetSafewebSlotsResponse = zod.object({
   "slots": zod.array(zod.object({
+  "data": zod.string().optional().describe('Data do atendimento (YYYY-MM-DD) — presente quando buscado sem data específica (todos os horários disponíveis)'),
   "horarioInicio": zod.string().describe('Horário de início (HH:mm)'),
   "horarioFim": zod.string().describe('Horário de fim (HH:mm)'),
   "bloqueado": zod.boolean().optional(),

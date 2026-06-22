@@ -7,6 +7,8 @@
  */
 
 export type SafewebSlotsResultSlotsItem = {
+  /** Data do atendimento (YYYY-MM-DD) — presente quando buscado sem data específica (todos os horários disponíveis) */
+  data?: string;
   /** Horário de início (HH:mm) */
   horarioInicio: string;
   /** Horário de fim (HH:mm) */
