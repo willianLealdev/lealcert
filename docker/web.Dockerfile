@@ -18,6 +18,9 @@ COPY artifacts/lealcert/ ./artifacts/lealcert/
 # Install all dependencies
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
+# Regenerate API hooks from OpenAPI spec (ensures fresh generation even if git-tracked file is stale)
+RUN pnpm --filter @workspace/api-spec run codegen
+
 # Build lib packages
 RUN pnpm run typecheck:libs
 
