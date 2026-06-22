@@ -1,10 +1,5 @@
 /**
  * usePush — manages Web Push subscription lifecycle.
- *
- * - Fetches the VAPID public key from /api/push/public-key
- * - Requests notification permission
- * - Subscribes/unsubscribes from the Push API
- * - Saves the subscription object to the backend
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -61,15 +56,27 @@ async function removeSubscription(endpoint: string): Promise<void> {
   }).catch(() => undefined);
 }
 
-/** Returns the active SW registration, or throws a user-friendly error with a 5s timeout. */
+/**
+ * Returns the active SW registration.
+ * Tries to register /sw.js if nothing is registered yet.
+ * Times out after 10s.
+ */
 async function getSwRegistration(): Promise<ServiceWorkerRegistration> {
+  // If no SW is registered yet, try to register the default one
   const registrations = await navigator.serviceWorker.getRegistrations();
   if (registrations.length === 0) {
-    throw new Error("Service Worker não registrado. Recarregue a página e tente novamente.");
+    try {
+      await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    } catch {
+      // ignore — ready() below will fail with timeout if truly unavailable
+    }
   }
 
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Tempo esgotado aguardando Service Worker. Recarregue a página.")), 5000)
+    setTimeout(
+      () => reject(new Error("Notificações indisponíveis neste dispositivo. Tente pelo app instalado ou Chrome.")),
+      10_000,
+    )
   );
 
   return Promise.race([navigator.serviceWorker.ready, timeout]);
@@ -102,15 +109,15 @@ export function usePush() {
     if (perm === "granted") {
       void (async () => {
         try {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          if (!registrations.length) return;
-          const reg = await navigator.serviceWorker.ready;
-          const existing = await reg.pushManager.getSubscription();
-          if (existing) {
-            setState(s => ({ ...s, subscribed: true }));
-          }
+          const reg = await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise<null>(resolve => setTimeout(() => resolve(null), 3000)),
+          ]);
+          if (!reg) return;
+          const existing = await (reg as ServiceWorkerRegistration).pushManager.getSubscription();
+          if (existing) setState(s => ({ ...s, subscribed: true }));
         } catch {
-          // Silently ignore — SW may not be active in dev
+          // silently ignore on init
         }
       })();
     }
@@ -120,13 +127,13 @@ export function usePush() {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
       const publicKey = await getPublicKey();
-      if (!publicKey) throw new Error("Chave VAPID não configurada no servidor.");
+      if (!publicKey) throw new Error("Chave VAPID não configurada. Contate o administrador.");
 
       const permission = await Notification.requestPermission();
       setState(s => ({ ...s, permission }));
 
       if (permission !== "granted") {
-        setState(s => ({ ...s, loading: false, error: "Permissão de notificação negada pelo navegador." }));
+        setState(s => ({ ...s, loading: false, error: "Permissão negada. Habilite nas configurações do navegador." }));
         return;
       }
 
@@ -138,9 +145,9 @@ export function usePush() {
       });
 
       const ok = await saveSubscription(sub);
-      if (!ok) throw new Error("Falha ao salvar inscrição no servidor.");
+      if (!ok) throw new Error("Falha ao registrar inscrição no servidor. Tente novamente.");
 
-      setState(s => ({ ...s, subscribed: true, loading: false }));
+      setState(s => ({ ...s, subscribed: true, loading: false, error: null }));
     } catch (err) {
       setState(s => ({ ...s, loading: false, error: (err as Error).message }));
     }
@@ -149,16 +156,21 @@ export function usePush() {
   const unsubscribe = useCallback(async () => {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      if (registrations.length > 0) {
-        const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
-        if (sub) {
-          await removeSubscription(sub.endpoint);
-          await sub.unsubscribe();
+      const regs = await navigator.serviceWorker.getRegistrations();
+      if (regs.length > 0) {
+        const reg = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 3000)),
+        ]);
+        if (reg) {
+          const sub = await (reg as ServiceWorkerRegistration).pushManager.getSubscription();
+          if (sub) {
+            await removeSubscription(sub.endpoint);
+            await sub.unsubscribe();
+          }
         }
       }
-      setState(s => ({ ...s, subscribed: false, loading: false }));
+      setState(s => ({ ...s, subscribed: false, loading: false, error: null }));
     } catch (err) {
       setState(s => ({ ...s, loading: false, error: (err as Error).message }));
     }
