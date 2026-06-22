@@ -577,6 +577,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/Certificate"
 
+  /certificates/batch-delete:
+    post:
+      operationId: batchDeleteCertificates
+      tags: [certificates]
+      summary: Delete certificates by IDs, skipping those with paid orders (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        "200":
+          description: Deletion result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted, skipped]
+                properties:
+                  deleted:
+                    type: integer
+                  skipped:
+                    type: integer
+                  skippedIds:
+                    type: array
+                    items:
+                      type: integer
+
   /certificates/batch-toggle:
     post:
       operationId: batchToggleCertificates

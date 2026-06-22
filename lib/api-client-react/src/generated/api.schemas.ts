@@ -1418,6 +1418,16 @@ export type ListCertificatesParams = {
 activeOnly?: boolean;
 };
 
+export type BatchDeleteCertificatesBody = {
+  ids: number[];
+};
+
+export type BatchDeleteCertificates200 = {
+  deleted: number;
+  skipped: number;
+  skippedIds?: number[];
+};
+
 export type BatchToggleCertificates200 = {
   updated: number;
 };

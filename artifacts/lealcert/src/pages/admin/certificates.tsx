@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListCertificates, useCreateCertificate, useUpdateCertificate, useDeleteCertificate, useGetGarProdutos, useImportSafewebCertificates, useBatchToggleCertificates } from "@workspace/api-client-react";
+import { useListCertificates, useCreateCertificate, useUpdateCertificate, useDeleteCertificate, useGetGarProdutos, useImportSafewebCertificates, useBatchToggleCertificates, useBatchDeleteCertificates } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Loader2, Link2, AlertCircle, Users, User, Download, Video, MapPin, RefreshCw, ShieldCheck, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Link2, AlertCircle, Users, User, Download, Video, MapPin, RefreshCw, ShieldCheck, Filter, CheckSquare, Square } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { getApiError } from "@/lib/api-error";
 
 const PRODUCT_OPTIONS = ["e-CPF", "e-CNPJ", "e-PF", "e-PJ"];
@@ -69,6 +70,8 @@ export default function AdminCertificates() {
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<CertForm>(EMPTY);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBatchDelete, setShowBatchDelete] = useState(false);
 
   // Filtros
   const [filterProduct, setFilterProduct] = useState("__all__");
@@ -83,6 +86,21 @@ export default function AdminCertificates() {
   const update = useUpdateCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo atualizado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const toggleActive = useUpdateCertificate({ mutation: { onSuccess: () => refetch(), onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const batchToggle = useBatchToggleCertificates({ mutation: { onSuccess: () => refetch(), onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
+  const batchDelete = useBatchDeleteCertificates({
+    mutation: {
+      onSuccess: (data) => {
+        setShowBatchDelete(false);
+        setSelectedIds(new Set());
+        refetch();
+        if (data.skipped > 0) {
+          toast({ title: `${data.deleted} excluído(s)`, description: `${data.skipped} não pôde(ram) ser excluído(s) pois possui(em) pedido(s) pago(s).` });
+        } else {
+          toast({ title: `${data.deleted} modelo(s) excluído(s).` });
+        }
+      },
+      onError: e => toast({ title: "Erro ao excluir", description: getApiError(e), variant: "destructive" }),
+    },
+  });
   const del = useDeleteCertificate({ mutation: { onSuccess: () => { toast({ title: "Modelo removido." }); setDeleteId(null); refetch(); } } });
   const importSafeweb = useImportSafewebCertificates({
     mutation: {
@@ -303,6 +321,36 @@ export default function AdminCertificates() {
         </span>
       </div>
 
+      {/* Barra de seleção em lote */}
+      {filtered.length > 0 && (
+        <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 border rounded-lg">
+          <Checkbox
+            id="select-all"
+            checked={filtered.length > 0 && filtered.every(c => selectedIds.has(c.id))}
+            onCheckedChange={v => {
+              if (v) setSelectedIds(new Set(filtered.map(c => c.id)));
+              else setSelectedIds(new Set());
+            }}
+          />
+          <label htmlFor="select-all" className="text-sm cursor-pointer select-none">
+            {selectedIds.size > 0
+              ? `${selectedIds.size} selecionado(s)`
+              : "Selecionar todos"}
+          </label>
+          {selectedIds.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="ml-auto h-7 text-xs"
+              onClick={() => setShowBatchDelete(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              Excluir {selectedIds.size} selecionado(s)
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
           <div className="col-span-full text-center py-10 text-muted-foreground">Carregando...</div>
@@ -311,8 +359,21 @@ export default function AdminCertificates() {
             {hasFilters ? "Nenhum modelo encontrado com esses filtros." : "Nenhum modelo cadastrado."}
           </div>
         ) : filtered.map(c => (
-          <Card key={c.id} className={`transition-opacity ${!c.active ? "opacity-55" : ""}`}>
-            <CardContent className="pt-5 pb-4">
+          <Card key={c.id} className={`transition-opacity relative ${!c.active ? "opacity-55" : ""} ${selectedIds.has(c.id) ? "ring-2 ring-primary" : ""}`}>
+            {/* Checkbox de seleção */}
+            <div className="absolute top-3 left-3 z-10">
+              <Checkbox
+                checked={selectedIds.has(c.id)}
+                onCheckedChange={v => {
+                  setSelectedIds(prev => {
+                    const next = new Set(prev);
+                    if (v) next.add(c.id); else next.delete(c.id);
+                    return next;
+                  });
+                }}
+              />
+            </div>
+            <CardContent className="pt-5 pb-4 pl-9">
               {/* Header: nome + toggle ativo */}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -527,6 +588,29 @@ export default function AdminCertificates() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteId !== null && del.mutate({ id: deleteId })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Remover</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de exclusão em lote */}
+      <AlertDialog open={showBatchDelete} onOpenChange={setShowBatchDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {selectedIds.size} modelo(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é irreversível. Modelos com pedidos pagos <strong>não serão excluídos</strong> e você será informado quantos foram pulados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={batchDelete.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={batchDelete.isPending}
+              onClick={() => batchDelete.mutate({ data: { ids: Array.from(selectedIds) } })}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {batchDelete.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Excluir
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

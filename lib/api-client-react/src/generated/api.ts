@@ -28,6 +28,8 @@ import type {
   AuthUser,
   BanIp200,
   BanIpBody,
+  BatchDeleteCertificates200,
+  BatchDeleteCertificatesBody,
   BatchToggleCertificates200,
   BatchToggleCertificatesInput,
   BrandingInfo,
@@ -2081,6 +2083,77 @@ export const useCreateCertificate = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateCertificateMutationOptions(options));
+    }
+
+export const getBatchDeleteCertificatesUrl = () => {
+
+
+
+
+  return `/api/certificates/batch-delete`
+}
+
+/**
+ * @summary Delete certificates by IDs, skipping those with paid orders (admin only)
+ */
+export const batchDeleteCertificates = async (batchDeleteCertificatesBody: BatchDeleteCertificatesBody, options?: RequestInit): Promise<BatchDeleteCertificates200> => {
+
+  return customFetch<BatchDeleteCertificates200>(getBatchDeleteCertificatesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      batchDeleteCertificatesBody,)
+  }
+);}
+
+
+
+
+export const getBatchDeleteCertificatesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof batchDeleteCertificates>>, TError,{data: BodyType<BatchDeleteCertificatesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof batchDeleteCertificates>>, TError,{data: BodyType<BatchDeleteCertificatesBody>}, TContext> => {
+
+const mutationKey = ['batchDeleteCertificates'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof batchDeleteCertificates>>, {data: BodyType<BatchDeleteCertificatesBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  batchDeleteCertificates(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BatchDeleteCertificatesMutationResult = NonNullable<Awaited<ReturnType<typeof batchDeleteCertificates>>>
+    export type BatchDeleteCertificatesMutationBody = BodyType<BatchDeleteCertificatesBody>
+    export type BatchDeleteCertificatesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete certificates by IDs, skipping those with paid orders (admin only)
+ */
+export const useBatchDeleteCertificates = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof batchDeleteCertificates>>, TError,{data: BodyType<BatchDeleteCertificatesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof batchDeleteCertificates>>,
+        TError,
+        {data: BodyType<BatchDeleteCertificatesBody>},
+        TContext
+      > => {
+      return useMutation(getBatchDeleteCertificatesMutationOptions(options));
     }
 
 export const getBatchToggleCertificatesUrl = () => {

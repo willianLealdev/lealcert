@@ -492,6 +492,20 @@ export const CreateCertificateBody = zod.object({
 
 
 /**
+ * @summary Delete certificates by IDs, skipping those with paid orders (admin only)
+ */
+export const BatchDeleteCertificatesBody = zod.object({
+  "ids": zod.array(zod.number())
+})
+
+export const BatchDeleteCertificatesResponse = zod.object({
+  "deleted": zod.number(),
+  "skipped": zod.number(),
+  "skippedIds": zod.array(zod.number()).optional()
+})
+
+
+/**
  * @summary Activate or deactivate all certificates matching product + issuanceType (admin only)
  */
 export const BatchToggleCertificatesBody = zod.object({

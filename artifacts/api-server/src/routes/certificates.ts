@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { eq, sql, and } from "drizzle-orm";
-import { db, certificatesTable, settingsTable } from "@workspace/db";
+import { eq, sql, and, inArray } from "drizzle-orm";
+import { db, certificatesTable, settingsTable, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { swListarProdutos, type SafewebSettings } from "../lib/safeweb";
 import { logger } from "../lib/logger";
@@ -218,6 +218,34 @@ router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> 
     return;
   }
   res.json(certRow(cert));
+});
+
+router.post("/certificates/batch-delete", requireAdmin, async (req, res): Promise<void> => {
+  const { ids } = req.body ?? {};
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ error: "ids é obrigatório." });
+    return;
+  }
+  const numericIds = ids.map(Number).filter(n => Number.isFinite(n) && n > 0);
+
+  // Descobre quais têm pedidos pagos
+  const paidOrders = await db
+    .select({ certificateId: ordersTable.certificateId })
+    .from(ordersTable)
+    .where(and(
+      inArray(ordersTable.certificateId, numericIds),
+      eq(ordersTable.status, "paid"),
+    ));
+  const blockedIds = new Set(paidOrders.map(o => o.certificateId).filter(Boolean));
+  const deletableIds = numericIds.filter(id => !blockedIds.has(id));
+
+  let deleted = 0;
+  if (deletableIds.length > 0) {
+    await db.delete(certificatesTable).where(inArray(certificatesTable.id, deletableIds));
+    deleted = deletableIds.length;
+  }
+
+  res.json({ deleted, skipped: blockedIds.size, skippedIds: Array.from(blockedIds) });
 });
 
 router.post("/certificates/batch-toggle", requireAdmin, async (req, res): Promise<void> => {
