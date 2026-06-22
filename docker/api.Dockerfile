@@ -38,10 +38,10 @@ COPY --from=builder /workspace/artifacts/api-server/migrations ./migrations
 # Install externalized runtime packages not bundled by esbuild
 RUN npm install --save nodemailer
 
-# Create non-root user and upload directory
+# Create non-root user and all upload directories
 RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 --ingroup appgroup appuser && \
-    mkdir -p uploads/chat-docs && \
+    mkdir -p uploads/chat-docs uploads/cnh uploads/cartao-cnpj uploads/ficha-cadastral && \
     chown -R appuser:appgroup /app
 
 USER appuser

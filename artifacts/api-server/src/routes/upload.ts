@@ -7,8 +7,12 @@ import { logger } from "../lib/logger";
 
 const router = Router();
 
-const CHAT_DOCS_DIR = path.resolve(process.cwd(), "uploads", "chat-docs");
-if (!fs.existsSync(CHAT_DOCS_DIR)) fs.mkdirSync(CHAT_DOCS_DIR, { recursive: true });
+const UPLOAD_BASE = path.resolve(process.cwd(), "uploads");
+// Pré-cria todos os diretórios de upload no startup para evitar falhas na primeira requisição
+for (const dir of ["chat-docs", "cnh", "cartao-cnpj", "ficha-cadastral"]) {
+  fs.mkdirSync(path.join(UPLOAD_BASE, dir), { recursive: true });
+}
+const CHAT_DOCS_DIR = path.join(UPLOAD_BASE, "chat-docs");
 
 /** Validate that a resolved file path is strictly inside the expected directory. */
 function isSafeFile(dir: string, filePath: string): boolean {
@@ -61,14 +65,16 @@ const TIPOS = ["cnh", "cartao-cnpj", "ficha-cadastral"] as const;
 type Tipo = (typeof TIPOS)[number];
 
 function makeUploadDir(tipo: Tipo) {
-  const dir = path.resolve(process.cwd(), "uploads", tipo);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const dir = path.join(UPLOAD_BASE, tipo);
+  fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
 
 function makeStorage(tipo: Tipo) {
   return multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, makeUploadDir(tipo)),
+    destination: (_req, _file, cb) => {
+      try { cb(null, makeUploadDir(tipo)); } catch (err) { cb(err as Error, ""); }
+    },
     filename: (_req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "") || ".pdf";
       const name = `${tipo}_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`;
@@ -86,7 +92,16 @@ const fileFilter = (_req: Express.Request, file: Express.Multer.File, cb: multer
 for (const tipo of TIPOS) {
   const upload = multer({ storage: makeStorage(tipo), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter });
 
-  router.post(`/upload/${tipo}`, requireAuth, upload.single("file"), (req, res): void => {
+  router.post(`/upload/${tipo}`, requireAuth, (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (err) {
+        logger.warn({ err, tipo }, `upload/${tipo}: erro no multer`);
+        res.status(400).json({ error: err.message ?? "Erro ao processar arquivo." });
+        return;
+      }
+      next();
+    });
+  }, (req, res): void => {
     if (!req.file) {
       res.status(400).json({ error: "Arquivo inválido. Envie PDF, JPG ou PNG (máx 5MB)." });
       return;
