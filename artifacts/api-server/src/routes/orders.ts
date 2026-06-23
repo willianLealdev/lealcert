@@ -673,7 +673,7 @@ router.post("/orders/:id/safeweb-cancelar", requireAdmin, async (req, res): Prom
 
   try {
     const { swCancelarSolicitacao } = await import("../lib/safeweb");
-    const result = await swCancelarSolicitacao(sw, Number(order.safewebSolicitacaoId), motivo ?? "Cancelado pelo administrador");
+    const result = await swCancelarSolicitacao(sw, String(order.safewebSolicitacaoId));
     req.log.info({ orderId: id, result }, "safeweb-cancelar: resposta da API");
 
     // Atualiza status do pedido para cancelled

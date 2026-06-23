@@ -48,6 +48,15 @@ All agenda HTTP helpers (`swAgendaGetHttp`, `swAgendaPostHttp`, `swAgendaDeleteH
 { "localAtendimentoId": 1, "data": "2024-07-23", "atendimentos": [{ "horarioInicio": "08:00", "horarioFim": "09:00", "bloqueado": false, "agendado": false }] }
 ```
 
+## CancelarSolicitacao endpoint (confirmed from official docs)
+
+- **Host**: PSS host (`h-pss.safewebpss.com.br`) — same as agenda, NOT main acsafeweb host
+- **Path**: `/Service/Microservice/Shared/Partner/api/CancelarSolicitacao`
+- **Method**: POST via `swPssPostHttp` (no `bearer` prefix — `Authorization: [TOKEN]`)
+- **Body**: `{ "Protocolo": "string", "CnpjAR": "string", "idJustificativa": 4 }`
+- `Protocolo` = `order.safewebSolicitacaoId` as string; `CnpjAR` = `settings.cnpjAr`
+- **DO NOT** use `swPost` (wrong host) or append ID to path
+
 **Why:** All agenda calls were silently going to the wrong host (`acsafeweb` instead of `pss`), returning no data. The agenda service is a completely separate microservice on a different subdomain.
 
 **How to apply:** Any code calling Safeweb agenda functions must use `swAgenda*` functions — never `swGet`/`swPost`/`swDelete` for agenda paths.

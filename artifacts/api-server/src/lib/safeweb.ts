@@ -12,7 +12,7 @@ const LOCAIS_IBGE_PATH = "/Service/Microservice/Shared/AttendancePlace/api/GetLi
 const LOCAIS_CNPJ_PATH = "/Service/Microservice/Shared/AttendancePlace/api/GetListByCnpjAR";
 const ADD_SOLICITACAO_PATH = "/Service/Microservice/Shared/Partner/api/Add";
 // Tipos de solicitação: 1=Presencial, 2=Renovação/RenovaçãoOutraAC, 3=Videoconferência, 5=EmissãoOnline
-const CANCELAR_PATH = "/Service/Microservice/Shared/Partner/api/Cancel"; // [INFERRED]
+const CANCELAR_PATH = "/Service/Microservice/Shared/Partner/api/CancelarSolicitacao";
 const BIOMETRY_VALIDATE_PATH = "/Service/Microservice/Shared/Partner/api/ValidateBiometry";
 const BIOMETRY_PSBIO_LOCAL_PATH = "/Service/Microservice/Shared/Partner/api/psbio/consulta/biometria/local";
 const BIOMETRY_PSBIO_GLOBAL_PATH = "/Service/Microservice/Shared/Partner/api/psbio/consulta/biometria/global";
@@ -148,6 +148,18 @@ async function swAgendaDeleteHttp<T>(settings: SafewebSettings, path: string): P
   if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb Agenda DELETE ${path} HTTP ${resp.status}: ${text}`); }
   return resp.json() as Promise<T>;
 }
+// POST no host PSS sem prefixo bearer (ex: CancelarSolicitacao)
+async function swPssPostHttp<T>(settings: SafewebSettings, path: string, body: unknown): Promise<T> {
+  const token = await swGetToken(settings);
+  const base = settings.agendaUrl ?? getAgendaBaseUrl(settings.url);
+  const resp = await fetch(`${base}${path}`, {
+    method: "POST",
+    headers: { "Authorization": token, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb PSS POST ${path} HTTP ${resp.status}: ${text}`); }
+  return resp.json() as Promise<T>;
+}
 
 // ── Common types ──────────────────────────────────────────────────────────────
 export interface SwResult { sucesso?: boolean; mensagem?: string; [key: string]: unknown }
@@ -258,8 +270,12 @@ export async function swAdicionarEmissaoOnline(settings: SafewebSettings, data: 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CANCELAR SOLICITAÇÃO
 // ═══════════════════════════════════════════════════════════════════════════════
-export async function swCancelarSolicitacao(settings: SafewebSettings, idSolicitacao: number, motivo?: string): Promise<SwResult> {
-  return swPost<SwResult>(settings, `${CANCELAR_PATH}/${idSolicitacao}`, { idSolicitacao, Motivo: motivo ?? "" });
+export async function swCancelarSolicitacao(settings: SafewebSettings, idSolicitacao: string, cnpjAr?: string): Promise<SwResult> {
+  return swPssPostHttp<SwResult>(settings, CANCELAR_PATH, {
+    Protocolo: idSolicitacao,
+    CnpjAR: cnpjAr ?? settings.cnpjAr ?? "",
+    idJustificativa: 4,
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -209,7 +209,7 @@ router.post("/safeweb/solicitacao/:id/cancelar", requireAuth, async (req, res): 
   if (!requireSw(sw, res)) return;
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "ID da solicitação inválido." }); return; }
-  try { res.json(await swCancelarSolicitacao(sw, id, req.body?.motivo)); }
+  try { res.json(await swCancelarSolicitacao(sw, String(id))); }
   catch (err) { handleErr(res, err, "Safeweb CancelarSolicitacao error"); }
 });
 
