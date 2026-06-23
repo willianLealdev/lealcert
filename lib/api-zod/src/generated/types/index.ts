@@ -137,6 +137,7 @@ export * from './orderEventMeta';
 export * from './orderInput';
 export * from './orderInputClientType';
 export * from './orderInputRepresentanteDocTipo';
+export * from './orderRepresentanteDocTipo';
 export * from './ordersByDay';
 export * from './orderStatus';
 export * from './orderUpdate';

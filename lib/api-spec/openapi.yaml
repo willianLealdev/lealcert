@@ -3039,6 +3039,17 @@ components:
         representanteNascimento:
           type: string
           nullable: true
+        representanteDocTipo:
+          type: string
+          nullable: true
+          enum: ["0", "1", "2", "3", "4", null]
+          description: "0=RG 1=CNH 2=Passaporte 3=RNE 4=Outro"
+        representanteDocNumero:
+          type: string
+          nullable: true
+        representanteDocEmissor:
+          type: string
+          nullable: true
         safewebSolicitacaoId:
           type: string
           nullable: true

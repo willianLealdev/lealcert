@@ -64,6 +64,9 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     // Representante Legal
     representanteCpf: o.representanteCpf,
     representanteNascimento: o.representanteNascimento,
+    representanteDocTipo: o.representanteDocTipo,
+    representanteDocNumero: o.representanteDocNumero,
+    representanteDocEmissor: o.representanteDocEmissor,
     // Safeweb
     safewebSolicitacaoId: o.safewebSolicitacaoId,
     safewebStatus: o.safewebStatus,

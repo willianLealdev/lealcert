@@ -316,6 +316,20 @@ export const OrderStatus = {
   cancelled: 'cancelled',
 } as const;
 
+/**
+ * 0=RG 1=CNH 2=Passaporte 3=RNE 4=Outro
+ */
+export type OrderRepresentanteDocTipo = typeof OrderRepresentanteDocTipo[keyof typeof OrderRepresentanteDocTipo] | null;
+
+
+export const OrderRepresentanteDocTipo = {
+  NUMBER_0: '0',
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+  NUMBER_3: '3',
+  NUMBER_4: '4',
+} as const;
+
 export interface Order {
   id: number;
   orderNumber: string;
@@ -368,6 +382,10 @@ export interface Order {
   garAgendamentoDataHora?: string | null;
   representanteCpf?: string | null;
   representanteNascimento?: string | null;
+  /** 0=RG 1=CNH 2=Passaporte 3=RNE 4=Outro */
+  representanteDocTipo?: OrderRepresentanteDocTipo;
+  representanteDocNumero?: string | null;
+  representanteDocEmissor?: string | null;
   safewebSolicitacaoId?: string | null;
   safewebStatus?: string | null;
   safewebSyncedAt?: string | null;

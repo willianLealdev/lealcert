@@ -5,6 +5,7 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { OrderRepresentanteDocTipo } from './orderRepresentanteDocTipo';
 import type { OrderStatus } from './orderStatus';
 
 export interface Order {
@@ -59,6 +60,10 @@ export interface Order {
   garAgendamentoDataHora?: string | null;
   representanteCpf?: string | null;
   representanteNascimento?: string | null;
+  /** 0=RG 1=CNH 2=Passaporte 3=RNE 4=Outro */
+  representanteDocTipo?: OrderRepresentanteDocTipo;
+  representanteDocNumero?: string | null;
+  representanteDocEmissor?: string | null;
   safewebSolicitacaoId?: string | null;
   safewebStatus?: string | null;
   safewebSyncedAt?: string | null;
