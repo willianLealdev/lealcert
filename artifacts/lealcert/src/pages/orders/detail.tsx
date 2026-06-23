@@ -1449,8 +1449,8 @@ export default function OrderDetail() {
             </CardContent>
           </Card>
 
-          {/* Dados do Representante — colapsável. Aparece para e-CPF emitido via CNPJ ou qualquer pedido com dados de representante */}
-          {(order.representanteCpf || order.representanteNascimento || order.representanteDocNumero || order.representanteAddressZipcode) && (() => {
+          {/* Dados do Representante — sempre visível, colapsável com chevron */}
+          {(() => {
             const DOC_TIPO_LABEL: Record<string, string> = { "0": "RG", "1": "CNH", "2": "Passaporte", "3": "RNE", "4": "Outro" };
             return (
               <Card>
@@ -1466,20 +1466,21 @@ export default function OrderDetail() {
                 </button>
                 {representanteOpen && (
                   <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-0 pb-4 border-t">
-                    {order.representanteCpf && <InfoRow label="CPF do Representante" value={order.representanteCpf} />}
-                    {order.representanteNascimento && <InfoRow label="Data de Nascimento" value={order.representanteNascimento} />}
-                    {order.representanteDocTipo && (
-                      <InfoRow label="Tipo de Documento" value={DOC_TIPO_LABEL[order.representanteDocTipo] ?? order.representanteDocTipo} />
-                    )}
-                    {order.representanteDocNumero && <InfoRow label="Nº do Documento" value={order.representanteDocNumero} />}
-                    {order.representanteDocEmissor && <InfoRow label="Órgão Emissor" value={order.representanteDocEmissor} />}
-                    {order.representanteAddressZipcode && <InfoRow label="CEP" value={order.representanteAddressZipcode} />}
-                    {order.representanteAddressStreet && <InfoRow label="Logradouro" value={order.representanteAddressStreet} />}
-                    {order.representanteAddressNumber && <InfoRow label="Número" value={order.representanteAddressNumber} />}
-                    {order.representanteAddressComplement && <InfoRow label="Complemento" value={order.representanteAddressComplement} />}
-                    {order.representanteAddressNeighborhood && <InfoRow label="Bairro" value={order.representanteAddressNeighborhood} />}
-                    {order.representanteAddressCity && <InfoRow label="Cidade" value={order.representanteAddressCity} />}
-                    {order.representanteAddressState && <InfoRow label="UF" value={order.representanteAddressState} />}
+                    <InfoRow label="CPF do Representante" value={order.representanteCpf} />
+                    <InfoRow label="Data de Nascimento" value={order.representanteNascimento} />
+                    <InfoRow
+                      label="Tipo de Documento"
+                      value={order.representanteDocTipo ? (DOC_TIPO_LABEL[order.representanteDocTipo] ?? order.representanteDocTipo) : null}
+                    />
+                    <InfoRow label="Nº do Documento" value={order.representanteDocNumero} />
+                    <InfoRow label="Órgão Emissor" value={order.representanteDocEmissor} />
+                    <InfoRow label="CEP" value={order.representanteAddressZipcode} />
+                    <InfoRow label="Logradouro" value={order.representanteAddressStreet} />
+                    <InfoRow label="Número" value={order.representanteAddressNumber} />
+                    <InfoRow label="Complemento" value={order.representanteAddressComplement} />
+                    <InfoRow label="Bairro" value={order.representanteAddressNeighborhood} />
+                    <InfoRow label="Cidade" value={order.representanteAddressCity} />
+                    <InfoRow label="UF" value={order.representanteAddressState} />
                   </CardContent>
                 )}
               </Card>
