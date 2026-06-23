@@ -58,15 +58,17 @@ export async function garAutoComprar(orderId: number): Promise<void> {
   const ddd = phone.slice(0, 2);
   const tel = phone.slice(2);
 
+  const isCnpj = order.clientType === "cnpj";
+
   const cliente = {
     CNPJCPF: order.customerCpfCnpj,
-    NomeRazaoSocial: order.companyName ?? order.customerName,
-    NomeFantasia: order.companyName ? order.customerName : "",
+    NomeRazaoSocial: isCnpj ? (order.companyName ?? order.customerName) : order.customerName,
+    NomeFantasia: isCnpj ? (order.customerName ?? "") : "",
     Email: order.customerEmail ?? "",
     CEP: (order.addressZipcode ?? "").replace(/\D/g, ""),
     Logradouro: order.addressStreet ?? "",
     Numero: order.addressNumber ?? "",
-    Complemento: "",
+    Complemento: order.addressComplement ?? "",
     Bairro: order.addressNeighborhood ?? "",
     Cidade: order.addressCity ?? "",
     UF: order.addressState ?? "",
@@ -114,17 +116,23 @@ export async function garAutoComprar(orderId: number): Promise<void> {
     // 6. Emitir protocolo automaticamente
     if (garPedidoNumero) {
       try {
-        const cpf = order.customerCpfCnpj;
-        const cnpj = order.clientType === "cnpj" ? order.customerCpfCnpj : undefined;
+        // Para e-CPF: CPF é o próprio customerCpfCnpj; para e-CNPJ: CPF é o do representante legal
+        const cpf = isCnpj
+          ? (order.representanteCpf ?? order.customerCpfCnpj)
+          : order.customerCpfCnpj;
+        const cnpj = isCnpj ? order.customerCpfCnpj : undefined;
+        const dataNasc = isCnpj
+          ? (order.representanteNascimento ?? "")
+          : (order.customerBirthDate ?? "");
 
         const protoResult = await garEmitirProtocolo(
           settings.garApiKey,
           Number(garPedidoNumero),
           cpf,
           cnpj,
-          undefined,
+          dataNasc || undefined,
           false,
-          order.clientType === "cnpj",
+          isCnpj,
         );
 
         const success = protoResult[0]?.ErrorCode === "000";
