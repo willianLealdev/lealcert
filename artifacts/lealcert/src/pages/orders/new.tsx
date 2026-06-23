@@ -433,7 +433,14 @@ export default function NewOrder() {
         setGateStatus({ ok: true, hasPsbio: data.hasPsbio, mensagem: data.mensagem });
       },
       onError: (err: unknown) => {
-        const msg = (err as { message?: string })?.message ?? "Erro ao consultar biometria.";
+        const raw = (err as { message?: string })?.message ?? "";
+        const msg = raw.includes("422")
+          ? "CPF inválido — verifique o número digitado."
+          : (raw.includes("401") || raw.includes("403"))
+            ? "Erro de autenticação com o provedor. Tente novamente."
+            : raw.match(/HTTP 5\d\d/)
+              ? "Serviço temporariamente indisponível. Tente novamente em instantes."
+              : "Não foi possível consultar a biometria. Verifique os dados e tente novamente.";
         setGateStatus({ ok: false, mensagem: msg });
       },
     },
