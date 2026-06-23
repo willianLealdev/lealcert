@@ -1076,6 +1076,7 @@ export default function OrderDetail() {
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
   const [safewebAgendarOpen, setSafewebAgendarOpen] = useState(false);
+  const [representanteOpen, setRepresentanteOpen] = useState(false);
 
   const prevStatusRef = useRef<string | undefined>(undefined);
 
@@ -1447,6 +1448,35 @@ export default function OrderDetail() {
               <InfoRow label="Telefone" value={order.customerPhone} />
             </CardContent>
           </Card>
+
+          {/* Dados do Representante — colapsável, só exibe se houver algum dado */}
+          {(order.representanteCpf || order.representanteNascimento || order.representanteAddressZipcode) && (
+            <Card>
+              <button
+                type="button"
+                onClick={() => setRepresentanteOpen(v => !v)}
+                className="w-full flex items-center justify-between px-6 py-4 text-left rounded-t-xl hover:bg-muted/40 transition-colors"
+              >
+                <span className="text-base font-semibold">Dados do Representante</span>
+                <ChevronRight
+                  className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${representanteOpen ? "rotate-90" : ""}`}
+                />
+              </button>
+              {representanteOpen && (
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-0 pb-4 border-t">
+                  {order.representanteCpf && <InfoRow label="CPF do Representante" value={order.representanteCpf} />}
+                  {order.representanteNascimento && <InfoRow label="Data de Nascimento" value={order.representanteNascimento} />}
+                  {order.representanteAddressZipcode && <InfoRow label="CEP" value={order.representanteAddressZipcode} />}
+                  {order.representanteAddressStreet && <InfoRow label="Logradouro" value={order.representanteAddressStreet} />}
+                  {order.representanteAddressNumber && <InfoRow label="Número" value={order.representanteAddressNumber} />}
+                  {order.representanteAddressComplement && <InfoRow label="Complemento" value={order.representanteAddressComplement} />}
+                  {order.representanteAddressNeighborhood && <InfoRow label="Bairro" value={order.representanteAddressNeighborhood} />}
+                  {order.representanteAddressCity && <InfoRow label="Cidade" value={order.representanteAddressCity} />}
+                  {order.representanteAddressState && <InfoRow label="UF" value={order.representanteAddressState} />}
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           <Card>
             <CardHeader><CardTitle>Endereço</CardTitle></CardHeader>
