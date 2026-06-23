@@ -213,6 +213,44 @@ router.post("/orders/cnpj-rfb", requireAuth, async (req, res): Promise<void> => 
   }
 });
 
+// ── POST /orders/consulta-cpf — consulta nome do titular via Safeweb ──────────
+router.post("/orders/consulta-cpf", requireAuth, async (req, res): Promise<void> => {
+  const { cpf, dataNascimento } = req.body ?? {};
+  if (!cpf || !dataNascimento) {
+    res.status(400).json({ ok: false, mensagem: "CPF e data de nascimento são obrigatórios." });
+    return;
+  }
+  const [s] = await db.select().from(settingsTable).limit(1);
+  if (!s?.safewebUrl || !s?.safewebUsername || !s?.safewebPassword) {
+    res.status(503).json({ ok: false, mensagem: "Safeweb não configurado." });
+    return;
+  }
+  const sw: SafewebSettings = {
+    url: s.safewebUrl,
+    username: s.safewebUsername,
+    password: s.safewebPassword,
+    cnpjAr: s.safewebCnpjAr ?? undefined,
+  };
+  try {
+    const result = await swConsultaCPF(sw, String(cpf).replace(/\D/g, ""), String(dataNascimento));
+    if (result.Codigo === 0) {
+      const nome =
+        (typeof result.Mensagem === "string" && result.Mensagem.length > 2 ? result.Mensagem : "") ||
+        (typeof result.NomeCompleto === "string" && result.NomeCompleto.length > 2 ? result.NomeCompleto : "");
+      if (nome) {
+        res.json({ ok: true, nome });
+      } else {
+        res.json({ ok: false, mensagem: "Nome não encontrado na RFB." });
+      }
+    } else {
+      res.json({ ok: false, mensagem: result.Mensagem ?? "CPF ou data de nascimento incorretos." });
+    }
+  } catch (err) {
+    req.log.error({ err }, "consulta-cpf error");
+    res.status(502).json({ ok: false, mensagem: (err as Error).message || "Erro ao consultar Safeweb." });
+  }
+});
+
 router.get("/orders", requireAuth, async (req, res): Promise<void> => {
   const session = req.session;
   const userId = session.userId as number;

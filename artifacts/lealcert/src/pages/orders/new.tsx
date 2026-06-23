@@ -181,6 +181,7 @@ export default function NewOrder() {
 
   // ── Step ──
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
 
   // ── PSBio Gate ──
   const [psbioGatePassed, setPsbioGatePassed] = useState(false);
@@ -192,6 +193,35 @@ export default function NewOrder() {
   const gateBirthDateRef = useRef("");
   const gateNameRef = useRef("");
   const gateHasPsbioRef = useRef(false);
+  const consultaCpfAbortRef = useRef<AbortController | null>(null);
+  const repConsultaCpfAbortRef = useRef<AbortController | null>(null);
+
+  const SESSION_KEY = "lealcert_order_session";
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      if (raw) {
+        const s = JSON.parse(raw) as Record<string, unknown>;
+        if (s?.psbioGatePassed) {
+          if (s.form && typeof s.form === "object") setForm(prev => ({ ...prev, ...(s.form as object) }));
+          if (s.step === 2 || s.step === 3) setStep(s.step as 1 | 2 | 3);
+          if (typeof s.nfType === "string") setNfType(s.nfType as "fisica" | "juridica");
+          if (typeof s.pickedProduct === "string") setPickedProduct(s.pickedProduct);
+          if (typeof s.pickedIssuance === "string") setPickedIssuance(s.pickedIssuance);
+          if (typeof s.pickedValidity === "string") setPickedValidity(s.pickedValidity);
+          if (typeof s.gateCpf === "string") gateCpfRef.current = s.gateCpf;
+          if (typeof s.gateBirthDate === "string") gateBirthDateRef.current = s.gateBirthDate;
+          if (typeof s.gateName === "string") gateNameRef.current = s.gateName;
+          if (typeof s.gateHasPsbio === "boolean") gateHasPsbioRef.current = s.gateHasPsbio;
+          if (typeof s.gateInputCpf === "string") setGateInputCpf(s.gateInputCpf);
+          if (typeof s.gateInputBirthDate === "string") setGateInputBirthDate(s.gateInputBirthDate);
+          if (s.gateStatus && s.gateStatus !== "loading") setGateStatus(s.gateStatus as GateStatus);
+          setPsbioGatePassed(true);
+        }
+      }
+    } catch { /* ignore */ }
+    setSessionLoaded(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cert selector ──
   const PRODUCT_OPTIONS_ORDER = ["e-CPF", "e-CNPJ", "e-PF", "e-PJ"];
@@ -251,6 +281,22 @@ export default function NewOrder() {
 
   // ── NF type ──
   const [nfType, setNfType] = useState<"fisica" | "juridica">("fisica");
+
+  useEffect(() => {
+    if (!sessionLoaded || !psbioGatePassed) return;
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+        form, step, nfType, pickedProduct, pickedIssuance, pickedValidity,
+        psbioGatePassed,
+        gateCpf: gateCpfRef.current,
+        gateBirthDate: gateBirthDateRef.current,
+        gateName: gateNameRef.current,
+        gateHasPsbio: gateHasPsbioRef.current,
+        gateInputCpf, gateInputBirthDate,
+        gateStatus: gateStatus && gateStatus !== "loading" ? gateStatus : null,
+      }));
+    } catch { /* ignore */ }
+  }, [sessionLoaded, form, step, nfType, pickedProduct, pickedIssuance, pickedValidity, psbioGatePassed, gateInputCpf, gateInputBirthDate, gateStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Coupon ──
   const [couponCode, setCouponCode] = useState("");
@@ -351,6 +397,39 @@ export default function NewOrder() {
     }
   }, []);
 
+  const triggerConsultaCpf = useCallback(async (cpf: string, dataNascimento: string, target: "customer" | "rep") => {
+    const cpfDigits = cpf.replace(/\D/g, "");
+    if (cpfDigits.length !== 11 || dataNascimento.length !== 10) return;
+    const abortRef = target === "customer" ? consultaCpfAbortRef : repConsultaCpfAbortRef;
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    try {
+      const [d, m, y] = dataNascimento.split("/");
+      const dateIso = y && m && d ? `${y}-${m}-${d}` : dataNascimento;
+      const res = await fetch("/api/orders/consulta-cpf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ cpf: cpfDigits, dataNascimento: dateIso }),
+        signal: ac.signal,
+      });
+      const data = await res.json() as { ok: boolean; nome?: string; mensagem?: string };
+      if (ac.signal.aborted) return;
+      if (data.ok && data.nome) {
+        if (target === "customer") {
+          setForm(prev => ({ ...prev, customerName: data.nome! }));
+          setAutoFilledCustomerName(true);
+        } else {
+          setForm(prev => ({ ...prev, repName: data.nome! }));
+          setAutoFilledRepName(true);
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Derived ──
   const certsWithMeta = certificates ?? [];
 
@@ -420,6 +499,7 @@ export default function NewOrder() {
     mutation: {
       onSuccess: (data) => {
         toast({ title: "Pedido criado!", description: `Pedido ${data.orderNumber} criado com sucesso.` });
+        try { sessionStorage.removeItem("lealcert_order_session"); } catch { /* ignore */ }
         setLocation(`/orders/${data.id}`);
       },
       onError: (err: unknown) => {
@@ -948,6 +1028,10 @@ export default function NewOrder() {
                             void triggerCnpjRfb(v, form.repCpf, form.repBirthDate);
                           }
                         } else { setCnpjToQuery(""); setAutoFilledCustomerName(false); setCnpjRfbState(null); }
+                      } else {
+                        if (digits.length === 11 && form.customerBirthDate.length === 10) {
+                          void triggerConsultaCpf(digits, form.customerBirthDate, "customer");
+                        }
                       }
                     }} required placeholder={showCnpjFields ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
                     {cnpjFetching && showCnpjFields && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
@@ -962,6 +1046,9 @@ export default function NewOrder() {
                       <Input value={form.customerBirthDate} onChange={e => {
                         const v = maskDate(e.target.value);
                         set("customerBirthDate", v);
+                        if (form.customerCpfCnpj.replace(/\D/g, "").length === 11 && v.length === 10) {
+                          void triggerConsultaCpf(form.customerCpfCnpj, v, "customer");
+                        }
                       }} placeholder="dd/mm/aaaa" maxLength={10} className="pr-8" />
                       {autoFilledCustomerName && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />}
                     </div>
@@ -979,6 +1066,9 @@ export default function NewOrder() {
                     <Input value={form.companyName} onChange={e => { set("companyName", e.target.value); setAutoFilledCustomerName(false); }} required
                       className={(cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok || (!isCnpjCert && !!cnpjData?.razaoSocial)) && form.companyName ? "bg-emerald-50 border-emerald-200" : ""}
                       placeholder={cnpjFetching || cnpjRfbState === "loading" ? "Consultando..." : ""} />
+                    {cnpjError && !isCnpjCert && cnpjToQuery.length === 14 && (
+                      <p className="text-xs text-destructive mt-1">CNPJ não encontrado na Receita Federal. Preencha a razão social manualmente.</p>
+                    )}
                   </div>
                 )}
 
@@ -1113,6 +1203,9 @@ export default function NewOrder() {
                   <Input value={form.repCpf} onChange={e => {
                     const v = maskCpfCnpj(e.target.value);
                     set("repCpf", v);
+                    if (!isCnpjCert && v.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
+                      void triggerConsultaCpf(v, form.repBirthDate, "rep");
+                    }
                   }} placeholder="000.000.000-00" required />
                 </div>
                 <div className="space-y-2">
@@ -1120,6 +1213,9 @@ export default function NewOrder() {
                   <Input value={form.repBirthDate} onChange={e => {
                     const v = maskDate(e.target.value);
                     set("repBirthDate", v);
+                    if (!isCnpjCert && form.repCpf.replace(/\D/g, "").length === 11 && v.length === 10) {
+                      void triggerConsultaCpf(form.repCpf, v, "rep");
+                    }
                   }} placeholder="dd/mm/aaaa" maxLength={10} required />
                 </div>
               </div>
