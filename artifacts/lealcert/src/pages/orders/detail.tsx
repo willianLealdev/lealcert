@@ -1451,7 +1451,7 @@ export default function OrderDetail() {
 
           {/* Dados do Representante — sempre visível, colapsável com chevron */}
           {(() => {
-            const DOC_TIPO_LABEL: Record<string, string> = { "0": "RG", "1": "CNH", "2": "Passaporte", "3": "RNE", "4": "Outro" };
+            const DOC_TIPO_LABEL: Record<string, string> = { "1": "RG", "2": "RNE", "3": "Passaporte", "4": "CNH" };
             return (
               <Card>
                 <button
@@ -1474,6 +1474,9 @@ export default function OrderDetail() {
                     />
                     <InfoRow label="Nº do Documento" value={order.representanteDocNumero} />
                     <InfoRow label="Órgão Emissor" value={order.representanteDocEmissor} />
+                    <InfoRow label="CEI" value={order.customerCei} />
+                    <InfoRow label="NIS" value={order.customerNis} />
+                    <InfoRow label="PIS" value={order.inssNumber} />
                     <InfoRow label="CEP" value={order.representanteAddressZipcode} />
                     <InfoRow label="Logradouro" value={order.representanteAddressStreet} />
                     <InfoRow label="Número" value={order.representanteAddressNumber} />

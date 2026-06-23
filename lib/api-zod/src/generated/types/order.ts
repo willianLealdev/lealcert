@@ -58,6 +58,8 @@ export interface Order {
   garAgendamentoLocalHash?: string | null;
   garAgendamentoSlotHash?: string | null;
   garAgendamentoDataHora?: string | null;
+  customerCei?: string | null;
+  customerNis?: string | null;
   representanteCpf?: string | null;
   representanteNascimento?: string | null;
   /** 0=RG 1=CNH 2=Passaporte 3=RNE 4=Outro */
