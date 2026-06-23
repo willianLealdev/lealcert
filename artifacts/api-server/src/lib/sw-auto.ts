@@ -156,7 +156,7 @@ export async function swAutoComprar(orderId: number): Promise<void> {
 
     const titular: Record<string, unknown> = {
       Contato: contato,
-      Endereco: isCnpj ? enderecoRepresentante : enderecoRaiz,
+      Endereco: enderecoRepresentante,
     };
 
     body = {
@@ -188,10 +188,11 @@ export async function swAutoComprar(orderId: number): Promise<void> {
         },
       };
     } else {
+      // e-CPF Fast: endereço do titular/representante, não o de cobrança/NF
       body = {
         ...baseFields,
         Contato: contato,
-        Endereco: enderecoRaiz,
+        Endereco: enderecoRepresentante,
       };
     }
 
@@ -232,13 +233,15 @@ export async function swAutoComprar(orderId: number): Promise<void> {
         Titular: titular,
       };
     } else {
+      // e-CPF: o endereço que vai para a Safeweb é o do representante/titular,
+      // não o endereço de cobrança/NF do pedido (enderecoRaiz)
       body = {
         ...baseFields,
         Nome: order.customerName ?? "",
         CPF: ((order.representanteCpf ?? order.customerCpfCnpj) ?? "").replace(/\D/g, ""),
         DataNascimento: order.representanteNascimento ?? order.customerBirthDate ?? "",
         Contato: contato,
-        Endereco: enderecoRaiz,
+        Endereco: enderecoRepresentante,
       };
 
       if (order.representanteDocTipo && order.representanteDocTipo !== "0") {
