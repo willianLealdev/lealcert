@@ -1,0 +1,3701 @@
+APIs Gestão AR
+
+Fornecemos uma interface de programação para a comunicação em modelo REST. Através dela se pode comunicar com nosso sistema Gestão AR, assim realizando operações, consultando dados cadastrais e realizando cadastros.
+
+POST Consultar Status do Pedido
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ConsultaPedidoProtocolo
+Retorna o status atual do pedido, o pedido pode ser localizado pelo número ou pelo protocolo.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+Pedido
+3703
+
+Protocolo
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Pedido": "4126",
+    "Protocolo": ""
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ConsultaPedidoProtocolo
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Pedido": "4126",
+    "Protocolo": ""
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "HashVenda": "1dentif1c4d0r-V3nd4",
+    "Pedido": "4126",
+    "Protocolo": "1000165433",
+    "NomeVendedor": "Contador de Exemplo",
+    "DocumentoVendedor": "44053519000103",
+    "NomeCliente": "Paulo Henrique Fraga Mathias Netto",
+    "DocumentoCliente": "19999999992",
+    "Produto": "e-CPF A1 12 meses",
+    "isCNPJ": "0",
+    "isProtocolo": "1",
+    "TipoProduto": "e-CPF",
+    "TipoEmissaoProduto": 1,
+    "TipoEmissao": "Presencial",
+    "StatusPedido": "Protocolo Gerado",
+    "DataStatusPedido": "2023-06-23T15:33:04.597128",
+    "StatusFinanceiro": "Sem Financeiro",
+    "LinkFatura": "",
+    "FormaPagamento": 0,
+    "LocalAgendamento": "Independente Pré-pago - PA 10",
+    "DataHoraAgenda": "26/06/2023 09:30:00",
+    "Status": 0,
+    "Voucher": 0
+}
+                                                
+POST Consultar Extrato de Renovações
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/GarRenovacao
+Retorna os pedidos com a data de expiração dentro do prazo passado, a chamada tem como período máximo de pesquisa 30 dias.
+Contém o hashPA, análogo ao hashLocal, o hashVenda e o hashVendedor, utilizados em outras chamadas como a de salvar vendas e de agendar o atendimento.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+DataInicial
+2022-12-20
+
+DataFinal
+2023-01-01
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema",
+    "DataInicial": "2022-12-09",
+    "DataFinal": "2023-01-01"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ExtratoRenovacao
+{
+     "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+     "DataInicial": "2022-12-20",
+     "DataFinal": "2023-01-01"
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "Pedido": "IndManual",
+        "idStatusRenovacao":"1dentif1c4d0r-R3n0vaça0",
+        "StatusRenovacao":"Renovado",
+        "AutoridadeRegistro": "-",
+        "HashPA": "1dentif1c4d0r-L0cal",
+        "CodigoParceiro": "214",
+        "PontoAtendimento": "Gestão AR Soluções Tecnológicas Ltda",
+        "TelefonePontoAtendimento": "1130508000",
+        "HashVendedor": "1d3ntific4d0r-V3ndend0r",
+        "Vendedor": "Gestão AR Soluções Tecnológicas Ltda",
+        "TelefoneVendedor": "1130508000",
+        "HashProduto": "1d3ntific4d0r-Pr0duto",
+        "Produto": "e-CNPJ A1",
+        "ValorProduto": 0,
+        "Cliente": "Paulo Henrique Fraga Mathias Netto",
+        "Email": "paulo.netto@gestaoar.com.br",
+        "Telefone": "11983879912",
+        "CPF": "15000465822",
+        "CNPJ": "",
+        "RazaoSocial": "",
+        "DataEmissao": "2021-12-30T00:00:00",
+        "DataExpiracao": "2022-12-30T00:00:00"
+    }
+]
+                                                
+POST Consultar Tabela de Preços
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/TabelaPrecos
+Está chamada retorna os produtos, respeitando o tipo de emissão e tipo de produto informado, na tabela de preços associada ao parceiro indicado pelo documento.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+Documento
+90025007009
+
+CodigoTabela
+
+TipoProduto
+1
+Tipo do produto da consulta: 1 e-CPF; 2 e-CNPJ; 3 e-PF; 4 e-PJ; default \"outros\"
+
+TipoEmissao
+3
+tipo de produto: 1-Presencial; 2-Renovação online; 3-Videoconferência; 5-Emissão online;
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Documento": "10707895000152",
+    "familiaProduto": "0",
+    "validade": "12",
+    "codigoTabela": "",
+    "TipoProduto": 2, 
+    "TipoEmissao": 1 
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/TabelaPrecos
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Documento": "44053519000103",
+    "familiaProduto": "0",
+    "validade": "12",
+    "codigoTabela": "",
+    "TipoProduto": 1, 
+    "TipoEmissao": 1 
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "FamiliaProduto": 0,
+    "TipoProduto": 1,
+    "TipoEmissao": 1,
+    "Documento": "44053519000103",
+    "CodigoTabela": "",
+    "HashVendedor": "1d3ntific4d0r-V3ndend0r",
+    "HashTabela": "1d3ntific4d0r-T4bela",
+    "Validade": 12,
+    "Produtos": [
+        {
+            "HashProduto": "1d3ntific4d0r-Pr0duto",
+            "Nome": "e-CPF A1 12 meses",
+            "TipoProduto": 1,
+            "TipoProdutoDescricao": "e-CPF",
+            "TipoEmissao": 1,
+            "TipoCertificado": "A1",
+            "Validade": 12,
+            "TipoEmissaoDescricao": "Presencial",
+            "Agrupador": "A1 - Arquivo Digital",
+            "ValorVenda": 135
+        },
+        {
+            "HashProduto": "1d3ntific4d0r-Pr0duto",
+            "Nome": "e-CPF A3 12 meses",
+            "TipoProduto": 1,
+            "TipoProdutoDescricao": "e-CPF",
+            "TipoEmissao": 1,
+            "TipoCertificado": "A3",
+            "Validade": 12,
+            "TipoEmissaoDescricao": "Presencial",
+            "Agrupador": "Reaproveitar mídia/RENOVAR",
+            "ValorVenda": 135
+        },
+        {
+            "HashProduto": "1d3ntific4d0r-Pr0duto",
+            "Nome": "e-CPF A3 12 meses + Cartão",
+            "TipoProduto": 1,
+            "TipoProdutoDescricao": "e-CPF",
+            "TipoEmissao": 1,
+            "TipoCertificado": "A3",
+            "Validade": 12,
+            "TipoEmissaoDescricao": "Presencial",
+            "Agrupador": "Cartão (smart card)",
+            "ValorVenda": 184.5
+        },
+        {
+            "HashProduto": "1d3ntific4d0r-Pr0duto",
+            "Nome": "e-CPF A3 12 meses + Cartão + Leitora",
+            "TipoProduto": 1,
+            "TipoProdutoDescricao": "e-CPF",
+            "TipoEmissao": 1,
+            "TipoCertificado": "A3",
+            "Validade": 12,
+            "TipoEmissaoDescricao": "Presencial",
+            "Agrupador": "Cartão + Leitora",
+            "ValorVenda": 319.5
+        },
+        {
+            "HashProduto": "1d3ntific4d0r-Pr0duto",
+            "Nome": "e-CPF A3 12 meses + Token",
+            "TipoProduto": 1,
+            "TipoProdutoDescricao": "e-CPF",
+            "TipoEmissao": 1,
+            "TipoCertificado": "A3",
+            "Validade": 12,
+            "TipoEmissaoDescricao": "Presencial",
+            "Agrupador": "Token",
+            "ValorVenda": 319.5
+        },
+        {
+            "HashProduto": "1d3ntific4d0r-Pr0duto",
+            "Nome": "e-CPF A3 armazenado em nuvem\t",
+            "TipoProduto": 1,
+            "TipoProdutoDescricao": "e-CPF",
+            "TipoEmissao": 1,
+            "TipoCertificado": "Nuvem",
+            "Validade": 12,
+            "TipoEmissaoDescricao": "Presencial",
+            "Agrupador": "Nuvem",
+            "ValorVenda": 171
+        }
+    ]
+}
+                                                
+POST Consultar PSBio
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/PsBio
+Retorna se o CPF informado teve a biometria coletada para a emissão de um certificado anteriormente.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+CPF
+15000465822
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "CPF": "15000465822"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/PsBio
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "CPF": "15999999992"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "IsOk": true
+}
+                                                
+POST Obter Formas de Pagamento
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/FormasPagamento
+Retorna as formas de pagamento disponiveis e seus códigos, os queis são utilizados na chamada que salva a venda.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+BODY raw
+                                                  
+                                                    
+{
+"apiKey": "123ChaveDisponibilizadaPeloSistema456"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/FormasPagamento
+{
+"apiKey": "123ChaveDisponibilizadaPeloSistema456"
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "Id": 20,
+        "Nome": "BB Pay - Pix"
+    },
+    {
+        "Id": 21,
+        "Nome": "BK Bank - Cartão de Crédito"
+    },
+    {
+        "Id": 8,
+        "Nome": "Boleto Bancário"
+    },
+    {
+        "Id": 11,
+        "Nome": "Pagamento no Local"
+    },
+    {
+        "Id": 19,
+        "Nome": "Pix"
+    }
+]
+                                                
+POST Obter Tipos de emissão
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/TipoEmissao
+Retorna os tipos de emissão dos certificados cadastrados, caso seja enviado um documento os tipos no retorno serão apenas aqueles que o cadastro associado tem disponível para vender.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+documento
+10707895000152
+Documento para obter os tipos disponíveis (opcional)
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "documento": "10707895000152"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/TipoEmissao
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "documento": "10707895000152"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "TipoEmissao": 1,
+        "TipoEmissaoDescricao": "Presencial"
+    },
+    {
+        "TipoEmissao": 2,
+        "TipoEmissaoDescricao": "Renovação"
+    },
+    {
+        "TipoEmissao": 3,
+        "TipoEmissaoDescricao": "Videoconferência"
+    }
+]
+                                                
+POST Obter Tipos de produto
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/TipoProduto
+Retorna os tipos de produtos cadastrados, caso seja enviado um documento os tipos no retorno serão apenas aqueles que o cadastro associado tem disponível para vender.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+documento
+Documento para obter os tipos disponíveis (opcional)
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "documento": ""
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/TipoProduto
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "documento": "10707895000152"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "Produto": "e-CNPJ",
+        "Tipo": 2
+    },
+    {
+        "Produto": "e-CPF",
+        "Tipo": 1
+    },
+    {
+        "Produto": "e-PJ",
+        "Tipo": 4
+    }
+]
+                                                
+POST Obter Validade
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Validade
+Retorna a validade em meses dos certificados dentro dos filtros “tipo de emissão” e “tipo de produto” informados na chamada.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+tipo
+1
+Tipo do produto da consulta: 1 e-CPF; 2 e-CNPJ; 3 e-PF; 4 e-PJ; default \"outros\"
+
+tipoEmissao
+3
+tipo de produto: 1-Presencial; 2-Renovação online; 3-Videoconferência; 5-Emissão online;
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "tipo": "1",
+    "tipoEmissao": "3"
+
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Validade
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "tipo": "1",
+    "tipoEmissao": "3"
+
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "Validade": 12,
+        "ValidadeDescricao": "12 meses"
+    },
+    {
+        "Validade": 24,
+        "ValidadeDescricao": "24 meses"
+    },
+    {
+        "Validade": 36,
+        "ValidadeDescricao": "36 meses"
+    }
+]
+                                                
+POST Obter Familia de Produtos
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/FamiliaProdutos
+Retorna as famílias de produtos parametrizadas.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/FamiliaProdutos
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "Id": 1,
+        "Nome": "Certificados",
+        "Descricao": "Certfiticação Digital",
+        "TipoTela": "1"
+    }
+]
+                                                
+POST Salvar Venda
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Comprar
+Está chamada permite que possa ser realizada múltiplas vendas com outros produtos outros produtos que perteçam á mesma tabela de preços.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+HashVendedor
+1d3ntific4d0r-V3ndend0r
+Indentificador do vendedor
+
+HashTabela
+1d3ntific4d0r-T4bela
+Indentificador da tabela
+
+FormaPagamento
+8
+
+CodigoVoucher
+Codigo do voucher(opcional)
+
+CNPJCPF
+19999999992
+
+NomeRazaoSocial
+Paulo Henrique Fraga Mathias Netto
+
+NomeFantasia
+
+Email
+paulo****************.com.br
+
+CEP
+90450120
+
+Logradouro
+Rua Carlos Trein Filho
+
+Numero
+627
+
+Complemento
+Apto 302
+
+Bairro
+Mont Serrat
+
+Cidade
+Porto Alegre
+
+UF
+RS
+
+CodigoIBGE
+4314902
+
+DDD
+11
+
+Telefone
+994348567
+
+HashProduto
+1d3ntific4d0r-Pr0duto
+Indentificador do produto
+
+BODY raw
+                                                  
+                                                    
+{
+	"apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashVendedor": "1d3ntific4d0r-V3ndend0r",
+    "HashTabela": "1d3ntific4d0r-T4bela",
+    "FormaPagamento": 8,
+    "CodigoVoucher": "",
+    "Cliente":{
+    	"CNPJCPF": "19999965822",
+    	"NomeRazaoSocial": "Paulo Henrique Fraga Mathias Netto",
+    	"NomeFantasia": "",
+    	"Email": "paulo*****.com.br",
+    	"CEP": "90450120",
+    	"Logradouro": "Rua Carlos Trein Filho",
+    	"Numero": "627",
+    	"Complemento": "",
+    	"Bairro": "Mont Serrat",
+    	"Cidade": "Porto Alegre",
+    	"UF": "RS",
+    	"CodigoIBGE": "4314902",
+    	"DDD": "11",
+    	"Telefone": "994348567"
+    },
+    "Produtos": [
+        {
+            "HashProduto": "1d3ntific4d0r-Pr0duto"
+        },
+        {
+            "HashProduto": "1d3ntific4d0r-0utro-Pr0duto"
+        }
+    ]
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Comprar
+{
+	"apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashVendedor": "1d3ntific4d0r-V3ndend0r",
+    "HashTabela": "1d3ntific4d0r-T4bela",
+    "FormaPagamento": 8,
+    "CodigoVoucher": "",
+    "Cliente":{
+    	"CNPJCPF": "19999999992",
+    	"NomeRazaoSocial": "Paulo Henrique Fraga Mathias Netto",
+    	"NomeFantasia": "",
+    	"Email": "paulo***************.com.br",
+    	"CEP": "90450120",
+    	"Logradouro": "Rua Carlos Trein Filho",
+    	"Numero": "627",
+    	"Complemento": "",
+    	"Bairro": "Mont Serrat",
+    	"Cidade": "Porto Alegre",
+    	"UF": "RS",
+    	"CodigoIBGE": "4314902",
+    	"DDD": 51,
+    	"Telefone": 989999912
+    },
+    "Produtos": [
+        {
+            "HashProduto": "1d3ntific4d0r-Pr0duto"
+        },
+        {
+            "HashProduto": "1d3ntific4d0r-0utro-Pr0duto"
+        }
+    ]
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "LinkAgenda": "https://gestaoar.com.br/Comercial/Agendamento/Index",
+    "FormaPagamento": 8,
+    "FormaPagamentoDescricao": "Boleto Bancário",
+    "Status": 0,
+    "Descricao": "Pedidos - 4126 - e-CPF A1 12 meses - 4127 - e-CNPJ A1 - Exclusivo para MEI",
+    "ValorTotal": 310.5,
+    "LinkFatura": "https://checkout.safe2pay.com.br/venda?hashcode=",
+    "Produtos": [
+        {
+            "Pedido": "4126",
+            "HashProduto": "1d3ntific4d0r-Pr0duto",
+            "Nome": "e-CPF A1 12 meses",
+            "Validade": 12,
+            "ValorProduto": 135
+        },
+        {
+            "Pedido": "4127",
+            "HashProduto": "1d3ntific4d0r-Pr0duto",
+            "Nome": "e-CNPJ A1 - Exclusivo para MEI",
+            "Validade": 12,
+            "ValorProduto": 175.5
+        }
+    ]
+}
+                                                
+POST Emitir Protocolo
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/EmitirProtocolo
+PARAMS
+apiKey
+rftyudftu5kiUR8FYDD3FTYU5I354ujiol468yilgt:
+None
+
+Pedido
+34884
+None
+
+CNPJ
+32118230000146
+None
+
+CPF
+15000465822
+None
+
+DataNascimento
+1973-05-31
+None
+
+IsPossuiCNH
+true
+None
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Pedido": 4220,
+    "isCNPJ":"1", // 1 ou 0
+    "CNPJ": "32000000000146", 
+    "CPF": "15000000022",
+    "DataNascimento": "1987-12-31",
+    "IsPossuiCNH": true
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/EmitirProtocolo
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Pedido": 4220,
+    "CNPJ": "32000000000146", 
+    "CPF": "15000000022",
+    "DataNascimento": "1987-12-31",
+    "IsPossuiCNH": true
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "ErrorCode": "000",
+        "ErrorDescription": "Protocolo emitido com sucesso"
+    }
+]
+                                                
+POST Consultar Cliente por Pedido
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Pedido
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+None
+
+Pedido
+4230
+None
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Pedido": 4230
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Pedido
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Pedido": 4230
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+    {
+    "Pedido": "4230",
+    "Protocolo": "785924820",
+    "NomeVendedor": "Split com % da faixa",
+    "DocumentoVendedor": "14770399000102",
+    "NomeCliente": "Paulo Henrique Fraga Mathias Netto",
+    "DocumentoCliente": "1500000022",
+    "EmailCliente": "ph**********.com",
+    "TelefoneCliente": "11999889999",
+    "Produto": "e-CNPJ A1 12 meses",
+    "TipoProduto": "e-CNPJ",
+    "TipoEmissao": "Videoconferência",
+    "StatusPedido": "Protocolo Gerado",
+    "DataStatusPedido": "2023-09-14T13:45:19.995355",
+    "StatusFinanceiro": "Em aberto",
+    "LinkFatura": "https://checkout.safe2pay.com.br/venda?hashcode="
+}
+                                                
+POST Consultar Pedidos por Cliente
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/PedidosCliente
+Retorna todos os pedidos associados ao documento enviado, consta com o número do pedido e o protocolo( caso ele já tenha sido gerado), utilizados para chamadas como a de consultar pedidos, e o documento do parceiro que realizou a indicação da venda.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+Documento
+50008406820
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Documento": "50008406820"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/PedidosCliente
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Documento": "59999999990"
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "PossuiPedidosVinculados": true,
+    "NomeCliente": "João Victor Mathias Netto",
+    "Pedidos": [
+        {
+            "Pedido": "4105",
+            "NomeVendedor": "Gestão AR Soluções Tecnológicas Ltda",
+            "DocumentoVendedor": "19997899990152",
+            "Produto": "e-CPF A3 12 meses",
+            "TipoProduto": "e-CPF",
+            "TipoEmissao": "Videoconferência",
+            "StatusPedido": "Não Confirmada",
+            "StatusFinanceiro": "Em aberto",
+            "LinkFatura": "https://gestaoar.com.br/Comercial/Pagamentos/Pix?hashcode="
+        },
+        {
+            "Pedido": "4098",
+            "NomeVendedor": "Gestão AR Soluções Tecnológicas Ltda",
+            "DocumentoVendedor": "19997899990152",
+            "Produto": "e-CPF A3 12 meses",
+            "TipoProduto": "e-CPF",
+            "TipoEmissao": "Presencial",
+            "StatusPedido": "Não Confirmada",
+            "StatusFinanceiro": "Em aberto",
+            "LinkFatura": "https://gestaoar.com.br/Comercial/Pagamentos/Pix?hashcode="
+        },
+        {
+            "Pedido": "4097",
+            "NomeVendedor": "Gestão AR Soluções Tecnológicas Ltda",
+            "DocumentoVendedor": "19997899990152",
+            "Produto": "e-CPF A1 12 meses",
+            "TipoProduto": "e-CPF",
+            "TipoEmissao": "Presencial",
+            "StatusPedido": "Não Confirmada",
+            "StatusFinanceiro": "Em aberto",
+            "LinkFatura": "https://checkout.safe2pay.com.br/venda?hashcode="
+        }
+    ],
+    "Status": 0
+}
+                                                
+POST Consultar Pedidos do Contador
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/DadosContador
+Retorna todos os pedidos onde o parceiro é o indicador da venda, o número do pedido, o nome do cliente e o documento dele podem ser obtidos por está chamada.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+Documento
+44053519000103
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Documento": "44053519000103"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/DadosContador
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Documento": "44053519000103"
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "PossuiPedidosVinculados": true,
+    "ContadorParceiro": true,
+    "NomeContadorParceiro": "Contador de Exemplo",
+    "Pedidos": [
+        {
+            "Pedido": "4127",
+            "NomeCliente": "Paulo Henrique Fraga Mathias Netto",
+            "DocumentoCliente": "15999999922",
+            "Produto": "e-CNPJ A1 - Exclusivo para MEI",
+            "TipoProduto": "e-CNPJ",
+            "TipoEmissao": "Presencial",
+            "StatusPedido": "Emissão liberada",
+            "StatusFinanceiro": "Em aberto",
+            "LinkFatura": "https://checkout.safe2pay.com.br/venda?hashcode="
+        },
+        {
+            "Pedido": "4126",
+            "Protocolo": "1000164586",
+            "NomeCliente": "Paulo Henrique Fraga Mathias Netto",
+            "DocumentoCliente": "15999999922",
+            "Produto": "e-CPF A1 12 meses",
+            "TipoProduto": "e-CPF",
+            "TipoEmissao": "Presencial",
+            "StatusPedido": "Protocolo Gerado",
+            "DataStatusPedido": "2023-06-21T14:10:19.096055",
+            "StatusFinanceiro": "Em aberto",
+            "LinkFatura": "https://checkout.safe2pay.com.br/venda?hashcode="
+        },
+        {
+            "Pedido": "4123",
+            "NomeCliente": "Paulo Henrique Fraga Mathias Netto",
+            "DocumentoCliente": "15999999922",
+            "Produto": "e-CNPJ A1 - Exclusivo para MEI",
+            "TipoProduto": "e-CNPJ",
+            "TipoEmissao": "Presencial",
+            "StatusPedido": "Não Confirmada",
+            "StatusFinanceiro": "Expirado",
+            "LinkFatura": ""
+        },
+        {
+            "Pedido": "4122",
+            "Protocolo": "",
+            "NomeCliente": "Paulo Henrique Fraga Mathias Netto",
+            "DocumentoCliente": "15999999922",
+            "Produto": "e-CPF A1 12 meses",
+            "TipoProduto": "e-CPF",
+            "TipoEmissao": "Presencial",
+            "StatusPedido": "Estornada",
+            "DataStatusPedido": "2023-06-20T14:46:24.828368",
+            "StatusFinanceiro": "Expirado",
+            "LinkFatura": ""
+        }
+    ],
+    "Status": 0
+}
+                                                
+POST Consultar UFs com Locais de Atendimento
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/UFs
+Retorna quais unidades federativas, estados, possuem locais de atendimento cadastrados.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/UFs
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "UF": "RS"
+    },
+    {
+        "UF": "SP"
+    }
+]
+                                                
+POST Consultar Municipios com Atendimento
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Municipios
+Retorna quais municípios, cidades, os locais de atendimento estão presentes.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+UF
+SP
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "uf": "SP"
+
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Municipios
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "UF": "SP"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "UF": "SP",
+        "Municipio": "São Paulo"
+    },
+    {
+        "UF": "SP",
+        "Municipio": "Vinhedo"
+    }
+]
+                                                
+POST Consultar Locais Agendamento
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/LocaisAgendamento
+Retorna todos os locais de atendimento parametrizados para agendamento.
+Os hashPessoa e hashLocal são utilizados em outras chamadas e este é o retorno para os obtê-los.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "UF":"",
+    "munimunicipio":""
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/LocaisAgendamento
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - São Paulo - Comissão pelo valor de custo do certificado menos o valor da venda - Metas - PA 05Avenida Jabaquara, 560 , Mirandópolis",
+        "NomeLocalAgendamento": "Comissão pelo valor de custo do certificado menos o valor da venda - Metas - PA 05",
+        "NomeCidadeLocalAgendamento": "Comissão pelo valor de custo do certificado menos o valor da venda - Metas - PA 05 - São Paulo/SP",
+        "Endereco": "Avenida Jabaquara, 560 , Mirandópolis",
+        "CEP": "04045000",
+        "Municipio": "São Paulo",
+        "UF": "SP",
+        "Telefone": "(11) 987234982",
+        "Email": "pa05@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - Vinhedo - Comissão pelo valor de custo do certificado menos o valor da venda - PA 04Avenida Salvador Rotella, 50 , Centro",
+        "NomeLocalAgendamento": "Comissão pelo valor de custo do certificado menos o valor da venda - PA 04",
+        "NomeCidadeLocalAgendamento": "Comissão pelo valor de custo do certificado menos o valor da venda - PA 04 - Vinhedo/SP",
+        "Endereco": "Avenida Salvador Rotella, 50 , Centro",
+        "CEP": "13280156",
+        "Municipio": "Vinhedo",
+        "UF": "SP",
+        "Telefone": "(11) 989823498",
+        "Email": "pa04@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - Vinhedo - Comissiona pelo % Emissão CPF ou % Emissão CNPJ da faixa de comissão - Metas - PA 07Rua Brasília, 600 , Centro",
+        "NomeLocalAgendamento": "Comissiona pelo % Emissão CPF ou % Emissão CNPJ da faixa de comissão - Metas - PA 07",
+        "NomeCidadeLocalAgendamento": "Comissiona pelo % Emissão CPF ou % Emissão CNPJ da faixa de comissão - Metas - PA 07 - Vinhedo/SP",
+        "Endereco": "Rua Brasília, 600 , Centro",
+        "CEP": "13280105",
+        "Municipio": "Vinhedo",
+        "UF": "SP",
+        "Telefone": "(11) 912839218",
+        "Email": "pa07@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - São Paulo - Comissiona pelo % Emissão CPF ou % Emissão CNPJ da faixa de comissão - PA 06Rua das Rosas, 300 , Mirandópolis",
+        "NomeLocalAgendamento": "Comissiona pelo % Emissão CPF ou % Emissão CNPJ da faixa de comissão - PA 06",
+        "NomeCidadeLocalAgendamento": "Comissiona pelo % Emissão CPF ou % Emissão CNPJ da faixa de comissão - PA 06 - São Paulo/SP",
+        "Endereco": "Rua das Rosas, 300 , Mirandópolis",
+        "CEP": "04048000",
+        "Municipio": "São Paulo",
+        "UF": "SP",
+        "Telefone": "(11) 987219482",
+        "Email": "pa08@gestaoar.com.com"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - Vinhedo - Comissiona pelo Valor Emissão CPF ou Valor Emissão CNPJ da faixa de comissão - Metas - PA 09Rua João Mendes, 56 , Centro",
+        "NomeLocalAgendamento": "Comissiona pelo Valor Emissão CPF ou Valor Emissão CNPJ da faixa de comissão - Metas - PA 09",
+        "NomeCidadeLocalAgendamento": "Comissiona pelo Valor Emissão CPF ou Valor Emissão CNPJ da faixa de comissão - Metas - PA 09 - Vinhedo/SP",
+        "Endereco": "Rua João Mendes, 56 , Centro",
+        "CEP": "13280170",
+        "Municipio": "Vinhedo",
+        "UF": "SP",
+        "Telefone": "(11) 987324987",
+        "Email": "pa09@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - São Paulo - Comissiona pelo Valor Emissão CPF ou Valor Emissão CNPJ da faixa de comissão - PA 08Rua dos Heliotrópios, 500 , Mirandópolis",
+        "NomeLocalAgendamento": "Comissiona pelo Valor Emissão CPF ou Valor Emissão CNPJ da faixa de comissão - PA 08",
+        "NomeCidadeLocalAgendamento": "Comissiona pelo Valor Emissão CPF ou Valor Emissão CNPJ da faixa de comissão - PA 08 - São Paulo/SP",
+        "Endereco": "Rua dos Heliotrópios, 500 , Mirandópolis",
+        "CEP": "04049000",
+        "Municipio": "São Paulo",
+        "UF": "SP",
+        "Telefone": "(11) 980909809",
+        "Email": "pa08@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - Vinhedo - Gestão AR Soluções Tecnológicas Ltda - AR GestãoRua Manoel Matheus, 191 , Centro",
+        "NomeLocalAgendamento": "Gestão AR Soluções Tecnológicas Ltda - AR Gestão",
+        "NomeCidadeLocalAgendamento": "Gestão AR Soluções Tecnológicas Ltda - AR Gestão - Vinhedo/SP",
+        "Endereco": "Rua Manoel Matheus, 191 , Centro",
+        "CEP": "13280103",
+        "Municipio": "Vinhedo",
+        "UF": "SP",
+        "Telefone": "(11) 30508000",
+        "Email": "paulo.netto@outlook.com"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - Vinhedo - Independente - PA 03Rua Brasília, 500 , Centro",
+        "NomeLocalAgendamento": "Independente - PA 03",
+        "NomeCidadeLocalAgendamento": "Independente - PA 03 - Vinhedo/SP",
+        "Endereco": "Rua Brasília, 500 , Centro",
+        "CEP": "13280105",
+        "Municipio": "Vinhedo",
+        "UF": "SP",
+        "Telefone": "(11) 897198273",
+        "Email": "pa05@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "RS - Porto Alegre - Independente Pré-pago - PA 10Rua Carlos Trein Filho, 627 , Auxiliadora",
+        "NomeLocalAgendamento": "Independente Pré-pago - PA 10",
+        "NomeCidadeLocalAgendamento": "Independente Pré-pago - PA 10 - Porto Alegre/RS",
+        "Endereco": "Rua Carlos Trein Filho, 627 , Auxiliadora",
+        "CEP": "90450120",
+        "Municipio": "Porto Alegre",
+        "UF": "RS",
+        "Telefone": "(11) 098080808",
+        "Email": "pa20@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - Vinhedo - Split com % da faixa - PA 01Rua Riachuelo, 143 , Centro",
+        "NomeLocalAgendamento": "Split com % da faixa - PA 01",
+        "NomeCidadeLocalAgendamento": "Split com % da faixa - PA 01 - Vinhedo/SP",
+        "Endereco": "Rua Riachuelo, 143 , Centro",
+        "CEP": "13280272",
+        "Municipio": "Vinhedo",
+        "UF": "SP",
+        "Telefone": "(11) 987238971",
+        "Email": "pa02@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - São Paulo - Split com Valor Custo Ar da tabela da faixa - PA 02Rua das Orquídeas, 1500 , Mirandópolis",
+        "NomeLocalAgendamento": "Split com Valor Custo Ar da tabela da faixa - PA 02",
+        "NomeCidadeLocalAgendamento": "Split com Valor Custo Ar da tabela da faixa - PA 02 - São Paulo/SP",
+        "Endereco": "Rua das Orquídeas, 1500 , Mirandópolis",
+        "CEP": "04050000",
+        "Municipio": "São Paulo",
+        "UF": "SP",
+        "Telefone": "(11) 987234982",
+        "Email": "pa02@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "DadosPesquisa": "SP - São Paulo - Transforma comissão em bonificação/pré-pago - PA 11Avenida Doutor Altino Arantes, 500 , Vila Clementino",
+        "NomeLocalAgendamento": "Transforma comissão em bonificação/pré-pago - PA 11",
+        "NomeCidadeLocalAgendamento": "Transforma comissão em bonificação/pré-pago - PA 11 - São Paulo/SP",
+        "Endereco": "Avenida Doutor Altino Arantes, 500 , Vila Clementino",
+        "CEP": "04042000",
+        "Municipio": "São Paulo",
+        "UF": "SP",
+        "Telefone": "(11) 908098120",
+        "Email": "pa12@gestaoar.com.br"
+    }
+]
+                                                
+POST Consultar Slots do Local de Atendimento
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/LocaisAgendamentoSlot
+Retorna todos os slots parametrizados neste local de atendimento, o hashSlot é obtido nesta chamada.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+hashLocal
+1dentif1c4d0r-L0cal
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "hashLocal": "1dentif1c4d0r-L0cal"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/LocaisAgendamentoSlot
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "hashLocal": "1dentif1c4d0r-L0cal"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "NomeSlotAgendamento": "AGR Exemplo 01"
+    },
+    {
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "NomeSlotAgendamento": "AGR Exemplo 02"
+    }
+]
+                                                
+POST Consultar Códigos dos Dias
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/DiasSemana
+Retorna os códigos de identificação utilizado para os dias da semana.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/DiasSemana
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "Id": 1,
+        "Name": "Domingo"
+    },
+    {
+        "Id": 2,
+        "Name": "Segunda-feira"
+    },
+    {
+        "Id": 3,
+        "Name": "Terça-feira"
+    },
+    {
+        "Id": 4,
+        "Name": "Quarta-feira"
+    },
+    {
+        "Id": 5,
+        "Name": "Quinta-feira"
+    },
+    {
+        "Id": 6,
+        "Name": "Sexta-feira"
+    },
+    {
+        "Id": 7,
+        "Name": "Sábado"
+    }
+]
+                                                
+POST Consultar Códigos de Atendimento
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/TempoAtendimentoAgenda
+Retorna os códigos de identificação utilizado para as durações do atendimento.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/TempoAtendimentoAgenda
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "Id": 15,
+        "Name": "15 minutos"
+    },
+    {
+        "Id": 20,
+        "Name": "20 minutos"
+    },
+    {
+        "Id": 30,
+        "Name": "30 minutos"
+    },
+    {
+        "Id": 45,
+        "Name": "45 minutos"
+    },
+    {
+        "Id": 60,
+        "Name": "60 minutos"
+    }
+]
+                                                
+POST Consultar Parametrizações do Slot
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterSlotAgenda
+Retorna as parametrizações referentes à todos os dias da semana de um agente de registro especifico dividido por dias da semana.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+hashLocal
+1dentif1c4d0r-L0cal
+Identificador do agente
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "hashSlot": "1dentif1c4d0r-L0cal"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterSlotAgenda
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "hashSlot": "1dentif1c4d0r-5l0t"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "IdDiaSemana": 2,
+        "sIdDiaSemana": "Segunda-feira",
+        "HoraInicio": "0830",
+        "HoraFim": "1800",
+        "HoraInicioDescanso": "1200",
+        "HoraFimDescanso": "1300",
+        "MinutosAtendimento": 30,
+        "DataManutencao": "2023-04-06T00:00:00"
+    },
+    {
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "IdDiaSemana": 3,
+        "sIdDiaSemana": "Terça-feira",
+        "HoraInicio": "0830",
+        "HoraFim": "1800",
+        "HoraInicioDescanso": "1200",
+        "HoraFimDescanso": "1300",
+        "MinutosAtendimento": 30,
+        "DataManutencao": "2023-04-06T00:00:00"
+    },
+    {
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "IdDiaSemana": 4,
+        "sIdDiaSemana": "Quarta-feira",
+        "HoraInicio": "0830",
+        "HoraFim": "1800",
+        "HoraInicioDescanso": "1200",
+        "HoraFimDescanso": "1300",
+        "MinutosAtendimento": 30,
+        "DataManutencao": "2023-04-06T00:00:00"
+    },
+    {
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "IdDiaSemana": 5,
+        "sIdDiaSemana": "Quinta-feira",
+        "HoraInicio": "0830",
+        "HoraFim": "1800",
+        "HoraInicioDescanso": "1200",
+        "HoraFimDescanso": "1300",
+        "MinutosAtendimento": 30,
+        "DataManutencao": "2023-04-06T00:00:00"
+    },
+    {
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "IdDiaSemana": 6,
+        "sIdDiaSemana": "Sexta-feira",
+        "HoraInicio": "0830",
+        "HoraFim": "1800",
+        "HoraInicioDescanso": "1200",
+        "HoraFimDescanso": "1300",
+        "MinutosAtendimento": 30,
+        "DataManutencao": "2023-04-06T00:00:00"
+    }
+]
+                                                
+POST Consultar Parametrizações de Slot Condensado
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/CarregaAgendaConfiguracao
+Retorna as parametrizações referentes à todos os dias da semana de um agente de registro especifico entre um único par de chaves
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+hashSlot
+1dentif1c4d0r-5l0t
+Indentificador do agente
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "hashSlot": "1dentif1c4d0r-5l0t"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/CarregaAgendaConfiguracao
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "hashSlot": "1dentif1c4d0r-5l0t"
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "HashLocal": "1dentif1c4d0r-L0cal",
+    "HoraInicioDomingo": "0900",
+    "HoraFimDomingo": "2000",
+    "HoraInicioDescansoDomingo": "1200",
+    "HoraFimDescansoDomingo": "1300",
+    "MinutosAtendimentoDomingo": 20,
+    "HoraInicioSegunda": "0830",
+    "HoraFimSegunda": "1800",
+    "HoraInicioDescansoSegunda": "1200",
+    "HoraFimDescansoSegunda": "1300",
+    "MinutosAtendimentoSegunda": 30,
+    "HoraInicioTerca": "0830",
+    "HoraFimTerca": "1800",
+    "HoraInicioDescansoTerca": "1200",
+    "HoraFimDescansoTerca": "1300",
+    "MinutosAtendimentoTerca": 30,
+    "HoraInicioQuarta": "0830",
+    "HoraFimQuarta": "1800",
+    "HoraInicioDescansoQuarta": "1200",
+    "HoraFimDescansoQuarta": "1300",
+    "MinutosAtendimentoQuarta": 30,
+    "HoraInicioQuinta": "0830",
+    "HoraFimQuinta": "1800",
+    "HoraInicioDescansoQuinta": "1200",
+    "HoraFimDescansoQuinta": "1300",
+    "MinutosAtendimentoQuinta": 30,
+    "HoraInicioSexta": "0830",
+    "HoraFimSexta": "1800",
+    "HoraInicioDescansoSexta": "1200",
+    "HoraFimDescansoSexta": "1300",
+    "MinutosAtendimentoSexta": 30,
+    "MinutosAtendimentoSabado": 30,
+    "DataManutencao": "0001-01-01T00:00:00",
+}
+                                                
+POST Consultar Bloqueios do Slot
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterBloqueioSlotAgenda
+Retorna os bloqueios presentes nos agentes do ponto.
+O bloqueio possui um código de identificação, “id”, que é passado na resposta desta chamada, esse código é utilizado para a remoção do bloqueio.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+HashSlot
+1dentif1c4d0r-5l0t
+Indentificador do agente
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashSlot": "1dentif1c4d0r-5l0t"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterBloqueioSlotAgenda
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashSlot": "1dentif1c4d0r-5l0t"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "Id": 33,
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "DataInicio": "2023-06-27T00:00:00",
+        "DataFim": "2023-06-27T00:00:00",
+        "HoraInicio": "1030",
+        "iHoraInicio": 0,
+        "HoraFim": "1045",
+        "iHoraFim": 0,
+        "Observacao": "teste de API, chamada de bloqueio e consultas",
+        "DataManutencao": "0001-01-01T00:00:00"
+    },
+    {
+        "Id": 32,
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "DataInicio": "2023-06-28T00:00:00",
+        "DataFim": "2023-06-28T00:00:00",
+        "HoraInicio": "0130",
+        "iHoraInicio": 0,
+        "HoraFim": "0145",
+        "iHoraFim": 0,
+        "Observacao": "teste de API, chamada de bloqueio e consultas",
+        "DataManutencao": "0001-01-01T00:00:00"
+    },
+    {
+        "Id": 31,
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "DataInicio": "2023-06-29T00:00:00",
+        "DataFim": "2023-06-29T00:00:00",
+        "HoraInicio": "0130",
+        "iHoraInicio": 0,
+        "HoraFim": "0145",
+        "iHoraFim": 0,
+        "Observacao": "teste de API, chamada de bloqueio e consultas",
+        "DataManutencao": "0001-01-01T00:00:00"
+    }
+]
+                                                
+POST Salvar Configuração da Agenda
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/SalvarConfiguracaoAgenda
+Configura os horários referentes á semana inteira de um agente de registro.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+HashSlot
+1dentif1c4d0r-5l0t
+Indentificador do agente de registro
+
+HoraInicioDomingo
+
+HoraFimDomingo
+
+HoraInicioDescansoDomingo
+
+HoraFimDescansoDomingo
+
+MinutosAtendimentoDomingo
+
+HoraInicioSegunda
+0840
+
+HoraFimSegunda
+1840
+
+HoraInicioDescansoSegunda
+1200
+
+HoraFimDescansoSegunda
+1300
+
+MinutosAtendimentoSegunda
+20
+
+HoraInicioTerca
+0840
+
+HoraFimTerca
+1840
+
+HoraInicioDescansoTerca
+1200
+
+HoraFimDescansoTerca
+1300
+
+MinutosAtendimentoTerca
+20
+
+HoraInicioQuarta
+0840
+
+HoraFimQuarta
+1840
+
+HoraInicioDescansoQuarta
+1200
+
+HoraFimDescansoQuarta
+1300
+
+MinutosAtendimentoQuarta
+20
+
+HoraInicioQuinta
+0840
+
+HoraFimQuinta
+1840
+
+HoraInicioDescansoQuinta
+1200
+
+HoraFimDescansoQuinta
+1300
+
+MinutosAtendimentoQuinta
+20
+
+HoraInicioSexta
+0840
+
+HoraFimSexta
+1200
+
+HoraInicioDescansoSexta
+
+HoraFimDescansoSexta
+
+MinutosAtendimentoSexta
+20
+
+HoraInicioSabado
+
+HoraFimSabado
+
+HoraInicioDescansoSabado
+
+HoraFimDescansoSabado
+
+MinutosAtendimentoSabado
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashSlot": "1dentif1c4d0r-5l0t",
+    "HoraInicioDomingo": "",
+    "HoraFimDomingo": "",
+    "HoraInicioDescansoDomingo": "",
+    "HoraFimDescansoDomingo": "",
+    "MinutosAtendimentoDomingo": "",
+    "HoraInicioSegunda": "0840",
+    "HoraFimSegunda": "1840",
+    "HoraInicioDescansoSegunda": "1200",
+    "HoraFimDescansoSegunda": "1300",
+    "MinutosAtendimentoSegunda": "20",
+    "HoraInicioTerca": "0840",
+    "HoraFimTerca": "1840",
+    "HoraInicioDescansoTerca": "1200",
+    "HoraFimDescansoTerca": "1300",
+    "MinutosAtendimentoTerca": "20",
+    "HoraInicioQuarta": "0840",
+    "HoraFimQuarta": "1840",
+    "HoraInicioDescansoQuarta": "1200",
+    "HoraFimDescansoQuarta": "1300",
+    "MinutosAtendimentoQuarta": "20",
+    "HoraInicioQuinta": "0840",
+    "HoraFimQuinta": "1840",
+    "HoraInicioDescansoQuinta": "1200",
+    "HoraFimDescansoQuinta": "1300",
+    "MinutosAtendimentoQuinta": "20",
+    "HoraInicioSexta": "0840",
+    "HoraFimSexta": "1200",
+    "HoraInicioDescansoSexta": "",
+    "HoraFimDescansoSexta": "",
+    "MinutosAtendimentoSexta": "20",
+    "HoraInicioSabado": "",
+    "HoraFimSabado": "",
+    "HoraInicioDescansoSabado": "",
+    "HoraFimDescansoSabado": "",
+    "MinutosAtendimentoSabado": ""
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/SalvarConfiguracaoAgenda
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashSlot": "1dentif1c4d0r-5l0t",
+    "HoraInicioDomingo": "",
+    "HoraFimDomingo": "",
+    "HoraInicioDescansoDomingo": "",
+    "HoraFimDescansoDomingo": "",
+    "MinutosAtendimentoDomingo": "",
+    "HoraInicioSegunda": "0840",
+    "HoraFimSegunda": "1840",
+    "HoraInicioDescansoSegunda": "1200",
+    "HoraFimDescansoSegunda": "1300",
+    "MinutosAtendimentoSegunda": "20",
+    "HoraInicioTerca": "0840",
+    "HoraFimTerca": "1840",
+    "HoraInicioDescansoTerca": "1200",
+    "HoraFimDescansoTerca": "1300",
+    "MinutosAtendimentoTerca": "20",
+    "HoraInicioQuarta": "0840",
+    "HoraFimQuarta": "1840",
+    "HoraInicioDescansoQuarta": "1200",
+    "HoraFimDescansoQuarta": "1300",
+    "MinutosAtendimentoQuarta": "20",
+    "HoraInicioQuinta": "0840",
+    "HoraFimQuinta": "1840",
+    "HoraInicioDescansoQuinta": "1200",
+    "HoraFimDescansoQuinta": "1300",
+    "MinutosAtendimentoQuinta": "20",
+    "HoraInicioSexta": "0840",
+    "HoraFimSexta": "1200",
+    "HoraInicioDescansoSexta": "",
+    "HoraFimDescansoSexta": "",
+    "MinutosAtendimentoSexta": "20",
+    "HoraInicioSabado": "",
+    "HoraFimSabado": "",
+    "HoraInicioDescansoSabado": "",
+    "HoraFimDescansoSabado": "",
+    "MinutosAtendimentoSabado": ""
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[]
+                                                
+POST Configurar Slot da Agenda
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ConfigurarSlotAgenda
+Configura os horários um dia específico de um agente de registro.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+HashSlot
+1dentif1c4d0r-5l0t
+Indentificador do agente de registro
+
+IdDiaSemana
+1
+
+MinutosAtendimento
+20
+
+HoraInicio
+0900
+
+HoraFim
+2000
+
+HoraInicioDescanso
+1200
+
+HoraFimDescanso
+1300
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashSlot":"1dentif1c4d0r-5l0t",
+    "IdDiaSemana":"1",
+    "MinutosAtendimento":"20",
+    "HoraInicio": "0900",
+    "HoraFim":"2000",
+    "HoraInicioDescanso": "1200",
+    "HoraFimDescanso": "1300"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ConfigurarSlotAgenda
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashSlot":"1dentif1c4d0r-5l0t",
+    "IdDiaSemana":"1",
+    "MinutosAtendimento":"20",
+    "HoraInicio": "0900",
+    "HoraFim":"2000",
+    "HoraInicioDescanso": "1200",
+    "HoraFimDescanso": "1300"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[]
+                                                
+POST Duplicar um Slot da Agenda
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/DuplicarSlotAgenda
+Duplica as parametrizações de um agente de registro para outro.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+HashSlot
+1dentif1c4d0r-5l0t
+Indentificador do agente usado como fonte
+
+HashSlotDuplicar
+1dentif1c4d0r-0utro-5l0t
+Indentificador do agente cuja a agenda será alterado
+
+HashLocal
+1dentif1c4d0r-L0cal
+Identificador do local de atendimento
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashSlot": "1dentif1c4d0r-5l0t",
+    "HashSlotDuplicar": "1dentif1c4d0r-0utro-5l0t",
+    "HashLocal": "1dentif1c4d0r-L0cal"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/DuplicarSlotAgenda
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashSlot": "1dentif1c4d0r-5l0t",
+    "HashSlotDuplicar": "1dentif1c4d0r-0utro-5l0t",
+    "HashLocal": "1dentif1c4d0r-L0cal"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[]
+                                                
+POST Bloquear um Slot
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/BloquearSlot
+Bloqueia a agende de um agente de registro pelo período informado.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+HashSlot
+1dentif1c4d0r-5l0t
+Indentificador do agente
+
+Observacao
+teste de API, chamada de bloqueio e consultas
+
+DataInicio
+2023-06-28
+
+DataFim
+2023-06-28
+
+HoraInicio
+0130
+
+HoraFim
+0145
+
+HashLocal
+1dentif1c4d0r-L0cal
+Indentificador do local de atendimento
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashSlot": "1dentif1c4d0r-5l0t",
+    "Observacao": "teste de API, chamada de bloqueio e consultas",
+    "DataInicio":"2023-06-28",
+    "DataFim":"2023-06-28",
+    "HoraInicio":"0130",
+    "HoraFim":"0145",
+    "HashLocal": "1dentif1c4d0r-L0cal"}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/BloquearSlot
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashSlot": "1dentif1c4d0r-5l0t",
+    "Observacao": "teste de API, chamada de bloqueio e consultas",
+    "DataInicio":"2023-06-23",
+    "DataFim":"2023-06-23",
+    "HoraInicio":"1700",
+    "HoraFim":"1800",
+    "HashLocal": "1dentif1c4d0r-L0cal"
+
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[]
+                                                
+POST Desbloquear um Slot
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/DesbloquearSlot
+Exclui um bloqueio utilizando seu indentificador.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+Id
+00
+Indentificador do bloqueio
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Id": "00"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/DesbloquearSlot
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Id": "00"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[]
+                                                
+POST Consultar Disponibilidade
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterDisponibilidadeAgenda
+Retorna os os horários disponíveis para atendimento no local.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+DataInicial
+2023-06-28 00:00
+
+DataFinal
+2023-06-28 23:59
+
+HashLocal
+1dentif1c4d0r-L0cal
+Identificador do local de atendimento
+
+HashSlot
+1dentif1c4d0r-5lot
+Identificador do slot de atendimento
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "DataInicial": "2023-06-20",
+    "DataFinal": "2023-06-21",
+    "HashLocal": "1dentif1c4d0r-L0cal",
+    "HashSlot": "1dentif1c4d0r-5lot" 
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterDisponibilidadeAgenda
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "DataInicial": "2023-06-21",
+    "DataFinal": "2023-06-29",
+    "HashLocal": "1dentif1c4d0r-L0cal" 
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "Datas": [
+        {
+            "DataAgenda": "2023-06-21T00:00:00",
+            "sDataAgenda": "quarta-feira",
+            "Horarios": [
+                {
+                    "HoraInicial": "16:00",
+                    "HoraFinal": "16:30",
+                    "iHoraInicial": 1600,
+                    "iHoraFinal": 1630,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:30",
+                    "HoraFinal": "17:00",
+                    "iHoraInicial": 1630,
+                    "iHoraFinal": 1700,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:00",
+                    "HoraFinal": "17:30",
+                    "iHoraInicial": 1700,
+                    "iHoraFinal": 1730,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:30",
+                    "HoraFinal": "18:00",
+                    "iHoraInicial": 1730,
+                    "iHoraFinal": 1800,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                }
+            ]
+        },
+        {
+            "DataAgenda": "2023-06-22T00:00:00",
+            "sDataAgenda": "quinta-feira",
+            "Horarios": [
+                {
+                    "HoraInicial": "08:30",
+                    "HoraFinal": "09:00",
+                    "iHoraInicial": 830,
+                    "iHoraFinal": 900,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:00",
+                    "HoraFinal": "09:30",
+                    "iHoraInicial": 900,
+                    "iHoraFinal": 930,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:30",
+                    "HoraFinal": "10:00",
+                    "iHoraInicial": 930,
+                    "iHoraFinal": 1000,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:00",
+                    "HoraFinal": "10:30",
+                    "iHoraInicial": 1000,
+                    "iHoraFinal": 1030,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:30",
+                    "HoraFinal": "11:00",
+                    "iHoraInicial": 1030,
+                    "iHoraFinal": 1100,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:00",
+                    "HoraFinal": "11:30",
+                    "iHoraInicial": 1100,
+                    "iHoraFinal": 1130,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:30",
+                    "HoraFinal": "12:00",
+                    "iHoraInicial": 1130,
+                    "iHoraFinal": 1200,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:00",
+                    "HoraFinal": "13:30",
+                    "iHoraInicial": 1300,
+                    "iHoraFinal": 1330,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:30",
+                    "HoraFinal": "14:00",
+                    "iHoraInicial": 1330,
+                    "iHoraFinal": 1400,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:00",
+                    "HoraFinal": "14:30",
+                    "iHoraInicial": 1400,
+                    "iHoraFinal": 1430,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:30",
+                    "HoraFinal": "15:00",
+                    "iHoraInicial": 1430,
+                    "iHoraFinal": 1500,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:00",
+                    "HoraFinal": "15:30",
+                    "iHoraInicial": 1500,
+                    "iHoraFinal": 1530,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:30",
+                    "HoraFinal": "16:00",
+                    "iHoraInicial": 1530,
+                    "iHoraFinal": 1600,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:00",
+                    "HoraFinal": "16:30",
+                    "iHoraInicial": 1600,
+                    "iHoraFinal": 1630,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:30",
+                    "HoraFinal": "17:00",
+                    "iHoraInicial": 1630,
+                    "iHoraFinal": 1700,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:00",
+                    "HoraFinal": "17:30",
+                    "iHoraInicial": 1700,
+                    "iHoraFinal": 1730,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:30",
+                    "HoraFinal": "18:00",
+                    "iHoraInicial": 1730,
+                    "iHoraFinal": 1800,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                }
+            ]
+        },
+        {
+            "DataAgenda": "2023-06-23T00:00:00",
+            "sDataAgenda": "sexta-feira",
+            "Horarios": [
+                {
+                    "HoraInicial": "08:30",
+                    "HoraFinal": "09:00",
+                    "iHoraInicial": 830,
+                    "iHoraFinal": 900,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:00",
+                    "HoraFinal": "09:30",
+                    "iHoraInicial": 900,
+                    "iHoraFinal": 930,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:30",
+                    "HoraFinal": "10:00",
+                    "iHoraInicial": 930,
+                    "iHoraFinal": 1000,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:00",
+                    "HoraFinal": "10:30",
+                    "iHoraInicial": 1000,
+                    "iHoraFinal": 1030,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:30",
+                    "HoraFinal": "11:00",
+                    "iHoraInicial": 1030,
+                    "iHoraFinal": 1100,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:00",
+                    "HoraFinal": "11:30",
+                    "iHoraInicial": 1100,
+                    "iHoraFinal": 1130,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:30",
+                    "HoraFinal": "12:00",
+                    "iHoraInicial": 1130,
+                    "iHoraFinal": 1200,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:00",
+                    "HoraFinal": "13:30",
+                    "iHoraInicial": 1300,
+                    "iHoraFinal": 1330,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:30",
+                    "HoraFinal": "14:00",
+                    "iHoraInicial": 1330,
+                    "iHoraFinal": 1400,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:00",
+                    "HoraFinal": "14:30",
+                    "iHoraInicial": 1400,
+                    "iHoraFinal": 1430,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:30",
+                    "HoraFinal": "15:00",
+                    "iHoraInicial": 1430,
+                    "iHoraFinal": 1500,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:00",
+                    "HoraFinal": "15:30",
+                    "iHoraInicial": 1500,
+                    "iHoraFinal": 1530,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:30",
+                    "HoraFinal": "16:00",
+                    "iHoraInicial": 1530,
+                    "iHoraFinal": 1600,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:00",
+                    "HoraFinal": "16:30",
+                    "iHoraInicial": 1600,
+                    "iHoraFinal": 1630,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:30",
+                    "HoraFinal": "17:00",
+                    "iHoraInicial": 1630,
+                    "iHoraFinal": 1700,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:00",
+                    "HoraFinal": "17:30",
+                    "iHoraInicial": 1700,
+                    "iHoraFinal": 1730,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:30",
+                    "HoraFinal": "18:00",
+                    "iHoraInicial": 1730,
+                    "iHoraFinal": 1800,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                }
+            ]
+        },
+        {
+            "DataAgenda": "2023-06-26T00:00:00",
+            "sDataAgenda": "segunda-feira",
+            "Horarios": [
+                {
+                    "HoraInicial": "08:30",
+                    "HoraFinal": "09:00",
+                    "iHoraInicial": 830,
+                    "iHoraFinal": 900,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:00",
+                    "HoraFinal": "09:30",
+                    "iHoraInicial": 900,
+                    "iHoraFinal": 930,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:30",
+                    "HoraFinal": "10:00",
+                    "iHoraInicial": 930,
+                    "iHoraFinal": 1000,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:00",
+                    "HoraFinal": "10:30",
+                    "iHoraInicial": 1000,
+                    "iHoraFinal": 1030,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:30",
+                    "HoraFinal": "11:00",
+                    "iHoraInicial": 1030,
+                    "iHoraFinal": 1100,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:00",
+                    "HoraFinal": "11:30",
+                    "iHoraInicial": 1100,
+                    "iHoraFinal": 1130,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:30",
+                    "HoraFinal": "12:00",
+                    "iHoraInicial": 1130,
+                    "iHoraFinal": 1200,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:00",
+                    "HoraFinal": "13:30",
+                    "iHoraInicial": 1300,
+                    "iHoraFinal": 1330,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:30",
+                    "HoraFinal": "14:00",
+                    "iHoraInicial": 1330,
+                    "iHoraFinal": 1400,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:00",
+                    "HoraFinal": "14:30",
+                    "iHoraInicial": 1400,
+                    "iHoraFinal": 1430,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:30",
+                    "HoraFinal": "15:00",
+                    "iHoraInicial": 1430,
+                    "iHoraFinal": 1500,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:00",
+                    "HoraFinal": "15:30",
+                    "iHoraInicial": 1500,
+                    "iHoraFinal": 1530,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:30",
+                    "HoraFinal": "16:00",
+                    "iHoraInicial": 1530,
+                    "iHoraFinal": 1600,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:00",
+                    "HoraFinal": "16:30",
+                    "iHoraInicial": 1600,
+                    "iHoraFinal": 1630,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:30",
+                    "HoraFinal": "17:00",
+                    "iHoraInicial": 1630,
+                    "iHoraFinal": 1700,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:00",
+                    "HoraFinal": "17:30",
+                    "iHoraInicial": 1700,
+                    "iHoraFinal": 1730,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:30",
+                    "HoraFinal": "18:00",
+                    "iHoraInicial": 1730,
+                    "iHoraFinal": 1800,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                }
+            ]
+        },
+        {
+            "DataAgenda": "2023-06-27T00:00:00",
+            "sDataAgenda": "terça-feira",
+            "Horarios": [
+                {
+                    "HoraInicial": "08:30",
+                    "HoraFinal": "09:00",
+                    "iHoraInicial": 830,
+                    "iHoraFinal": 900,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:00",
+                    "HoraFinal": "09:30",
+                    "iHoraInicial": 900,
+                    "iHoraFinal": 930,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:30",
+                    "HoraFinal": "10:00",
+                    "iHoraInicial": 930,
+                    "iHoraFinal": 1000,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:00",
+                    "HoraFinal": "10:30",
+                    "iHoraInicial": 1000,
+                    "iHoraFinal": 1030,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:30",
+                    "HoraFinal": "11:00",
+                    "iHoraInicial": 1030,
+                    "iHoraFinal": 1100,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:00",
+                    "HoraFinal": "11:30",
+                    "iHoraInicial": 1100,
+                    "iHoraFinal": 1130,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:30",
+                    "HoraFinal": "12:00",
+                    "iHoraInicial": 1130,
+                    "iHoraFinal": 1200,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:00",
+                    "HoraFinal": "13:30",
+                    "iHoraInicial": 1300,
+                    "iHoraFinal": 1330,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:30",
+                    "HoraFinal": "14:00",
+                    "iHoraInicial": 1330,
+                    "iHoraFinal": 1400,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:00",
+                    "HoraFinal": "14:30",
+                    "iHoraInicial": 1400,
+                    "iHoraFinal": 1430,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:30",
+                    "HoraFinal": "15:00",
+                    "iHoraInicial": 1430,
+                    "iHoraFinal": 1500,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:00",
+                    "HoraFinal": "15:30",
+                    "iHoraInicial": 1500,
+                    "iHoraFinal": 1530,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:30",
+                    "HoraFinal": "16:00",
+                    "iHoraInicial": 1530,
+                    "iHoraFinal": 1600,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:00",
+                    "HoraFinal": "16:30",
+                    "iHoraInicial": 1600,
+                    "iHoraFinal": 1630,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:30",
+                    "HoraFinal": "17:00",
+                    "iHoraInicial": 1630,
+                    "iHoraFinal": 1700,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:00",
+                    "HoraFinal": "17:30",
+                    "iHoraInicial": 1700,
+                    "iHoraFinal": 1730,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:30",
+                    "HoraFinal": "18:00",
+                    "iHoraInicial": 1730,
+                    "iHoraFinal": 1800,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                }
+            ]
+        },
+        {
+            "DataAgenda": "2023-06-28T00:00:00",
+            "sDataAgenda": "quarta-feira",
+            "Horarios": [
+                {
+                    "HoraInicial": "08:30",
+                    "HoraFinal": "09:00",
+                    "iHoraInicial": 830,
+                    "iHoraFinal": 900,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:00",
+                    "HoraFinal": "09:30",
+                    "iHoraInicial": 900,
+                    "iHoraFinal": 930,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:30",
+                    "HoraFinal": "10:00",
+                    "iHoraInicial": 930,
+                    "iHoraFinal": 1000,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:00",
+                    "HoraFinal": "10:30",
+                    "iHoraInicial": 1000,
+                    "iHoraFinal": 1030,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:30",
+                    "HoraFinal": "11:00",
+                    "iHoraInicial": 1030,
+                    "iHoraFinal": 1100,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:00",
+                    "HoraFinal": "11:30",
+                    "iHoraInicial": 1100,
+                    "iHoraFinal": 1130,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:30",
+                    "HoraFinal": "12:00",
+                    "iHoraInicial": 1130,
+                    "iHoraFinal": 1200,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:00",
+                    "HoraFinal": "13:30",
+                    "iHoraInicial": 1300,
+                    "iHoraFinal": 1330,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:30",
+                    "HoraFinal": "14:00",
+                    "iHoraInicial": 1330,
+                    "iHoraFinal": 1400,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:00",
+                    "HoraFinal": "14:30",
+                    "iHoraInicial": 1400,
+                    "iHoraFinal": 1430,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:30",
+                    "HoraFinal": "15:00",
+                    "iHoraInicial": 1430,
+                    "iHoraFinal": 1500,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:00",
+                    "HoraFinal": "15:30",
+                    "iHoraInicial": 1500,
+                    "iHoraFinal": 1530,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:30",
+                    "HoraFinal": "16:00",
+                    "iHoraInicial": 1530,
+                    "iHoraFinal": 1600,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:00",
+                    "HoraFinal": "16:30",
+                    "iHoraInicial": 1600,
+                    "iHoraFinal": 1630,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:30",
+                    "HoraFinal": "17:00",
+                    "iHoraInicial": 1630,
+                    "iHoraFinal": 1700,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:00",
+                    "HoraFinal": "17:30",
+                    "iHoraInicial": 1700,
+                    "iHoraFinal": 1730,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:30",
+                    "HoraFinal": "18:00",
+                    "iHoraInicial": 1730,
+                    "iHoraFinal": 1800,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                }
+            ]
+        },
+        {
+            "DataAgenda": "2023-06-29T00:00:00",
+            "sDataAgenda": "quinta-feira",
+            "Horarios": [
+                {
+                    "HoraInicial": "08:30",
+                    "HoraFinal": "09:00",
+                    "iHoraInicial": 830,
+                    "iHoraFinal": 900,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:00",
+                    "HoraFinal": "09:30",
+                    "iHoraInicial": 900,
+                    "iHoraFinal": 930,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "09:30",
+                    "HoraFinal": "10:00",
+                    "iHoraInicial": 930,
+                    "iHoraFinal": 1000,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:00",
+                    "HoraFinal": "10:30",
+                    "iHoraInicial": 1000,
+                    "iHoraFinal": 1030,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "10:30",
+                    "HoraFinal": "11:00",
+                    "iHoraInicial": 1030,
+                    "iHoraFinal": 1100,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:00",
+                    "HoraFinal": "11:30",
+                    "iHoraInicial": 1100,
+                    "iHoraFinal": 1130,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "11:30",
+                    "HoraFinal": "12:00",
+                    "iHoraInicial": 1130,
+                    "iHoraFinal": 1200,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:00",
+                    "HoraFinal": "13:30",
+                    "iHoraInicial": 1300,
+                    "iHoraFinal": 1330,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "13:30",
+                    "HoraFinal": "14:00",
+                    "iHoraInicial": 1330,
+                    "iHoraFinal": 1400,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:00",
+                    "HoraFinal": "14:30",
+                    "iHoraInicial": 1400,
+                    "iHoraFinal": 1430,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "14:30",
+                    "HoraFinal": "15:00",
+                    "iHoraInicial": 1430,
+                    "iHoraFinal": 1500,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:00",
+                    "HoraFinal": "15:30",
+                    "iHoraInicial": 1500,
+                    "iHoraFinal": 1530,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "15:30",
+                    "HoraFinal": "16:00",
+                    "iHoraInicial": 1530,
+                    "iHoraFinal": 1600,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:00",
+                    "HoraFinal": "16:30",
+                    "iHoraInicial": 1600,
+                    "iHoraFinal": 1630,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "16:30",
+                    "HoraFinal": "17:00",
+                    "iHoraInicial": 1630,
+                    "iHoraFinal": 1700,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:00",
+                    "HoraFinal": "17:30",
+                    "iHoraInicial": 1700,
+                    "iHoraFinal": 1730,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                },
+                {
+                    "HoraInicial": "17:30",
+                    "HoraFinal": "18:00",
+                    "iHoraInicial": 1730,
+                    "iHoraFinal": 1800,
+                    "Locais": "1dentif1c4d0r-L0cal;"
+                }
+            ]
+        }
+    ]
+}
+                                                
+POST Agendar um Pedido
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Agendamento
+Realiza o agendamento de um pedido, notasse que o pedido é criado em outra chamada, sendo está apenas para o agendamento.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+HashLocal
+1dentif1c4d0r-L0cal
+None
+
+DataInicial
+2023-06-28 15:00
+None
+
+DataFinal
+2023-06-28 16:30
+None
+
+HashVenda
+1dentif1c4d0r-V3nd4
+None
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashLocal": "1dentif1c4d0r-L0cal",
+    "DataInicial": "2023-06-28 15:00",
+    "DataFinal": "2023-06-28 16:30",
+    "HashVenda": "1dentif1c4d0r-V3nd4"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST http://localhost:18098/api/GarAPIs/Agendamento
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashLocal": "1dentif1c4d0r-L0cal",
+    "DataInicial": "2023-06-28 16:00",
+    "DataFinal": "2023-06-28 16:30",
+    "HashVenda": "1dentif1c4d0r-V3nd4",
+    "IsCliente":"1"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[]
+                                                
+POST Agendar Pedido Gerando um Protocolo
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Agendamento
+Realiza o agendamento de um pedido e se gerá o protocolo do certificado ao mesmo tempo, notasse que o pedido é criado em outra chamada, sendo está apenas para o agendamento.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+HashLocal
+1dentif1c4d0r-L0cal
+Indentificador do local de atendimento
+
+DataInicial
+2023-06-28 16:00
+
+DataFinal
+2023-06-28 16:30
+
+HashVenda
+1dentif1c4d0r-V3nd4
+Indentificador da venda
+
+IsCliente
+1
+Cliente já está na base da AR: 0- Não 1 - Sim
+
+isProtocolo
+1
+Será emitido o protocolo: 0 - Não 1 - Sim
+
+isCNPJ
+0
+O certificado é um e-CNPJ ou e-PJ: 0 - Não 1 - Sim
+
+CNPJ
+
+CPF
+50000000020
+
+DataNascimento
+1898-03-30
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashLocal": "1dentif1c4d0r-L0cal",
+    "DataInicial": "2023-06-28 16:00",
+    "DataFinal": "2023-06-28 16:30",
+    "HashVenda": "1dentif1c4d0r-V3nd4",
+    "IsCliente":"1",
+    "isProtocolo": "1",
+    "isCNPJ":"0",
+    "CNPJ": "",
+    "CPF": "59999406999",
+    "DataNascimento":"1958-06-23"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/Agendamento
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashLocal": "1dentif1c4d0r-L0cal",
+    "DataInicial": "2023-06-28 16:00",
+    "DataFinal": "2023-06-28 16:30",
+    "HashVenda": "1dentif1c4d0r-V3nd4",
+    "IsCliente":"1",
+    "isProtocolo": "1",
+    "isCNPJ":"0",
+    "CNPJ": "",
+    "CPF": "64226980034",
+    "DataNascimento":"1985-07-18"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[]
+                                                
+POST Consultar Agendamento
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterAgendamento
+Retorna os dados do agendamento, localizado pelo hashVenda ou pelo identificador do agendamento, “id”.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+HashVenda
+1dentif1c4d0r-V3nd4
+Identificador da venda
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashVenda": "1dentif1c4d0r-V3nd4"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterAgendamento
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashVenda": "1dentif1c4d0r-V3nd4"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "Id": 245,
+    "HashLocal": "1dentif1c4d0r-L0cal",
+    "NomeLocalAgendamento": "Independente Pré-pago - PA 10",
+    "HashSlot": "1dentif1c4d0r-5l0t",
+    "AgenteRegistro": "C3 PO",
+    "HashVenda": "1dentif1c4d0r-V3nd4",
+    "Pedido": "4126",
+    "Protocolo": "1000165433",
+    "iStatusVenda": 5,
+    "StatusVenda": "Protocolo Gerado",
+    "Produto": "e-CPF A1 12 meses",
+    "IdDiaSemana": 2,
+    "sIdDiaSemana": "Segunda-feira",
+    "Data": "2023-06-26T00:00:00",
+    "TipoEmissao": 1,
+    "TipoEmissaoDescricao": "Presencial",
+    "Cliente": "Paulo Henrique Fraga Mathias Netto",
+    "ClienteTelefone": "(41) 999999912",
+    "ClienteEmail": "paulo.**************.com.br",
+    "DataInicial": "2023-06-26T09:30:00",
+    "DataFinal": "2023-06-26T10:00:00",
+    "sDataFinal": "26/06/2023 09:30:00",
+    "HoraInicial": "09:30",
+    "HoraFinal": "10:00",
+    "iHoraInicial": 930,
+    "iHoraFinal": 1000,
+    "TipoAlocacao": 1,
+    "sTipoAlocacao": "Aguardando atendimento",
+    "StatusLancamento": 0,
+    "sStatusLancamento": "-",
+    "FormaPagamento": 8,
+    "sFormaPagamento": "Boleto Bancário",
+    "LinkFatura": "",
+    "Observacao": "Agendamento efetuado pelo cliente",
+    "DataNascimento": "0001-01-01T00:00:00"
+}
+                                                
+POST Consultar Múltiplos Agendamentos
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterAgendamentos
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+DataInicial
+2023-06-28 00:00
+
+DataFinal
+2023-06-28 23:59
+
+HashLocal
+1dentif1c4d0r-L0cal
+Identificador do local de atendimento
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "DataInicial":"2023-06-28 00:00",
+    "DataFinal":"2023-06-28 23:59",
+    "HashLocal":"1dentif1c4d0r-L0cal"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterAgendamentos
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "DataInicial":"2023-06-28 00:00",
+    "DataFinal":"2023-06-28 23:59",
+    "HashLocal":"1dentif1c4d0r-L0cal"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "Id": 230,
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "HashVenda": "1dentif1c4d0r-V3nd4",
+        "Pedido": "4125",
+        "Protocolo": "1000164587",
+        "iStatusVenda": 5,
+        "StatusVenda": "Protocolo Gerado",
+        "Produto": "e-CPF A3 24 meses",
+        "IdDiaSemana": 4,
+        "sIdDiaSemana": "Quarta-feira",
+        "Data": "2023-06-28T00:00:00",
+        "TipoEmissao": 3,
+        "TipoEmissaoDescricao": "Videoconferência",
+        "Cliente": "Lucas",
+        "ClienteEmail": "suporte@gestaoar.com.br",
+        "DataInicial": "2023-06-28T16:00:00",
+        "DataFinal": "2023-06-28T16:30:00",
+        "HoraInicial": "16:00",
+        "HoraFinal": "16:30",
+        "iHoraInicial": 1600,
+        "iHoraFinal": 1630,
+        "TipoAlocacao": 1,
+        "sTipoAlocacao": "Aguardando atendimento",
+        "StatusLancamento": 4,
+        "FormaPagamento": 20,
+        "DataNascimento": "0001-01-01T00:00:00"
+    },
+    {
+        "Id": 231,
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "HashVenda": "1dentif1c4d0r-V3nd4",
+        "Pedido": "4126",
+        "Protocolo": "1000164586",
+        "iStatusVenda": 5,
+        "StatusVenda": "Protocolo Gerado",
+        "Produto": "e-CPF A1 12 meses",
+        "IdDiaSemana": 4,
+        "sIdDiaSemana": "Quarta-feira",
+        "Data": "2023-06-28T00:00:00",
+        "TipoEmissao": 1,
+        "TipoEmissaoDescricao": "Presencial",
+        "Cliente": "Paulo Henrique Fraga Mathias Netto",
+        "ClienteEmail": "paulo***************.com.br",
+        "DataInicial": "2023-06-28T16:00:00",
+        "DataFinal": "2023-06-28T16:30:00",
+        "HoraInicial": "16:00",
+        "HoraFinal": "16:30",
+        "iHoraInicial": 1600,
+        "iHoraFinal": 1630,
+        "TipoAlocacao": 1,
+        "sTipoAlocacao": "Aguardando atendimento",
+        "StatusLancamento": 4,
+        "FormaPagamento": 8,
+        "DataNascimento": "0001-01-01T00:00:00"
+    }
+]
+                                                
+POST Consultar Resumo de Múltiplos Agendamentos
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterAgendamentosResumo
+Retorna versõs resumidas dos dados dos agendamentos dentro do período.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+DataInicial
+2023-06-28 00:00
+
+DataFinal
+2023-06-28 23:59
+
+HashLocal
+1dentif1c4d0r-L0cal
+Identificador do local de atendimento
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "DataInicial":"2023-06-28 00:00",
+    "DataFinal":"2023-06-28 23:59",
+    "HashLocal":"1dentif1c4d0r-L0cal"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ObterAgendamentosResumo
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "DataInicial":"2023-06-28 00:00",
+    "DataFinal":"2023-06-28 23:59",
+    "HashLocal":"1dentif1c4d0r-L0cal"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "Id": 230,
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "HashVenda": "1dentif1c4d0r-V3nd4",
+        "Pedido": "4125",
+        "Protocolo": "1000164587",
+        "iStatusVenda": 5,
+        "StatusVenda": "Protocolo Gerado",
+        "IdDiaSemana": 4,
+        "sIdDiaSemana": "Quarta-feira",
+        "Data": "2023-06-28T00:00:00",
+        "DataInicial": "2023-06-28T16:00:00",
+        "DataFinal": "2023-06-28T16:30:00",
+        "HoraInicial": "16:00",
+        "HoraFinal": "16:30",
+        "iHoraInicial": 1600,
+        "iHoraFinal": 1630,
+        "TipoAlocacao": 1,
+        "sTipoAlocacao": "Aguardando atendimento",
+        "StatusLancamento": 4,
+        "FormaPagamento": 20,
+        "DataNascimento": "0001-01-01T00:00:00"
+    },
+    {
+        "Id": 231,
+        "HashLocal": "1dentif1c4d0r-L0cal",
+        "HashSlot": "1dentif1c4d0r-5l0t",
+        "HashVenda": "1dentif1c4d0r-V3nd4",
+        "Pedido": "4126",
+        "Protocolo": "1000164586",
+        "iStatusVenda": 5,
+        "StatusVenda": "Protocolo Gerado",
+        "IdDiaSemana": 4,
+        "sIdDiaSemana": "Quarta-feira",
+        "Data": "2023-06-28T00:00:00",
+        "DataInicial": "2023-06-28T16:00:00",
+        "DataFinal": "2023-06-28T16:30:00",
+        "HoraInicial": "16:00",
+        "HoraFinal": "16:30",
+        "iHoraInicial": 1600,
+        "iHoraFinal": 1630,
+        "TipoAlocacao": 1,
+        "sTipoAlocacao": "Aguardando atendimento",
+        "StatusLancamento": 4,
+        "FormaPagamento": 8,
+        "DataNascimento": "0001-01-01T00:00:00"
+    }
+]
+                                                
+POST Excluir um Agendamento
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ExcluirAgendamento
+Exclui um agendamento localizado pelo hashVenda ou pelo indentificador do agendamento.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+HashVenda
+1dentif1c4d0r-V3nd4
+Indentificador da venda
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashVenda": "1dentif1c4d0r-V3nd4"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ExcluirAgendamento
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "HashVenda": "1dentif1c4d0r-V3nd4"
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+null
+                                                
+POST Consultar Parceiros Indicadores
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ContadorVendedor
+Retorna todos os parceiros indicadores, os cadastrados com o tipo contadores e vendedores, ativos no sistema e seus resprespectivos dados de cadastro.
+
+Nesse retorno se obtem o hash do indicador, o qual é utilizado em outras chamadas, como a geração de venda.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/ContadorVendedor
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456"
+
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+[
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "CE - Fortaleza - Comissão pelo (%) da faixa de comissão - CT 08Rua Antônio Pompeu, 68 , Centro",
+        "NomeLocalAgendamento": "Comissão pelo (%) da faixa de comissão - CT 08",
+        "NomeCidadeLocalAgendamento": "Comissão pelo (%) da faixa de comissão - CT 08 - Fortaleza/CE",
+        "Endereco": "Rua Antônio Pompeu, 68 , Centro",
+        "CEP": "60040000",
+        "Municipio": "Fortaleza",
+        "UF": "CE",
+        "Telefone": "(85) 978558588",
+        "Email": "ct08@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "CE - Fortaleza - Comissão pelo (%) da faixa de comissão - Metas - CT 09Vila Coração de Jesus, 688 , José Bonifácio",
+        "NomeLocalAgendamento": "Comissão pelo (%) da faixa de comissão - Metas - CT 09",
+        "NomeCidadeLocalAgendamento": "Comissão pelo (%) da faixa de comissão - Metas - CT 09 - Fortaleza/CE",
+        "Endereco": "Vila Coração de Jesus, 688 , José Bonifácio",
+        "CEP": "60040200",
+        "Municipio": "Fortaleza",
+        "UF": "CE",
+        "Telefone": "(85) 923487242",
+        "Email": "ct09@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "CE - Fortaleza - Comissão pelo Valor (R$) da faixa de comissão - CT 10Avenida Barão de Studart, 87 , Meireles",
+        "NomeLocalAgendamento": "Comissão pelo Valor (R$) da faixa de comissão - CT 10",
+        "NomeCidadeLocalAgendamento": "Comissão pelo Valor (R$) da faixa de comissão - CT 10 - Fortaleza/CE",
+        "Endereco": "Avenida Barão de Studart, 87 , Meireles",
+        "CEP": "60120000",
+        "Municipio": "Fortaleza",
+        "UF": "CE",
+        "Telefone": "(85) 981234782",
+        "Email": "luizandremenezes1@rede.ulbra.com"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "CE - Fortaleza - Comissão pelo Valor (R$) da faixa de comissão - Metas - CT 11Rua Pinto Madeira, 98 , Centro",
+        "NomeLocalAgendamento": "Comissão pelo Valor (R$) da faixa de comissão - Metas - CT 11",
+        "NomeCidadeLocalAgendamento": "Comissão pelo Valor (R$) da faixa de comissão - Metas - CT 11 - Fortaleza/CE",
+        "Endereco": "Rua Pinto Madeira, 98 , Centro",
+        "CEP": "60150000",
+        "Municipio": "Fortaleza",
+        "UF": "CE",
+        "Telefone": "(85) 987623482",
+        "Email": "ct11@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "CE - Fortaleza - Comissão pelo valor de custo do certificado menos o valor da venda - CT 06Avenida Presidente Castelo Branco, 500 , Moura Brasil",
+        "NomeLocalAgendamento": "Comissão pelo valor de custo do certificado menos o valor da venda - CT 06",
+        "NomeCidadeLocalAgendamento": "Comissão pelo valor de custo do certificado menos o valor da venda - CT 06 - Fortaleza/CE",
+        "Endereco": "Avenida Presidente Castelo Branco, 500 , Moura Brasil",
+        "CEP": "60010000",
+        "Municipio": "Fortaleza",
+        "UF": "CE",
+        "Telefone": "(85) 923498723",
+        "Email": "ct06@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "CE - Fortaleza - Comissão pelo valor de custo do certificado menos o valor da venda - Metas - CT 07Rua Edgar Borges, 688 , Centro",
+        "NomeLocalAgendamento": "Comissão pelo valor de custo do certificado menos o valor da venda - Metas - CT 07",
+        "NomeCidadeLocalAgendamento": "Comissão pelo valor de custo do certificado menos o valor da venda - Metas - CT 07 - Fortaleza/CE",
+        "Endereco": "Rua Edgar Borges, 688 , Centro",
+        "CEP": "60050000",
+        "Municipio": "Fortaleza",
+        "UF": "CE",
+        "Telefone": "(85) 981239128",
+        "Email": "ct07@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "CE - Fortaleza - Comissionamento pelo % tabela de Venda - CT 12Avenida Desembargador Moreira, 98 , Meireles",
+        "NomeLocalAgendamento": "Comissionamento pelo % tabela de Venda - CT 12",
+        "NomeCidadeLocalAgendamento": "Comissionamento pelo % tabela de Venda - CT 12 - Fortaleza/CE",
+        "Endereco": "Avenida Desembargador Moreira, 98 , Meireles",
+        "CEP": "60170000",
+        "Municipio": "Fortaleza",
+        "UF": "CE",
+        "Telefone": "(85) 982163487",
+        "Email": "ct12@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "SP - São Paulo - Contador de Exemplo - APIRua Bom Pastor, 1426 , Ipiranga",
+        "NomeLocalAgendamento": "Contador de Exemplo - API",
+        "NomeCidadeLocalAgendamento": "Contador de Exemplo - API - São Paulo/SP",
+        "Endereco": "Rua Bom Pastor, 1426 , Ipiranga",
+        "CEP": "04203901",
+        "Municipio": "São Paulo",
+        "UF": "SP",
+        "Telefone": "(11) 957394389",
+        "Email": "j199831@dac.unicamp.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "SP - São Paulo - Contador de Exemplo 2 -  Rua Bom Pastor, 1426 , Ipiranga",
+        "NomeLocalAgendamento": "Contador de Exemplo 2 -  ",
+        "NomeCidadeLocalAgendamento": "Contador de Exemplo 2 -   - São Paulo/SP",
+        "Endereco": "Rua Bom Pastor, 1426 , Ipiranga",
+        "CEP": "04203901",
+        "Municipio": "São Paulo",
+        "UF": "SP",
+        "Telefone": "(11) 957394389",
+        "Email": "exemplo@contador.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a6",
+        "DadosPesquisa": "CE - Fortaleza - Independente - CT 05Rua Doutor Gilberto Studart, 800 , Cocó",
+        "NomeLocalAgendamento": "Independente - CT 05",
+        "NomeCidadeLocalAgendamento": "Independente - CT 05 - Fortaleza/CE",
+        "Endereco": "Rua Doutor Gilberto Studart, 800 , Cocó",
+        "CEP": "60192105",
+        "Municipio": "Fortaleza",
+        "UF": "CE",
+        "Telefone": "(85) 984654654",
+        "Email": "ct05@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "SP - São Paulo - Independente Pré-pago - CT 13Avenida Jabaquara, 1000 , Mirandópolis",
+        "NomeLocalAgendamento": "Independente Pré-pago - CT 13",
+        "NomeCidadeLocalAgendamento": "Independente Pré-pago - CT 13 - São Paulo/SP",
+        "Endereco": "Avenida Jabaquara, 1000 , Mirandópolis",
+        "CEP": "04045200",
+        "Municipio": "São Paulo",
+        "UF": "SP",
+        "Telefone": "(11) 098120938",
+        "Email": "ct13@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "RS - Porto Alegre - Split com % da tabela da faixa - CT 02Rua Carlos Gardel, 500 , Bela Vista",
+        "NomeLocalAgendamento": "Split com % da tabela da faixa - CT 02",
+        "NomeCidadeLocalAgendamento": "Split com % da tabela da faixa - CT 02 - Porto Alegre/RS",
+        "Endereco": "Rua Carlos Gardel, 500 , Bela Vista",
+        "CEP": "90450100",
+        "Municipio": "Porto Alegre",
+        "UF": "RS",
+        "Telefone": "(51) 912390123",
+        "Email": "ct02@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "RS - Porto Alegre - Split com % da tabela de venda - CT 01Rua Siqueira Campos, 940 , Centro Histórico",
+        "NomeLocalAgendamento": "Split com % da tabela de venda - CT 01",
+        "NomeCidadeLocalAgendamento": "Split com % da tabela de venda - CT 01 - Porto Alegre/RS",
+        "Endereco": "Rua Siqueira Campos, 940 , Centro Histórico",
+        "CEP": "90010000",
+        "Municipio": "Porto Alegre",
+        "UF": "RS",
+        "Telefone": "(51) 982348238",
+        "Email": "ct01@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "RS - Porto Alegre - Split com Valor Custo Ar da tabela da faixa - CT 04Avenida Carlos Gomes, 600 , Boa Vista",
+        "NomeLocalAgendamento": "Split com Valor Custo Ar da tabela da faixa - CT 04",
+        "NomeCidadeLocalAgendamento": "Split com Valor Custo Ar da tabela da faixa - CT 04 - Porto Alegre/RS",
+        "Endereco": "Avenida Carlos Gomes, 600 , Boa Vista",
+        "CEP": "90480000",
+        "Municipio": "Porto Alegre",
+        "UF": "RS",
+        "Telefone": "(51) 923402394",
+        "Email": "ct04@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "RS - Porto Alegre - Split com Valor Custo Ar da tabela de venda - CT 03Rua Carlos Trein Filho, 672 , Auxiliadora",
+        "NomeLocalAgendamento": "Split com Valor Custo Ar da tabela de venda - CT 03",
+        "NomeCidadeLocalAgendamento": "Split com Valor Custo Ar da tabela de venda - CT 03 - Porto Alegre/RS",
+        "Endereco": "Rua Carlos Trein Filho, 672 , Auxiliadora",
+        "CEP": "90450120",
+        "Municipio": "Porto Alegre",
+        "UF": "RS",
+        "Telefone": "(51) 912839128",
+        "Email": "ct03@gestaoar.com.br"
+    },
+    {
+        "HashPessoa": "1d3ntific4d0r-P3ss0a",
+        "DadosPesquisa": "SP - São Paulo - Transforma comissão em bonificação/pré-pago - CT 14Avenida IV Centenário, 100 , Jardim Luzitânia",
+        "NomeLocalAgendamento": "Transforma comissão em bonificação/pré-pago - CT 14",
+        "NomeCidadeLocalAgendamento": "Transforma comissão em bonificação/pré-pago - CT 14 - São Paulo/SP",
+        "Endereco": "Avenida IV Centenário, 100 , Jardim Luzitânia",
+        "CEP": "04030000",
+        "Municipio": "São Paulo",
+        "UF": "SP",
+        "Telefone": "(11) 923846238",
+        "Email": "ct14@gestaoar.com.br"
+    }
+]
+                                                
+POST Consultar Tabelas do Contador
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/TabelasContador
+Retorna o nome e código das tabelas associadas ao parceiro cadastrado com o documento enviado.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+Documento
+90025007009
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Documento": "44053519000103"
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/TabelasContador
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "Documento": "44053519000103"
+}
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "ContadorParceiro": true,
+    "NomeContadorParceiro": "Contador de Exemplo",
+    "TabelasPreco": [
+        {
+            "Codigo": "1",
+            "Nome": "Tabela Padrão"
+        },
+        {
+            "Codigo": "2",
+            "Nome": "Tabela Videoconferência"
+        },
+        {
+            "Codigo": "",
+            "Nome": "teste 10%"
+        }
+    ],
+    "Status": 0
+}
+                                                
+POST Cadastro de Contador
+https://gestaoar.com.br/ComercialAPI/api/GarAPIs/CadastroContador
+Realiza o cadastro de um parceiro contador.
+
+PARAMS
+apiKey
+123ChaveDisponibilizadaPeloSistema456
+
+CNPJCPF
+86246538002
+
+NomeRazaoSocial
+ContadordeExemplo2
+
+Email
+exemplo@contador.com.br
+
+CEP
+04203901
+
+Logradouro
+Rua Bom Pastor
+
+Numero
+1346
+
+Bairro
+Ipiranga
+
+Cidade
+São Paulo
+
+UF
+SP
+
+CodigoIBGE
+3550308
+
+DDD
+11
+
+Telefone
+957999999
+
+DocumentoGestor
+
+CodigoTabela
+
+BODY raw
+                                                  
+                                                    
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "CNPJCPF": "86246538002",
+    "NomeRazaoSocial": "Contador de Exemplo 2",
+    "Email": "exemplo@contador.com.br",
+    "CEP": "04203901",
+    "Logradouro": "Rua Bom Pastor",
+    "Numero": "1426",
+    "Bairro": "Ipiranga",
+    "Cidade": "São Paulo",
+    "UF": "SP",
+    "CodigoIBGE": "3550308",
+    "DDD": "11",
+    "Telefone": "957394389",
+    "DocumentoGestor":"",
+    "CodigoTabela": ""
+}
+                                                  
+                                              
+Exemplo de chamada
+                                                
+POST https://gestaoar.com.br/ComercialAPI/api/GarAPIs/CadastroContador
+{
+    "apiKey": "123ChaveDisponibilizadaPeloSistema456",
+    "CNPJCPF": "86246538002",
+    "NomeRazaoSocial": "Contador de Exemplo 2",
+    "Email": "exemplo@contador.com.br",
+    "CEP": "04203901",
+    "Logradouro": "Rua Bom Pastor",
+    "Numero": "1426",
+    "Bairro": "Ipiranga",
+    "Cidade": "São Paulo",
+    "UF": "SP",
+    "CodigoIBGE": "3550308",
+    "DDD": "11",
+    "Telefone": "999999989",
+    "DocumentoGestor":"",
+    "CodigoTabela": ""
+}
+
+                                            
+Exemplo de resposta
+200 - OK
+                                                    
+{
+    "Status": 0
+}
+                                                
