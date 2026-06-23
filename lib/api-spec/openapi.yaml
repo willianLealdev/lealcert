@@ -3403,6 +3403,10 @@ components:
           type: string
           nullable: true
           description: "Ambiente Safeweb ativo: producao | homologacao | null (não configurado)"
+        activeProvider:
+          type: string
+          nullable: true
+          description: "Provedor ativo: gestaoar | safeweb"
 
     AppSettings:
       type: object

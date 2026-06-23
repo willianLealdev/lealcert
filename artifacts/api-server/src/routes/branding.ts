@@ -16,6 +16,7 @@ router.get("/branding", async (_req, res): Promise<void> => {
     contactEmailSupport: settingsTable.contactEmailSupport,
     contactAddress: settingsTable.contactAddress,
     safewebAmbiente: settingsTable.safewebAmbiente,
+    activeProvider: settingsTable.activeProvider,
   }).from(settingsTable).limit(1);
 
   const s = rows[0];
@@ -29,6 +30,7 @@ router.get("/branding", async (_req, res): Promise<void> => {
     contactEmailSupport: s?.contactEmailSupport ?? null,
     contactAddress: s?.contactAddress ?? null,
     safewebAmbiente: s?.safewebAmbiente ?? null,
+    activeProvider: s?.activeProvider ?? "gestaoar",
   });
 });
 

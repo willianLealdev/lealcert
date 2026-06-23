@@ -56,26 +56,44 @@ const adminNav = [
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 
-function SafewebAmbienteDot({ ambiente }: { ambiente: string | null }) {
+function ProviderDot({ activeProvider, safewebAmbiente }: { activeProvider?: string | null; safewebAmbiente?: string | null }) {
+  if (activeProvider === "gestaoar") {
+    return (
+      <span
+        title="Gestão AR: Ativo"
+        className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-sidebar-border/40 shrink-0"
+      />
+    );
+  }
+  // safeweb
   const cfg =
-    ambiente === "producao"
-      ? { color: "bg-emerald-500", label: "Produção" }
-      : ambiente === "homologacao"
-      ? { color: "bg-orange-400", label: "Homologação" }
+    safewebAmbiente === "producao"
+      ? { color: "bg-emerald-500", label: "Safeweb: Produção" }
+      : safewebAmbiente === "homologacao"
+      ? { color: "bg-orange-400", label: "Safeweb: Homologação" }
       : { color: "bg-red-500", label: "Não configurado" };
   return (
     <span
-      title={`Safeweb: ${cfg.label}`}
+      title={cfg.label}
       className={`inline-block h-2.5 w-2.5 rounded-full ${cfg.color} ring-2 ring-sidebar-border/40 shrink-0`}
     />
   );
 }
 
-function SafewebAmbienteBadge({ ambiente }: { ambiente: string | null }) {
+function ProviderBadge({ activeProvider, safewebAmbiente }: { activeProvider?: string | null; safewebAmbiente?: string | null }) {
+  if (activeProvider === "gestaoar") {
+    return (
+      <div className="flex items-center gap-1.5 text-emerald-400">
+        <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+        <span className="text-[10px] font-medium uppercase tracking-wider">Gestão AR: Ativo</span>
+      </div>
+    );
+  }
+  // safeweb
   const cfg =
-    ambiente === "producao"
+    safewebAmbiente === "producao"
       ? { color: "text-emerald-400", dotColor: "bg-emerald-500", label: "Produção" }
-      : ambiente === "homologacao"
+      : safewebAmbiente === "homologacao"
       ? { color: "text-orange-400", dotColor: "bg-orange-400", label: "Homologação" }
       : { color: "text-red-400", dotColor: "bg-red-500", label: "Não configurado" };
   return (
@@ -339,12 +357,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        {/* Safeweb certifier badge + ambiente indicator */}
+        {/* Provider badge + certifier logo */}
         <div className="px-3 py-2 border-t border-sidebar-border/30">
           {collapsed ? (
-            /* Modo colapsado: só a bolinha */
             <div className="flex justify-center">
-              <SafewebAmbienteDot ambiente={branding.safewebAmbiente ?? null} />
+              <ProviderDot activeProvider={branding.activeProvider} safewebAmbiente={branding.safewebAmbiente} />
             </div>
           ) : (
             <div className="space-y-2">
@@ -356,7 +373,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   className="h-5 w-auto object-contain brightness-0 invert opacity-40"
                 />
               </div>
-              <SafewebAmbienteBadge ambiente={branding.safewebAmbiente ?? null} />
+              <ProviderBadge activeProvider={branding.activeProvider} safewebAmbiente={branding.safewebAmbiente} />
             </div>
           )}
         </div>
