@@ -2,7 +2,8 @@ import { Router } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db, ticketsTable, messagesTable, usersTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
-import { sendPushToAdmins } from "../lib/push";
+import { sendPushToAdmins, sendPushToUser } from "../lib/push";
+import { sendSupportReplyEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -134,11 +135,46 @@ router.post("/support/:id/messages", requireAuth, async (req, res): Promise<void
 
   const [msg] = await db.insert(messagesTable).values({ ticketId: id, userId, content }).returning();
 
+  // Fetch ticket info for notifications
+  const [ticketRow] = await db
+    .select({ ticket: ticketsTable, ownerName: usersTable.name, ownerEmail: usersTable.email, ownerUserId: usersTable.id })
+    .from(ticketsTable)
+    .leftJoin(usersTable, eq(ticketsTable.userId, usersTable.id))
+    .where(eq(ticketsTable.id, id))
+    .limit(1);
+
   // mark unread for the other side
   if (role === "admin") {
     await db.update(ticketsTable).set({ unreadClient: true, status: "in_progress", updatedAt: new Date() }).where(eq(ticketsTable.id, id));
+
+    // Notify the client: push + e-mail
+    if (ticketRow?.ownerUserId) {
+      sendPushToUser(ticketRow.ownerUserId, {
+        title: "💬 Resposta no seu chamado",
+        body: ticketRow.ticket.subject,
+        tag: `ticket-reply-${id}`,
+        url: `/support/${id}`,
+      }).catch((err: unknown) => logger.error({ err }, "support: erro ao enviar push ao cliente"));
+    }
+    if (ticketRow?.ownerEmail && ticketRow.ownerName) {
+      sendSupportReplyEmail({
+        to: ticketRow.ownerEmail,
+        customerName: ticketRow.ownerName,
+        subject: ticketRow.ticket.subject,
+        messageContent: content,
+        ticketId: id,
+      }).catch((err: unknown) => logger.error({ err }, "support: erro ao enviar e-mail ao cliente"));
+    }
   } else {
     await db.update(ticketsTable).set({ unreadAdmin: true, updatedAt: new Date() }).where(eq(ticketsTable.id, id));
+
+    // Notify admins: push
+    sendPushToAdmins({
+      title: "💬 Nova mensagem no chamado",
+      body: `${ticketRow?.ownerName ?? "Cliente"}: ${ticketRow?.ticket.subject ?? ""}`,
+      tag: `ticket-msg-${id}`,
+      url: `/admin/support/${id}`,
+    }).catch((err: unknown) => logger.error({ err }, "support: erro ao enviar push aos admins (resposta cliente)"));
   }
 
   const [user] = await db.select({ name: usersTable.name, role: usersTable.role }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
