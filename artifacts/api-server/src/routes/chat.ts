@@ -4,10 +4,13 @@ import { db, conversations, chatMessages, certificatesTable, usersTable, ordersT
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../lib/logger";
-import { sendOrderStatusEmail } from "../lib/email";
+import { sendOrderStatusEmail, sendTempPasswordEmail } from "../lib/email";
+import { swBiometriaPSBioGlobal, type SafewebSettings } from "../lib/safeweb";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import bcrypt from "bcryptjs";
+import QRCode from "qrcode";
 
 const UPLOAD_DIR = path.resolve("uploads", "chat-docs");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -25,7 +28,7 @@ const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024, files: 10
 
 const router = Router();
 
-// ── Status traduzido para o cliente ───────────────────────────────────────────
+// ── Status labels ─────────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<string, string> = {
   created: "Criado",
   pending_payment: "Aguardando Pagamento",
@@ -38,116 +41,212 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelado",
 };
 
-// ── System prompt — SEM preços. O catálogo com valores só é injetado pelo
-//    backend depois que [USUARIO_VERIFICADO] aparece na sessão. ──────────────
-function buildSystemPrompt(): string {
-  return `Você é a assistente virtual da LealCert, especializada em Certificados Digitais ICP-Brasil.
-
-════════════════════════════════════════════════════════════
-⚠️  REGRA ABSOLUTA — IDENTIDADE DA LEALCERT — NÃO NEGOCIÁVEL:
-
-A LealCert NÃO é uma AR (Autoridade de Registro).
-A LealCert NÃO emite certificados diretamente.
-A LealCert NÃO trabalha com Soluti, Certisign, Serasa, Valid, OAB nem qualquer outra AC.
-
-A estrutura CORRETA e ÚNICA é:
-  ITI → AC SafeWeb → AR Juntos (AR credenciada) → LealCert (parceira comercial)
-
-- A LealCert é PARCEIRA COMERCIAL da AR Juntos
-- A AR Juntos é a Autoridade de Registro credenciada ao ITI
-- A AC SafeWeb é a única Autoridade Certificadora responsável pela emissão
-- Quando perguntarem "quem é a AR?": responda "AR Juntos"
-- Quando perguntarem "quem é a AC?": responda "AC SafeWeb"
-- Quando perguntarem "a LealCert é uma AR?": responda NÃO — somos parceiros comerciais da AR Juntos
-
-NUNCA invente, liste ou mencione outras ACs ou ARs que não sejam SafeWeb e AR Juntos.
-════════════════════════════════════════════════════════════
-⚠️  REGRA ABSOLUTA — NÃO NEGOCIÁVEL:
-Você NÃO conhece os preços dos certificados. Os preços são fornecidos pelo sistema apenas após verificação de cadastro.
-Portanto NUNCA invente, estime ou mencione qualquer valor monetário de certificados.
-
-ANTES de qualquer informação de preço ou pedido:
-1. Peça o CPF (11 dígitos) ou CNPJ (14 dígitos) do cliente/contador
-2. O sistema verificará automaticamente o cadastro
-3. Somente após [USUARIO_VERIFICADO] E [CATALOGO_PRECOS] aparecerem na conversa
-   você estará autorizado a informar valores e processar pedidos — usando
-   EXCLUSIVAMENTE os preços presentes em [CATALOGO_PRECOS], sem inventar nenhum outro
-4. Se receber [USUARIO_NAO_CADASTRADO]: informe que pode abrir um chamado de suporte
-   mesmo sem cadastro — pergunte nome e e-mail/telefone para contato
-════════════════════════════════════════════════════════════
-
-**Tipos de certificados que oferecemos** (sem valores — aguarde [CATALOGO_PRECOS]):
-- e-CPF A1 (arquivo digital, para pessoa física)
-- e-CPF A3 (token/cartão, para pessoa física)
-- e-CNPJ A1 (arquivo digital, para pessoa jurídica)
-- e-CNPJ A3 (token/cartão, para pessoa jurídica)
-- Disponíveis em validades de 1, 2 ou 3 anos (conforme catálogo ativo)
-
-**Consulta de status de pedido:**
-- Peça o CPF/CNPJ e o número do pedido (ex: 20240101-1234) ou ID numérico
-- O sistema injetará [STATUS_PEDIDO] com as informações ou [PEDIDO_NAO_ENCONTRADO]
-
-**IMPORTANTE sobre A3:**
-- Certificados A3 NÃO incluem mídia (cartão/token). O cliente precisa de leitor compatível.
-
-**Normalização de dados:**
-- CPF/CNPJ com espaços entre dígitos — remova tudo, use só os números
-- CEP: use os dados de [CEP consultado automaticamente] quando disponíveis
-- Telefone: apenas dígitos + DDD
-- E-mail falado (ex: "joao arroba gmail ponto com") → reconstrua corretamente
-
-**Fluxo após [USUARIO_VERIFICADO] + [CATALOGO_PRECOS]:**
-1. Identifique o tipo de certificado adequado
-2. Apresente o certificado com o preço EXATO do [CATALOGO_PRECOS]
-3. Colete dados UM A UM:
-   - Nome completo, CPF/CNPJ, E-mail, Telefone (WhatsApp), CEP
-4. Pergunte sobre garantia estendida (+R$15,00)
-5. Confirme todos os dados com o cliente
-6. Solicite documentos na linha seguinte (sem linha em branco):
-   - e-CPF: RG ou CNH (frente e verso) + Comprovante de residência
-     ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
-   - e-CNPJ: Cartão CNPJ + Contrato Social + RG/CNH do responsável + Comprovante de endereço
-     ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
-7. Aguarde [DOCUMENTOS_ENVIADOS]
-8. Emita ACAO:CRIAR_PEDIDO (somente para [USUARIO_VERIFICADO])
-
-**Abertura de chamado de suporte (ACAO:CRIAR_CHAMADO):**
-- Qualquer pessoa pode abrir um chamado — com ou sem cadastro
-- Para clientes SEM cadastro ([USUARIO_NAO_CADASTRADO] ou CPF/CNPJ não informado):
-  colete nome completo + e-mail ou telefone para contato + assunto + descrição do problema
-- Para clientes COM cadastro ([USUARIO_VERIFICADO]):
-  colete apenas assunto + descrição (dados já conhecidos)
-- Quando tiver as informações, emita na linha seguinte (sem texto depois):
-  COM cadastro: ACAO:CRIAR_CHAMADO:{"subject":"<assunto>","message":"<descricao detalhada>"}
-  SEM cadastro: ACAO:CRIAR_CHAMADO:{"subject":"<assunto>","message":"<descricao detalhada>","guestName":"<nome>","guestContact":"<email ou telefone>"}
-
-**Tom:** Amigável, direto, profissional. Português do Brasil.
-
-Quando tiver todos os dados, confirmação E [DOCUMENTOS_ENVIADOS], responda EXATAMENTE neste formato:
-ACAO:CRIAR_PEDIDO:{"certificateId":<numero_inteiro_do_ID_em_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<apenas_digitos>","customerEmail":"<email>","customerPhone":"<apenas_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<apenas_digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<uf>","extendedWarranty":<true|false>}`;
+// ── PIX EMV QR Code builder ───────────────────────────────────────────────────
+function crc16(str: string): string {
+  let crc = 0xFFFF;
+  for (let i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, "0");
+}
+function emv(id: string, val: string): string {
+  return `${id}${val.length.toString().padStart(2, "0")}${val}`;
+}
+function buildPixPayload(pixKey: string, amount: number, txId: string, merchantName: string, city: string): string {
+  const pixInfo = emv("00", "BR.GOV.BCB.PIX") + emv("01", pixKey);
+  const txIdClean = txId.replace(/\W/g, "").slice(0, 25).padEnd(5, "0");
+  const adf = emv("05", txIdClean);
+  const name = merchantName.replace(/[^A-Za-z0-9 ]/g, " ").slice(0, 25).toUpperCase().trim() || "LEALCERT";
+  const town = city.replace(/[^A-Za-z0-9 ]/g, " ").slice(0, 15).toUpperCase().trim() || "SAO PAULO";
+  const body =
+    emv("00", "01") +
+    emv("26", pixInfo) +
+    emv("52", "0000") +
+    emv("53", "986") +
+    emv("54", amount.toFixed(2)) +
+    emv("58", "BR") +
+    emv("59", name) +
+    emv("60", town) +
+    emv("62", adf) +
+    "6304";
+  return body + crc16(body);
 }
 
-// ── Extrai sequência de 11 ou 14 dígitos de um texto ─────────────────────────
+// ── Safeweb settings (for PSBio check) ───────────────────────────────────────
+function normalizeSwUrl(raw: string): string {
+  try { return new URL(raw).origin; } catch { return raw.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); }
+}
+async function getSwSettings(): Promise<SafewebSettings | null> {
+  const [s] = await db.select().from(settingsTable).limit(1);
+  const isHomol = s?.safewebAmbiente === "homologacao";
+  const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
+  const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
+  if (!username || !password) return null;
+  const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
+  if (!rawUrl) return null;
+  return { url: normalizeSwUrl(rawUrl), username, password };
+}
+
+// ── System Prompt ─────────────────────────────────────────────────────────────
+function buildSystemPrompt(): string {
+  return `Você é a assistente de vendas da LealCert, especializada em Certificados Digitais ICP-Brasil.
+
+════════════════════════════════════════════════════════════
+⚠️ IDENTIDADE LEALCERT — REGRA ABSOLUTA, NÃO NEGOCIÁVEL:
+- LealCert NÃO é uma AR. LealCert é PARCEIRA COMERCIAL da AR Juntos.
+- AR Juntos é a Autoridade de Registro credenciada ao ITI.
+- AC SafeWeb é a ÚNICA AC responsável pela emissão.
+- NUNCA mencione Soluti, Certisign, Serasa, Valid, OAB ou qualquer outra AC/AR.
+- Se perguntarem "quem é a AR?": AR Juntos. "quem é a AC?": AC SafeWeb.
+════════════════════════════════════════════════════════════
+⚠️ PREÇOS — REGRA ABSOLUTA:
+Você NUNCA conhece preços. NUNCA invente, estime ou mencione valores.
+Preços só são informados após [CATALOGO_PRECOS] aparecer no histórico.
+════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════
+FLUXO OBRIGATÓRIO — SIGA ESTA ORDEM EXATA
+═══════════════════════════════════════
+
+▶ PASSO 1 — VERIFICAÇÃO INICIAL
+Peça o CPF (pessoa física, 11 dígitos) ou CNPJ (pessoa jurídica, 14 dígitos).
+O sistema verificará automaticamente e injetará no histórico:
+• [USUARIO_VERIFICADO] — cliente ou contador já cadastrado
+• [USUARIO_NAO_CADASTRADO] — não existe cadastro
+• [BIO_OK] — biometria PSBio encontrada ✅
+• [BIO_FALHOU] — biometria não encontrada ❌
+• [BIO_INDISPONIVEL] — Safeweb não configurada ou CNPJ (verificação presencial)
+
+▶ PASSO 2 — SE [USUARIO_NAO_CADASTRADO]
+Informe: "Não encontrei seu cadastro. Vou fazer o cadastro agora para prosseguir."
+Colete UM A UM, na ordem abaixo (confirme cada dado antes de pedir o próximo):
+  1. Tipo de cadastro: **Contador** (escritório/profissional contábil) ou **Cliente** (pessoa física ou jurídica)?
+  2. Tipo de pessoa: **Pessoa Física** (CPF) ou **Pessoa Jurídica** (CNPJ)?
+  3. Se Pessoa Física: Data de nascimento (DD/MM/AAAA) — o sistema buscará o nome automaticamente
+     Se Pessoa Jurídica: CNPJ → o sistema buscará razão social automaticamente; pergunte nome fantasia se quiser
+  4. Se for **Contador Pessoa Física**: número do CRC (ex: SP100000/O)
+     Se for **Contador Pessoa Jurídica**: CPF do responsável técnico (que deve ter CRC ativo no CFC)
+  5. Nome completo (confirme ou corrija o que o sistema preencheu)
+  6. E-mail
+  7. Telefone WhatsApp (com DDD, somente dígitos)
+  8. CEP (8 dígitos) → o sistema preencherá endereço; pergunte só o número e complemento
+
+Quando tiver TODOS os dados, emita EXATAMENTE neste formato na linha seguinte (sem texto depois):
+ACAO:CRIAR_CADASTRO:{"userType":"cliente|contador","personType":"fisica|juridica","name":"<nome completo>","cpfCnpj":"<somente digitos 11 ou 14>","email":"<email>","phone":"<somente digitos>","zipCode":"<8digitos>","street":"<rua>","addressNumber":"<numero>","complement":"<complemento ou null>","neighborhood":"<bairro>","city":"<cidade>","addressState":"<UF>","companyName":"<razao_social ou null>","companyFantasyName":"<fantasia ou null>","responsibleCpf":"<cpf_responsavel ou null>","responsibleName":"<nome_responsavel ou null>","crcNumber":"<crc ou null>"}
+
+Aguarde [CADASTRO_CRIADO] no histórico antes de continuar para o PASSO 4.
+
+▶ PASSO 3 — SE [BIO_FALHOU]
+Informe: "Sua biometria não foi encontrada no sistema PSBio nacional. Sem biometria válida não é possível emitir o certificado por videoconferência. Entre em contato com nosso suporte para regularizar."
+NÃO prossiga com venda. Ofereça abertura de chamado de suporte.
+
+▶ PASSO 4 — TIPO DE CERTIFICADO
+(Só após [USUARIO_VERIFICADO] ou [CADASTRO_CRIADO]) E ([BIO_OK] ou [BIO_INDISPONIVEL])
+
+Pergunte:
+• **e-CPF** (pessoa física) ou **e-CNPJ** (pessoa jurídica)?
+• **Validade**: 1 ano, 2 anos ou 3 anos?
+• TIPO DE EMISSÃO: SEMPRE **videoconferência** — NÃO mencione outros tipos, NÃO pergunte sobre isso.
+
+Apresente o certificado com o preço EXATO de [CATALOGO_PRECOS]. Use SOMENTE os IDs e valores listados lá.
+
+▶ PASSO 5 — DADOS DO PEDIDO
+Para **e-CPF**: Nome completo, CPF, E-mail, Telefone (WhatsApp), CEP + número
+Para **e-CNPJ**: Razão Social, CNPJ, Nome do responsável, CPF do responsável, E-mail, Telefone (WhatsApp), CEP + número
+
+Se o cliente tem [USUARIO_VERIFICADO], confirme os dados cadastrados em vez de pedir novamente do zero.
+
+▶ PASSO 6 — GARANTIA ESTENDIDA
+Pergunte: "Deseja Garantia Estendida? +R$15,00 — garante suporte completo por 12 meses em caso de qualquer problema com o certificado."
+
+▶ PASSO 7 — DOCUMENTOS
+Solicite os documentos. Na linha seguinte ao texto (sem nada depois):
+• e-CPF: ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
+  Documentos: RG ou CNH (frente e verso) + Comprovante de residência
+• e-CNPJ: ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
+  Documentos: Cartão CNPJ + Contrato Social + RG/CNH do responsável (frente e verso) + Comprovante de endereço
+Aguarde [DOCUMENTOS_ENVIADOS] antes de continuar.
+
+▶ PASSO 8 — CONFIRMAÇÃO DOS DADOS
+Exiba TODOS os dados em formato de resumo claro:
+📋 **Resumo do Pedido**
+• Certificado: [nome e validade]
+• Emissão: Videoconferência
+• Nome: ...
+• CPF/CNPJ: ...
+• E-mail: ...
+• Telefone: ...
+• Endereço: ...
+• Garantia estendida: Sim (+R$15,00) / Não
+• **Total: R$ X,XX**
+
+Pergunta: "Os dados acima estão corretos? Confirme para gerar o QR Code PIX de pagamento."
+
+▶ PASSO 9 — CRIAR PEDIDO
+Execute SOMENTE após:
+✅ Confirmação explícita do cliente ("sim", "confirmo", "correto", "pode prosseguir" etc.)
+✅ [DOCUMENTOS_ENVIADOS] no histórico
+
+Emita EXATAMENTE neste formato na linha seguinte (sem nada depois):
+ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<somente_digitos>","customerEmail":"<email>","customerPhone":"<somente_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<8digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<UF>","extendedWarranty":<true|false>}
+
+O sistema gerará o QR Code PIX automaticamente e exibirá na tela.
+
+▶ PASSO 10 — APÓS O PEDIDO
+Informe: "✅ Pedido criado! O QR Code PIX apareceu na tela. Após o pagamento nossa equipe agendará a videoconferência de emissão."
+Pergunte: "Tem algum horário de preferência para a videoconferência? (manhã/tarde, dias da semana)"
+
+═══════════════════════════════════════
+CONSULTA DE STATUS DE PEDIDO
+═══════════════════════════════════════
+Peça CPF/CNPJ + número do pedido (ex: 20240101-1234). O sistema injetará [STATUS_PEDIDO] ou [PEDIDO_NAO_ENCONTRADO].
+
+═══════════════════════════════════════
+ABERTURA DE CHAMADO (ACAO:CRIAR_CHAMADO)
+═══════════════════════════════════════
+COM cadastro: ACAO:CRIAR_CHAMADO:{"subject":"<assunto>","message":"<descricao>"}
+SEM cadastro: ACAO:CRIAR_CHAMADO:{"subject":"<assunto>","message":"<descricao>","guestName":"<nome>","guestContact":"<email ou telefone>"}
+
+═══════════════════════════════════════
+NORMALIZAÇÃO DE DADOS
+═══════════════════════════════════════
+• CPF/CNPJ: remova tudo que não for dígito
+• CEP: 8 dígitos sem traço
+• Telefone: só dígitos com DDD
+• E-mail falado ("arroba", "ponto"): reconstrua corretamente
+• Use [CEP consultado automaticamente] para preencher endereço
+
+**Tom:** Amigável, direto, profissional. Português brasileiro.`;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function extractCpfCnpj(text: string): string | null {
-  // Remove non-digits and spaces between digits (voice input)
   const normalized = text.replace(/[^0-9]/g, "");
-  // Prefer CNPJ (14 digits) then CPF (11 digits)
   const cnpj = normalized.match(/\d{14}/)?.[0];
   if (cnpj) return cnpj;
   const cpf = normalized.match(/\d{11}/)?.[0];
   return cpf ?? null;
 }
 
-// ── Extrai número do pedido do texto (formato YYYYMMDD-NNNN ou só dígitos) ───
 function extractOrderRef(text: string): { orderNumber?: string; orderId?: number } {
   const orderNumberMatch = text.match(/\b(\d{8}-\d{4})\b/);
   if (orderNumberMatch) return { orderNumber: orderNumberMatch[1] };
-  // "pedido 123" or "pedido #123"
   const idMatch = text.match(/\bpedido\s+#?(\d+)\b/i);
   if (idMatch) return { orderId: parseInt(idMatch[1], 10) };
   return {};
 }
 
+function generateProvisionalPassword(): string {
+  const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#";
+  let pwd = "";
+  for (let i = 0; i < 10; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+  return pwd;
+}
+
+// ── Routes ────────────────────────────────────────────────────────────────────
 router.post("/chat/session", async (req, res): Promise<void> => {
   const [conv] = await db.insert(conversations).values({ title: "Chat de Vendas" }).returning();
   res.status(201).json({ id: conv.id, title: conv.title, createdAt: conv.createdAt });
@@ -198,18 +297,30 @@ router.post("/chat", async (req, res): Promise<void> => {
   const history = await db.select().from(chatMessages)
     .where(eq(chatMessages.conversationId, sessionId))
     .orderBy(asc(chatMessages.createdAt))
-    .limit(40);
+    .limit(50);
 
   const chatHistory = history.map(m => ({ role: m.role as "user" | "assistant" | "system", content: m.content }));
 
-  // ── 1. Verificar se o usuário já está verificado nesta sessão ──────────────
+  // ── 1. Verificar se usuário já foi verificado nesta sessão ─────────────────
   const verifiedMsg = chatHistory.find(m => m.content.startsWith("[USUARIO_VERIFICADO]"));
   let verifiedCpfCnpj: string | null = null;
   if (verifiedMsg) {
     verifiedCpfCnpj = verifiedMsg.content.match(/CPF\/CNPJ: (\d+)/)?.[1] ?? null;
   }
+  // Também verificar se cadastro foi criado nesta sessão
+  const cadastroCriado = chatHistory.find(m => m.content.startsWith("[CADASTRO_CRIADO]"));
+  if (cadastroCriado && !verifiedCpfCnpj) {
+    verifiedCpfCnpj = cadastroCriado.content.match(/CPF\/CNPJ: (\d+)/)?.[1] ?? null;
+  }
 
-  // ── 2. Tentar verificar CPF/CNPJ da mensagem atual (se ainda não verificado) ─
+  // Verificar se bio já foi checada
+  const bioChecked = chatHistory.some(m =>
+    m.content.startsWith("[BIO_OK]") ||
+    m.content.startsWith("[BIO_FALHOU]") ||
+    m.content.startsWith("[BIO_INDISPONIVEL]")
+  );
+
+  // ── 2. Detectar CPF/CNPJ e verificar cadastro + biometria ─────────────────
   if (!verifiedCpfCnpj) {
     const cpfCnpj = extractCpfCnpj(message);
     if (cpfCnpj) {
@@ -221,18 +332,17 @@ router.post("/chat", async (req, res): Promise<void> => {
 
       let sysMsg: string;
       if (user && user.emailVerified) {
-        const tipo = user.role === "admin" ? "administrador" : user.userType ?? "cliente";
+        const tipo = String(user.role) === "admin" ? "administrador" : user.userType ?? "cliente";
         sysMsg = `[USUARIO_VERIFICADO] CPF/CNPJ: ${cpfCnpj} | Nome: ${user.name} | Tipo: ${tipo} | ID_INTERNO: ${user.id}`;
         verifiedCpfCnpj = cpfCnpj;
       } else {
-        sysMsg = `[USUARIO_NAO_CADASTRADO] CPF/CNPJ: ${cpfCnpj} — não encontrado no cadastro ou conta não confirmada. Oriente a acessar lealcert.com.br/register.`;
+        sysMsg = `[USUARIO_NAO_CADASTRADO] CPF/CNPJ: ${cpfCnpj} — não encontrado no cadastro ativo. Colete os dados de cadastro conforme o fluxo.`;
       }
 
-      // Persiste no histórico para a sessão
       await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: sysMsg });
       chatHistory.push({ role: "user" as const, content: sysMsg });
 
-      // ── Se verificado, injeta catálogo com preços reais do banco ─────────
+      // Injeta catálogo se verificado
       if (verifiedCpfCnpj) {
         const certs = await db
           .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price })
@@ -241,21 +351,49 @@ router.post("/chat", async (req, res): Promise<void> => {
 
         let catalogMsg: string;
         if (certs.length === 0) {
-          catalogMsg = `[CATALOGO_VAZIO] Nenhum certificado está disponível para venda no momento. NÃO ofereça nenhum produto nem mencione preços. Informe ao cliente que o catálogo está temporariamente indisponível e que ele pode entrar em contato pelo suporte.`;
+          catalogMsg = `[CATALOGO_VAZIO] Nenhum certificado disponível no momento. Informe ao cliente que o catálogo está temporariamente indisponível.`;
         } else {
-          const catalogLines = certs
-            .map(c => `  - ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`)
-            .join("\n");
-          catalogMsg = `[CATALOGO_PRECOS] Catálogo oficial consultado agora do banco de dados:\n${catalogLines}\nUse SOMENTE estes IDs e valores — nunca invente preços.`;
+          const lines = certs.map(c => `  - ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`).join("\n");
+          catalogMsg = `[CATALOGO_PRECOS] Catálogo oficial:\n${lines}\nUse SOMENTE estes IDs e valores.`;
         }
 
         await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: catalogMsg });
         chatHistory.push({ role: "user" as const, content: catalogMsg });
       }
+
+      // ── Bio check PSBio (só para CPF de 11 dígitos, se ainda não checada) ─
+      if (!bioChecked) {
+        let bioMsg: string;
+        if (cpfCnpj.length === 14) {
+          // CNPJ: bio check do responsável será feito na videoconferência
+          bioMsg = `[BIO_INDISPONIVEL] CNPJ informado — biometria do responsável será verificada durante a videoconferência de emissão.`;
+        } else {
+          // CPF: check PSBio agora
+          try {
+            const sw = await getSwSettings();
+            if (!sw) {
+              bioMsg = `[BIO_INDISPONIVEL] Safeweb não configurada — biometria será verificada durante a emissão.`;
+            } else {
+              const bioResult = await swBiometriaPSBioGlobal(sw, cpfCnpj);
+              if (bioResult.encontrado === true) {
+                bioMsg = `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfCnpj}. Pode prosseguir com a emissão por videoconferência.`;
+              } else {
+                bioMsg = `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfCnpj}. Mensagem: ${bioResult.mensagem ?? "não encontrada"}. NÃO prossiga com venda.`;
+              }
+            }
+          } catch (bioErr) {
+            logger.warn({ err: bioErr }, "PSBio check failed — treating as indisponível");
+            bioMsg = `[BIO_INDISPONIVEL] Não foi possível verificar a biometria PSBio no momento. Continue o atendimento normalmente.`;
+          }
+        }
+
+        await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: bioMsg });
+        chatHistory.push({ role: "user" as const, content: bioMsg });
+      }
     }
   }
 
-  // ── 3. Consulta de status de pedido (somente para usuário verificado) ──────
+  // ── 3. Consulta de status de pedido ───────────────────────────────────────
   if (verifiedCpfCnpj) {
     const orderRef = extractOrderRef(message);
     if (orderRef.orderNumber || orderRef.orderId) {
@@ -265,14 +403,7 @@ router.post("/chat", async (req, res): Promise<void> => {
         else if (orderRef.orderId) conditions.push(eq(ordersTable.id, orderRef.orderId));
 
         const [order] = await db
-          .select({
-            id: ordersTable.id,
-            orderNumber: ordersTable.orderNumber,
-            status: ordersTable.status,
-            total: ordersTable.total,
-            createdAt: ordersTable.createdAt,
-            certificateId: ordersTable.certificateId,
-          })
+          .select({ id: ordersTable.id, orderNumber: ordersTable.orderNumber, status: ordersTable.status, total: ordersTable.total, createdAt: ordersTable.createdAt, certificateId: ordersTable.certificateId })
           .from(ordersTable)
           .where(and(...conditions))
           .limit(1);
@@ -305,7 +436,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       if (cepRes.ok) {
         const cepData = await cepRes.json() as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
         if (!cepData.erro && cepData.localidade) {
-          const addressNote = `[CEP consultado automaticamente] CEP ${cep}: ${cepData.logradouro ?? ""}, bairro ${cepData.bairro ?? ""}, ${cepData.localidade}-${cepData.uf}. Use estes dados para preencher o endereço. Pergunte apenas o número.`;
+          const addressNote = `[CEP consultado automaticamente] CEP ${cep}: ${cepData.logradouro ?? ""}, bairro ${cepData.bairro ?? ""}, ${cepData.localidade}-${cepData.uf}. Use estes dados para preencher o endereço. Pergunte só o número e complemento.`;
           chatHistory.push({ role: "user" as const, content: `[Sistema] ${addressNote}` });
         }
       }
@@ -315,7 +446,6 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
 
   // ── 5. Carregar configurações de IA ───────────────────────────────────────
-  // Preços NÃO vão no system prompt — são injetados via [CATALOGO_PRECOS] só após verificação
   const systemPrompt = buildSystemPrompt();
 
   const [aiSettings] = await db.select({
@@ -351,7 +481,6 @@ router.post("/chat", async (req, res): Promise<void> => {
   // ── 6. Chamar a IA ────────────────────────────────────────────────────────
   let fullResponse = "";
 
-  // Filtra mensagens system do histórico para o formato da IA (Claude/OpenAI não aceitam role=system no meio)
   const aiMessages = chatHistory
     .filter(m => m.role === "user" || m.role === "assistant")
     .map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
@@ -401,7 +530,7 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: fullResponse });
 
-  // ── 7. Processar ações emitidas pela IA ───────────────────────────────────
+  // ── 7. Processar ações da IA ───────────────────────────────────────────────
 
   // Ação: solicitar documentos
   if (fullResponse.includes("ACAO:SOLICITAR_DOCS:")) {
@@ -409,10 +538,9 @@ router.post("/chat", async (req, res): Promise<void> => {
     if (match) res.write(`data: ${JSON.stringify({ action: "solicitar_docs", tipo: match[1] })}\n\n`);
   }
 
-  // Ação: criar pedido (somente se usuário verificado)
+  // Ação: criar pedido
   if (fullResponse.includes("ACAO:CRIAR_PEDIDO:")) {
     if (!verifiedCpfCnpj) {
-      // Segurança extra: bloqueia criação de pedido se não verificado
       res.write(`data: ${JSON.stringify({ content: "\n\n❌ Não é possível criar pedidos sem validação de cadastro. Informe seu CPF ou CNPJ para continuar." })}\n\n`);
     } else {
       try {
@@ -445,7 +573,7 @@ router.post("/chat", async (req, res): Promise<void> => {
         if (!cert && typeof orderData.certificateId === "string") {
           const nameLike = (orderData.certificateId as string).toLowerCase().replace(/-/g, " ");
           const allCerts = await db.select().from(certificatesTable).where(eq(certificatesTable.active, true));
-          cert = allCerts.find(c => c.name.toLowerCase().includes(nameLike) || nameLike.includes(c.name.toLowerCase().split(" ")[0]));
+          cert = allCerts.find(c => c.name.toLowerCase().includes(nameLike));
         }
 
         if (!cert) throw new Error("Certificado não encontrado");
@@ -453,7 +581,6 @@ router.post("/chat", async (req, res): Promise<void> => {
         const basePrice = parseFloat(cert.price);
         const total = basePrice + (orderData.extendedWarranty ? 15.0 : 0.0);
 
-        // Encontra o userId pelo CPF/CNPJ verificado na sessão
         let userId = 1;
         const [existingUser] = await db.select({ id: usersTable.id })
           .from(usersTable)
@@ -461,7 +588,6 @@ router.post("/chat", async (req, res): Promise<void> => {
           .limit(1);
         if (existingUser) userId = existingUser.id;
 
-        // Busca documentos enviados no histórico
         const allMsgs = await db.select().from(chatMessages)
           .where(eq(chatMessages.conversationId, sessionId))
           .orderBy(asc(chatMessages.createdAt));
@@ -469,7 +595,6 @@ router.post("/chat", async (req, res): Promise<void> => {
         const chatDocuments = docKeyMsg ? docKeyMsg.content.replace("[DOC_KEYS] ", "").trim() : null;
 
         let orderNumber: string;
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           const rand = Math.floor(1000 + Math.random() * 9000);
           orderNumber = `${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${rand}`;
@@ -499,17 +624,48 @@ router.post("/chat", async (req, res): Promise<void> => {
           chatDocuments,
         }).returning();
 
+        // Gerar QR Code PIX
         const [settings] = await db.select().from(settingsTable).limit(1);
-        const pixKey = (settings as Record<string, unknown>)["pixKey"] as string | null ?? null;
-        const pixPayload = pixKey ? { pixKey, amount: total, orderNumber: order.orderNumber } : null;
+        const pixKey = (settings as Record<string, unknown>)["pixKey"] as string | null
+          ?? (settings as Record<string, unknown>)["mpPixKey"] as string | null
+          ?? null;
+        const appName = settings?.appName ?? "LealCert";
+        const contactCity = (settings as Record<string, unknown>)["contactCity"] as string | null ?? "SAO PAULO";
 
-        const confirmMsg = pixPayload
-          ? `✅ **Pedido #${order.orderNumber} criado com sucesso!**\n\nTotal: R$ ${total.toFixed(2)}\n\n**Pagamento via PIX:**\nChave PIX: \`${pixPayload.pixKey}\`\nValor: R$ ${total.toFixed(2)}\n\nApós o pagamento, nossa equipe entrará em contato em até 1 hora útil para agendar a emissão.\n\n📧 Atualizações por e-mail em **${orderData.customerEmail}**.`
-          : `✅ **Pedido #${order.orderNumber} criado com sucesso!**\n\nTotal: R$ ${total.toFixed(2)}\n\nNossa equipe enviará os dados de pagamento para **${orderData.customerEmail}** em breve.\n\n📧 Você pode acompanhar o pedido em lealcert.com.br/entrar.`;
+        let qrCodeDataUrl: string | null = null;
+        let pixPayload: string | null = null;
+
+        if (pixKey) {
+          try {
+            pixPayload = buildPixPayload(pixKey, total, order.orderNumber, appName, contactCity);
+            qrCodeDataUrl = await QRCode.toDataURL(pixPayload, {
+              width: 300,
+              margin: 2,
+              color: { dark: "#000000", light: "#ffffff" },
+            });
+          } catch (qrErr) {
+            logger.warn({ err: qrErr }, "QR Code generation failed");
+          }
+        }
+
+        const confirmMsg = qrCodeDataUrl
+          ? `✅ **Pedido #${order.orderNumber} criado!**\n\nTotal: **R$ ${total.toFixed(2)}**\n\nO QR Code PIX foi gerado na tela. Após o pagamento, entre em contato para agendar a videoconferência.\n\n📧 Confirmação enviada para **${orderData.customerEmail}**.`
+          : pixKey
+            ? `✅ **Pedido #${order.orderNumber} criado!**\n\nTotal: **R$ ${total.toFixed(2)}**\n\n**Chave PIX:** \`${pixKey}\`\nValor: R$ ${total.toFixed(2)}\n\nApós o pagamento, entre em contato para agendar a videoconferência.\n\n📧 Confirmação enviada para **${orderData.customerEmail}**.`
+            : `✅ **Pedido #${order.orderNumber} criado!**\n\nTotal: **R$ ${total.toFixed(2)}**\n\nNossa equipe enviará os dados de pagamento para **${orderData.customerEmail}** em breve.`;
 
         res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
         res.write(`data: ${JSON.stringify({ content: confirmMsg })}\n\n`);
-        res.write(`data: ${JSON.stringify({ action: "order_created", orderId: order.id, orderNumber: order.orderNumber, pixPayload })}\n\n`);
+        res.write(`data: ${JSON.stringify({
+          action: "order_created",
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          total,
+          pixKey: pixKey ?? null,
+          pixPayload,
+          qrCodeDataUrl,
+        })}\n\n`);
+
         await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: confirmMsg });
 
         if (orderData.customerEmail) {
@@ -528,12 +684,124 @@ router.post("/chat", async (req, res): Promise<void> => {
         }
       } catch (actionErr) {
         logger.error({ err: actionErr }, "Failed to process CRIAR_PEDIDO action");
-        res.write(`data: ${JSON.stringify({ content: "\n\n❌ Ocorreu um erro ao criar o pedido. Por favor, tente novamente ou entre em contato com nosso suporte." })}\n\n`);
+        res.write(`data: ${JSON.stringify({ content: "\n\n❌ Erro ao criar o pedido. Tente novamente ou entre em contato com o suporte." })}\n\n`);
       }
     }
   }
 
-  // Ação: criar chamado de suporte (funciona com ou sem cadastro)
+  // Ação: criar cadastro
+  if (fullResponse.includes("ACAO:CRIAR_CADASTRO:")) {
+    try {
+      const jsonStr = fullResponse.split("ACAO:CRIAR_CADASTRO:")[1].trim();
+      const cadastroData = JSON.parse(jsonStr) as {
+        userType: "cliente" | "contador";
+        personType: "fisica" | "juridica";
+        name: string;
+        cpfCnpj: string;
+        email: string;
+        phone?: string;
+        zipCode?: string;
+        street?: string;
+        addressNumber?: string;
+        complement?: string;
+        neighborhood?: string;
+        city?: string;
+        addressState?: string;
+        companyName?: string;
+        companyFantasyName?: string;
+        responsibleCpf?: string;
+        responsibleName?: string;
+        crcNumber?: string;
+      };
+
+      const cpfCnpjDigits = String(cadastroData.cpfCnpj ?? "").replace(/\D/g, "");
+      if (!cpfCnpjDigits || !cadastroData.name || !cadastroData.email) {
+        throw new Error("Dados incompletos: nome, CPF/CNPJ e e-mail são obrigatórios");
+      }
+
+      // Verificar se já existe
+      const [existing] = await db.select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.cpfCnpj, cpfCnpjDigits))
+        .limit(1);
+      if (existing) {
+        throw new Error(`CPF/CNPJ ${cpfCnpjDigits} já possui cadastro`);
+      }
+
+      const provisionalPassword = generateProvisionalPassword();
+      const passwordHash = await bcrypt.hash(provisionalPassword, 10);
+
+      const [newUser] = await db.insert(usersTable).values({
+        name: cadastroData.name.trim(),
+        cpfCnpj: cpfCnpjDigits,
+        email: cadastroData.email.trim().toLowerCase(),
+        passwordHash,
+        role: "contador" as const,
+        userType: cadastroData.userType,
+        personType: cadastroData.personType,
+        phone: cadastroData.phone ? cadastroData.phone.replace(/\D/g, "") : null,
+        zipCode: cadastroData.zipCode ? cadastroData.zipCode.replace(/\D/g, "") : null,
+        street: cadastroData.street || null,
+        addressNumber: cadastroData.addressNumber || null,
+        complement: cadastroData.complement || null,
+        neighborhood: cadastroData.neighborhood || null,
+        city: cadastroData.city || null,
+        addressState: cadastroData.addressState || null,
+        companyName: cadastroData.companyName || null,
+        companyFantasyName: cadastroData.companyFantasyName || null,
+        responsibleCpf: cadastroData.responsibleCpf ? cadastroData.responsibleCpf.replace(/\D/g, "") : null,
+        responsibleName: cadastroData.responsibleName || null,
+        crcNumber: cadastroData.crcNumber || null,
+        isActive: true,
+        emailVerified: true,
+        mustChangePassword: true,
+      }).returning();
+
+      // Enviar e-mail com senha provisória
+      try {
+        await sendTempPasswordEmail(cadastroData.email, cadastroData.name, provisionalPassword);
+      } catch (emailErr) {
+        logger.warn({ err: emailErr }, "Failed to send provisional password email");
+      }
+
+      // Injetar [CADASTRO_CRIADO] + [USUARIO_VERIFICADO] + catálogo no histórico
+      const tipo = cadastroData.userType;
+      const cadastroMsg = `[CADASTRO_CRIADO] CPF/CNPJ: ${cpfCnpjDigits} | Nome: ${newUser.name} | Tipo: ${tipo} | ID_INTERNO: ${newUser.id} — Uma senha provisória foi enviada por e-mail. O cliente deverá alterar a senha no primeiro acesso.`;
+      const verificadoMsg = `[USUARIO_VERIFICADO] CPF/CNPJ: ${cpfCnpjDigits} | Nome: ${newUser.name} | Tipo: ${tipo} | ID_INTERNO: ${newUser.id}`;
+
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: cadastroMsg });
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: verificadoMsg });
+
+      // Injetar catálogo
+      const certs = await db
+        .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price })
+        .from(certificatesTable)
+        .where(eq(certificatesTable.active, true));
+
+      let catalogMsg: string;
+      if (certs.length === 0) {
+        catalogMsg = `[CATALOGO_VAZIO] Nenhum certificado disponível no momento.`;
+      } else {
+        const lines = certs.map(c => `  - ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`).join("\n");
+        catalogMsg = `[CATALOGO_PRECOS] Catálogo oficial:\n${lines}\nUse SOMENTE estes IDs e valores.`;
+      }
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: catalogMsg });
+
+      const confirmMsg = `✅ **Cadastro criado com sucesso!**\n\nOlá, **${newUser.name}**! Seu cadastro foi criado.\n\n📧 Uma senha provisória foi enviada para **${cadastroData.email}**. Você deverá alterá-la no primeiro acesso ao painel.\n\nAgora vou te ajudar a escolher e adquirir seu certificado digital! 😊`;
+
+      res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
+      res.write(`data: ${JSON.stringify({ content: confirmMsg })}\n\n`);
+      res.write(`data: ${JSON.stringify({ action: "cadastro_criado", userId: newUser.id, cpfCnpj: cpfCnpjDigits })}\n\n`);
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: confirmMsg });
+
+    } catch (cadastroErr) {
+      logger.error({ err: cadastroErr }, "Failed to process CRIAR_CADASTRO action");
+      const errMsg = (cadastroErr as Error).message ?? "Erro ao criar cadastro";
+      res.write(`data: ${JSON.stringify({ content: `\n\n❌ Não foi possível criar o cadastro: ${errMsg}. Verifique os dados e tente novamente.` })}\n\n`);
+    }
+  }
+
+  // Ação: criar chamado de suporte
   if (fullResponse.includes("ACAO:CRIAR_CHAMADO:")) {
     try {
       const jsonStr = fullResponse.split("ACAO:CRIAR_CHAMADO:")[1].trim();
@@ -551,13 +819,11 @@ router.post("/chat", async (req, res): Promise<void> => {
       let messagePrefix = "";
 
       if (verifiedCpfCnpj) {
-        // Usuário com cadastro — abre como ele mesmo
         const [u] = await db.select({ id: usersTable.id }).from(usersTable)
           .where(eq(usersTable.cpfCnpj, verifiedCpfCnpj)).limit(1);
         if (!u) throw new Error("Usuário verificado não encontrado");
         ticketUserId = u.id;
       } else {
-        // Sem cadastro — usa o admin (ID mais baixo com role=admin) como sistema
         const [adminUser] = await db.select({ id: usersTable.id }).from(usersTable)
           .where(eq(usersTable.role, "admin")).limit(1);
         if (!adminUser) throw new Error("Usuário sistema não encontrado");
@@ -580,7 +846,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       });
 
       const confirmMsg = verifiedCpfCnpj
-        ? `✅ **Chamado #${ticket.id} aberto com sucesso!**\n\nNossa equipe irá analisar sua solicitação e responderá em breve.\nVocê pode acompanhar o chamado em lealcert.com.br/suporte.`
+        ? `✅ **Chamado #${ticket.id} aberto com sucesso!**\n\nNossa equipe irá analisar e responderá em breve.\nAcompanhe em lealcert.com.br/suporte.`
         : `✅ **Chamado #${ticket.id} aberto com sucesso!**\n\nNossa equipe entrará em contato pelo canal informado em breve.`;
 
       res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
@@ -589,7 +855,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: confirmMsg });
     } catch (ticketErr) {
       logger.error({ err: ticketErr }, "Failed to process CRIAR_CHAMADO action");
-      res.write(`data: ${JSON.stringify({ content: "\n\n❌ Ocorreu um erro ao abrir o chamado. Tente novamente ou acesse lealcert.com.br/suporte." })}\n\n`);
+      res.write(`data: ${JSON.stringify({ content: "\n\n❌ Erro ao abrir o chamado. Tente novamente ou acesse lealcert.com.br/suporte." })}\n\n`);
     }
   }
 
