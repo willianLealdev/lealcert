@@ -77,19 +77,7 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     Email: order.customerEmail ?? "",
   };
 
-  // Endereço da empresa/cliente (campo Endereco — endereço geral da pessoa/empresa)
-  const endereco = {
-    Logradouro: order.addressStreet ?? "",
-    Numero: order.addressNumber ?? "S/N",
-    Complemento: order.addressComplement ?? "",
-    Bairro: order.addressNeighborhood ?? "",
-    UF: order.addressState ?? "",
-    Cidade: order.addressCity ?? "",
-    CEP: (order.addressZipcode ?? "").replace(/\D/g, ""),
-  };
-
   // UrlSolicitacao — URL para receber notificações de eventos da Safeweb
-  // A Safeweb fará POST para esta URL quando o status da solicitação mudar
   const urlSolicitacao = sw.siteUrl
     ? `${sw.siteUrl.replace(/\/$/, "")}/api/safeweb/eventos/webhook`
     : undefined;
@@ -98,80 +86,87 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     CnpjAR: sw.cnpjAr ?? "",
     idProduto: safewebIdProduto,
     Contato: contato,
-    Endereco: endereco,
     ...(sw.codigoParceiro ? { CodigoParceiro: sw.codigoParceiro } : {}),
     ...(urlSolicitacao ? { UrlSolicitacao: urlSolicitacao } : {}),
   };
 
   if (isCnpj) {
-    // e-CNPJ: campos da empresa + representante legal (titular do certificado)
-    // order.customerName = nome do representante legal (salvo assim no form para e-CNPJ)
-    // order.companyName  = razão social da empresa
-    body.CNPJ = order.customerCpfCnpj ?? "";
+    // e-CNPJ: representante legal é o titular físico do certificado.
+    // Campos raiz conforme doc oficial POST /Partner/api/Add/3 (seção CNPJ):
+    //   CNPJ, RazaoSocial, Nome (representante), CPF (representante),
+    //   DataNascimento (representante), Contato, Endereco (representante)
+    // NomeFantasia e Titular_* NÃO existem na API — não enviar.
+    body.CNPJ = (order.customerCpfCnpj ?? "").replace(/\D/g, "");
     body.RazaoSocial = order.companyName ?? "";
-    body.NomeFantasia = order.companyName ?? "";
     body.Nome = order.customerName ?? ""; // nome do representante legal
-    // CPF e DataNascimento do representante: sempre presente (nunca ausente do JSON)
     body.CPF = (order.representanteCpf ?? "").replace(/\D/g, "");
     body.DataNascimento = order.representanteNascimento ?? "";
 
-    // Titular_* — campos obrigatórios do titular físico do certificado (representante legal)
-    // Se o representante não tem endereço próprio preenchido, usa o endereço principal do pedido como fallback
-    const titularCep = order.representanteAddressZipcode || order.addressZipcode;
-    const titularLogradouro = order.representanteAddressStreet || order.addressStreet;
-    const titularNumero = order.representanteAddressNumber || order.addressNumber;
-    const titularComplemento = order.representanteAddressComplement || order.addressComplement;
-    const titularBairro = order.representanteAddressNeighborhood || order.addressNeighborhood;
-    const titularCidade = order.representanteAddressCity || order.addressCity;
-    const titularUF = order.representanteAddressState || order.addressState;
-
-    body.Titular_Nome = order.customerName ?? ""; // nome do representante legal
-    body.Titular_CPF = (order.representanteCpf ?? "").replace(/\D/g, "");
-    body.Titular_DataNascimento = order.representanteNascimento ?? "";
-    body.Titular_Email = order.customerEmail ?? "";
-    body.Titular_DDD = ddd;
-    body.Titular_Telefone = tel;
-    body.Titular_CEP = (titularCep ?? "").replace(/\D/g, "");
-    body.Titular_Logradouro = titularLogradouro ?? "";
-    body.Titular_Numero = titularNumero ?? "S/N";
-    body.Titular_Complemento = titularComplemento ?? "";
-    body.Titular_Bairro = titularBairro ?? "";
-    body.Titular_Cidade = titularCidade ?? "";
-    body.Titular_UF = titularUF ?? "";
+    // Endereço do representante com fallback para endereço do pedido
+    body.Endereco = {
+      Logradouro: order.representanteAddressStreet || order.addressStreet || "",
+      Numero: order.representanteAddressNumber || order.addressNumber || "S/N",
+      Complemento: order.representanteAddressComplement || order.addressComplement || "",
+      Bairro: order.representanteAddressNeighborhood || order.addressNeighborhood || "",
+      UF: order.representanteAddressState || order.addressState || "",
+      Cidade: order.representanteAddressCity || order.addressCity || "",
+      CEP: ((order.representanteAddressZipcode || order.addressZipcode) ?? "").replace(/\D/g, ""),
+    };
   } else {
     // e-CPF: titular é o próprio cliente
-    body.Nome = order.customerName;
-    body.CPF = order.customerCpfCnpj;
-    if (order.customerBirthDate) {
-      body.DataNascimento = order.customerBirthDate;
-    }
+    // Campos raiz conforme doc oficial POST /Partner/api/Add/3 (seção CPF):
+    //   Nome, CPF, DataNascimento, Contato, Endereco
+    // Titular_* NÃO existem na API — não enviar.
+    body.Nome = order.customerName ?? "";
+    body.CPF = (order.customerCpfCnpj ?? "").replace(/\D/g, "");
+    body.DataNascimento = order.customerBirthDate ?? "";
 
-    // Titular_* para e-CPF: o titular é o próprio portador do certificado
-    body.Titular_Nome = order.customerName;
-    body.Titular_CPF = order.customerCpfCnpj.replace(/\D/g, "");
-    body.Titular_DataNascimento = order.customerBirthDate ?? "";
-    body.Titular_Email = order.customerEmail ?? "";
-    body.Titular_DDD = ddd;
-    body.Titular_Telefone = tel;
-    body.Titular_CEP = (order.addressZipcode ?? "").replace(/\D/g, "");
-    body.Titular_Logradouro = order.addressStreet ?? "";
-    body.Titular_Numero = order.addressNumber ?? "S/N";
-    body.Titular_Complemento = order.addressComplement ?? "";
-    body.Titular_Bairro = order.addressNeighborhood ?? "";
-    body.Titular_Cidade = order.addressCity ?? "";
-    body.Titular_UF = order.addressState ?? "";
+    body.Endereco = {
+      Logradouro: order.addressStreet ?? "",
+      Numero: order.addressNumber ?? "S/N",
+      Complemento: order.addressComplement ?? "",
+      Bairro: order.addressNeighborhood ?? "",
+      UF: order.addressState ?? "",
+      Cidade: order.addressCity ?? "",
+      CEP: (order.addressZipcode ?? "").replace(/\D/g, ""),
+    };
   }
 
-  // CEI, NIS, PIS do representante (mutuamente exclusivos — apenas um é preenchido)
+  // DocumentoIdentidade — opcional; enviado se o tipo foi informado
+  if (order.representanteDocTipo && order.representanteDocTipo !== "0") {
+    body.DocumentoIdentidade = {
+      TipoDocumento: order.representanteDocTipo ?? "",
+      Numero: order.representanteDocNumero ?? "",
+      Emissor: order.representanteDocEmissor ?? "",
+    };
+  }
+
+  // CEI, NIS, PIS (mutuamente exclusivos — apenas um é preenchido)
   if (order.customerCei) body.CEI = order.customerCei;
   if (order.customerNis) body.NIS = order.customerNis;
   if (order.inssNumber) body.PIS = order.inssNumber;
-  // DocumentoTipo/Numero/Emissor: campo de uso interno apenas — NÃO enviado à Safeweb
+
+  // Sanitização: converter null → "" em todos os campos raiz e objetos aninhados
+  // para prevenir RuntimeBinderException no servidor .NET da Safeweb
+  const sanitizeNulls = (obj: Record<string, unknown>): Record<string, unknown> => {
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v === null || v === undefined) {
+        result[k] = "";
+      } else if (typeof v === "object" && !Array.isArray(v)) {
+        result[k] = sanitizeNulls(v as Record<string, unknown>);
+      } else {
+        result[k] = v;
+      }
+    }
+    return result;
+  };
+  const sanitizedBody = sanitizeNulls(body);
 
   try {
-    logger.info({ orderId, safewebIdProduto, isCnpj, body }, "swAutoComprar: enviando solicitação para Safeweb");
+    logger.info({ orderId, safewebIdProduto, isCnpj, bodyJson: JSON.stringify(sanitizedBody) }, "swAutoComprar: enviando solicitação para Safeweb");
 
-    const result = await swAdicionarVideoconferencia(sw, body);
+    const result = await swAdicionarVideoconferencia(sw, sanitizedBody);
 
     // Log completo da resposta para diagnóstico
     logger.info({ orderId, resultRaw: result }, "swAutoComprar: resposta completa da Safeweb");
