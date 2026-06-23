@@ -130,7 +130,7 @@ export default function Orders() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell font-mono text-sm text-muted-foreground">
-                        {order.protocolNumber ?? "—"}
+                        {order.protocolNumber || order.garProtocolo || order.safewebSolicitacaoId || "—"}
                       </td>
                     </tr>
                   ))}

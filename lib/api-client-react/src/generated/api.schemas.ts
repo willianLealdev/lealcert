@@ -317,13 +317,12 @@ export const OrderStatus = {
 } as const;
 
 /**
- * 0=RG 1=CNH 2=Passaporte 3=RNE 4=Outro
+ * 1=RG 2=RNE 3=Passaporte 4=CNH
  */
 export type OrderRepresentanteDocTipo = typeof OrderRepresentanteDocTipo[keyof typeof OrderRepresentanteDocTipo] | null;
 
 
 export const OrderRepresentanteDocTipo = {
-  NUMBER_0: '0',
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -384,7 +383,7 @@ export interface Order {
   customerNis?: string | null;
   representanteCpf?: string | null;
   representanteNascimento?: string | null;
-  /** 0=RG 1=CNH 2=Passaporte 3=RNE 4=Outro */
+  /** 1=RG 2=RNE 3=Passaporte 4=CNH */
   representanteDocTipo?: OrderRepresentanteDocTipo;
   representanteDocNumero?: string | null;
   representanteDocEmissor?: string | null;
