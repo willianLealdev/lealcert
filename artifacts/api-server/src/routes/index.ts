@@ -20,6 +20,8 @@ import couponsRouter from "./coupons";
 import brandingRouter from "./branding";
 import pushRouter from "./push";
 import ipSecurityRouter from "./ip-security";
+import agentesRouter from "./agentes";
+import agenteDocsRouter from "./agente-docs";
 
 const router: IRouter = Router();
 
@@ -44,5 +46,7 @@ router.use(renewalsRouter);
 router.use(cnpjLookupRouter);
 router.use(couponsRouter);
 router.use(ipSecurityRouter);
+router.use(agentesRouter);
+router.use(agenteDocsRouter);
 
 export default router;

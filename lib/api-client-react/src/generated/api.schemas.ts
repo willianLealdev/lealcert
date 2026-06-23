@@ -130,6 +130,7 @@ export type AuthUserRole = typeof AuthUserRole[keyof typeof AuthUserRole];
 export const AuthUserRole = {
   admin: 'admin',
   contador: 'contador',
+  agente: 'agente',
 } as const;
 
 export type AuthUserUserType = typeof AuthUserUserType[keyof typeof AuthUserUserType];
@@ -209,6 +210,7 @@ export type UserRole = typeof UserRole[keyof typeof UserRole];
 export const UserRole = {
   admin: 'admin',
   contador: 'contador',
+  agente: 'agente',
 } as const;
 
 export interface User {
@@ -228,6 +230,7 @@ export type UserInputRole = typeof UserInputRole[keyof typeof UserInputRole];
 export const UserInputRole = {
   admin: 'admin',
   contador: 'contador',
+  agente: 'agente',
 } as const;
 
 export interface UserInput {
@@ -245,6 +248,7 @@ export type UserUpdateRole = typeof UserUpdateRole[keyof typeof UserUpdateRole];
 export const UserUpdateRole = {
   admin: 'admin',
   contador: 'contador',
+  agente: 'agente',
 } as const;
 
 export interface UserUpdate {
@@ -254,6 +258,43 @@ export interface UserUpdate {
   role?: UserUpdateRole;
   isActive?: boolean;
   password?: string;
+}
+
+export interface Agent {
+  id: number;
+  name: string;
+  email?: string | null;
+  cpfCnpj: string;
+  phone?: string | null;
+  isActive?: boolean;
+  mustChangePassword?: boolean;
+  createdAt: string;
+}
+
+export interface AgentInput {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  phone?: string;
+}
+
+export interface AgentUpdate {
+  name?: string;
+  phone?: string;
+  isActive?: boolean;
+}
+
+export interface AgentDocumentItem {
+  label: string;
+  key: string;
+  url: string;
+}
+
+export interface AgentDocumentResult {
+  protocolo: string;
+  displayName: string;
+  clientType?: string | null;
+  documents: AgentDocumentItem[];
 }
 
 export interface BatchToggleCertificatesInput {

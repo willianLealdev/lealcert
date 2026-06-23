@@ -30,6 +30,8 @@ import AdminMarketing from "@/pages/admin/marketing";
 import AdminRenovacoes from "@/pages/admin/renovacoes";
 import AdminCoupons from "@/pages/admin/coupons";
 import AdminIpSecurity from "@/pages/admin/ip-security";
+import AdminAgentes from "@/pages/admin/agentes";
+import AgenteConsultar from "@/pages/agente/consultar";
 import PrivacyPolicy from "@/pages/privacy-policy";
 
 const queryClient = new QueryClient({
@@ -38,7 +40,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType; adminOnly?: boolean }) {
+function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = false }: { component: React.ComponentType; adminOnly?: boolean; agenteOnly?: boolean }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -56,6 +58,7 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
 
   if (!user) return <Login />;
   if (adminOnly && user.role !== "admin") return <NotFound />;
+  if (agenteOnly && user.role !== "agente") return <NotFound />;
 
   return (
     <Layout>
@@ -94,6 +97,9 @@ function Router() {
       <Route path="/admin/renovacoes" component={() => <ProtectedRoute component={AdminRenovacoes} adminOnly />} />
       <Route path="/admin/coupons" component={() => <ProtectedRoute component={AdminCoupons} adminOnly />} />
       <Route path="/admin/ip-security" component={() => <ProtectedRoute component={AdminIpSecurity} adminOnly />} />
+      <Route path="/admin/agentes" component={() => <ProtectedRoute component={AdminAgentes} adminOnly />} />
+      {/* Agente routes */}
+      <Route path="/consultar" component={() => <ProtectedRoute component={AgenteConsultar} agenteOnly />} />
       <Route component={NotFound} />
     </Switch>
   );

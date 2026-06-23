@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 
 export type UserType = "contador" | "cliente";
 
-export const roleEnum = pgEnum("role", ["admin", "contador"]);
+export const roleEnum = pgEnum("role", ["admin", "contador", "agente"]);
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),

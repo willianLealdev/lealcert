@@ -36,6 +36,8 @@ import {
   BellRing,
   Loader2,
   ShieldCheck,
+  FileSearch,
+  UserCog,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 
@@ -45,8 +47,13 @@ const navigation = [
   { name: "Suporte", href: "/support", icon: LifeBuoy },
 ];
 
+const agenteNav = [
+  { name: "Consultar Documentos", href: "/consultar", icon: FileSearch },
+];
+
 const adminNav = [
   { name: "Usuários", href: "/admin/users", icon: Users },
+  { name: "Agentes", href: "/admin/agentes", icon: UserCog },
   { name: "Catálogo", href: "/admin/certificates", icon: FileBadge },
   { name: "Agenda", href: "/admin/slots", icon: CalendarDays },
   { name: "Renovações", href: "/admin/renovacoes", icon: RefreshCw },
@@ -321,7 +328,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
           {collapsed && <div className="mb-2" />}
 
-          {navigation.map((item) => (
+          {user?.role !== "agente" && navigation.map((item) => (
+            <NavItem
+              key={item.name}
+              href={item.href}
+              icon={item.icon}
+              name={item.name}
+              active={location === item.href || location.startsWith(item.href + "/")}
+              collapsed={collapsed}
+              onClick={close}
+            />
+          ))}
+
+          {user?.role === "agente" && agenteNav.map((item) => (
             <NavItem
               key={item.name}
               href={item.href}
@@ -394,7 +413,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="min-w-0">
                   <p className="font-medium text-sidebar-foreground truncate text-xs">{user?.name}</p>
                   <p className="text-xs text-sidebar-foreground/50 capitalize">
-                    {user?.role === "admin" ? "Administrador" : "Contador"}
+                    {user?.role === "admin" ? "Administrador" : user?.role === "agente" ? "Agente de Registro" : "Contador"}
                   </p>
                 </div>
               )}
