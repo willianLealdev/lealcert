@@ -1,47 +1,53 @@
 ---
-name: Safeweb agenda paths
-description: Official Safeweb agenda API endpoint paths (NOT the inferred Shared/Schedule paths)
+name: Safeweb agenda paths and host
+description: Agenda endpoints use a DIFFERENT host from the main API, and POST agendar uses a different auth header.
 ---
 
-# Safeweb Agenda — Official Paths
+# Safeweb Agenda — Official Paths and Host
 
 Source: https://h-acsafeweb.safewebpss.com.br/hotsite/documentacao-safeweb/home/#/docs/integracao-agenda/
 
-All agenda endpoints are under: `/Service/MicroService/Agenda/Agendamentos/api/Integracao/`
+## Critical: Different base host
+
+| Environment | Main API host | Agenda host |
+|---|---|---|
+| Homologação | `h-acsafeweb.safewebpss.com.br` | `h-pss.safewebpss.com.br` |
+| Produção | `acsafeweb.safewebpss.com.br` | `pss.safewebpss.com.br` |
+
+`getAgendaBaseUrl(mainUrl)` in `lib/safeweb.ts` derives the agenda host: replaces `acsafeweb.safewebpss.com.br` → `pss.safewebpss.com.br`.
+
+All agenda HTTP helpers (`swAgendaGetHttp`, `swAgendaPostHttp`, `swAgendaDeleteHttp`) call this function automatically. Pass `settings.agendaUrl` to override for custom deployments.
+
+## All agenda endpoints: `/Service/MicroService/Agenda/Agendamentos/api/Integracao/`
 
 | Operation | Method | Path |
 |-----------|--------|------|
 | Listar horários | GET | `/horarios/{localAtendimentoId}/{data}` (data = YYYY-MM-DD, optional) |
-| Agendar | POST | `/agendamento` |
-| Cancelar agendamento | DELETE | `/agendamento/{protocolo}/{catalogoProdutoId}` |
+| Agendar / Reagendar | POST | `/agendamento` |
+| Cancelar | DELETE | `/agendamento/{protocolo}/{catalogoProdutoId}` |
 | Configuração | GET | `/configuracao/{localAtendimentoId}` |
 | Informações | GET | `/informacoes/{protocolo}` |
 
-## Key details
+## Auth header differences (per official docs)
+- GET horarios / GET configuracao / DELETE cancelar: `Authorization: [TOKEN]` — no prefix
+- POST agendar: `Authorization: bearer [TOKEN]` — lowercase `bearer` prefix
 
-- `localAtendimentoId` = numeric ID from AttendancePlace/GetListByCnpjAR response (`idLocalAtendimento` field)
-- `protocolo` for agendar/cancelar = `order.safewebSolicitacaoId` (the ID returned when the solicitação is created)
-- `catalogoProdutoId` = certificate's `safewebIdProduto` (from certificates table)
-- `data` = YYYY-MM-DD string; if omitted defaults to today on the Safeweb side
+## Field types
+- `localAtendimentoId` = Int (from `idLocalAtendimento` in GetListByCnpjAR response)
+- `protocolo` = String = `order.safewebSolicitacaoId`
+- `catalogoProdutoId` = **Int** (docs: Int), from `certificate.safewebIdProduto` — cast to number, not string
+- `data` for agendar = full ISO datetime `"YYYY-MM-DDTHH:mm:ss"` (not just date)
 
-## Agendar request body
-
+## Agendar request body (all numbers, not strings)
 ```json
-{ "localAtendimentoId": 1, "protocolo": "8000136590", "data": "2024-07-23", "catalogoProdutoId": "42" }
+{ "localAtendimentoId": 1, "protocolo": "8000136590", "data": "2024-07-23T09:00:00", "catalogoProdutoId": 42 }
 ```
 
 ## Listar horários response
-
 ```json
-{
-  "localAtendimentoId": 1,
-  "data": "2024-07-23",
-  "atendimentos": [
-    { "horarioInicio": "08:00", "horarioFim": "09:00", "bloqueado": false, "agendado": false }
-  ]
-}
+{ "localAtendimentoId": 1, "data": "2024-07-23", "atendimentos": [{ "horarioInicio": "08:00", "horarioFim": "09:00", "bloqueado": false, "agendado": false }] }
 ```
 
-**Why:** The originally inferred paths (`/Service/Microservice/Shared/Schedule/api/...`) were completely wrong. The Safeweb agenda is a separate microservice (`Agenda/Agendamentos`) with a different URL pattern. These paths were confirmed from the official Safeweb documentation.
+**Why:** All agenda calls were silently going to the wrong host (`acsafeweb` instead of `pss`), returning no data. The agenda service is a completely separate microservice on a different subdomain.
 
-**How to apply:** Any code calling Safeweb agenda functions must use the `swAgenda*` functions in `safeweb.ts` — do NOT hardcode paths.
+**How to apply:** Any code calling Safeweb agenda functions must use `swAgenda*` functions — never `swGet`/`swPost`/`swDelete` for agenda paths.

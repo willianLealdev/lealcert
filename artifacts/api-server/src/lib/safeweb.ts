@@ -42,6 +42,15 @@ export interface SafewebSettings {
   password: string;
   cnpjAr?: string;
   codigoParceiro?: string;
+  agendaUrl?: string; // Base URL para endpoints de agenda (h-pss.safewebpss.com.br). Se não informado, derivado de `url`.
+}
+
+// ── Agenda URL helper ─────────────────────────────────────────────────────────
+// Endpoints de agenda ficam em um host diferente do da API principal:
+//   API principal:  acsafeweb.safewebpss.com.br  (ou h-acsafeweb para homol)
+//   Agenda:         pss.safewebpss.com.br         (ou h-pss para homol)
+export function getAgendaBaseUrl(mainUrl: string): string {
+  return mainUrl.replace(/acsafeweb\.safewebpss\.com\.br/i, "pss.safewebpss.com.br");
 }
 
 // ── Token cache ───────────────────────────────────────────────────────────────
@@ -102,6 +111,41 @@ async function swDelete<T>(settings: SafewebSettings, path: string, body?: unkno
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb DELETE ${path} HTTP ${resp.status}: ${text}`); }
+  return resp.json() as Promise<T>;
+}
+
+// ── Agenda HTTP helpers (usam agendaUrl, diferente do host principal) ──────────
+// Docs: GET/DELETE usam Authorization: [TOKEN]; POST agendar usa Authorization: bearer [TOKEN]
+async function swAgendaGetHttp<T>(settings: SafewebSettings, path: string): Promise<T> {
+  const token = await swGetToken(settings);
+  const base = settings.agendaUrl ?? getAgendaBaseUrl(settings.url);
+  const resp = await fetch(`${base}${path}`, {
+    method: "GET",
+    headers: { "Authorization": token, "Content-Type": "application/json" },
+  });
+  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb Agenda GET ${path} HTTP ${resp.status}: ${text}`); }
+  return resp.json() as Promise<T>;
+}
+async function swAgendaPostHttp<T>(settings: SafewebSettings, path: string, body: unknown): Promise<T> {
+  const token = await swGetToken(settings);
+  const base = settings.agendaUrl ?? getAgendaBaseUrl(settings.url);
+  const resp = await fetch(`${base}${path}`, {
+    method: "POST",
+    // Docs oficiais do Agendar usam "bearer [TOKEN]" com prefixo minúsculo
+    headers: { "Authorization": `bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb Agenda POST ${path} HTTP ${resp.status}: ${text}`); }
+  return resp.json() as Promise<T>;
+}
+async function swAgendaDeleteHttp<T>(settings: SafewebSettings, path: string): Promise<T> {
+  const token = await swGetToken(settings);
+  const base = settings.agendaUrl ?? getAgendaBaseUrl(settings.url);
+  const resp = await fetch(`${base}${path}`, {
+    method: "DELETE",
+    headers: { "Authorization": token, "Content-Type": "application/json" },
+  });
+  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb Agenda DELETE ${path} HTTP ${resp.status}: ${text}`); }
   return resp.json() as Promise<T>;
 }
 
@@ -274,28 +318,28 @@ export async function swAgendaListarHorarios(settings: SafewebSettings, localAte
   const path = data
     ? `${AGENDA_HORARIOS_PATH}/${localAtendimentoId}/${data}`
     : `${AGENDA_HORARIOS_PATH}/${localAtendimentoId}`;
-  return swGet<SwResult>(settings, path);
+  return swAgendaGetHttp<SwResult>(settings, path);
 }
 export interface SwAgendaAgendarInput {
   localAtendimentoId: number;
   protocolo: string;
   data: string;
-  catalogoProdutoId?: string;
+  catalogoProdutoId?: number; // Docs: Int
 }
 export async function swAgendaAgendar(settings: SafewebSettings, input: SwAgendaAgendarInput): Promise<SwResult> {
-  return swPost<SwResult>(settings, AGENDA_ADD_PATH, input);
+  return swAgendaPostHttp<SwResult>(settings, AGENDA_ADD_PATH, input);
 }
-export async function swAgendaCancelar(settings: SafewebSettings, protocolo: string, catalogoProdutoId?: string): Promise<SwResult> {
-  const path = catalogoProdutoId
+export async function swAgendaCancelar(settings: SafewebSettings, protocolo: string, catalogoProdutoId?: number): Promise<SwResult> {
+  const path = catalogoProdutoId != null
     ? `${AGENDA_CANCEL_AGENDAMENTO_PATH}/${protocolo}/${catalogoProdutoId}`
     : `${AGENDA_CANCEL_AGENDAMENTO_PATH}/${protocolo}`;
-  return swDelete<SwResult>(settings, path);
+  return swAgendaDeleteHttp<SwResult>(settings, path);
 }
 export async function swAgendaConfiguracao(settings: SafewebSettings, localAtendimentoId: number): Promise<SwResult> {
-  return swGet<SwResult>(settings, `${AGENDA_CONFIG_PATH}/${localAtendimentoId}`);
+  return swAgendaGetHttp<SwResult>(settings, `${AGENDA_CONFIG_PATH}/${localAtendimentoId}`);
 }
 export async function swAgendaInformacoes(settings: SafewebSettings, protocolo: string): Promise<SwResult> {
-  return swGet<SwResult>(settings, `${AGENDA_INFO_PATH}/${protocolo}`);
+  return swAgendaGetHttp<SwResult>(settings, `${AGENDA_INFO_PATH}/${protocolo}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -729,13 +729,15 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
   const { swAgendaAgendar, swAgendaCancelar } = await import("../lib/safeweb");
 
-  // Busca catalogoProdutoId (safewebIdProduto) do certificado
+  // Busca catalogoProdutoId (safewebIdProduto) do certificado — docs Safeweb: Int
   const [certRow] = await db
     .select({ safewebIdProduto: certificatesTable.safewebIdProduto })
     .from(certificatesTable)
     .where(eq(certificatesTable.id, order.certificateId!))
     .limit(1);
-  const catalogoProdutoId = certRow?.safewebIdProduto ?? undefined;
+  const catalogoProdutoId = certRow?.safewebIdProduto
+    ? (typeof certRow.safewebIdProduto === "number" ? certRow.safewebIdProduto : parseInt(String(certRow.safewebIdProduto), 10) || undefined)
+    : undefined;
 
   let agendamentoId: string | null = null;
 
@@ -928,10 +930,7 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
 
   try {
     const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
-    const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined };
-    const { swGetToken } = await import("../lib/safeweb");
-    const token = await swGetToken(sw);
-    const H: Record<string, string> = { Authorization: token, "Content-Type": "application/json" };
+    const { getAgendaBaseUrl, swGetToken } = await import("../lib/safeweb");
 
     // Endpoint oficial Safeweb: GET /horarios/{localAtendimentoId}/{data}
     // Ref: https://h-acsafeweb.safewebpss.com.br/hotsite/documentacao-safeweb/home/#/docs/integracao-agenda/listar
@@ -943,9 +942,16 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
     // A data é parte do PATH (não query). Se omitida, Safeweb retorna horários de HOJE.
     // Resposta: { localAtendimentoId, data, atendimentos:[{horarioInicio,horarioFim,bloqueado,agendado,tipoIdentificacaoId}] }
     const dateParam = req.query.date ? String(req.query.date) : new Date().toISOString().split("T")[0];
-    const slotsUrl = `${sw.url}/Service/MicroService/Agenda/Agendamentos/api/Integracao/horarios/${idLocalParam}/${dateParam}`;
 
-    req.log.info({ orderId: id, url: slotsUrl, date: dateParam }, "safeweb-slots: chamando API");
+    // IMPORTANTE: agenda usa host diferente do da API principal (pss vs acsafeweb)
+    const agendaBase = getAgendaBaseUrl(swUrl);
+    const slotsUrl = `${agendaBase}/Service/MicroService/Agenda/Agendamentos/api/Integracao/horarios/${idLocalParam}/${dateParam}`;
+
+    req.log.info({ orderId: id, url: slotsUrl, agendaBase, date: dateParam }, "safeweb-slots: chamando API");
+
+    const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined };
+    const token = await swGetToken(sw);
+    const H: Record<string, string> = { Authorization: token, "Content-Type": "application/json" };
 
     const r = await fetch(slotsUrl, { headers: H });
     const bodyText = await r.text();
