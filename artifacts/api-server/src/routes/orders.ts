@@ -649,10 +649,11 @@ router.post("/orders/:id/safeweb-cancelar", requireAdmin, async (req, res): Prom
     res.status(400).json({ error: "Pedido não possui solicitação Safeweb registrada" }); return;
   }
 
-  // Só pode cancelar se status for aguardando_validacao
-  if (order.status !== "aguardando_validacao") {
+  // Só pode cancelar ANTES de entrar em validação
+  const cancellableStatuses = ["paid", "protocol_assigned", "created", "pending_payment"];
+  if (!cancellableStatuses.includes(order.status)) {
     res.status(400).json({
-      error: `Cancelamento não permitido: o pedido está com status "${order.status}". Só é possível cancelar solicitações com status "Aguardando Validação".`,
+      error: `Cancelamento não permitido: o pedido está com status "${order.status}". Só é possível cancelar antes da validação iniciar.`,
     }); return;
   }
 

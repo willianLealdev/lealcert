@@ -1658,38 +1658,45 @@ export default function OrderDetail() {
                       Sincronizar com Safeweb
                     </Button>
 
-                    {order.status === "aguardando_validacao" && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={cancelarSafeweb.isPending}
-                          >
-                            {cancelarSafeweb.isPending
-                              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              : <Ban className="h-4 w-4 mr-2" />}
-                            Cancelar Solicitação
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Cancelar solicitação na Safeweb?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta ação irá cancelar a solicitação do certificado na Safeweb e alterar o status do pedido para <strong>Cancelado</strong>. Esta operação não pode ser desfeita.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Voltar</AlertDialogCancel>
-                            <AlertDialogAction
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={() => cancelarSafeweb.mutate({ id: Number(id), data: { motivo: "Cancelado pelo administrador" } })}
-                            >
-                              Confirmar Cancelamento
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                    {!["cancelled", "emitido", "completed"].includes(order.status) && (
+                      (() => {
+                        const inValidation = order.status === "aguardando_validacao";
+                        const canCancel = !inValidation && !cancelarSafeweb.isPending;
+                        return (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={!canCancel}
+                                title={inValidation ? "Não é possível cancelar: pedido já está em validação" : undefined}
+                              >
+                                {cancelarSafeweb.isPending
+                                  ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  : <Ban className="h-4 w-4 mr-2" />}
+                                Cancelar Solicitação
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Cancelar solicitação na Safeweb?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação irá cancelar a solicitação do certificado na Safeweb e alterar o status do pedido para <strong>Cancelado</strong>. Esta operação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Voltar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => cancelarSafeweb.mutate({ id: Number(id), data: { motivo: "Cancelado pelo administrador" } })}
+                                >
+                                  Confirmar Cancelamento
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        );
+                      })()
                     )}
                   </div>
                 </div>
