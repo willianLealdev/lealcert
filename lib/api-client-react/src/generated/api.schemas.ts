@@ -794,15 +794,35 @@ export interface GarSlotAtendimento {
 
 export interface AgendarInput {
   hashLocal: string;
-  hashSlot: string;
   localNome?: string;
-  slotNome?: string;
+  /** Início do horário (YYYY-MM-DD HH:mm) */
+  dataInicial: string;
+  /** Fim do horário (YYYY-MM-DD HH:mm) */
+  dataFinal: string;
 }
 
 export interface AgendarResult {
   ok?: boolean;
   localNome?: string;
   dataHora?: string;
+}
+
+export interface GarHorarioDisponivel {
+  HoraInicial?: string;
+  HoraFinal?: string;
+  iHoraInicial?: number;
+  iHoraFinal?: number;
+}
+
+export interface GarDataDisponivel {
+  DataAgenda?: string;
+  sDataAgenda?: string;
+  Horarios?: GarHorarioDisponivel[];
+}
+
+export interface GarDisponibilidadeResult {
+  Datas?: GarDataDisponivel[];
+  Status?: number;
 }
 
 export interface GarUF {
@@ -1571,6 +1591,16 @@ export type GetGarPedidosContador200 = { [key: string]: unknown };
 export type SendRenewalAlert200 = {
   ok?: boolean;
   daysLeft?: number;
+};
+
+export type GetOrderGarDisponibilidadeParams = {
+hashLocal: string;
+dataInicial: string;
+dataFinal: string;
+};
+
+export type GarCancelarAgendamento200 = {
+  ok?: boolean;
 };
 
 export type SubscribePush200 = {

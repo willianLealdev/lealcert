@@ -8,7 +8,9 @@
 
 export interface AgendarInput {
   hashLocal: string;
-  hashSlot: string;
   localNome?: string;
-  slotNome?: string;
+  /** Início do horário (YYYY-MM-DD HH:mm) */
+  dataInicial: string;
+  /** Fim do horário (YYYY-MM-DD HH:mm) */
+  dataFinal: string;
 }

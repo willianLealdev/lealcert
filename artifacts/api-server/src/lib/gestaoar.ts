@@ -173,6 +173,8 @@ export interface GarComprarPedidoItem {
 }
 
 export interface GarComprarResult {
+  Hash?: string;
+  HashVenda?: string;
   LinkAgenda?: string;
   FormaPagamento?: number;
   FormaPagamentoDescricao?: string;
@@ -374,17 +376,18 @@ export interface GarAgendarResult {
 
 export async function garAgendar(
   apiKey: string,
-  pedido: string,
-  protocolo: string,
+  hashVenda: string,
   hashLocal: string,
-  hashSlot: string,
+  dataInicial: string,
+  dataFinal: string,
 ): Promise<GarAgendarResult> {
-  return garPost<GarAgendarResult>("AgendarAtendimento", {
+  return garPost<GarAgendarResult>("Agendamento", {
     apiKey,
-    Pedido: Number(pedido),
-    Protocolo: protocolo,
+    HashVenda: hashVenda,
     HashLocal: hashLocal,
-    HashSlot: hashSlot,
+    DataInicial: dataInicial,
+    DataFinal: dataFinal,
+    IsCliente: "1",
   });
 }
 
@@ -406,4 +409,66 @@ export interface GarFamiliaProduto {
 
 export async function garFamilias(apiKey: string): Promise<GarFamiliaProduto[]> {
   return garPost<GarFamiliaProduto[]>("FamiliaProdutos", { apiKey });
+}
+
+// ── Disponibilidade de Agenda ─────────────────────────────────────────────────
+
+export interface GarHorarioDisponivel {
+  HoraInicial: string;
+  HoraFinal: string;
+  iHoraInicial?: number;
+  iHoraFinal?: number;
+  Locais?: string[];
+}
+
+export interface GarDataDisponivel {
+  DataAgenda: string;
+  sDataAgenda: string;
+  Horarios: GarHorarioDisponivel[];
+}
+
+export interface GarDisponibilidadeResult {
+  Datas?: GarDataDisponivel[];
+  Status?: number;
+  Erros?: { Ocorrencia: string }[];
+}
+
+export async function garDisponibilidadeAgenda(
+  apiKey: string,
+  dataInicial: string,
+  dataFinal: string,
+  hashLocal: string,
+  hashSlot?: string,
+): Promise<GarDisponibilidadeResult> {
+  return garPost<GarDisponibilidadeResult>("ObterDisponibilidadeAgenda", {
+    apiKey,
+    DataInicial: dataInicial,
+    DataFinal: dataFinal,
+    HashLocal: hashLocal,
+    ...(hashSlot ? { HashSlot: hashSlot } : {}),
+  });
+}
+
+export interface GarObterAgendamentoResult {
+  HashVenda?: string;
+  Pedido?: string;
+  Protocolo?: string;
+  DataHora?: string;
+  NomeLocalAgendamento?: string;
+  Status?: number;
+  Erros?: { Ocorrencia: string }[];
+}
+
+export async function garObterAgendamento(apiKey: string, hashVenda: string): Promise<GarObterAgendamentoResult> {
+  return garPost<GarObterAgendamentoResult>("ObterAgendamento", { apiKey, HashVenda: hashVenda });
+}
+
+export async function garExcluirAgendamento(
+  apiKey: string,
+  hashVenda: string,
+): Promise<{ Status?: number; Erros?: { Ocorrencia: string }[] }> {
+  return garPost<{ Status?: number; Erros?: { Ocorrencia: string }[] }>("ExcluirAgendamento", {
+    apiKey,
+    HashVenda: hashVenda,
+  });
 }

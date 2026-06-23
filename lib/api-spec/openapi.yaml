@@ -1600,6 +1600,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/AgendarResult"
 
+  /orders/{id}/gar-disponibilidade:
+    get:
+      operationId: getOrderGarDisponibilidade
+      tags: [gestaoar]
+      summary: Consulta horários disponíveis na Gestão AR para um local e período
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: hashLocal, in: query, required: true, schema: { type: string } }
+        - { name: dataInicial, in: query, required: true, schema: { type: string } }
+        - { name: dataFinal, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Disponibilidade de agenda
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GarDisponibilidadeResult"
+
+  /orders/{id}/gar-cancelar-agendamento:
+    post:
+      operationId: garCancelarAgendamento
+      tags: [gestaoar]
+      summary: Cancela o agendamento de um pedido na Gestão AR
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Agendamento cancelado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+
   /orders/{id}/gar-comprar:
     post:
       operationId: garComprarOrder
@@ -3744,12 +3779,12 @@ components:
 
     AgendarInput:
       type: object
-      required: [hashLocal, hashSlot]
+      required: [hashLocal, dataInicial, dataFinal]
       properties:
         hashLocal: { type: string }
-        hashSlot: { type: string }
         localNome: { type: string }
-        slotNome: { type: string }
+        dataInicial: { type: string, description: "Início do horário (YYYY-MM-DD HH:mm)" }
+        dataFinal: { type: string, description: "Fim do horário (YYYY-MM-DD HH:mm)" }
 
     AgendarResult:
       type: object
@@ -3757,6 +3792,33 @@ components:
         ok: { type: boolean }
         localNome: { type: string }
         dataHora: { type: string }
+
+    GarHorarioDisponivel:
+      type: object
+      properties:
+        HoraInicial: { type: string }
+        HoraFinal: { type: string }
+        iHoraInicial: { type: integer }
+        iHoraFinal: { type: integer }
+
+    GarDataDisponivel:
+      type: object
+      properties:
+        DataAgenda: { type: string }
+        sDataAgenda: { type: string }
+        Horarios:
+          type: array
+          items:
+            $ref: "#/components/schemas/GarHorarioDisponivel"
+
+    GarDisponibilidadeResult:
+      type: object
+      properties:
+        Datas:
+          type: array
+          items:
+            $ref: "#/components/schemas/GarDataDisponivel"
+        Status: { type: integer }
 
     GarUF:
       type: object

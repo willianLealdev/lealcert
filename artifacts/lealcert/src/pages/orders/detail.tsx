@@ -9,7 +9,8 @@ import {
   useSyncProviderOrder,
   useSyncPaymentOrder,
   useGetOrderGarLocais,
-  useGetOrderGarSlots,
+  useGetOrderGarDisponibilidade,
+  useGarCancelarAgendamento,
   useAgendarOrder,
   useAgendarSafewebOrder,
   useCancelarSafewebOrder,
@@ -192,17 +193,50 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<"locais" | "slots" | "confirm">("locais");
+  const [step, setStep] = useState<"locais" | "data" | "confirm">("locais");
   const [ufFiltro, setUfFiltro] = useState("");
   const [municipioFiltro, setMunicipioFiltro] = useState("");
   const [localSelecionado, setLocalSelecionado] = useState<{ HashLocal: string; NomeLocalAgendamento: string; NomeCidadeLocalAgendamento?: string; UF: string; Endereco?: string; isVideo: boolean } | null>(null);
-  const [slotSelecionado, setSlotSelecionado] = useState<{ HashSlot: string; NomeSlotAgendamento: string } | null>(null);
+  const [dataSelecionada, setDataSelecionada] = useState("");
+  const [horarioSelecionado, setHorarioSelecionado] = useState<{ HoraInicial: string; HoraFinal: string } | null>(null);
 
   const { data: locais, isLoading: loadingLocais } = useGetOrderGarLocais(orderId);
-  const { data: slots, isLoading: loadingSlots } = useGetOrderGarSlots(
+  const { data: disponibilidade, isLoading: loadingDisponibilidade } = useGetOrderGarDisponibilidade(
     orderId,
-    localSelecionado?.HashLocal ?? "_",
+    {
+      hashLocal: localSelecionado?.HashLocal ?? "",
+      dataInicial: dataSelecionada ? `${dataSelecionada} 00:00` : "",
+      dataFinal: dataSelecionada ? `${dataSelecionada} 23:59` : "",
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    { query: { enabled: !!localSelecionado && !!dataSelecionada && step === "data" } as any }
   );
+
+  const horarios = useMemo((): Array<{ HoraInicial: string; HoraFinal: string }> => {
+    const datas = disponibilidade?.Datas ?? [];
+    if (!datas.length) return [];
+    const toValid = (h: { HoraInicial?: string; HoraFinal?: string }): { HoraInicial: string; HoraFinal: string } | null =>
+      h.HoraInicial && h.HoraFinal ? { HoraInicial: h.HoraInicial, HoraFinal: h.HoraFinal } : null;
+    for (const d of datas) {
+      if (d.DataAgenda?.startsWith(dataSelecionada)) {
+        return (d.Horarios ?? []).map(toValid).filter((h): h is { HoraInicial: string; HoraFinal: string } => h !== null);
+      }
+    }
+    return (datas[0]?.Horarios ?? []).map(toValid).filter((h): h is { HoraInicial: string; HoraFinal: string } => h !== null);
+  }, [disponibilidade, dataSelecionada]);
+
+  const cancelarAgendamento = useGarCancelarAgendamento({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Agendamento cancelado." });
+        onSuccess();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao cancelar.";
+        toast({ title: "Erro ao cancelar agendamento", description: msg, variant: "destructive" });
+      },
+    },
+  });
 
   const agendar = useAgendarOrder({
     mutation: {
@@ -243,7 +277,8 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
   function handleOpenModal() {
     setStep("locais");
     setLocalSelecionado(null);
-    setSlotSelecionado(null);
+    setDataSelecionada("");
+    setHorarioSelecionado(null);
     setUfFiltro("");
     setMunicipioFiltro("");
     setOpen(true);
@@ -258,24 +293,25 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
       Endereco: l.Endereco,
       isVideo: isVideo(l.NomeLocalAgendamento),
     });
-    setSlotSelecionado(null);
-    setStep("slots");
+    setDataSelecionada("");
+    setHorarioSelecionado(null);
+    setStep("data");
   }
 
-  function handleSelecionarSlot(s: { HashSlot: string; NomeSlotAgendamento: string }) {
-    setSlotSelecionado(s);
+  function handleSelecionarHorario(h: { HoraInicial: string; HoraFinal: string }) {
+    setHorarioSelecionado(h);
     setStep("confirm");
   }
 
   function handleConfirmar() {
-    if (!localSelecionado || !slotSelecionado) return;
+    if (!localSelecionado || !dataSelecionada || !horarioSelecionado) return;
     agendar.mutate({
       id: orderId,
       data: {
         hashLocal: localSelecionado.HashLocal,
-        hashSlot: slotSelecionado.HashSlot,
         localNome: localSelecionado.NomeLocalAgendamento,
-        slotNome: slotSelecionado.NomeSlotAgendamento,
+        dataInicial: `${dataSelecionada} ${horarioSelecionado.HoraInicial}`,
+        dataFinal: `${dataSelecionada} ${horarioSelecionado.HoraFinal}`,
       },
     });
   }
@@ -314,13 +350,40 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
           <p className="text-xs text-green-700">
             Um e-mail de confirmação foi enviado com os detalhes do atendimento.
           </p>
-          <Button variant="outline" size="sm" className="border-green-400 text-green-800 hover:bg-green-100" onClick={handleOpenModal}>
-            <Calendar className="h-4 w-4 mr-2" />
-            Reagendar
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" className="border-green-400 text-green-800 hover:bg-green-100" onClick={handleOpenModal}>
+              <Calendar className="h-4 w-4 mr-2" />
+              Reagendar
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-red-300 text-red-700 hover:bg-red-50" disabled={cancelarAgendamento.isPending}>
+                  {cancelarAgendamento.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Ban className="h-4 w-4 mr-2" />}
+                  Cancelar Agendamento
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancelar agendamento?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação irá cancelar o agendamento na Gestão AR. Você poderá reagendar depois.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Voltar</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => cancelarAgendamento.mutate({ id: orderId })}
+                  >
+                    Confirmar Cancelamento
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </CardContent>
 
-        <SchedulingDialog
+        <GarSchedulingDialog
           open={open}
           onOpenChange={setOpen}
           step={step}
@@ -333,11 +396,13 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
           municipioFiltro={municipioFiltro}
           setMunicipioFiltro={setMunicipioFiltro}
           localSelecionado={localSelecionado}
-          slots={slots}
-          loadingSlots={loadingSlots}
-          slotSelecionado={slotSelecionado}
+          dataSelecionada={dataSelecionada}
+          setDataSelecionada={(v) => { setDataSelecionada(v); setHorarioSelecionado(null); }}
+          horarios={horarios}
+          loadingDisponibilidade={loadingDisponibilidade}
+          horarioSelecionado={horarioSelecionado}
           onSelecionarLocal={handleSelecionarLocal}
-          onSelecionarSlot={handleSelecionarSlot}
+          onSelecionarHorario={handleSelecionarHorario}
           onConfirmar={handleConfirmar}
           isPending={agendar.isPending}
           isVideo={isVideo}
@@ -369,7 +434,7 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
         </Button>
       </CardContent>
 
-      <SchedulingDialog
+      <GarSchedulingDialog
         open={open}
         onOpenChange={setOpen}
         step={step}
@@ -382,11 +447,13 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
         municipioFiltro={municipioFiltro}
         setMunicipioFiltro={setMunicipioFiltro}
         localSelecionado={localSelecionado}
-        slots={slots}
-        loadingSlots={loadingSlots}
-        slotSelecionado={slotSelecionado}
+        dataSelecionada={dataSelecionada}
+        setDataSelecionada={(v) => { setDataSelecionada(v); setHorarioSelecionado(null); }}
+        horarios={horarios}
+        loadingDisponibilidade={loadingDisponibilidade}
+        horarioSelecionado={horarioSelecionado}
         onSelecionarLocal={handleSelecionarLocal}
-        onSelecionarSlot={handleSelecionarSlot}
+        onSelecionarHorario={handleSelecionarHorario}
         onConfirmar={handleConfirmar}
         isPending={agendar.isPending}
         isVideo={isVideo}
@@ -395,7 +462,7 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
   );
 }
 
-// ── Modal de Agendamento ──────────────────────────────────────────────────────
+// ── Modal de Agendamento (GAR) ────────────────────────────────────────────────
 type Local = {
   HashLocal: string;
   NomeLocalAgendamento: string;
@@ -405,17 +472,19 @@ type Local = {
   isVideo: boolean;
 };
 
-function SchedulingDialog({
+function GarSchedulingDialog({
   open, onOpenChange, step, setStep,
   locais, loadingLocais, ufsDisponiveis,
   ufFiltro, setUfFiltro, municipioFiltro, setMunicipioFiltro,
-  localSelecionado, slots, loadingSlots, slotSelecionado,
-  onSelecionarLocal, onSelecionarSlot, onConfirmar, isPending, isVideo,
+  localSelecionado,
+  dataSelecionada, setDataSelecionada,
+  horarios, loadingDisponibilidade, horarioSelecionado,
+  onSelecionarLocal, onSelecionarHorario, onConfirmar, isPending, isVideo,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  step: "locais" | "slots" | "confirm";
-  setStep: (s: "locais" | "slots" | "confirm") => void;
+  step: "locais" | "data" | "confirm";
+  setStep: (s: "locais" | "data" | "confirm") => void;
   locais: Array<{ HashLocal: string; NomeLocalAgendamento: string; NomeCidadeLocalAgendamento?: string; UF?: string; Endereco?: string }>;
   loadingLocais: boolean;
   ufsDisponiveis: string[];
@@ -424,20 +493,23 @@ function SchedulingDialog({
   municipioFiltro: string;
   setMunicipioFiltro: (v: string) => void;
   localSelecionado: Local | null;
-  slots: Array<{ HashSlot: string; NomeSlotAgendamento: string }> | undefined;
-  loadingSlots: boolean;
-  slotSelecionado: { HashSlot: string; NomeSlotAgendamento: string } | null;
+  dataSelecionada: string;
+  setDataSelecionada: (v: string) => void;
+  horarios: Array<{ HoraInicial: string; HoraFinal: string }>;
+  loadingDisponibilidade: boolean;
+  horarioSelecionado: { HoraInicial: string; HoraFinal: string } | null;
   onSelecionarLocal: (l: typeof locais[0]) => void;
-  onSelecionarSlot: (s: { HashSlot: string; NomeSlotAgendamento: string }) => void;
+  onSelecionarHorario: (h: { HoraInicial: string; HoraFinal: string }) => void;
   onConfirmar: () => void;
   isPending: boolean;
   isVideo: (nome: string) => boolean;
 }) {
   const stepTitle: Record<string, string> = {
     locais: "1 — Escolha o local de atendimento",
-    slots: "2 — Escolha o horário",
+    data: "2 — Escolha a data e horário",
     confirm: "3 — Confirmar agendamento",
   };
+  const today = new Date().toISOString().split("T")[0];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -451,11 +523,11 @@ function SchedulingDialog({
 
         {/* Breadcrumb de passos */}
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          {(["locais", "slots", "confirm"] as const).map((s, i) => (
+          {(["locais", "data", "confirm"] as const).map((s, i) => (
             <span key={s} className="flex items-center gap-1">
               {i > 0 && <ChevronRight className="h-3 w-3" />}
               <span className={step === s ? "text-primary font-semibold" : ""}>
-                {i + 1}. {s === "locais" ? "Local" : s === "slots" ? "Horário" : "Confirmar"}
+                {i + 1}. {s === "locais" ? "Local" : s === "data" ? "Data e Hora" : "Confirmar"}
               </span>
             </span>
           ))}
@@ -538,8 +610,8 @@ function SchedulingDialog({
             </div>
           )}
 
-          {/* PASSO 2 — Escolher horário */}
-          {step === "slots" && (
+          {/* PASSO 2 — Escolher data e horário */}
+          {step === "data" && (
             <div className="flex flex-col h-full gap-3">
               {localSelecionado && (
                 <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${localSelecionado.isVideo ? "bg-blue-50 text-blue-800" : "bg-muted"}`}>
@@ -558,44 +630,54 @@ function SchedulingDialog({
                 </div>
               )}
 
-              {loadingSlots ? (
-                <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Buscando horários disponíveis...
-                </div>
-              ) : !slots || slots.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground text-sm">
-                  Nenhum horário disponível neste local. Tente outro local.
-                  <div className="mt-3">
-                    <Button variant="outline" size="sm" onClick={() => setStep("locais")}>
-                      Voltar e escolher outro local
-                    </Button>
+              <div className="flex items-center gap-3">
+                <Label className="text-sm shrink-0 font-medium">Data</Label>
+                <Input
+                  type="date"
+                  value={dataSelecionada}
+                  onChange={e => setDataSelecionada(e.target.value)}
+                  min={today}
+                  className="flex-1 max-w-xs"
+                />
+              </div>
+
+              {dataSelecionada && (
+                loadingDisponibilidade ? (
+                  <div className="flex items-center justify-center py-10 text-muted-foreground gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Buscando horários disponíveis...
                   </div>
-                </div>
-              ) : (
-                <ScrollArea className="flex-1 -mx-1 px-1">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-2">
-                    {slots.map((slot) => (
-                      <button
-                        key={slot.HashSlot}
-                        className="w-full text-left rounded-lg border p-3 bg-background hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                        onClick={() => onSelecionarSlot(slot)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-primary shrink-0" />
-                          <p className="text-sm font-medium">{slot.NomeSlotAgendamento}</p>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
-                        </div>
-                      </button>
-                    ))}
+                ) : horarios.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground text-sm">
+                    Nenhum horário disponível para esta data. Tente outra data.
                   </div>
-                </ScrollArea>
+                ) : (
+                  <ScrollArea className="flex-1 -mx-1 px-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-2">
+                      {horarios.map((h) => (
+                        <button
+                          key={`${h.HoraInicial}-${h.HoraFinal}`}
+                          className={`rounded-lg border p-3 text-center transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
+                            horarioSelecionado?.HoraInicial === h.HoraInicial
+                              ? "border-primary bg-primary/10 ring-1 ring-primary"
+                              : "hover:bg-accent"
+                          }`}
+                          onClick={() => onSelecionarHorario(h)}
+                        >
+                          <Clock className="h-4 w-4 text-primary mx-auto mb-1" />
+                          <p className="text-sm font-semibold">{h.HoraInicial}</p>
+                          {h.HoraFinal && <p className="text-xs text-muted-foreground">até {h.HoraFinal}</p>}
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )
               )}
             </div>
           )}
 
           {/* PASSO 3 — Confirmar */}
-          {step === "confirm" && localSelecionado && slotSelecionado && (
+          {step === "confirm" && localSelecionado && dataSelecionada && horarioSelecionado && (
             <div className="space-y-4">
               <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
                 <div className="flex items-start gap-3">
@@ -617,7 +699,11 @@ function SchedulingDialog({
                   <Clock className="h-5 w-5 text-primary shrink-0" />
                   <div>
                     <p className="text-xs text-muted-foreground">Data e horário</p>
-                    <p className="font-semibold">{slotSelecionado.NomeSlotAgendamento}</p>
+                    <p className="font-semibold">
+                      {new Date(dataSelecionada + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+                      {" — "}{horarioSelecionado.HoraInicial}
+                      {horarioSelecionado.HoraFinal ? ` – ${horarioSelecionado.HoraFinal}` : ""}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -635,7 +721,7 @@ function SchedulingDialog({
           {step !== "locais" && (
             <Button
               variant="outline"
-              onClick={() => setStep(step === "confirm" ? "slots" : "locais")}
+              onClick={() => setStep(step === "confirm" ? "data" : "locais")}
               disabled={isPending}
             >
               Voltar
@@ -1176,7 +1262,7 @@ export default function OrderDetail() {
     },
   });
 
-  const [cancelMotivo, setCancelMotivo] = React.useState("");
+  const [cancelMotivo, setCancelMotivo] = useState("");
   const cancelarSafeweb = useCancelarSafewebOrder({
     mutation: {
       onSuccess: () => {

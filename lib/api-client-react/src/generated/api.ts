@@ -56,8 +56,10 @@ import type {
   EmailValidationResult,
   ErrorResponse,
   ForgotPasswordInput,
+  GarCancelarAgendamento200,
   GarComprarInput,
   GarComprarResult,
+  GarDisponibilidadeResult,
   GarEmitirProtocoloInput,
   GarEmitirProtocoloResult,
   GarFormaPagamento,
@@ -88,6 +90,7 @@ import type {
   GetGarTiposProdutoParams,
   GetGarValidadesParams,
   GetMeStatsParams,
+  GetOrderGarDisponibilidadeParams,
   GetSafewebConfigParams,
   GetSafewebSlotsParams,
   HealthStatus,
@@ -6112,6 +6115,165 @@ export const useAgendarOrder = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAgendarOrderMutationOptions(options));
+    }
+
+export const getGetOrderGarDisponibilidadeUrl = (id: number,
+    params: GetOrderGarDisponibilidadeParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/orders/${id}/gar-disponibilidade?${stringifiedParams}` : `/api/orders/${id}/gar-disponibilidade`
+}
+
+/**
+ * @summary Consulta horários disponíveis na Gestão AR para um local e período
+ */
+export const getOrderGarDisponibilidade = async (id: number,
+    params: GetOrderGarDisponibilidadeParams, options?: RequestInit): Promise<GarDisponibilidadeResult> => {
+
+  return customFetch<GarDisponibilidadeResult>(getGetOrderGarDisponibilidadeUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrderGarDisponibilidadeQueryKey = (id: number,
+    params?: GetOrderGarDisponibilidadeParams,) => {
+    return [
+    `/api/orders/${id}/gar-disponibilidade`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOrderGarDisponibilidadeQueryOptions = <TData = Awaited<ReturnType<typeof getOrderGarDisponibilidade>>, TError = ErrorType<unknown>>(id: number,
+    params: GetOrderGarDisponibilidadeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderGarDisponibilidade>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrderGarDisponibilidadeQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrderGarDisponibilidade>>> = ({ signal }) => getOrderGarDisponibilidade(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrderGarDisponibilidade>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrderGarDisponibilidadeQueryResult = NonNullable<Awaited<ReturnType<typeof getOrderGarDisponibilidade>>>
+export type GetOrderGarDisponibilidadeQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Consulta horários disponíveis na Gestão AR para um local e período
+ */
+
+export function useGetOrderGarDisponibilidade<TData = Awaited<ReturnType<typeof getOrderGarDisponibilidade>>, TError = ErrorType<unknown>>(
+ id: number,
+    params: GetOrderGarDisponibilidadeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderGarDisponibilidade>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrderGarDisponibilidadeQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGarCancelarAgendamentoUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/gar-cancelar-agendamento`
+}
+
+/**
+ * @summary Cancela o agendamento de um pedido na Gestão AR
+ */
+export const garCancelarAgendamento = async (id: number, options?: RequestInit): Promise<GarCancelarAgendamento200> => {
+
+  return customFetch<GarCancelarAgendamento200>(getGarCancelarAgendamentoUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getGarCancelarAgendamentoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof garCancelarAgendamento>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof garCancelarAgendamento>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['garCancelarAgendamento'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof garCancelarAgendamento>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  garCancelarAgendamento(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GarCancelarAgendamentoMutationResult = NonNullable<Awaited<ReturnType<typeof garCancelarAgendamento>>>
+
+    export type GarCancelarAgendamentoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Cancela o agendamento de um pedido na Gestão AR
+ */
+export const useGarCancelarAgendamento = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof garCancelarAgendamento>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof garCancelarAgendamento>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getGarCancelarAgendamentoMutationOptions(options));
     }
 
 export const getGarComprarOrderUrl = (id: number,) => {

@@ -1612,15 +1612,55 @@ export const AgendarOrderParams = zod.object({
 
 export const AgendarOrderBody = zod.object({
   "hashLocal": zod.string(),
-  "hashSlot": zod.string(),
   "localNome": zod.string().optional(),
-  "slotNome": zod.string().optional()
+  "dataInicial": zod.string().describe('Início do horário (YYYY-MM-DD HH:mm)'),
+  "dataFinal": zod.string().describe('Fim do horário (YYYY-MM-DD HH:mm)')
 })
 
 export const AgendarOrderResponse = zod.object({
   "ok": zod.boolean().optional(),
   "localNome": zod.string().optional(),
   "dataHora": zod.string().optional()
+})
+
+
+/**
+ * @summary Consulta horários disponíveis na Gestão AR para um local e período
+ */
+export const GetOrderGarDisponibilidadeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetOrderGarDisponibilidadeQueryParams = zod.object({
+  "hashLocal": zod.coerce.string(),
+  "dataInicial": zod.coerce.string(),
+  "dataFinal": zod.coerce.string()
+})
+
+export const GetOrderGarDisponibilidadeResponse = zod.object({
+  "Datas": zod.array(zod.object({
+  "DataAgenda": zod.string().optional(),
+  "sDataAgenda": zod.string().optional(),
+  "Horarios": zod.array(zod.object({
+  "HoraInicial": zod.string().optional(),
+  "HoraFinal": zod.string().optional(),
+  "iHoraInicial": zod.number().optional(),
+  "iHoraFinal": zod.number().optional()
+})).optional()
+})).optional(),
+  "Status": zod.number().optional()
+})
+
+
+/**
+ * @summary Cancela o agendamento de um pedido na Gestão AR
+ */
+export const GarCancelarAgendamentoParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GarCancelarAgendamentoResponse = zod.object({
+  "ok": zod.boolean().optional()
 })
 
 

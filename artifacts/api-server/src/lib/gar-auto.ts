@@ -97,7 +97,7 @@ export async function garAutoComprar(orderId: number): Promise<void> {
 
     await db.update(ordersTable).set({
       garPedido: garPedidoNumero,
-      garHashVenda: result.LinkFatura ?? null,
+      garHashVenda: result.HashVenda ?? result.Hash ?? null,
       garAgendamentoLink: result.LinkAgenda ?? null,
       garStatus: "Compra registrada",
       garSyncedAt: new Date(),

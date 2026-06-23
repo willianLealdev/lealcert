@@ -694,6 +694,147 @@ router.post("/orders/:id/safeweb-cancelar", requireAdmin, async (req, res): Prom
   }
 });
 
+// ── POST /orders/:id/agendar — confirma agendamento na Gestão AR ─────────────
+router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  if (!order.garProtocolo) {
+    res.status(400).json({ error: "Protocolo GAR não emitido. Aguarde o processamento do pagamento." });
+    return;
+  }
+
+  const { hashLocal, localNome, dataInicial, dataFinal } = req.body ?? {};
+  if (!hashLocal) { res.status(400).json({ error: "hashLocal obrigatório" }); return; }
+  if (!dataInicial) { res.status(400).json({ error: "dataInicial obrigatório (formato: YYYY-MM-DD HH:mm)" }); return; }
+  if (!dataFinal) { res.status(400).json({ error: "dataFinal obrigatório (formato: YYYY-MM-DD HH:mm)" }); return; }
+
+  const [settings] = await db.select().from(settingsTable).limit(1);
+  if (!settings?.garApiKey) { res.status(503).json({ error: "GAR API Key não configurada" }); return; }
+
+  const hashVenda = order.garHashVenda;
+  if (!hashVenda) {
+    res.status(400).json({ error: "HashVenda GAR indisponível — pedido pode não ter sido registrado corretamente na GAR." });
+    return;
+  }
+
+  const isReagendar = !!order.garAgendamentoDataHora;
+
+  try {
+    const { garAgendar } = await import("../lib/gestaoar");
+    const result = await garAgendar(settings.garApiKey, hashVenda, hashLocal, dataInicial, dataFinal);
+    req.log.info({ orderId: id, result }, "agendar-gar: resposta da API");
+
+    if (result.Erros?.length) {
+      req.log.warn({ orderId: id, erros: result.Erros }, "agendar-gar: erros retornados pela GAR");
+      res.status(400).json({ error: result.Erros.map(e => e.Ocorrencia).join("; ") }); return;
+    }
+
+    const nomeLocal = localNome || result.NomeLocalAgendamento || "Videoconferência";
+    const dataHoraStr = result.DataHoraAgendamento || dataInicial;
+    const scheduledDate = (() => { try { return new Date(dataInicial.replace(" ", "T") + ":00"); } catch { return new Date(); } })();
+
+    await db.update(ordersTable).set({
+      garAgendamentoLocalHash: hashLocal,
+      garAgendamentoLocalNome: nomeLocal,
+      garAgendamentoDataHora: dataHoraStr,
+      scheduledAt: scheduledDate,
+      status: "aguardando_validacao",
+    }).where(eq(ordersTable.id, id));
+
+    const { logEvent } = await import("../lib/order-events");
+    const acao = isReagendar ? "Agendamento alterado (GAR)" : "Atendimento agendado (GAR)";
+    await logEvent(id, "scheduling_confirmed", `${acao}: ${nomeLocal} — ${dataInicial}`, { hashLocal, dataInicial, dataFinal, isReagendar });
+
+    req.log.info({ orderId: id, dataInicial, nomeLocal }, "agendar-gar: agendamento confirmado");
+    res.json({ ok: true, dataHora: dataHoraStr, localNome: nomeLocal });
+  } catch (err) {
+    const msg = (err as Error).message ?? "";
+    req.log.error({ err, orderId: id }, "agendar-gar: erro");
+    res.status(502).json({ error: `Erro ao agendar na Gestão AR: ${msg}` });
+  }
+});
+
+// ── GET /orders/:id/gar-disponibilidade — horários disponíveis na GAR ─────────
+router.get("/orders/:id/gar-disponibilidade", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const hashLocal = String(req.query.hashLocal ?? "");
+  const dataInicial = String(req.query.dataInicial ?? "");
+  const dataFinal = String(req.query.dataFinal ?? "");
+
+  if (!hashLocal || !dataInicial || !dataFinal) {
+    res.status(400).json({ error: "hashLocal, dataInicial e dataFinal são obrigatórios" }); return;
+  }
+
+  const [settings] = await db.select().from(settingsTable).limit(1);
+  if (!settings?.garApiKey) { res.status(503).json({ error: "GAR API Key não configurada" }); return; }
+
+  try {
+    const { garDisponibilidadeAgenda } = await import("../lib/gestaoar");
+    const result = await garDisponibilidadeAgenda(settings.garApiKey, dataInicial, dataFinal, hashLocal);
+    req.log.info({ orderId: id, hashLocal, dataInicial, dataFinal, datas: result?.Datas?.length ?? 0 }, "gar-disponibilidade: resposta");
+    res.json(result ?? { Datas: [] });
+  } catch (err) {
+    const msg = (err as Error).message ?? "";
+    req.log.error({ err, orderId: id }, "gar-disponibilidade: erro");
+    res.status(502).json({ error: `Erro ao consultar disponibilidade na GAR: ${msg}` });
+  }
+});
+
+// ── POST /orders/:id/gar-cancelar-agendamento — cancela agendamento na GAR ────
+router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const hashVenda = order.garHashVenda;
+  if (!hashVenda) { res.status(400).json({ error: "HashVenda GAR indisponível neste pedido" }); return; }
+
+  const [settings] = await db.select().from(settingsTable).limit(1);
+  if (!settings?.garApiKey) { res.status(503).json({ error: "GAR API Key não configurada" }); return; }
+
+  try {
+    const { garExcluirAgendamento } = await import("../lib/gestaoar");
+    await garExcluirAgendamento(settings.garApiKey, hashVenda);
+
+    await db.update(ordersTable).set({
+      garAgendamentoDataHora: null,
+      garAgendamentoLocalNome: null,
+      garAgendamentoLocalHash: null,
+      scheduledAt: null,
+    }).where(eq(ordersTable.id, id));
+
+    const { logEvent } = await import("../lib/order-events");
+    await logEvent(id, "scheduling_confirmed", "Agendamento GAR cancelado", {});
+
+    req.log.info({ orderId: id }, "gar-cancelar-agendamento: agendamento cancelado com sucesso");
+    res.json({ ok: true });
+  } catch (err) {
+    const msg = (err as Error).message ?? "";
+    req.log.error({ err, orderId: id }, "gar-cancelar-agendamento: erro");
+    res.status(502).json({ error: `Erro ao cancelar agendamento na GAR: ${msg}` });
+  }
+});
+
 // ── POST /orders/:id/safeweb-agendar — agenda atendimento via Safeweb ────────
 router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
