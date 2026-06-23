@@ -285,8 +285,6 @@ export default function NewOrder() {
     const cepMasked = cnpjData.cep ? maskCepFn(cnpjData.cep.replace(/\D/g, "")) : "";
     setForm(prev => ({
       ...prev,
-      companyName: prev.companyName || cnpjData.razaoSocial || "",
-      customerName: prev.customerName || cnpjData.razaoSocial || "",
       ...(cepMasked ? { addressZipcode: cepMasked } : {}),
       ...(cnpjData.logradouro ? { addressStreet: cnpjData.logradouro } : {}),
       ...(cnpjData.numero ? { addressNumber: cnpjData.numero } : {}),
@@ -294,7 +292,6 @@ export default function NewOrder() {
       ...(cnpjData.municipio ? { addressCity: cnpjData.municipio } : {}),
       ...(cnpjData.uf ? { addressState: cnpjData.uf } : {}),
     }));
-    if (cnpjData.razaoSocial) setAutoFilledCustomerName(true);
     if (cnpjData.logradouro || cnpjData.cep) setCepFilled(true);
   }, [cnpjData]);
 
@@ -862,8 +859,6 @@ export default function NewOrder() {
                     }} required placeholder={showCnpjFields ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
                     {cnpjFetching && showCnpjFields && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
                   </div>
-                  {cnpjError && showCnpjFields && cnpjToQuery.length === 14 && <p className="text-xs text-destructive">CNPJ não encontrado.</p>}
-                  {cnpjData && showCnpjFields && !cnpjData.found && <p className="text-xs text-amber-600">CNPJ não encontrado na base de dados.</p>}
                 </div>
 
                 {/* Data de Nascimento — PF */}
