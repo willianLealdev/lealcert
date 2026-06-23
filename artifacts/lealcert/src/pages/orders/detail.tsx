@@ -1658,10 +1658,9 @@ export default function OrderDetail() {
                       Sincronizar com Safeweb
                     </Button>
 
-                    {!["cancelled", "emitido", "completed"].includes(order.status) && (
+                    {!["cancelled", "emitido", "completed", "revogado"].includes(order.status) && (
                       (() => {
-                        const inValidation = order.status === "aguardando_validacao";
-                        const canCancel = !inValidation && !cancelarSafeweb.isPending;
+                        const canCancel = !cancelarSafeweb.isPending;
                         return (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -1669,7 +1668,6 @@ export default function OrderDetail() {
                                 variant="destructive"
                                 size="sm"
                                 disabled={!canCancel}
-                                title={inValidation ? "Não é possível cancelar: pedido já está em validação" : undefined}
                               >
                                 {cancelarSafeweb.isPending
                                   ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
