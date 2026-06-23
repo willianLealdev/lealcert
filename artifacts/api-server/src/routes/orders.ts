@@ -199,10 +199,11 @@ router.post("/orders/cnpj-rfb", requireAuth, async (req, res): Promise<void> => 
       String(dataNascimento),
     );
     if (result.Codigo === 0) {
-      const razaoSocial =
-        (typeof result.NomeCompleto === "string" && result.NomeCompleto.length > 2 ? result.NomeCompleto : "") ||
-        (typeof result.Mensagem === "string" && result.Mensagem.length > 2 ? result.Mensagem : "");
-      res.json({ ok: true, razaoSocial });
+      const nomeCompleto = typeof result.NomeCompleto === "string" && result.NomeCompleto.length > 2 ? result.NomeCompleto : "";
+      const mensagem = typeof result.Mensagem === "string" && result.Mensagem.length > 2 ? result.Mensagem : "";
+      const razaoSocial = nomeCompleto || mensagem;
+      const repName = mensagem || nomeCompleto;
+      res.json({ ok: true, razaoSocial, repName });
     } else {
       res.json({ ok: false, codigo: result.Codigo, mensagem: result.Mensagem ?? "CPF do responsável não confere com a Receita Federal." });
     }

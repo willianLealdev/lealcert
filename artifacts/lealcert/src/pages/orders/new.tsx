@@ -326,7 +326,7 @@ export default function NewOrder() {
         body: JSON.stringify({ cnpj: cnpjDigits, cpf: cpfDigits, dataNascimento: dateIso }),
         signal: ac.signal,
       });
-      const data = await res.json() as { ok: boolean; razaoSocial?: string; mensagem?: string };
+      const data = await res.json() as { ok: boolean; razaoSocial?: string; repName?: string; mensagem?: string };
       if (ac.signal.aborted) return;
       if (data.ok) {
         setCnpjRfbState({ ok: true, razaoSocial: data.razaoSocial ?? "" });
@@ -335,8 +335,10 @@ export default function NewOrder() {
             ...prev,
             companyName: prev.companyName || data.razaoSocial!,
             customerName: prev.customerName || data.razaoSocial!,
+            ...(data.repName ? { repName: prev.repName || data.repName! } : {}),
           }));
           setAutoFilledCustomerName(true);
+          if (data.repName) setAutoFilledRepName(true);
         }
       } else {
         setCnpjRfbState({ ok: false, mensagem: data.mensagem ?? "CPF do responsável não confere com a Receita Federal." });
@@ -1121,14 +1123,14 @@ export default function NewOrder() {
               </div>
 
 
-              {/* Nome (readonly) */}
+              {/* Nome do Representante */}
               <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  Nome Completo do Representante
-                  {autoFilledRepName && <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckCircle className="h-3 w-3" /> automático</span>}
+                <Label className="flex items-center gap-1">
+                  Nome Completo do Representante *
+                  {autoFilledRepName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
                 </Label>
-                <Input value={form.repName} readOnly placeholder="Preenchido automaticamente após consulta"
-                  className={autoFilledRepName ? "bg-emerald-50 border-emerald-200" : "bg-muted/40 text-muted-foreground cursor-not-allowed"} />
+                <Input value={form.repName} onChange={e => { set("repName", e.target.value); setAutoFilledRepName(false); }} required
+                  className={autoFilledRepName ? "bg-emerald-50 border-emerald-200" : ""} />
               </div>
 
               {/* CEI / NIS / PIS */}
