@@ -451,51 +451,6 @@ export async function sendSupportReplyEmail(opts: {
   logger.info({ to: opts.to, ticketId: opts.ticketId }, "Support reply email sent");
 }
 
-export async function sendNewSaleEmail(opts: {
-  to: string;
-  orderNumber: string;
-  customerName: string;
-  certName?: string | null;
-  total: string;
-  orderId: number;
-}): Promise<void> {
-  const cfg = await getEmailConfig();
-  const subject = `🛒 Nova venda — Pedido #${opts.orderNumber} | ${cfg.appName}`;
-  const totalFormatted = `R$ ${parseFloat(opts.total || "0").toFixed(2).replace(".", ",")}`;
-  const html = emailWrapper(`
-    <div style="background:#fff;border-radius:10px;padding:24px;border:1px solid #e2e8f0;">
-      <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">🛒 Nova venda realizada!</h2>
-      <p style="color:#475569;margin:0 0 20px;">Um pagamento foi confirmado na plataforma.</p>
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin-bottom:20px;">
-        <table style="width:100%;border-collapse:collapse;font-size:14px;">
-          <tr><td style="padding:6px 0;color:#64748b;">Pedido</td><td style="padding:6px 0;font-weight:700;color:#0f172a;">#${opts.orderNumber}</td></tr>
-          <tr><td style="padding:6px 0;color:#64748b;">Cliente</td><td style="padding:6px 0;color:#0f172a;">${opts.customerName}</td></tr>
-          ${opts.certName ? `<tr><td style="padding:6px 0;color:#64748b;">Certificado</td><td style="padding:6px 0;color:#0f172a;">${opts.certName}</td></tr>` : ""}
-          <tr><td style="padding:6px 0;color:#64748b;">Valor</td><td style="padding:6px 0;font-weight:700;color:#16a34a;font-size:16px;">${totalFormatted}</td></tr>
-        </table>
-      </div>
-      <div style="text-align:center;">
-        <a href="${cfg.siteUrl}/orders/${opts.orderId}" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
-          Ver pedido
-        </a>
-      </div>
-    </div>
-  `, cfg.appName, cfg.logoUrl);
-  const text = `Nova venda!\n\nPedido: #${opts.orderNumber}\nCliente: ${opts.customerName}${opts.certName ? `\nCertificado: ${opts.certName}` : ""}\nValor: ${totalFormatted}\n\nAcesse: ${cfg.siteUrl}/orders/${opts.orderId}\n\n${cfg.appName}`;
-
-  const transporter = await createTransporter(cfg);
-  if (!transporter) {
-    logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "📧 [DEV] New sale email (SMTP not configured)");
-    return;
-  }
-  const attachment = logoAttachment(cfg.logoUrl);
-  await transporter.sendMail({
-    from: cfg.from, to: opts.to, subject, html, text,
-    ...(attachment ? { attachments: [attachment] } : {}),
-  });
-  logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "New sale email sent");
-}
-
 export async function sendVerificationEmail(to: string, name: string, code: string): Promise<void> {
   const cfg = await getEmailConfig();
   const subject = `Código de verificação — ${cfg.appName}`;

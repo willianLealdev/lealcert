@@ -15,7 +15,6 @@ import { garAutoComprar } from "../lib/gar-auto";
 import { swAutoComprar } from "../lib/sw-auto";
 import { notifyOrderStatus } from "../lib/notify";
 import { sendPushToUser, sendPushToAdmins } from "../lib/push";
-import { sendNewSaleEmail } from "../lib/email";
 
 const router = Router();
 
