@@ -33,6 +33,15 @@ function maskCpfCnpj(v: string) {
     .replace(/\.(\d{3})(\d{3})/, ".$1.$2");
 }
 
+function maskCnpj(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 14);
+  if (d.length <= 2) return d;
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+}
+
 function maskPhone(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, (_, a, b, c) => `(${a}) ${b}${c ? `-${c}` : ""}`);
@@ -1031,7 +1040,7 @@ export default function NewOrder() {
                   <Label>{showCnpjFields ? "CNPJ *" : "CPF *"}</Label>
                   <div className="relative">
                     <Input value={form.customerCpfCnpj} onChange={e => {
-                      const v = maskCpfCnpj(e.target.value);
+                      const v = showCnpjFields ? maskCnpj(e.target.value) : maskCpfCnpj(e.target.value);
                       set("customerCpfCnpj", v);
                       const digits = v.replace(/\D/g, "");
                       if (showCnpjFields) {
@@ -1089,7 +1098,7 @@ export default function NewOrder() {
                       className={(cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok || (!isCnpjCert && !!cnpjData?.razaoSocial)) && form.companyName ? "bg-emerald-50 border-emerald-200" : ""}
                       placeholder={cnpjFetching || cnpjRfbState === "loading" ? "Consultando..." : ""} />
                     {cnpjError && !isCnpjCert && cnpjToQuery.length === 14 &&
-                     cnpjRfbState !== "loading" && !(cnpjRfbState && cnpjRfbState !== "loading" && (cnpjRfbState as {ok:boolean}).ok) && (
+                     cnpjRfbState !== "loading" && !(cnpjRfbState && (cnpjRfbState as {ok:boolean}).ok) && (
                       <p className="text-xs text-destructive mt-1">CNPJ não encontrado. Preencha a razão social manualmente.</p>
                     )}
                   </div>
