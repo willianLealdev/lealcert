@@ -1406,6 +1406,12 @@ export default function OrderDetail() {
               </Badge>
             )}
           </div>
+          {(order.protocolNumber || safewebSolicitacaoId) && (
+            <p className="text-sm font-medium text-primary flex items-center gap-1">
+              <span className="text-muted-foreground font-normal">Protocolo:</span>
+              <span className="font-mono">{order.protocolNumber ?? safewebSolicitacaoId}</span>
+            </p>
+          )}
           <p className="text-muted-foreground text-sm">Criado em {formatDateTime(order.createdAt)}</p>
         </div>
         {/* Botões de pagamento — apenas desktop */}

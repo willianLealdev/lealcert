@@ -310,6 +310,7 @@ export async function swAutoComprar(orderId: number): Promise<void> {
 
     await db.update(ordersTable).set({
       safewebSolicitacaoId: solicitacaoId ? String(solicitacaoId) : null,
+      protocolNumber: solicitacaoId ? String(solicitacaoId) : null,
       safewebStatus: statusMsg,
       safewebSyncedAt: new Date(),
       status: "protocol_assigned",
