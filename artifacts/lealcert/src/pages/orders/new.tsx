@@ -298,6 +298,50 @@ export default function NewOrder() {
     if (cnpjData.logradouro || cnpjData.cep) setCepFilled(true);
   }, [cnpjData]);
 
+  // ── Consulta RFB CNPJ (Safeweb — separado do PSBio) ──
+  type CnpjRfbState = null | "loading" | { ok: true; razaoSocial: string } | { ok: false; mensagem: string };
+  const [cnpjRfbState, setCnpjRfbState] = useState<CnpjRfbState>(null);
+  const cnpjRfbAbortRef = useRef<AbortController | null>(null);
+
+  const triggerCnpjRfb = useCallback(async (cnpj: string, cpf: string, dataNascimento: string) => {
+    const cnpjDigits = cnpj.replace(/\D/g, "");
+    const cpfDigits = cpf.replace(/\D/g, "");
+    if (cnpjDigits.length !== 14 || cpfDigits.length !== 11 || dataNascimento.length !== 10) return;
+    cnpjRfbAbortRef.current?.abort();
+    const ac = new AbortController();
+    cnpjRfbAbortRef.current = ac;
+    setCnpjRfbState("loading");
+    try {
+      const [d, m, y] = dataNascimento.split("/");
+      const dateIso = y && m && d ? `${y}-${m}-${d}` : dataNascimento;
+      const res = await fetch("/api/orders/cnpj-rfb", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ cnpj: cnpjDigits, cpf: cpfDigits, dataNascimento: dateIso }),
+        signal: ac.signal,
+      });
+      const data = await res.json() as { ok: boolean; razaoSocial?: string; mensagem?: string };
+      if (ac.signal.aborted) return;
+      if (data.ok) {
+        setCnpjRfbState({ ok: true, razaoSocial: data.razaoSocial ?? "" });
+        if (data.razaoSocial) {
+          setForm(prev => ({
+            ...prev,
+            companyName: prev.companyName || data.razaoSocial!,
+            customerName: prev.customerName || data.razaoSocial!,
+          }));
+          setAutoFilledCustomerName(true);
+        }
+      } else {
+        setCnpjRfbState({ ok: false, mensagem: data.mensagem ?? "CPF do responsável não confere com a Receita Federal." });
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      setCnpjRfbState({ ok: false, mensagem: "Erro ao consultar Safeweb." });
+    }
+  }, []);
+
   // ── Derived ──
   const certsWithMeta = certificates ?? [];
 
@@ -804,8 +848,13 @@ export default function NewOrder() {
                       set("customerCpfCnpj", v);
                       const digits = v.replace(/\D/g, "");
                       if (showCnpjFields) {
-                        if (digits.length === 14) setCnpjToQuery(digits);
-                        else { setCnpjToQuery(""); setAutoFilledCustomerName(false); }
+                        if (digits.length === 14) {
+                          setCnpjToQuery(digits);
+                          if (form.repCpf.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
+                            setCnpjRfbState(null);
+                            void triggerCnpjRfb(v, form.repCpf, form.repBirthDate);
+                          }
+                        } else { setCnpjToQuery(""); setAutoFilledCustomerName(false); setCnpjRfbState(null); }
                       } else {
                         if (digits.length === 11 && form.customerBirthDate.length === 10) triggerPsbioCheck(v, form.customerBirthDate, "cpf");
                         else if (digits.length < 11) setPsbioStatus(null);
@@ -837,12 +886,67 @@ export default function NewOrder() {
                 {/* Razão Social — PJ */}
                 {showCnpjFields && (
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-1">Razão Social *{cnpjFetching && <Loader2 className="h-3 w-3 animate-spin text-primary" />}</Label>
-                    <Input value={form.companyName} onChange={e => set("companyName", e.target.value)} required
-                      className={cnpjData && form.companyName ? "bg-emerald-50 border-emerald-200" : ""}
-                      placeholder={cnpjFetching ? "Buscando..." : ""} />
+                    <Label className="flex items-center gap-1">
+                      Razão Social *
+                      {cnpjRfbState === "loading" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                      {cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok && <CheckCircle className="h-3 w-3 text-emerald-500" />}
+                    </Label>
+                    <Input value={form.companyName} onChange={e => { set("companyName", e.target.value); setAutoFilledCustomerName(false); }} required
+                      className={cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok && form.companyName ? "bg-emerald-50 border-emerald-200" : ""}
+                      placeholder={cnpjRfbState === "loading" ? "Consultando RFB..." : ""} />
                   </div>
                 )}
+
+                {/* CPF + DtNascimento do responsável — consulta RFB CNPJ via Safeweb */}
+                {showCnpjFields && (<>
+                  <div className="space-y-2">
+                    <Label>CPF do Responsável *</Label>
+                    <Input
+                      value={form.repCpf}
+                      onChange={e => {
+                        const v = maskCpfCnpj(e.target.value);
+                        set("repCpf", v);
+                        setCnpjRfbState(null);
+                        const cpfDigits = v.replace(/\D/g, "");
+                        if (cpfDigits.length === 11 && form.repBirthDate.length === 10) {
+                          void triggerCnpjRfb(form.customerCpfCnpj, v, form.repBirthDate);
+                        }
+                      }}
+                      placeholder="000.000.000-00"
+                      maxLength={14}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data de Nascimento do Responsável *</Label>
+                    <Input
+                      value={form.repBirthDate}
+                      onChange={e => {
+                        const v = maskDate(e.target.value);
+                        set("repBirthDate", v);
+                        setCnpjRfbState(null);
+                        if (form.repCpf.replace(/\D/g, "").length === 11 && v.length === 10) {
+                          void triggerCnpjRfb(form.customerCpfCnpj, form.repCpf, v);
+                        }
+                      }}
+                      placeholder="dd/mm/aaaa"
+                      maxLength={10}
+                      required
+                    />
+                  </div>
+                  {cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok && (
+                    <div className="sm:col-span-2 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                      <CheckCircle className="h-4 w-4 shrink-0" />
+                      <span>RFB confirmado — <strong>{cnpjRfbState.razaoSocial}</strong></span>
+                    </div>
+                  )}
+                  {cnpjRfbState && cnpjRfbState !== "loading" && !cnpjRfbState.ok && (
+                    <div className="sm:col-span-2 flex items-center gap-2 text-sm text-destructive bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      <XCircle className="h-4 w-4 shrink-0" />
+                      <span>{(cnpjRfbState as { ok: false; mensagem: string }).mensagem}</span>
+                    </div>
+                  )}
+                </>)}
 
                 {/* Nome Completo — PF */}
                 {!showCnpjFields && (

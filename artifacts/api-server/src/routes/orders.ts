@@ -173,6 +173,45 @@ router.post("/orders/consulta-previa", requireAuth, async (req, res): Promise<vo
   }
 });
 
+// ── POST /orders/cnpj-rfb — consulta RFB CNPJ via Safeweb (separado do PSBio) ──
+router.post("/orders/cnpj-rfb", requireAuth, async (req, res): Promise<void> => {
+  const { cnpj, cpf, dataNascimento } = req.body ?? {};
+  if (!cnpj || !cpf || !dataNascimento) {
+    res.status(400).json({ ok: false, mensagem: "CNPJ, CPF e data de nascimento são obrigatórios." });
+    return;
+  }
+  const [s] = await db.select().from(settingsTable).limit(1);
+  if (!s?.safewebUrl || !s?.safewebUsername || !s?.safewebPassword) {
+    res.status(503).json({ ok: false, mensagem: "Safeweb não configurado." });
+    return;
+  }
+  const sw: SafewebSettings = {
+    url: s.safewebUrl,
+    username: s.safewebUsername,
+    password: s.safewebPassword,
+    cnpjAr: s.safewebCnpjAr ?? undefined,
+  };
+  try {
+    const result = await swConsultaCNPJ(
+      sw,
+      String(cnpj).replace(/\D/g, ""),
+      String(cpf).replace(/\D/g, ""),
+      String(dataNascimento),
+    );
+    if (result.Codigo === 0) {
+      const razaoSocial =
+        (typeof result.NomeCompleto === "string" && result.NomeCompleto.length > 2 ? result.NomeCompleto : "") ||
+        (typeof result.Mensagem === "string" && result.Mensagem.length > 2 ? result.Mensagem : "");
+      res.json({ ok: true, razaoSocial });
+    } else {
+      res.json({ ok: false, codigo: result.Codigo, mensagem: result.Mensagem ?? "CPF do responsável não confere com a Receita Federal." });
+    }
+  } catch (err) {
+    req.log.error({ err }, "cnpj-rfb error");
+    res.status(502).json({ ok: false, mensagem: (err as Error).message || "Erro ao consultar Safeweb." });
+  }
+});
+
 router.get("/orders", requireAuth, async (req, res): Promise<void> => {
   const session = req.session;
   const userId = session.userId as number;
