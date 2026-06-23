@@ -293,6 +293,7 @@ export default function NewOrder() {
     const cepMasked = cnpjData.cep ? maskCepFn(cnpjData.cep.replace(/\D/g, "")) : "";
     setForm(prev => ({
       ...prev,
+      ...(cnpjData.razaoSocial ? { companyName: prev.companyName || cnpjData.razaoSocial!, customerName: prev.customerName || cnpjData.razaoSocial! } : {}),
       ...(cepMasked ? { addressZipcode: cepMasked } : {}),
       ...(cnpjData.logradouro ? { addressStreet: cnpjData.logradouro } : {}),
       ...(cnpjData.numero ? { addressNumber: cnpjData.numero } : {}),
@@ -301,6 +302,7 @@ export default function NewOrder() {
       ...(cnpjData.uf ? { addressState: cnpjData.uf } : {}),
     }));
     if (cnpjData.logradouro || cnpjData.cep) setCepFilled(true);
+    if (cnpjData.razaoSocial) setAutoFilledCustomerName(true);
   }, [cnpjData]);
 
   // ── Consulta RFB CNPJ (Safeweb — separado do PSBio) ──
@@ -941,7 +943,7 @@ export default function NewOrder() {
                       if (showCnpjFields) {
                         if (digits.length === 14) {
                           setCnpjToQuery(digits);
-                          if (form.repCpf.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
+                          if (isCnpjCert && form.repCpf.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
                             setCnpjRfbState(null);
                             void triggerCnpjRfb(v, form.repCpf, form.repBirthDate);
                           }
@@ -971,17 +973,17 @@ export default function NewOrder() {
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1">
                       Razão Social *
-                      {cnpjRfbState === "loading" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                      {cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok && <CheckCircle className="h-3 w-3 text-emerald-500" />}
+                      {(cnpjFetching || cnpjRfbState === "loading") && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                      {!cnpjFetching && (cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok || (!isCnpjCert && cnpjData?.razaoSocial && form.companyName)) && <CheckCircle className="h-3 w-3 text-emerald-500" />}
                     </Label>
                     <Input value={form.companyName} onChange={e => { set("companyName", e.target.value); setAutoFilledCustomerName(false); }} required
-                      className={cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok && form.companyName ? "bg-emerald-50 border-emerald-200" : ""}
-                      placeholder={cnpjRfbState === "loading" ? "Consultando RFB..." : ""} />
+                      className={(cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok || (!isCnpjCert && !!cnpjData?.razaoSocial)) && form.companyName ? "bg-emerald-50 border-emerald-200" : ""}
+                      placeholder={cnpjFetching || cnpjRfbState === "loading" ? "Consultando..." : ""} />
                   </div>
                 )}
 
-                {/* CPF + DtNascimento do responsável — consulta RFB CNPJ via Safeweb */}
-                {showCnpjFields && (<>
+                {/* CPF + DtNascimento do responsável — só para e-CNPJ (consulta RFB via Safeweb) */}
+                {isCnpjCert && (<>
                   <div className="space-y-2">
                     <Label>CPF do Responsável *</Label>
                     <Input
