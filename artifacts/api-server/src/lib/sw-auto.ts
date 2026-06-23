@@ -235,8 +235,8 @@ export async function swAutoComprar(orderId: number): Promise<void> {
       body = {
         ...baseFields,
         Nome: order.customerName ?? "",
-        CPF: (order.customerCpfCnpj ?? "").replace(/\D/g, ""),
-        DataNascimento: order.customerBirthDate ?? "",
+        CPF: ((order.representanteCpf ?? order.customerCpfCnpj) ?? "").replace(/\D/g, ""),
+        DataNascimento: order.representanteNascimento ?? order.customerBirthDate ?? "",
         Contato: contato,
         Endereco: enderecoRaiz,
       };
