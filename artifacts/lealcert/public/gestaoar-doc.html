@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LealCert × Gestão AR — Documentação da Integração</title>
+<style>
+  /* ── RESET & BASE ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.65;
+    color: #1e293b;
+    background: #fff;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 48px;
+  }
+
+  /* ── CORES ────────────────────────────────────────────────── */
+  :root {
+    --navy:  #0f172a;
+    --blue:  #2563eb;
+    --gold:  #f59e0b;
+    --slate: #64748b;
+    --light: #f1f5f9;
+    --border:#e2e8f0;
+  }
+
+  /* ── CAPA ─────────────────────────────────────────────────── */
+  .cover {
+    text-align: center;
+    padding: 60px 0 48px;
+    border-bottom: 3px solid var(--blue);
+    margin-bottom: 40px;
+  }
+  .cover .logo-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+  .brand-pill {
+    background: var(--navy);
+    color: #fff;
+    font-weight: 700;
+    font-size: 18pt;
+    letter-spacing: 1px;
+    padding: 10px 28px;
+    border-radius: 8px;
+  }
+  .x-sep { font-size: 22pt; color: var(--slate); font-weight: 300; }
+  .gar-pill {
+    background: var(--blue);
+    color: #fff;
+    font-weight: 700;
+    font-size: 18pt;
+    letter-spacing: 1px;
+    padding: 10px 28px;
+    border-radius: 8px;
+  }
+  .cover h1 {
+    font-size: 22pt;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .cover .subtitle {
+    font-size: 12pt;
+    color: var(--slate);
+    margin-bottom: 24px;
+  }
+  .cover .meta {
+    display: inline-flex;
+    gap: 32px;
+    background: var(--light);
+    border-radius: 8px;
+    padding: 12px 28px;
+    font-size: 9pt;
+    color: var(--slate);
+  }
+  .cover .meta span strong { color: var(--navy); }
+
+  /* ── TIPOGRAFIA ────────────────────────────────────────────── */
+  h2 {
+    font-size: 14pt;
+    font-weight: 700;
+    color: var(--navy);
+    border-left: 4px solid var(--blue);
+    padding-left: 12px;
+    margin: 36px 0 14px;
+  }
+  h3 {
+    font-size: 11pt;
+    font-weight: 700;
+    color: var(--blue);
+    margin: 22px 0 8px;
+  }
+  h4 {
+    font-size: 10pt;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 14px 0 4px;
+  }
+  p { margin-bottom: 10px; }
+  ul, ol { padding-left: 20px; margin-bottom: 10px; }
+  li { margin-bottom: 4px; }
+
+  /* ── TABELAS ──────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0 20px;
+    font-size: 9.5pt;
+  }
+  th {
+    background: var(--navy);
+    color: #fff;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+  }
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: var(--light); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 8pt;
+    font-weight: 600;
+  }
+  .badge-green  { background: #dcfce7; color: #16a34a; }
+  .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+  .badge-amber  { background: #fef3c7; color: #b45309; }
+  .badge-slate  { background: #f1f5f9; color: #475569; }
+
+  /* ── FLUXO / STEPS ──────────────────────────────────────────── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 14px 0 20px;
+    position: relative;
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 16px;
+    background: var(--light);
+    border-radius: 8px;
+    margin-bottom: 4px;
+    position: relative;
+  }
+  .flow-step .num {
+    min-width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--blue);
+    color: #fff;
+    font-weight: 700;
+    font-size: 10pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .flow-step .num.gold { background: var(--gold); color: var(--navy); }
+  .flow-step strong { display: block; margin-bottom: 2px; color: var(--navy); }
+  .flow-step p { margin: 0; font-size: 9.5pt; color: #475569; }
+
+  /* ── INFO BOXES ─────────────────────────────────────────────── */
+  .info-box {
+    border-left: 4px solid var(--blue);
+    background: #eff6ff;
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-size: 9.5pt;
+  }
+  .info-box.amber {
+    border-color: var(--gold);
+    background: #fffbeb;
+  }
+  .info-box.green {
+    border-color: #16a34a;
+    background: #f0fdf4;
+  }
+  .info-box strong { color: var(--navy); }
+
+  /* ── GRID CARDS ─────────────────────────────────────────────── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 14px 0;
+  }
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .card .card-title {
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 10pt;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card .icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: var(--blue);
+    color: #fff;
+    font-size: 10pt;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card ul { font-size: 9pt; color: #475569; }
+
+  /* ── RODAPÉ ─────────────────────────────────────────────────── */
+  .footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 8.5pt;
+    color: var(--slate);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── PRINT ──────────────────────────────────────────────────── */
+  @media print {
+    body { padding: 0; max-width: 100%; font-size: 10pt; }
+    h2 { page-break-before: auto; }
+    .flow-step, .card, table { break-inside: avoid; }
+    .page-break { page-break-before: always; }
+    @page {
+      size: A4;
+      margin: 2cm 2.2cm;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ CAPA -->
+<div class="cover">
+  <div class="logo-bar">
+    <span class="brand-pill">LealCert</span>
+    <span class="x-sep">×</span>
+    <span class="gar-pill">Gestão AR</span>
+  </div>
+  <h1>Documentação Técnica da Integração</h1>
+  <p class="subtitle">Emissão automatizada de certificados digitais ICP-Brasil via API Gestão AR</p>
+  <div class="meta">
+    <span><strong>Versão:</strong> 1.0</span>
+    <span><strong>Data:</strong> Junho de 2026</span>
+    <span><strong>Produto:</strong> LealCert — Plataforma de Certificados Digitais</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════ 1. VISÃO GERAL -->
+<h2>1. Visão Geral da Integração</h2>
+
+<p>
+  O <strong>LealCert</strong> é uma plataforma completa de venda e gestão de certificados digitais
+  ICP-Brasil (e-CPF e e-CNPJ, tipos A1 e A3). A integração com a <strong>Gestão AR</strong> permite
+  que todo o ciclo de vida de um pedido — da venda à emissão do protocolo e agendamento do
+  atendimento — ocorra de forma <em>automática e rastreável</em>, sem intervenção manual.
+</p>
+
+<div class="info-box green">
+  <strong>Benefício central:</strong> Assim que o pagamento de um pedido é confirmado pelo
+  MercadoPago, o LealCert registra automaticamente a venda na Gestão AR, emite o protocolo e
+  disponibiliza o agendamento — tudo em segundos, sem nenhuma ação manual.
+</div>
+
+<div class="card-grid">
+  <div class="card">
+    <div class="card-title"><span class="icon">🛒</span> Produtos suportados</div>
+    <ul>
+      <li>e-CPF A1 (arquivo)</li>
+      <li>e-CPF A3 (token/cartão)</li>
+      <li>e-CNPJ A1 (arquivo)</li>
+      <li>e-CNPJ A3 (token/cartão)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">⚙️</span> Configuração necessária</div>
+    <ul>
+      <li>API Key Gestão AR</li>
+      <li>Hash do Vendedor</li>
+      <li>Hash da Tabela de Preços</li>
+      <li>Hash de cada produto (certificado)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">🔒</span> Autenticação</div>
+    <ul>
+      <li>API Key por header em cada chamada</li>
+      <li>Credenciais armazenadas no banco de dados do painel admin</li>
+      <li>Atualizáveis a qualquer momento, sem redeploy</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">📡</span> Endpoints utilizados</div>
+    <ul>
+      <li><code>Comprar</code> — registra a venda</li>
+      <li><code>EmitirProtocolo</code> — emite o protocolo</li>
+      <li><code>Pedido</code> — consulta status</li>
+      <li><code>Agendamento</code> — agenda atendimento</li>
+      <li><code>Disponibilidade</code> — lista slots</li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════ 2. FLUXO COMPLETO -->
+<h2>2. Fluxo Completo de um Pedido</h2>
+
+<div class="flow">
+  <div class="flow-step">
+    <div class="num">1</div>
+    <div>
+      <strong>Cliente realiza o pedido no LealCert</strong>
+      <p>Preenche dados pessoais (CPF/CNPJ), endereço, e-mail, telefone, data de nascimento. Para e-CNPJ: também o CPF e data de nascimento do representante legal.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="num">2</div>
+    <div>
+      <strong>Pagamento via MercadoPago</strong>
+      <p>O LealCert gera uma preferência de pagamento MP. O cliente paga por PIX, boleto ou cartão. O status do pedido fica como <em>aguardando pagamento</em>.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="num gold">3</div>
+    <div>
+      <strong>Webhook confirma pagamento → LealCert aciona Gestão AR</strong>
+      <p>Ao receber a notificação de pagamento aprovado, o sistema executa automaticamente as etapas 4 e 5 a seguir.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="num">4</div>
+    <div>
+      <strong>Registro da venda na Gestão AR — endpoint <code>Comprar</code></strong>
+      <p>O LealCert envia os dados do cliente (nome, CPF/CNPJ, endereço, contato) e o Hash do Produto correspondente. A Gestão AR retorna o número do pedido GAR e o Hash da Venda, que são salvos no banco de dados.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="num">5</div>
+    <div>
+      <strong>Emissão do protocolo — endpoint <code>EmitirProtocolo</code></strong>
+      <p>Com o número do pedido GAR, o LealCert emite o protocolo automaticamente. O protocolo retornado é salvo no pedido e o status avança para <em>"Protocolo Atribuído"</em>. Para e-CNPJ, o CPF do representante legal é enviado no campo CPF.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="num">6</div>
+    <div>
+      <strong>Agendamento do atendimento (feito pelo operador ou cliente)</strong>
+      <p>O LealCert exibe os slots disponíveis via endpoint <code>Disponibilidade</code>, com seleção de data e unidade. O agendamento é confirmado via endpoint <code>Agendamento</code>, e os dados ficam registrados no pedido.</p>
+    </div>
+  </div>
+  <div class="flow-step">
+    <div class="num gold">7</div>
+    <div>
+      <strong>Atendimento presencial / emissão final</strong>
+      <p>O cliente comparece com o protocolo e documentação. A emissão do certificado ocorre na unidade da AR conforme o agendamento.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════ 3. PAYLOAD COMPRAR -->
+<div class="page-break"></div>
+<h2>3. Dados Enviados — Endpoint <code>Comprar</code></h2>
+
+<p>Chamada realizada imediatamente após a confirmação do pagamento. Envia os dados completos do cliente e o produto adquirido.</p>
+
+<h3>Campos do Cliente (<code>Cliente</code>)</h3>
+<table>
+  <tr>
+    <th>Campo GAR</th>
+    <th>Origem (LealCert)</th>
+    <th>Tipo</th>
+    <th>Obs.</th>
+  </tr>
+  <tr>
+    <td><code>CNPJCPF</code></td>
+    <td>CPF do titular (e-CPF) ou CNPJ da empresa (e-CNPJ)</td>
+    <td><span class="badge badge-green">Obrigatório</span></td>
+    <td>Apenas dígitos, sem máscara</td>
+  </tr>
+  <tr>
+    <td><code>NomeRazaoSocial</code></td>
+    <td>Nome completo (e-CPF) ou Razão Social (e-CNPJ)</td>
+    <td><span class="badge badge-green">Obrigatório</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><code>NomeFantasia</code></td>
+    <td>— (e-CPF) ou Nome do representante legal (e-CNPJ)</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td>Vazio para e-CPF</td>
+  </tr>
+  <tr>
+    <td><code>Email</code></td>
+    <td>E-mail do cliente</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><code>CEP</code></td>
+    <td>CEP do endereço (sem traço)</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td>Auto-preenchido via ViaCEP</td>
+  </tr>
+  <tr>
+    <td><code>Logradouro</code></td>
+    <td>Rua/Avenida</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><code>Numero</code></td>
+    <td>Número do endereço</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><code>Complemento</code></td>
+    <td>Complemento (apto, sala, etc.)</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><code>Bairro</code></td>
+    <td>Bairro</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><code>Cidade</code></td>
+    <td>Cidade</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><code>UF</code></td>
+    <td>Estado (2 letras)</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><code>DDD</code></td>
+    <td>DDD do telefone</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td>Extraído automaticamente do telefone</td>
+  </tr>
+  <tr>
+    <td><code>Telefone</code></td>
+    <td>Número do telefone (sem DDD)</td>
+    <td><span class="badge badge-slate">Opcional</span></td>
+    <td></td>
+  </tr>
+</table>
+
+<h3>Demais campos da chamada <code>Comprar</code></h3>
+<table>
+  <tr>
+    <th>Campo GAR</th>
+    <th>Valor</th>
+    <th>Obs.</th>
+  </tr>
+  <tr>
+    <td><code>HashVendedor</code></td>
+    <td>Configurado no painel admin</td>
+    <td>Hash do AR parceiro</td>
+  </tr>
+  <tr>
+    <td><code>HashTabela</code></td>
+    <td>Configurado no painel admin</td>
+    <td>Tabela de preços</td>
+  </tr>
+  <tr>
+    <td><code>FormaPagamento</code></td>
+    <td>Mapeado conforme opção do pedido</td>
+    <td>PIX / boleto / cartão</td>
+  </tr>
+  <tr>
+    <td><code>Produtos[].HashProduto</code></td>
+    <td>Hash do certificado específico</td>
+    <td>Cadastrado por produto no painel admin</td>
+  </tr>
+</table>
+
+<h3>Retorno esperado da Gestão AR</h3>
+<table>
+  <tr>
+    <th>Campo</th>
+    <th>Uso no LealCert</th>
+  </tr>
+  <tr>
+    <td><code>HashVenda</code> / <code>Hash</code></td>
+    <td>Salvo no pedido como <code>garHashVenda</code></td>
+  </tr>
+  <tr>
+    <td><code>Produtos[].Pedido</code></td>
+    <td>Salvo como <code>garPedido</code> — número do pedido GAR</td>
+  </tr>
+  <tr>
+    <td><code>LinkAgenda</code></td>
+    <td>Salvo como <code>garAgendamentoLink</code></td>
+  </tr>
+  <tr>
+    <td><code>Erros</code></td>
+    <td>Registrado no log de eventos do pedido; fluxo é interrompido</td>
+  </tr>
+</table>
+
+
+<!-- ═══════════════════════════════════════════════════ 4. PAYLOAD EMITIR PROTOCOLO -->
+<h2>4. Dados Enviados — Endpoint <code>EmitirProtocolo</code></h2>
+
+<p>Chamada imediatamente após o sucesso do <code>Comprar</code>, ainda dentro do mesmo fluxo automático de pagamento.</p>
+
+<table>
+  <tr>
+    <th>Campo GAR</th>
+    <th>Origem (LealCert)</th>
+    <th>e-CPF</th>
+    <th>e-CNPJ</th>
+  </tr>
+  <tr>
+    <td><code>Pedido</code></td>
+    <td>Número retornado pelo endpoint <code>Comprar</code></td>
+    <td><span class="badge badge-green">✔</span></td>
+    <td><span class="badge badge-green">✔</span></td>
+  </tr>
+  <tr>
+    <td><code>CPF</code></td>
+    <td>CPF do titular (e-CPF) / CPF do representante legal (e-CNPJ)</td>
+    <td>CPF do titular</td>
+    <td>CPF do representante</td>
+  </tr>
+  <tr>
+    <td><code>CNPJ</code></td>
+    <td>CNPJ da empresa (apenas e-CNPJ)</td>
+    <td>—</td>
+    <td>CNPJ da empresa</td>
+  </tr>
+  <tr>
+    <td><code>isCNPJ</code></td>
+    <td><code>"0"</code> para e-CPF, <code>"1"</code> para e-CNPJ</td>
+    <td><code>"0"</code></td>
+    <td><code>"1"</code></td>
+  </tr>
+  <tr>
+    <td><code>DataNascimento</code></td>
+    <td>Data de nascimento do titular (e-CPF) ou do representante (e-CNPJ)</td>
+    <td>Data titular</td>
+    <td>Data representante</td>
+  </tr>
+  <tr>
+    <td><code>IsPossuiCNH</code></td>
+    <td><code>false</code></td>
+    <td>—</td>
+    <td>—</td>
+  </tr>
+</table>
+
+<div class="info-box amber">
+  <strong>Atenção e-CNPJ:</strong> O campo <code>CPF</code> do endpoint <code>EmitirProtocolo</code>
+  deve sempre receber o <strong>CPF do representante legal da empresa</strong>, não o CNPJ.
+  O campo <code>CNPJ</code> recebe separadamente o CNPJ da empresa. O LealCert captura o CPF
+  do representante durante a criação do pedido e o armazena de forma independente.
+</div>
+
+<h3>Retorno esperado</h3>
+<table>
+  <tr>
+    <th>Campo</th>
+    <th>Uso no LealCert</th>
+  </tr>
+  <tr>
+    <td><code>ErrorCode === "000"</code></td>
+    <td>Indica sucesso; protocolo salvo no pedido</td>
+  </tr>
+  <tr>
+    <td><code>ErrorDescription</code></td>
+    <td>Número/código do protocolo emitido, salvo como <code>garProtocolo</code></td>
+  </tr>
+</table>
+
+
+<!-- ═══════════════════════════════════════════════════ 5. AGENDAMENTO -->
+<div class="page-break"></div>
+<h2>5. Agendamento de Atendimento</h2>
+
+<p>
+  Após o protocolo emitido, o operador (ou o próprio cliente) pode agendar o atendimento
+  diretamente pelo painel LealCert. O sistema consulta a disponibilidade em tempo real na
+  Gestão AR e confirma o agendamento.
+</p>
+
+<h3>Endpoint <code>Disponibilidade</code> — consulta de slots</h3>
+<table>
+  <tr>
+    <th>Parâmetro enviado</th>
+    <th>Valor</th>
+  </tr>
+  <tr>
+    <td><code>HashVendedor</code></td>
+    <td>Hash do AR parceiro</td>
+  </tr>
+  <tr>
+    <td><code>DataInicial</code></td>
+    <td>Data selecionada pelo operador (formato DD/MM/YYYY)</td>
+  </tr>
+  <tr>
+    <td><code>DataFinal</code></td>
+    <td>Mesmo dia (janela de 1 dia) ou intervalo configurado</td>
+  </tr>
+</table>
+
+<h3>Endpoint <code>Agendamento</code> — confirmar agendamento</h3>
+<table>
+  <tr>
+    <th>Parâmetro enviado</th>
+    <th>Valor</th>
+  </tr>
+  <tr>
+    <td><code>HashVenda</code></td>
+    <td>Hash da venda retornado pelo <code>Comprar</code></td>
+  </tr>
+  <tr>
+    <td><code>HashLocal</code></td>
+    <td>Hash da unidade de atendimento selecionada</td>
+  </tr>
+  <tr>
+    <td><code>DataInicial</code></td>
+    <td>Data e horário de início do slot escolhido</td>
+  </tr>
+  <tr>
+    <td><code>DataFinal</code></td>
+    <td>Data e horário de fim do slot</td>
+  </tr>
+  <tr>
+    <td><code>IsCliente</code></td>
+    <td><code>true</code> (agendado para o cliente)</td>
+  </tr>
+</table>
+
+<div class="info-box">
+  O agendamento pode ser <strong>cancelado</strong> pelo painel admin a qualquer momento,
+  via endpoint de exclusão de agendamento da Gestão AR. Os dados do agendamento
+  (local, data/hora, hash do slot) são armazenados no pedido para rastreabilidade.
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════ 6. DADOS ARMAZENADOS -->
+<h2>6. Dados Armazenados no LealCert por Pedido</h2>
+
+<p>Cada pedido no banco de dados do LealCert guarda os seguintes campos provenientes da Gestão AR:</p>
+
+<table>
+  <tr>
+    <th>Campo</th>
+    <th>Descrição</th>
+    <th>Quando preenchido</th>
+  </tr>
+  <tr>
+    <td><code>garPedido</code></td>
+    <td>Número do pedido na Gestão AR</td>
+    <td>Após <code>Comprar</code></td>
+  </tr>
+  <tr>
+    <td><code>garHashVenda</code></td>
+    <td>Hash identificador da venda</td>
+    <td>Após <code>Comprar</code></td>
+  </tr>
+  <tr>
+    <td><code>garProtocolo</code></td>
+    <td>Número do protocolo emitido</td>
+    <td>Após <code>EmitirProtocolo</code></td>
+  </tr>
+  <tr>
+    <td><code>garStatus</code></td>
+    <td>Descrição do status atual na GAR</td>
+    <td>Atualizado a cada sincronização</td>
+  </tr>
+  <tr>
+    <td><code>garAgendamentoLink</code></td>
+    <td>Link de auto-agendamento da GAR</td>
+    <td>Após <code>Comprar</code></td>
+  </tr>
+  <tr>
+    <td><code>garSyncedAt</code></td>
+    <td>Timestamp da última sincronização com a GAR</td>
+    <td>Após cada chamada à API</td>
+  </tr>
+  <tr>
+    <td><code>garAgendamentoLocalNome</code></td>
+    <td>Nome da unidade de atendimento agendada</td>
+    <td>Após <code>Agendamento</code></td>
+  </tr>
+  <tr>
+    <td><code>garAgendamentoLocalHash</code></td>
+    <td>Hash da unidade agendada</td>
+    <td>Após <code>Agendamento</code></td>
+  </tr>
+  <tr>
+    <td><code>garAgendamentoSlotHash</code></td>
+    <td>Hash do slot de horário confirmado</td>
+    <td>Após <code>Agendamento</code></td>
+  </tr>
+  <tr>
+    <td><code>garAgendamentoDataHora</code></td>
+    <td>Data e hora do atendimento agendado</td>
+    <td>Após <code>Agendamento</code></td>
+  </tr>
+</table>
+
+
+<!-- ═══════════════════════════════════════════════════ 7. PAINEL ADMIN -->
+<h2>7. Painel Administrativo — O que o Operador Visualiza</h2>
+
+<div class="card-grid">
+  <div class="card">
+    <div class="card-title">📋 Lista de Pedidos</div>
+    <ul>
+      <li>Número do pedido LealCert e número GAR</li>
+      <li>Status do pedido (criado / pago / protocolo / emitido)</li>
+      <li>Nome e documento do cliente</li>
+      <li>Produto e valor</li>
+      <li>Data de criação e agendamento</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">🔍 Detalhe do Pedido</div>
+    <ul>
+      <li>Todos os dados do cliente e representante (e-CNPJ)</li>
+      <li>Número do pedido GAR e protocolo emitido</li>
+      <li>Status de sincronização com a GAR</li>
+      <li>Card de agendamento com data, local e horário</li>
+      <li>Opção de cancelar agendamento</li>
+      <li>Histórico de eventos (log auditável)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">📅 Card de Agendamento</div>
+    <ul>
+      <li>Seleção de data via calendário</li>
+      <li>Consulta de slots disponíveis em tempo real na GAR</li>
+      <li>Seleção de unidade e horário</li>
+      <li>Confirmação com um clique</li>
+      <li>Cancelamento com confirmação de segurança</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">⚙️ Configurações GAR</div>
+    <ul>
+      <li>API Key, Hash Vendedor, Hash Tabela</li>
+      <li>Atualizáveis pelo admin sem redeploy</li>
+      <li>Hash do produto por certificado (e-CPF A1/A3, e-CNPJ A1/A3)</li>
+      <li>Seleção de provedor: Gestão AR ou Safeweb</li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════ 8. LOG DE EVENTOS -->
+<h2>8. Rastreabilidade — Log de Eventos</h2>
+
+<p>
+  Cada pedido possui um <strong>histórico de eventos</strong> auditável. Todos os passos da
+  integração com a Gestão AR são registrados automaticamente:
+</p>
+
+<table>
+  <tr>
+    <th>Evento</th>
+    <th>Descrição</th>
+  </tr>
+  <tr>
+    <td><code>gar_sale_registered</code></td>
+    <td>Venda registrada na Gestão AR — inclui número do pedido GAR</td>
+  </tr>
+  <tr>
+    <td><code>gar_sale_error</code></td>
+    <td>Erro retornado pela GAR no registro da venda — inclui mensagem de erro</td>
+  </tr>
+  <tr>
+    <td><code>gar_protocol_emitted</code></td>
+    <td>Protocolo emitido com sucesso — número do protocolo registrado</td>
+  </tr>
+  <tr>
+    <td><code>gar_protocol_error</code></td>
+    <td>Erro na emissão do protocolo — código e descrição do erro GAR</td>
+  </tr>
+  <tr>
+    <td><code>gar_scheduled</code></td>
+    <td>Agendamento confirmado — data, horário e unidade registrados</td>
+  </tr>
+  <tr>
+    <td><code>gar_schedule_cancelled</code></td>
+    <td>Agendamento cancelado pelo operador</td>
+  </tr>
+  <tr>
+    <td><code>payment_confirmed</code></td>
+    <td>Pagamento MercadoPago aprovado — dispara o fluxo GAR</td>
+  </tr>
+</table>
+
+
+<!-- ═══════════════════════════════════════════════════ 9. DADOS DO CLIENTE NO PEDIDO -->
+<div class="page-break"></div>
+<h2>9. Dados Coletados do Cliente no Pedido</h2>
+
+<p>Durante a criação do pedido no LealCert, os seguintes dados são coletados e ficam disponíveis para a Gestão AR:</p>
+
+<h3>Para e-CPF</h3>
+<table>
+  <tr><th>Dado</th><th>Obrigatório</th></tr>
+  <tr><td>Nome completo</td><td><span class="badge badge-green">Sim</span></td></tr>
+  <tr><td>CPF</td><td><span class="badge badge-green">Sim</span></td></tr>
+  <tr><td>Data de nascimento</td><td><span class="badge badge-green">Sim</span></td></tr>
+  <tr><td>E-mail</td><td><span class="badge badge-amber">Recomendado</span></td></tr>
+  <tr><td>Telefone com DDD</td><td><span class="badge badge-amber">Recomendado</span></td></tr>
+  <tr><td>CEP e endereço completo</td><td><span class="badge badge-amber">Recomendado</span></td></tr>
+</table>
+
+<h3>Para e-CNPJ (campos adicionais)</h3>
+<table>
+  <tr><th>Dado</th><th>Obrigatório</th></tr>
+  <tr><td>Razão Social da empresa</td><td><span class="badge badge-green">Sim</span></td></tr>
+  <tr><td>CNPJ</td><td><span class="badge badge-green">Sim</span></td></tr>
+  <tr><td>Nome do representante legal</td><td><span class="badge badge-green">Sim</span></td></tr>
+  <tr><td>CPF do representante legal</td><td><span class="badge badge-green">Sim</span></td></tr>
+  <tr><td>Data de nascimento do representante</td><td><span class="badge badge-green">Sim</span></td></tr>
+  <tr><td>Endereço da empresa</td><td><span class="badge badge-amber">Recomendado</span></td></tr>
+</table>
+
+
+<!-- ═══════════════════════════════════════════════════ 10. RESUMO TÉCNICO -->
+<h2>10. Resumo Técnico</h2>
+
+<table>
+  <tr><th>Item</th><th>Detalhe</th></tr>
+  <tr>
+    <td>Stack do LealCert</td>
+    <td>Node.js 24 + TypeScript · Express 5 · PostgreSQL + Drizzle ORM · React + Vite</td>
+  </tr>
+  <tr>
+    <td>Comunicação com GAR</td>
+    <td>HTTP POST com <code>Content-Type: application/json</code> · API Key por campo no body</td>
+  </tr>
+  <tr>
+    <td>Trigger do fluxo</td>
+    <td>Webhook do MercadoPago ao receber <code>payment.updated</code> com status <code>approved</code></td>
+  </tr>
+  <tr>
+    <td>Retry / resiliência</td>
+    <td>Erros são registrados no log de eventos; pedido pode ser re-processado manualmente</td>
+  </tr>
+  <tr>
+    <td>Ambiente de produção</td>
+    <td>Implantado na plataforma Replit com banco de dados PostgreSQL gerenciado</td>
+  </tr>
+  <tr>
+    <td>Segurança das credenciais</td>
+    <td>API Keys armazenadas em banco de dados, nunca em variáveis de ambiente expostas no front</td>
+  </tr>
+  <tr>
+    <td>Multi-provedor</td>
+    <td>Sistema suporta Gestão AR e Safeweb — selecionável no painel admin sem redeploy</td>
+  </tr>
+</table>
+
+<div class="info-box green">
+  <strong>Resultado para o parceiro Gestão AR:</strong> Cada pedido pago no LealCert gera
+  automaticamente um registro de venda, um protocolo emitido e um agendamento disponível
+  — tudo vinculado ao CNPJCPF correto, com dados completos do cliente e rastreabilidade
+  total por log de eventos.
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════ RODAPÉ -->
+<div class="footer">
+  <span>LealCert — Plataforma de Certificados Digitais &nbsp;|&nbsp; Integração Gestão AR v1.0</span>
+  <span>Documento gerado em junho de 2026</span>
+</div>
+
+<!-- BOTÃO IMPRIMIR (oculto na impressão) -->
+<div class="print-bar" style="position:fixed;bottom:24px;right:24px;z-index:999;">
+  <button onclick="window.print()"
+    style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:11pt;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,0.35);display:flex;align-items:center;gap:8px;">
+    🖨️ Salvar como PDF
+  </button>
+</div>
+
+<style>
+@media print {
+  .print-bar { display: none !important; }
+}
+</style>
+
+</body>
+</html>
