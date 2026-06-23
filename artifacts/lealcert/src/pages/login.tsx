@@ -13,6 +13,10 @@ import { Loader2, ShieldCheck, Eye, EyeOff, Phone, MessageCircle, Mail, MapPin, 
 type Step = "credentials" | "ip-verify";
 type IpBlockInfo = { code: "ip_banned" | "ip_blocked"; error: string; isForeign?: boolean; unblockAt?: string } | null;
 
+function homeRoute(role?: string) {
+  return role === "agente" ? "/consultar" : "/dashboard";
+}
+
 export default function Login() {
   const [cpfCnpj, setCpfCnpj] = useState("");
   const [password, setPassword] = useState("");
@@ -36,10 +40,11 @@ export default function Login() {
           return;
         }
         await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-        if ((data as { mustChangePassword?: boolean }).mustChangePassword) {
+        const d = data as { mustChangePassword?: boolean; role?: string };
+        if (d.mustChangePassword) {
           setLocation("/change-password");
         } else {
-          setLocation("/dashboard");
+          setLocation(homeRoute(d.role));
         }
       },
       onError: (err: unknown) => {
@@ -63,7 +68,7 @@ export default function Login() {
 
   if (user) {
     if (user.mustChangePassword) setLocation("/change-password");
-    else setLocation("/dashboard");
+    else setLocation(homeRoute(user.role));
     return null;
   }
 
@@ -91,7 +96,7 @@ export default function Login() {
       }
       await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       if (data.mustChangePassword) setLocation("/change-password");
-      else setLocation("/dashboard");
+      else setLocation(homeRoute(data.role));
     } catch {
       toast({ title: "Erro", description: "Não foi possível verificar o código. Tente novamente.", variant: "destructive" });
     } finally {
