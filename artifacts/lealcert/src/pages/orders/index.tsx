@@ -101,7 +101,7 @@ export default function Orders() {
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Certificado</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Data</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Total</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Protocolo</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -129,7 +129,9 @@ export default function Orders() {
                           {STATUS_LABELS[order.status] ?? order.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium">{formatBRL(order.total)}</td>
+                      <td className="px-4 py-3 hidden sm:table-cell font-mono text-sm text-muted-foreground">
+                        {order.protocolNumber ?? "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
