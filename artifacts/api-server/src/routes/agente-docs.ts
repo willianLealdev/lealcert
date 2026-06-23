@@ -14,13 +14,16 @@ function isSafeFile(base: string, file: string): boolean {
   return file.startsWith(base + path.sep) || file.startsWith(base + "/");
 }
 
-// Middleware: apenas agentes podem acessar estas rotas
-function requireAgente(req: Request, res: Response, next: NextFunction): void {
+// Middleware: agentes e admins podem acessar estas rotas
+function requireAgenteOrAdmin(req: Request, res: Response, next: NextFunction): void {
   if (!req.session?.userId) {
     res.status(401).json({ error: "Não autenticado." });
     return;
   }
-  if (req.session.role !== "agente") {
+  const role = String(req.session.role ?? "");
+  const isAgente = role === "agente";
+  const isAdmin = role === "admin" || String(req.session.userType ?? "") === "admin";
+  if (!isAgente && !isAdmin) {
     res.status(403).json({ error: "Acesso negado. Apenas agentes de registro." });
     return;
   }
@@ -29,7 +32,7 @@ function requireAgente(req: Request, res: Response, next: NextFunction): void {
 
 // GET /agente/documentos/:protocolo
 // Retorna APENAS nome do cliente/empresa + documentos vinculados ao protocolo
-router.get("/agente/documentos/:protocolo", requireAuth, requireAgente, async (req, res): Promise<void> => {
+router.get("/agente/documentos/:protocolo", requireAuth, requireAgenteOrAdmin, async (req, res): Promise<void> => {
   const protocolo = String(req.params.protocolo ?? "").trim();
   if (!protocolo) {
     res.status(400).json({ error: "Protocolo obrigatório." });
@@ -113,7 +116,7 @@ router.get("/agente/documentos/:protocolo", requireAuth, requireAgente, async (r
 // GET /agente/download/:tipo/:filename — serve file for agente (authenticated)
 const VALID_TIPOS = ["cnh", "cartao-cnpj", "ficha-cadastral", "chat-docs"];
 
-router.get("/agente/download/:tipo/:filename", requireAuth, requireAgente, (req, res): void => {
+router.get("/agente/download/:tipo/:filename", requireAuth, requireAgenteOrAdmin, (req, res): void => {
   const tipo = Array.isArray(req.params.tipo) ? req.params.tipo[0] : req.params.tipo;
   const raw = Array.isArray(req.params.filename) ? req.params.filename[0] : req.params.filename;
   const filename = path.basename(raw);
