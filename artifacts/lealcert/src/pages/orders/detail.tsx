@@ -1444,7 +1444,7 @@ export default function OrderDetail() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card>
-            <CardHeader><CardTitle>Dados do Cliente</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Cliente/Empresa</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InfoRow label="Nome" value={order.customerName} />
               <InfoRow label={order.clientType === "cnpj" ? "CNPJ" : "CPF"} value={order.customerCpfCnpj} />
@@ -1455,7 +1455,19 @@ export default function OrderDetail() {
             </CardContent>
           </Card>
 
-          {/* Dados do Representante — sempre visível, colapsável com chevron */}
+          <Card>
+            <CardHeader><CardTitle>Endereço</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InfoRow label="CEP" value={order.addressZipcode} />
+              <InfoRow label="Logradouro" value={order.addressStreet} />
+              <InfoRow label="Número" value={order.addressNumber} />
+              <InfoRow label="Bairro" value={order.addressNeighborhood} />
+              <InfoRow label="Cidade" value={order.addressCity} />
+              <InfoRow label="UF" value={order.addressState} />
+            </CardContent>
+          </Card>
+
+          {/* Dados do Representante — colapsável com chevron */}
           {(() => {
             const DOC_TIPO_LABEL: Record<string, string> = { "1": "RG", "2": "RNE", "3": "Passaporte", "4": "CNH" };
             return (
@@ -1495,18 +1507,6 @@ export default function OrderDetail() {
               </Card>
             );
           })()}
-
-          <Card>
-            <CardHeader><CardTitle>Endereço</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InfoRow label="CEP" value={order.addressZipcode} />
-              <InfoRow label="Logradouro" value={order.addressStreet} />
-              <InfoRow label="Número" value={order.addressNumber} />
-              <InfoRow label="Bairro" value={order.addressNeighborhood} />
-              <InfoRow label="Cidade" value={order.addressCity} />
-              <InfoRow label="UF" value={order.addressState} />
-            </CardContent>
-          </Card>
 
           {/* Card de agendamento GAR */}
           {canScheduleGar && (
