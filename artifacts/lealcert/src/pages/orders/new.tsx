@@ -182,6 +182,17 @@ export default function NewOrder() {
   // ── Step ──
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
+  // ── PSBio Gate ──
+  const [psbioGatePassed, setPsbioGatePassed] = useState(false);
+  const [gateInputCpf, setGateInputCpf] = useState("");
+  const [gateInputBirthDate, setGateInputBirthDate] = useState("");
+  type GateStatus = null | "loading" | { ok: true; hasPsbio: boolean; mensagem: string } | { ok: false; mensagem: string };
+  const [gateStatus, setGateStatus] = useState<GateStatus>(null);
+  const gateCpfRef = useRef("");
+  const gateBirthDateRef = useRef("");
+  const gateNameRef = useRef("");
+  const gateHasPsbioRef = useRef(false);
+
   // ── Cert selector ──
   const PRODUCT_OPTIONS_ORDER = ["e-CPF", "e-CNPJ", "e-PF", "e-PJ"];
   const ISSUANCE_ORDER = ["Presencial", "Videoconferência", "Fast", "Renovação"];
@@ -234,10 +245,7 @@ export default function NewOrder() {
     setForm(prev => ({ ...prev, [field]: value }));
   }
 
-  // ── PSBio ──
-  type PsbioStatus = null | "loading" | { hasPsbio: boolean; mensagem: string; requiresPresencial: boolean; apiError?: boolean };
-  const [psbioStatus, setPsbioStatus] = useState<PsbioStatus>(null);
-  const psbioContextRef = useRef<"customer" | "rep">("customer");
+  // ── Auto-fill state ──
   const [autoFilledCustomerName, setAutoFilledCustomerName] = useState(false);
   const [autoFilledRepName, setAutoFilledRepName] = useState(false);
 
@@ -384,11 +392,22 @@ export default function NewOrder() {
   useEffect(() => {
     if (!selectedCert) return;
     const certIsCnpj = selectedCert.product === "e-CNPJ" || selectedCert.product === "e-PJ" || /cnpj/i.test(selectedCert.name);
-    setForm(prev => ({ ...prev, clientType: certIsCnpj ? "cnpj" : "cpf" }));
+    const gCpf = gateCpfRef.current;
+    const gDate = gateBirthDateRef.current;
+    const gName = gateNameRef.current;
+    const maskedCpf = gCpf ? maskCpfCnpj(gCpf) : "";
+    const brDate = gDate ? gDate.split("-").reverse().join("/") : "";
+    setForm(prev => ({
+      ...prev,
+      clientType: certIsCnpj ? "cnpj" : "cpf",
+      ...(certIsCnpj
+        ? { repCpf: maskedCpf || prev.repCpf, repBirthDate: brDate || prev.repBirthDate, repName: gName || prev.repName }
+        : { customerCpfCnpj: maskedCpf || prev.customerCpfCnpj, customerBirthDate: brDate || prev.customerBirthDate, customerName: gName || prev.customerName }),
+    }));
     if (!certIsCnpj) setNfType("fisica");
     setCnpjToQuery("");
-    setAutoFilledCustomerName(false);
-    setPsbioStatus(null);
+    setAutoFilledCustomerName(!!gName);
+    setAutoFilledRepName(!!gName && certIsCnpj);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.certificateId]);
 
@@ -409,49 +428,25 @@ export default function NewOrder() {
   const checkPsbio = useConsultaPrevia({
     mutation: {
       onSuccess: (data) => {
-        if (psbioContextRef.current === "rep") {
-          setPsbioStatus({ hasPsbio: data.hasPsbio, mensagem: data.mensagem, requiresPresencial: data.requiresPresencial });
-        }
-        if (data.customerName) {
-          if (psbioContextRef.current === "rep") {
-            setForm(prev => ({ ...prev, repName: data.customerName!, customerName: prev.customerName || data.customerName! }));
-            setAutoFilledRepName(true);
-            setAutoFilledCustomerName(true);
-          } else {
-            setForm(prev => ({ ...prev, customerName: prev.customerName || data.customerName! }));
-            setAutoFilledCustomerName(true);
-          }
-        }
+        gateHasPsbioRef.current = data.hasPsbio;
+        if (data.customerName) gateNameRef.current = data.customerName;
+        setGateStatus({ ok: true, hasPsbio: data.hasPsbio, mensagem: data.mensagem });
       },
       onError: (err: unknown) => {
-        if (psbioContextRef.current === "rep") {
-          const msg = (err as { message?: string })?.message ?? "Erro ao consultar biometria";
-          setPsbioStatus({ hasPsbio: false, mensagem: msg, requiresPresencial: true, apiError: true });
-        }
+        const msg = (err as { message?: string })?.message ?? "Erro ao consultar biometria.";
+        setGateStatus({ ok: false, mensagem: msg });
       },
     },
   });
 
-  const triggerPsbioCheck = useCallback((cpfCnpj: string, birthDate: string, clientType: string, repCpf?: string, repBirthDate?: string, context?: "customer" | "rep") => {
-    const digits = cpfCnpj.replace(/\D/g, "");
-    const isCpf = clientType === "cpf" && digits.length === 11;
-    const isCnpj = clientType === "cnpj" && digits.length === 14;
-    if (isCpf && birthDate) {
-      psbioContextRef.current = context ?? "customer";
-      const dateIso = birthDate.includes("/") ? parseBrDate(birthDate) : birthDate;
-      checkPsbio.mutate({ data: { cpf: digits, dataNascimento: dateIso } });
-    } else if (isCnpj && repCpf && repBirthDate) {
-      const repDigits = repCpf.replace(/\D/g, "");
-      const repDateIso = repBirthDate.includes("/") ? parseBrDate(repBirthDate) : repBirthDate;
-      if (repDigits.length === 11 && repDateIso.length === 10) {
-        psbioContextRef.current = "rep";
-        setPsbioStatus("loading");
-        checkPsbio.mutate({ data: { cnpj: digits, cpfResponsavel: repDigits, dataNascimento: repDateIso } });
-      }
-    } else {
-      setPsbioStatus(null);
-    }
-  }, [checkPsbio]);
+  function triggerGatePsbio() {
+    const cpfDigits = gateInputCpf.replace(/\D/g, "");
+    if (cpfDigits.length !== 11 || gateInputBirthDate.length !== 10) return;
+    gateCpfRef.current = cpfDigits;
+    gateBirthDateRef.current = parseBrDate(gateInputBirthDate);
+    setGateStatus("loading");
+    checkPsbio.mutate({ data: { cpf: cpfDigits, dataNascimento: gateBirthDateRef.current } });
+  }
 
   const validateCouponMutation = useValidateCoupon({
     mutation: {
@@ -566,7 +561,7 @@ export default function NewOrder() {
       }
     }
 
-    const hasPsbioValue = psbioStatus && psbioStatus !== "loading" ? psbioStatus.hasPsbio : undefined;
+    const hasPsbioValue = gateHasPsbioRef.current;
 
     createOrder.mutate({
       data: {
@@ -614,6 +609,96 @@ export default function NewOrder() {
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Gate (PSBio) — tela antes da escolha do certificado ──────────────────
+  if (!psbioGatePassed) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/orders">
+            <Button variant="outline" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />Voltar</Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Novo Pedido</h1>
+            <p className="text-sm text-muted-foreground">Verificação prévia de biometria</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200">
+          <ShieldCheck className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-semibold text-sm text-blue-800">Atendimento exclusivo por Videoconferência</p>
+            <p className="text-sm text-blue-700/80 leading-relaxed">A LealCert emite certificados digitais exclusivamente por videoconferência. Para prosseguir, é necessário que o responsável possua biometria digital cadastrada na rede PSBio.</p>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BadgeCheck className="h-5 w-5 text-primary" />Verificação de Biometria PSBio
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">Informe o CPF e data de nascimento do responsável pelo certificado.</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>CPF do Responsável *</Label>
+                <Input value={gateInputCpf}
+                  onChange={e => { setGateInputCpf(maskCpfCnpj(e.target.value)); setGateStatus(null); }}
+                  placeholder="000.000.000-00" maxLength={14} />
+              </div>
+              <div className="space-y-2">
+                <Label>Data de Nascimento *</Label>
+                <Input value={gateInputBirthDate}
+                  onChange={e => { setGateInputBirthDate(maskDate(e.target.value)); setGateStatus(null); }}
+                  placeholder="dd/mm/aaaa" maxLength={10} />
+              </div>
+            </div>
+
+            <Button type="button" className="w-full"
+              disabled={gateInputCpf.replace(/\D/g, "").length !== 11 || gateInputBirthDate.length !== 10 || gateStatus === "loading"}
+              onClick={triggerGatePsbio}>
+              {gateStatus === "loading"
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Verificando...</>
+                : <><Search className="h-4 w-4 mr-2" />Verificar Biometria</>}
+            </Button>
+
+            {gateStatus && gateStatus !== "loading" && gateStatus.ok && gateStatus.hasPsbio && (<>
+              <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                <span><strong>Biometria PSBio encontrada!</strong> Prossiga para escolher o certificado.</span>
+              </div>
+              <Button type="button" className="w-full" onClick={() => { setPsbioGatePassed(true); window.scrollTo(0, 0); }}>
+                Continuar <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </>)}
+
+            {gateStatus && gateStatus !== "loading" && gateStatus.ok && !gateStatus.hasPsbio && (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                  <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-amber-700">Biometria PSBio não encontrada</p>
+                    <p className="text-amber-600/80 text-xs mt-0.5">Não é possível emitir o certificado por videoconferência. Entre em contato com o suporte para verificar as opções de atendimento.</p>
+                  </div>
+                </div>
+                <Button type="button" variant="outline" className="w-full" onClick={() => setLocation("/support")}>
+                  Falar com o Suporte
+                </Button>
+              </div>
+            )}
+
+            {gateStatus && gateStatus !== "loading" && !gateStatus.ok && (
+              <div className="flex items-center gap-2 text-sm text-destructive bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                <XCircle className="h-4 w-4 shrink-0" />
+                <span>{(gateStatus as { ok: false; mensagem: string }).mensagem}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -852,9 +937,6 @@ export default function NewOrder() {
                             void triggerCnpjRfb(v, form.repCpf, form.repBirthDate);
                           }
                         } else { setCnpjToQuery(""); setAutoFilledCustomerName(false); setCnpjRfbState(null); }
-                      } else {
-                        if (digits.length === 11 && form.customerBirthDate.length === 10) triggerPsbioCheck(v, form.customerBirthDate, "cpf");
-                        else if (digits.length < 11) setPsbioStatus(null);
                       }
                     }} required placeholder={showCnpjFields ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
                     {cnpjFetching && showCnpjFields && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
@@ -869,11 +951,8 @@ export default function NewOrder() {
                       <Input value={form.customerBirthDate} onChange={e => {
                         const v = maskDate(e.target.value);
                         set("customerBirthDate", v);
-                        const cpfDigits = form.customerCpfCnpj.replace(/\D/g, "");
-                        if (v.length === 10 && cpfDigits.length === 11) triggerPsbioCheck(form.customerCpfCnpj, v, "cpf");
-                        else if (v.length < 10) setPsbioStatus(null);
                       }} placeholder="dd/mm/aaaa" maxLength={10} className="pr-8" />
-                      {!checkPsbio.isPending && autoFilledCustomerName && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />}
+                      {autoFilledCustomerName && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />}
                     </div>
                   </div>
                 )}
@@ -1023,10 +1102,6 @@ export default function NewOrder() {
                   <Input value={form.repCpf} onChange={e => {
                     const v = maskCpfCnpj(e.target.value);
                     set("repCpf", v);
-                    if (v.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
-                      if (isCnpjCert) triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, "cnpj", v, form.repBirthDate);
-                      else triggerPsbioCheck(v, form.repBirthDate, "cpf", undefined, undefined, "rep");
-                    }
                   }} placeholder="000.000.000-00" required />
                 </div>
                 <div className="space-y-2">
@@ -1034,61 +1109,10 @@ export default function NewOrder() {
                   <Input value={form.repBirthDate} onChange={e => {
                     const v = maskDate(e.target.value);
                     set("repBirthDate", v);
-                    if (form.repCpf.replace(/\D/g, "").length === 11 && v.length === 10) {
-                      if (isCnpjCert) triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, "cnpj", form.repCpf, v);
-                      else triggerPsbioCheck(form.repCpf, v, "cpf", undefined, undefined, "rep");
-                    }
                   }} placeholder="dd/mm/aaaa" maxLength={10} required />
                 </div>
               </div>
 
-              {form.repCpf.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10 && (
-                <div className="flex justify-end">
-                  <Button type="button" variant="outline" size="sm" disabled={psbioStatus === "loading"} onClick={() => {
-                    if (isCnpjCert) triggerPsbioCheck(form.customerCpfCnpj, form.customerBirthDate, "cnpj", form.repCpf, form.repBirthDate);
-                    else triggerPsbioCheck(form.repCpf, form.repBirthDate, "cpf", undefined, undefined, "rep");
-                  }}>
-                    {psbioStatus === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Search className="h-3.5 w-3.5 mr-1.5" />}
-                    Consultar Biometria
-                  </Button>
-                </div>
-              )}
-
-              {psbioStatus === "loading" && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg px-4 py-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />Verificando biometria PSBio...
-                </div>
-              )}
-              {psbioStatus && psbioStatus !== "loading" && psbioStatus.hasPsbio && (
-                <div className="flex items-start gap-2 text-sm bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <div><p className="font-medium text-emerald-700">Biometria PSBio disponível</p><p className="text-emerald-600/80 text-xs">{psbioStatus.mensagem}</p></div>
-                </div>
-              )}
-              {psbioStatus && psbioStatus !== "loading" && !psbioStatus.hasPsbio && !psbioStatus.apiError && (
-                <div className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                  <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div><p className="font-medium text-amber-700">Sem biometria PSBio — atendimento presencial</p><p className="text-amber-600/80 text-xs">{psbioStatus.mensagem}</p></div>
-                </div>
-              )}
-              {psbioStatus && psbioStatus !== "loading" && psbioStatus.apiError && (
-                <div className="flex items-center justify-between gap-2 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <ShieldAlert className="h-4 w-4 text-red-500" />
-                    <p className="font-medium text-red-700">Consulta falhou — tente novamente.</p>
-                  </div>
-                  <Button type="button" variant="outline" size="sm" className="text-xs h-7" onClick={() => {
-                    psbioContextRef.current = isCnpjCert ? "rep" : "customer";
-                    setPsbioStatus("loading");
-                    const repDigits = form.repCpf.replace(/\D/g, "");
-                    const repDateIso = form.repBirthDate.includes("/") ? parseBrDate(form.repBirthDate) : form.repBirthDate;
-                    if (isCnpjCert) checkPsbio.mutate({ data: { cnpj: form.customerCpfCnpj.replace(/\D/g, ""), cpfResponsavel: repDigits, dataNascimento: repDateIso } });
-                    else checkPsbio.mutate({ data: { cpf: repDigits, dataNascimento: repDateIso } });
-                  }}>
-                    <Search className="h-3 w-3 mr-1" /> Tentar novamente
-                  </Button>
-                </div>
-              )}
 
               {/* Nome (readonly) */}
               <div className="space-y-2">
