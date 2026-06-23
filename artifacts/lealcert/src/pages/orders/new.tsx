@@ -1037,9 +1037,17 @@ export default function NewOrder() {
                       if (showCnpjFields) {
                         if (digits.length === 14) {
                           setCnpjToQuery(digits);
+                          setCnpjRfbState(null);
                           if (isCnpjCert && form.repCpf.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
-                            setCnpjRfbState(null);
                             void triggerCnpjRfb(v, form.repCpf, form.repBirthDate);
+                          } else if (!isCnpjCert) {
+                            // e-CPF NF Jurídica: usa CPF+data do gate para consulta RFB Safeweb
+                            const gCpf = gateCpfRef.current;
+                            const gDate = gateBirthDateRef.current;
+                            if (gCpf && gDate) {
+                              const brDate = gDate.includes("-") ? gDate.split("-").reverse().join("/") : gDate;
+                              void triggerCnpjRfb(digits, gCpf, brDate);
+                            }
                           }
                         } else { setCnpjToQuery(""); setAutoFilledCustomerName(false); setCnpjRfbState(null); }
                       } else {
@@ -1080,8 +1088,9 @@ export default function NewOrder() {
                     <Input value={form.companyName} onChange={e => { set("companyName", e.target.value); setAutoFilledCustomerName(false); }} required
                       className={(cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok || (!isCnpjCert && !!cnpjData?.razaoSocial)) && form.companyName ? "bg-emerald-50 border-emerald-200" : ""}
                       placeholder={cnpjFetching || cnpjRfbState === "loading" ? "Consultando..." : ""} />
-                    {cnpjError && !isCnpjCert && cnpjToQuery.length === 14 && (
-                      <p className="text-xs text-destructive mt-1">CNPJ não encontrado na Receita Federal. Preencha a razão social manualmente.</p>
+                    {cnpjError && !isCnpjCert && cnpjToQuery.length === 14 &&
+                     cnpjRfbState !== "loading" && !(cnpjRfbState && cnpjRfbState !== "loading" && (cnpjRfbState as {ok:boolean}).ok) && (
+                      <p className="text-xs text-destructive mt-1">CNPJ não encontrado. Preencha a razão social manualmente.</p>
                     )}
                   </div>
                 )}
