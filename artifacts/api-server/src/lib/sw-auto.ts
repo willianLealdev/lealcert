@@ -168,19 +168,7 @@ export async function swAutoComprar(orderId: number): Promise<void> {
   if (order.customerCei) body.CEI = order.customerCei;
   if (order.customerNis) body.NIS = order.customerNis;
   if (order.inssNumber) body.PIS = order.inssNumber;
-
-  // Documento de identificação do titular/representante
-  // Safeweb aceita: 0=Não Informado, 1=RG, 2=RNE, 3=Passaporte
-  // Formulário salva:  1=RG, 2=RNE, 3=Passaporte, 4=CNH
-  // CNH (4) não é suportado pela Safeweb — mapeia para 0 (Não Informado)
-  const rawDocTipo = order.representanteDocTipo ?? "0";
-  const docTipo = rawDocTipo === "4" ? "0" : rawDocTipo; // CNH → Não Informado
-  body.DocumentoTipo = docTipo;
-  if (docTipo !== "0") {
-    if (order.representanteDocNumero) body.DocumentoNumero = order.representanteDocNumero;
-    // Formato: OrgãoExpedidorUF (ex: "SSPRJ") — sem espaços, sem CR/LF
-    if (order.representanteDocEmissor) body.DocumentoEmissor = order.representanteDocEmissor.replace(/\s+/g, "").toUpperCase();
-  }
+  // DocumentoTipo/Numero/Emissor: campo de uso interno apenas — NÃO enviado à Safeweb
 
   try {
     logger.info({ orderId, safewebIdProduto, isCnpj, body }, "swAutoComprar: enviando solicitação para Safeweb");

@@ -189,10 +189,17 @@ router.get("/auth/lookup-cpf", async (req, res): Promise<void> => {
       return;
     }
     const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
-    const result = await swConsultaCPF({ url: swUrl, username, password }, cpf, birthDate);
+    // Safeweb não aceita DD/MM/YYYY — converte para YYYY-MM-DD igual ao fluxo de pedidos
+    const dateForSw = birthDate.includes("/")
+      ? (() => { const [d, m, y] = birthDate.split("/"); return y && m && d ? `${y}-${m}-${d}` : birthDate; })()
+      : birthDate;
+    const result = await swConsultaCPF({ url: swUrl, username, password }, cpf, dateForSw);
     logger.info({ codigo: result.Codigo, mensagem: result.Mensagem, temNome: !!result.NomeCompleto }, "lookup-cpf: resposta Safeweb");
-    if (result.NomeCompleto) {
-      res.json({ found: true, nome: result.NomeCompleto });
+    // Safeweb pode retornar o nome em NomeCompleto OU em Mensagem (quando Codigo === 0)
+    const nome = result.NomeCompleto
+      || (result.Codigo === 0 && typeof result.Mensagem === "string" && result.Mensagem.length > 2 ? result.Mensagem : null);
+    if (nome) {
+      res.json({ found: true, nome });
     } else {
       res.json({ found: false, mensagem: result.Mensagem ?? "Não encontrado", codigo: result.Codigo });
     }
