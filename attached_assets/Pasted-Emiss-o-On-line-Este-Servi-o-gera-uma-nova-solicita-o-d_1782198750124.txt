@@ -1,0 +1,165 @@
+Emissão On-line
+Este Serviço gera uma nova solicitação do tipo de emissão passado no JSON e retorna o número do Protocolo.
+
+Atenção! Se o atributo "Protocolo" for informado no corpo desta requisição, é obrigatório que a chamada ao método Emitir Certificado com Produto tenha sido realizada previamente. Se o atributo "Protocolo" não for informado, não é necessário realizar a chamada ao método Emitir Certificado com Produto.
+
+POST https://h-pss.safewebpss.com.br/Service/Microservice/Shared/Partner/api/Add/5
+Exemplos de uso
+C#
+Node
+    var request = require("request");
+    var options = { method: 'POST',
+    url: 'https://h-pss.safewebpss.com.br/Service/Microservice/Shared/Partner/api/Add/5',
+    headers: {'content-type': 'application/json', headers: { 'Authorization': '[INFORME_SEU_TOKEN]'} },
+
+    body: "JsonSolicitacao";
+    request(options, function (error, response, body) {
+    if (error) throw new Error(error);
+
+    console.log(body);
+    });
+Copy to clipboardErrorCopied
+JavaScript
+PHP
+Ruby
+Parâmetros do Objeto
+CPF
+
+CNPJ
+#	Atributo	Tipo	Descrição	Obrigatório
+#	Protocolo	String	Número do protocolo da solicitação que será renovada. Este valor deve ser o mesmo retornado pelo método Emitir Certificado com Produto.	N
+#	RazaoSocial	String	Razão social da empresa.	S
+#	NomeFantasia	String	Nome fantasia da empresa.	S
+#	CNPJ	String	CNPJ da empresa.	S
+#	CodigoParceiro	String	Código de identificação do parceiro integrador.	S
+#	idProduto	String	Id do produto cujo tipo de emissão seja Emissão On-line. Caso Seja informado o CnpjAR a busca será realizada pelo cnpj da autoridade de registro informada, caso contrário, será considerada a autoridade de registro da solicitação original.	S
+#	CnpjAR	String	Se informado irá buscar a autoridade de registro pelo cnpj e esta será a da solicitação gerada, caso contrário, a autoridade de registro será a da solicitação original.	N
+#	idLocalAtendimento	Int	Produto com Modelo A3 - Se informado irá buscar o local de atendimento pelo Id e este será o local de atendimento vinculado ao certificado, caso contrário, o local de atendimento vinculado ao certificado será o do certificado original.
+N
+#	UrlSolicitacao	String	Se informado irá colocar esta url para o serviço de notificação evento, caso contrário, a url será a da solicitação original.	N
+#	ProdutoValor	String	Valor do Produto.	N
+#	ProdutoDescricao	String	Descrição do Produto.	N
+Titular 	Object	Objeto de retorno da requisição.	
+Contato 	Object	Objeto de retorno da requisição.	
+DDD	String	DDD do responsável.	S
+Telefone	String	Telefone do responsável.	S
+Email	String	E-mail do responsável.	S
+PaisTelefone 	Object	Objeto de retorno da requisição.	
+CodigoAlpha2	String	Código do país de acordo com a ISO 3166-1. Exemplo: BR (Brasil), CL (Chile), AR (Argentina)	N
+Endereco 	Object	Objeto de retorno da requisição.	
+Logradouro	String	Logradouro do responsável.	S
+Numero	String	Número do logradouro do responsável.	S
+Complemento	String	Complemento do endereço.	N
+Bairro	String	Bairro do endereço.	S
+UF	String	Sigla da UF do responsável.	S
+CodigoIbgeUF	String	Código IBGE da UF do responsável.	N
+Cidade	String	Nome da cidade do responsável.	S
+CodigoIbgeMunicipio	String	Código IBGE da cidade do responsável.	N
+CEP	String	CEP do responsável.	S
+Contato 	Object	Objeto de retorno da requisição.	
+DDD	String	DDD da empresa.	S
+Telefone	String	Telefone da empresa.	S
+Email	String	E-mail da empresa.	S
+PaisTelefone 	Object	Objeto de retorno da requisição.	
+CodigoAlpha2	String	Código do país da empresa de acordo com a ISO 3166-1. Exemplo: BR (Brasil), CL (Chile), AR (Argentina)	N
+Endereco 	Object	Objeto de retorno da requisição.	
+Logradouro	String	Logradouro da empresa.	S
+Numero	String	Número do logradouro da empresa.	S
+Complemento	String	Complemento do endereço da empresa.	N
+Bairro	String	Bairro do endereço da empresa.	S
+UF	String	Sigla da UF da empresa.	S
+CodigoIbgeUF	String	Código IBGE da UF da empresa.	N
+Cidade	String	Nome da cidade da empresa.	S
+CodigoIbgeMunicipio	String	Código IBGE da cidade da empresa.	N
+CEP	String	CEP da empresa.	S
+#	Parametro1	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro2	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro3	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro4	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro5	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro6	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro7	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro8	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro9	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro10	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro11	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro12	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro13	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro14	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro15	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro16	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro17	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro18	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro19	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro20	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro21	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro22	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro23	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro24	String	Atributo livre para uso de informações adicionais.	N
+#	Parametro25	String	Atributo livre para uso de informações adicionais.	N
+Exemplos de JSON da solicitação
+JSON CPF
+JSON CNPJ
+{
+  "Protocolo": "1001076527",
+  "idProduto": "27975",
+  "CodigoParceiro": "ABC123",
+  "idLocalAtendimento": 123,
+  "RazaoSocial": "NOME DA EMPRESA",
+  "NomeFantasia": "NOME FANTASIA DA EMPRESA",
+  "CNPJ": "99999999999999",
+  "Titular": {
+      "Contato": {
+          "DDD": "99",
+          "Telefone": "99999999",
+          "Email": "nome@dominio.com.br"
+      },
+      "PaisTelefone":{
+          "CodigoAlpha2":"BR"
+      },
+      "Endereco": {
+          "Logradouro": "Av. Princesa Isabel",
+          "Numero": "999",
+          "Complemento": "",
+          "Bairro": "Santana",
+          "UF": "RS",
+          "Cidade": "PORTO ALEGRE",
+          "CodigoIbgeMunicipio": "4314902",
+          "CodigoIbgeUF": "43",
+          "CEP": "90035002"
+      }
+  },
+  "Contato": {
+      "DDD": "99",
+      "Telefone": "99999999",
+      "Email": "nome@dominio.com.br"
+  },
+  "PaisTelefone":{
+      "CodigoAlpha2":"BR"
+  },
+  "Endereco": {
+      "Logradouro": "Av. Princesa Isabel",
+      "Numero": "999",
+      "Complemento": "",
+      "Bairro": "Santana",
+      "UF": "RS",
+      "Cidade": "PORTO ALEGRE",
+      "CodigoIbgeMunicipio": "4314902",
+      "CodigoIbgeUF": "43",
+      "CEP": "90035002"
+  }
+}
+Copy to clipboardErrorCopied
+Exemplos de saída em caso de sucesso
+STRING
+"7001081984";
+Copy to clipboardErrorCopied
+Exemplos de saída em caso de erro
+JSON
+{
+   "Message": "O Produto deve ser informado.",
+   "CustomErrorType": "ApplicationException",
+   "CustomErrorCode": -2146232832
+}
+Copy to clipboardErrorCopied
+ Anterior
