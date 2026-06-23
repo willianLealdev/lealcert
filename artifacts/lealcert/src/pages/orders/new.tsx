@@ -485,20 +485,12 @@ export default function NewOrder() {
       clientType: certIsCnpj ? "cnpj" : "cpf",
       ...(certIsCnpj
         ? { repCpf: maskedCpf || prev.repCpf, repBirthDate: brDate || prev.repBirthDate, repName: gName || prev.repName }
-        : {
-            customerCpfCnpj: maskedCpf || prev.customerCpfCnpj,
-            customerBirthDate: brDate || prev.customerBirthDate,
-            customerName: gName || prev.customerName,
-            // para e-CPF o representante legal é a mesma pessoa — pré-preenche tudo
-            repCpf: maskedCpf || prev.repCpf,
-            repBirthDate: brDate || prev.repBirthDate,
-            repName: gName || prev.repName,
-          }),
+        : { customerCpfCnpj: maskedCpf || prev.customerCpfCnpj, customerBirthDate: brDate || prev.customerBirthDate, customerName: gName || prev.customerName }),
     }));
     if (!certIsCnpj) setNfType("fisica");
     setCnpjToQuery("");
     setAutoFilledCustomerName(!!gName);
-    setAutoFilledRepName(!!gName);
+    setAutoFilledRepName(!!gName && certIsCnpj);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.certificateId]);
 
