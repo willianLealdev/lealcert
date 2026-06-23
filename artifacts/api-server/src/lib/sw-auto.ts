@@ -118,22 +118,28 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     }
 
     // Titular_* — campos obrigatórios do titular físico do certificado (representante legal)
-    // Manual: C16-C28 Titular_Nome, Titular_CPF, Titular_DataNascimento, Titular_Email,
-    //         Titular_DDD, Titular_Telefone, Titular_CEP, Titular_Logradouro, Titular_Numero,
-    //         Titular_Complemento, Titular_Bairro, Titular_Cidade, Titular_UF
+    // Se o representante não tem endereço próprio preenchido, usa o endereço principal do pedido como fallback
+    const titularCep = order.representanteAddressZipcode || order.addressZipcode;
+    const titularLogradouro = order.representanteAddressStreet || order.addressStreet;
+    const titularNumero = order.representanteAddressNumber || order.addressNumber;
+    const titularComplemento = order.representanteAddressComplement || order.addressComplement;
+    const titularBairro = order.representanteAddressNeighborhood || order.addressNeighborhood;
+    const titularCidade = order.representanteAddressCity || order.addressCity;
+    const titularUF = order.representanteAddressState || order.addressState;
+
     body.Titular_Nome = order.customerName;
     body.Titular_CPF = (order.representanteCpf ?? "").replace(/\D/g, "");
     body.Titular_DataNascimento = order.representanteNascimento ?? "";
     body.Titular_Email = order.customerEmail ?? "";
     body.Titular_DDD = ddd;
     body.Titular_Telefone = tel;
-    body.Titular_CEP = (order.representanteAddressZipcode ?? "").replace(/\D/g, "");
-    body.Titular_Logradouro = order.representanteAddressStreet ?? "";
-    body.Titular_Numero = order.representanteAddressNumber ?? "S/N";
-    body.Titular_Complemento = order.representanteAddressComplement ?? "";
-    body.Titular_Bairro = order.representanteAddressNeighborhood ?? "";
-    body.Titular_Cidade = order.representanteAddressCity ?? "";
-    body.Titular_UF = order.representanteAddressState ?? "";
+    body.Titular_CEP = (titularCep ?? "").replace(/\D/g, "");
+    body.Titular_Logradouro = titularLogradouro ?? "";
+    body.Titular_Numero = titularNumero ?? "S/N";
+    body.Titular_Complemento = titularComplemento ?? "";
+    body.Titular_Bairro = titularBairro ?? "";
+    body.Titular_Cidade = titularCidade ?? "";
+    body.Titular_UF = titularUF ?? "";
   } else {
     // e-CPF: titular é o próprio cliente
     body.Nome = order.customerName;
@@ -164,10 +170,13 @@ export async function swAutoComprar(orderId: number): Promise<void> {
   if (order.inssNumber) body.PIS = order.inssNumber;
 
   // Documento de identificação do titular/representante
-  // Tipo: 0=Não Informado, 1=RG, 2=RNE, 3=Passaporte
-  const docTipo = (isCnpj ? order.representanteDocTipo : order.representanteDocTipo) ?? "0";
+  // Safeweb aceita: 0=Não Informado, 1=RG, 2=RNE, 3=Passaporte
+  // Formulário salva:  1=RG, 2=RNE, 3=Passaporte, 4=CNH
+  // CNH (4) não é suportado pela Safeweb — mapeia para 0 (Não Informado)
+  const rawDocTipo = order.representanteDocTipo ?? "0";
+  const docTipo = rawDocTipo === "4" ? "0" : rawDocTipo; // CNH → Não Informado
   body.DocumentoTipo = docTipo;
-  if (docTipo !== "0" && docTipo) {
+  if (docTipo !== "0") {
     if (order.representanteDocNumero) body.DocumentoNumero = order.representanteDocNumero;
     // Formato: OrgãoExpedidorUF (ex: "SSPRJ") — sem espaços, sem CR/LF
     if (order.representanteDocEmissor) body.DocumentoEmissor = order.representanteDocEmissor.replace(/\s+/g, "").toUpperCase();
@@ -246,9 +255,11 @@ export async function swAutoComprar(orderId: number): Promise<void> {
 
     logger.info({ orderId, solicitacaoId }, "swAutoComprar: solicitação Safeweb criada com sucesso");
   } catch (err) {
-    logger.error({ orderId, err }, "swAutoComprar: erro inesperado ao criar solicitação na Safeweb");
-    await logEvent(orderId, "admin_action", "Erro inesperado ao criar solicitação na Safeweb — verificar manualmente");
-    await db.update(ordersTable).set({ safewebStatus: `Erro: ${(err as Error).message}`, safewebSyncedAt: new Date() }).where(eq(ordersTable.id, orderId));
+    const errMsg = (err as Error).message ?? String(err);
+    logger.error({ orderId, err, errMsg }, "swAutoComprar: erro inesperado ao criar solicitação na Safeweb");
+    // Inclui a mensagem real do erro no evento para que o admin possa diagnosticar sem precisar de logs
+    await logEvent(orderId, "admin_action", `Erro ao criar solicitação na Safeweb: ${errMsg}`);
+    await db.update(ordersTable).set({ safewebStatus: `Erro: ${errMsg}`, safewebSyncedAt: new Date() }).where(eq(ordersTable.id, orderId));
   }
 }
 
