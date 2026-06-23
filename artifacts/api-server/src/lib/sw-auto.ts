@@ -91,19 +91,27 @@ export async function swAutoComprar(orderId: number): Promise<void> {
   };
 
   if (isCnpj) {
-    // e-CNPJ: representante legal é o titular físico do certificado.
-    // Campos raiz conforme doc oficial POST /Partner/api/Add/3 (seção CNPJ):
-    //   CNPJ, RazaoSocial, Nome (representante), CPF (representante),
-    //   DataNascimento (representante), Contato, Endereco (representante)
-    // NomeFantasia e Titular_* NÃO existem na API — não enviar.
+    // e-CNPJ — estrutura conforme doc oficial POST /Partner/api/Add/3 (JSON CNPJ):
+    // Raiz: CNPJ, RazaoSocial, NomeFantasia (opt), Contato (empresa), Endereco (empresa)
+    // Titular (objeto aninhado): Nome, CPF, DataNascimento do representante legal,
+    //   + Contato, Endereco e DocumentoIdentidade do representante
     body.CNPJ = (order.customerCpfCnpj ?? "").replace(/\D/g, "");
     body.RazaoSocial = order.companyName ?? "";
-    body.Nome = order.customerName ?? ""; // nome do representante legal
-    body.CPF = (order.representanteCpf ?? "").replace(/\D/g, "");
-    body.DataNascimento = order.representanteNascimento ?? "";
+    body.NomeFantasia = order.companyName ?? "";
 
-    // Endereço do representante com fallback para endereço do pedido
+    // Endereco raiz = endereço da empresa (usa endereço do pedido)
     body.Endereco = {
+      Logradouro: order.addressStreet ?? "",
+      Numero: order.addressNumber ?? "S/N",
+      Complemento: order.addressComplement ?? "",
+      Bairro: order.addressNeighborhood ?? "",
+      UF: order.addressState ?? "",
+      Cidade: order.addressCity ?? "",
+      CEP: (order.addressZipcode ?? "").replace(/\D/g, ""),
+    };
+
+    // Titular = representante legal (objeto aninhado com endereço próprio)
+    const titularEndereco = {
       Logradouro: order.representanteAddressStreet || order.addressStreet || "",
       Numero: order.representanteAddressNumber || order.addressNumber || "S/N",
       Complemento: order.representanteAddressComplement || order.addressComplement || "",
@@ -112,11 +120,31 @@ export async function swAutoComprar(orderId: number): Promise<void> {
       Cidade: order.representanteAddressCity || order.addressCity || "",
       CEP: ((order.representanteAddressZipcode || order.addressZipcode) ?? "").replace(/\D/g, ""),
     };
+
+    const titular: Record<string, unknown> = {
+      Nome: order.customerName ?? "",
+      CPF: (order.representanteCpf ?? "").replace(/\D/g, ""),
+      DataNascimento: order.representanteNascimento ?? "",
+      Contato: contato,
+      Endereco: titularEndereco,
+    };
+
+    if (order.representanteDocTipo && order.representanteDocTipo !== "0") {
+      titular.DocumentoIdentidade = {
+        TipoDocumento: order.representanteDocTipo ?? "",
+        Numero: order.representanteDocNumero ?? "",
+        Emissor: order.representanteDocEmissor ?? "",
+      };
+    }
+
+    // CEI/NIS dentro do Titular para e-CNPJ
+    if (order.customerCei) titular.CEI = order.customerCei;
+    if (order.customerNis) titular.NIS = order.customerNis;
+
+    body.Titular = titular;
   } else {
-    // e-CPF: titular é o próprio cliente
-    // Campos raiz conforme doc oficial POST /Partner/api/Add/3 (seção CPF):
-    //   Nome, CPF, DataNascimento, Contato, Endereco
-    // Titular_* NÃO existem na API — não enviar.
+    // e-CPF — estrutura conforme doc oficial POST /Partner/api/Add/3 (JSON CPF):
+    // Raiz: Nome, CPF, DataNascimento, Contato, Endereco, DocumentoIdentidade (opt)
     body.Nome = order.customerName ?? "";
     body.CPF = (order.customerCpfCnpj ?? "").replace(/\D/g, "");
     body.DataNascimento = order.customerBirthDate ?? "";
@@ -130,21 +158,20 @@ export async function swAutoComprar(orderId: number): Promise<void> {
       Cidade: order.addressCity ?? "",
       CEP: (order.addressZipcode ?? "").replace(/\D/g, ""),
     };
-  }
 
-  // DocumentoIdentidade — opcional; enviado se o tipo foi informado
-  if (order.representanteDocTipo && order.representanteDocTipo !== "0") {
-    body.DocumentoIdentidade = {
-      TipoDocumento: order.representanteDocTipo ?? "",
-      Numero: order.representanteDocNumero ?? "",
-      Emissor: order.representanteDocEmissor ?? "",
-    };
-  }
+    if (order.representanteDocTipo && order.representanteDocTipo !== "0") {
+      body.DocumentoIdentidade = {
+        TipoDocumento: order.representanteDocTipo ?? "",
+        Numero: order.representanteDocNumero ?? "",
+        Emissor: order.representanteDocEmissor ?? "",
+      };
+    }
 
-  // CEI, NIS, PIS (mutuamente exclusivos — apenas um é preenchido)
-  if (order.customerCei) body.CEI = order.customerCei;
-  if (order.customerNis) body.NIS = order.customerNis;
-  if (order.inssNumber) body.PIS = order.inssNumber;
+    // CEI/NIS na raiz para e-CPF
+    if (order.customerCei) body.CEI = order.customerCei;
+    if (order.customerNis) body.NIS = order.customerNis;
+    if (order.inssNumber) body.PIS = order.inssNumber;
+  }
 
   // Sanitização: converter null → "" em todos os campos raiz e objetos aninhados
   // para prevenir RuntimeBinderException no servidor .NET da Safeweb
