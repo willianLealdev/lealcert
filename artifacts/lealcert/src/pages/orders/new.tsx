@@ -196,10 +196,11 @@ export default function NewOrder() {
   const consultaCpfAbortRef = useRef<AbortController | null>(null);
   const repConsultaCpfAbortRef = useRef<AbortController | null>(null);
 
-  const SESSION_KEY = "lealcert_order_session";
+  const SESSION_KEY = "lealcert_order_local";
+  const certIdFirstFireRef = useRef(true);
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(SESSION_KEY);
+      const raw = localStorage.getItem(SESSION_KEY);
       if (raw) {
         const s = JSON.parse(raw) as Record<string, unknown>;
         if (s?.psbioGatePassed) {
@@ -285,7 +286,7 @@ export default function NewOrder() {
   useEffect(() => {
     if (!sessionLoaded || !psbioGatePassed) return;
     try {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
         form, step, nfType, pickedProduct, pickedIssuance, pickedValidity,
         psbioGatePassed,
         gateCpf: gateCpfRef.current,
@@ -485,12 +486,21 @@ export default function NewOrder() {
       clientType: certIsCnpj ? "cnpj" : "cpf",
       ...(certIsCnpj
         ? { repCpf: maskedCpf || prev.repCpf, repBirthDate: brDate || prev.repBirthDate, repName: gName || prev.repName }
-        : { customerCpfCnpj: maskedCpf || prev.customerCpfCnpj, customerBirthDate: brDate || prev.customerBirthDate, customerName: gName || prev.customerName }),
+        : {
+            customerCpfCnpj: maskedCpf || prev.customerCpfCnpj,
+            customerBirthDate: brDate || prev.customerBirthDate,
+            customerName: gName || prev.customerName,
+            repCpf: maskedCpf || prev.repCpf,
+            repBirthDate: brDate || prev.repBirthDate,
+            repName: gName || prev.repName,
+          }),
     }));
-    if (!certIsCnpj) setNfType("fisica");
+    const isFirstFire = certIdFirstFireRef.current;
+    certIdFirstFireRef.current = false;
+    if (!certIsCnpj && !isFirstFire) setNfType("fisica");
     setCnpjToQuery("");
     setAutoFilledCustomerName(!!gName);
-    setAutoFilledRepName(!!gName && certIsCnpj);
+    setAutoFilledRepName(!!gName);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.certificateId]);
 
@@ -499,7 +509,7 @@ export default function NewOrder() {
     mutation: {
       onSuccess: (data) => {
         toast({ title: "Pedido criado!", description: `Pedido ${data.orderNumber} criado com sucesso.` });
-        try { sessionStorage.removeItem("lealcert_order_session"); } catch { /* ignore */ }
+        try { localStorage.removeItem("lealcert_order_local"); } catch { /* ignore */ }
         setLocation(`/orders/${data.id}`);
       },
       onError: (err: unknown) => {
@@ -702,6 +712,10 @@ export default function NewOrder() {
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── Gate (PSBio) — tela antes da escolha do certificado ──────────────────
+  if (!sessionLoaded) {
+    return <div className="flex items-center justify-center min-h-[40vh]"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
   if (!psbioGatePassed) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
