@@ -658,7 +658,7 @@ export default function NewOrder() {
       data: {
         certificateId: Number(form.certificateId),
         clientType: isCnpjCert ? "cnpj" : "cpf",
-        customerName: form.customerName,
+        customerName: isCnpjCert ? (form.repName || form.customerName) : form.customerName,
         customerCpfCnpj: form.customerCpfCnpj,
         customerEmail: form.customerEmail,
         customerPhone: form.customerPhone,

@@ -105,17 +105,15 @@ export async function swAutoComprar(orderId: number): Promise<void> {
 
   if (isCnpj) {
     // e-CNPJ: campos da empresa + representante legal (titular do certificado)
-    body.CNPJ = order.customerCpfCnpj;
-    body.RazaoSocial = order.companyName ?? order.customerName;
+    // order.customerName = nome do representante legal (salvo assim no form para e-CNPJ)
+    // order.companyName  = razão social da empresa
+    body.CNPJ = order.customerCpfCnpj ?? "";
+    body.RazaoSocial = order.companyName ?? "";
     body.NomeFantasia = order.companyName ?? "";
-    body.Nome = order.customerName; // nome do representante legal
-
-    if (order.representanteCpf) {
-      body.CPF = order.representanteCpf;
-    }
-    if (order.representanteNascimento) {
-      body.DataNascimento = order.representanteNascimento;
-    }
+    body.Nome = order.customerName ?? ""; // nome do representante legal
+    // CPF e DataNascimento do representante: sempre presente (nunca ausente do JSON)
+    body.CPF = (order.representanteCpf ?? "").replace(/\D/g, "");
+    body.DataNascimento = order.representanteNascimento ?? "";
 
     // Titular_* — campos obrigatórios do titular físico do certificado (representante legal)
     // Se o representante não tem endereço próprio preenchido, usa o endereço principal do pedido como fallback
@@ -127,7 +125,7 @@ export async function swAutoComprar(orderId: number): Promise<void> {
     const titularCidade = order.representanteAddressCity || order.addressCity;
     const titularUF = order.representanteAddressState || order.addressState;
 
-    body.Titular_Nome = order.customerName;
+    body.Titular_Nome = order.customerName ?? ""; // nome do representante legal
     body.Titular_CPF = (order.representanteCpf ?? "").replace(/\D/g, "");
     body.Titular_DataNascimento = order.representanteNascimento ?? "";
     body.Titular_Email = order.customerEmail ?? "";
