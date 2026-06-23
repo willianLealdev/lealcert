@@ -1,8 +1,7 @@
 import { Router } from "express";
 import { or, eq } from "drizzle-orm";
 import { db, ordersTable } from "@workspace/db";
-import { requireAuth } from "../middlewares/auth";
-import type { Request, Response, NextFunction } from "express";
+import { requireAuth, requireAgenteOrAdmin } from "../middlewares/auth";
 import path from "path";
 import fs from "fs";
 
@@ -12,22 +11,6 @@ const UPLOAD_BASE = path.resolve(process.cwd(), "uploads");
 
 function isSafeFile(base: string, file: string): boolean {
   return file.startsWith(base + path.sep) || file.startsWith(base + "/");
-}
-
-// Middleware: agentes e admins podem acessar estas rotas
-function requireAgenteOrAdmin(req: Request, res: Response, next: NextFunction): void {
-  if (!req.session?.userId) {
-    res.status(401).json({ error: "Não autenticado." });
-    return;
-  }
-  const role = String(req.session.role ?? "");
-  const isAgente = role === "agente";
-  const isAdmin = role === "admin" || String(req.session.userType ?? "") === "admin";
-  if (!isAgente && !isAdmin) {
-    res.status(403).json({ error: "Acesso negado. Apenas agentes de registro." });
-    return;
-  }
-  next();
 }
 
 // GET /agente/documentos/:protocolo
