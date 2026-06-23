@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -1175,9 +1176,11 @@ export default function OrderDetail() {
     },
   });
 
+  const [cancelMotivo, setCancelMotivo] = React.useState("");
   const cancelarSafeweb = useCancelarSafewebOrder({
     mutation: {
       onSuccess: () => {
+        setCancelMotivo("");
         toast({ title: "Solicitação cancelada", description: "O certificado foi cancelado na Safeweb." });
         refetch();
       },
@@ -1678,11 +1681,21 @@ export default function OrderDetail() {
                             Esta ação irá cancelar a solicitação do certificado na Safeweb e alterar o status do pedido para <strong>Cancelado</strong>. Esta operação não pode ser desfeita.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
+                        <div className="px-1 py-2 space-y-2">
+                          <Label htmlFor="cancel-motivo">Motivo do cancelamento</Label>
+                          <Textarea
+                            id="cancel-motivo"
+                            placeholder="Ex: Cliente desistiu da compra, produto incorreto..."
+                            value={cancelMotivo}
+                            onChange={e => setCancelMotivo(e.target.value)}
+                            rows={3}
+                          />
+                        </div>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Voltar</AlertDialogCancel>
+                          <AlertDialogCancel onClick={() => setCancelMotivo("")}>Voltar</AlertDialogCancel>
                           <AlertDialogAction
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={() => cancelarSafeweb.mutate({ id: Number(id), data: { motivo: "Cancelado pelo administrador" } })}
+                            onClick={() => cancelarSafeweb.mutate({ id: Number(id), data: { motivo: cancelMotivo.trim() || "Cancelado pelo administrador" } })}
                           >
                             Confirmar Cancelamento
                           </AlertDialogAction>
