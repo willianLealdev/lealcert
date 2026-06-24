@@ -701,16 +701,26 @@ router.post("/chat", async (req, res): Promise<void> => {
       const cpfDigits = String(bioData.cpf ?? "").replace(/\D/g, "").slice(0, 11);
       if (!cpfDigits || cpfDigits.length !== 11) throw new Error("CPF inválido para verificação PSBio");
 
+      const dataNascimento = bioData.dataNascimento?.trim() || undefined;
       let bioMsg: string;
       const sw = await getSwSettings();
       if (!sw) {
         bioMsg = `[BIO_INDISPONIVEL] Sistema PSBio indisponível no momento — Safeweb não configurada. Tente novamente mais tarde.`;
       } else {
-        const bioResult = await swBiometriaPSBioGlobal(sw, cpfDigits);
-        if (bioResult.encontrado === true) {
+        const bioResult = await swBiometriaPSBioGlobal(sw, cpfDigits, dataNascimento);
+        logger.info({ cpf: cpfDigits, dataNascimento, bioResult }, "PSBio global raw response");
+        const encontrado = bioResult.encontrado === true || bioResult.encontrado === "true" || bioResult.encontrado === 1
+          || bioResult.encontrado === "sim" || bioResult.encontrado === "S"
+          || (bioResult as Record<string, unknown>).resultado === true
+          || (bioResult as Record<string, unknown>).resultado === "true"
+          || (bioResult as Record<string, unknown>).biometria === true
+          || (bioResult as Record<string, unknown>).status === "encontrado"
+          || (bioResult as Record<string, unknown>).status === "ENCONTRADO"
+          || (bioResult as Record<string, unknown>).statusCode === 200;
+        if (encontrado) {
           bioMsg = `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfDigits}. Pode prosseguir com a emissão por videoconferência.`;
         } else {
-          bioMsg = `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfDigits}. Mensagem: ${bioResult.mensagem ?? "não encontrada"}. NÃO prossiga com venda — oriente o cliente a abrir um chamado de suporte.`;
+          bioMsg = `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfDigits}. Retorno API: ${JSON.stringify(bioResult)}. NÃO prossiga com venda — oriente o cliente a abrir um chamado de suporte.`;
         }
       }
 

@@ -383,14 +383,18 @@ router.get("/safeweb/biometria/validar/:cpf", requireAuth, async (req, res): Pro
 router.post("/safeweb/biometria/psbio-local", requireAuth, async (req, res): Promise<void> => {
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
-  try { res.json(await swBiometriaPSBioLocal(sw, req.body ?? {})); }
+  const { cpf, dataNascimento } = req.body ?? {};
+  if (!cpf) { res.status(400).json({ error: "cpf obrigatório." }); return; }
+  try { res.json(await swBiometriaPSBioLocal(sw, String(cpf).replace(/\D/g, ""), dataNascimento)); }
   catch (err) { handleErr(res, err, "Safeweb PSBio Local error"); }
 });
 
 router.post("/safeweb/biometria/psbio-global", requireAuth, async (req, res): Promise<void> => {
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
-  try { res.json(await swBiometriaPSBioGlobal(sw, req.body ?? {})); }
+  const { cpf, dataNascimento } = req.body ?? {};
+  if (!cpf) { res.status(400).json({ error: "cpf obrigatório." }); return; }
+  try { res.json(await swBiometriaPSBioGlobal(sw, String(cpf).replace(/\D/g, ""), dataNascimento)); }
   catch (err) { handleErr(res, err, "Safeweb PSBio Global error"); }
 });
 
