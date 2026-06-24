@@ -77,7 +77,14 @@ function buildPixPayload(pixKey: string, amount: number, txId: string, merchantN
 
 // ── Safeweb settings (for PSBio check) ───────────────────────────────────────
 function normalizeSwUrl(raw: string): string {
-  try { return new URL(raw).origin; } catch { return raw.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); }
+  let origin: string;
+  try { origin = new URL(raw).origin; } catch { origin = raw.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); }
+  // Se salvaram a URL do PSS/Agenda no campo principal, converter para acsafeweb
+  // pss.safewebpss.com.br → acsafeweb.safewebpss.com.br (produção)
+  // h-pss.safewebpss.com.br → h-acsafeweb.safewebpss.com.br (homologação)
+  origin = origin.replace(/^(https?:\/\/)pss\.safewebpss\.com\.br/i, "$1acsafeweb.safewebpss.com.br");
+  origin = origin.replace(/^(https?:\/\/)h-pss\.safewebpss\.com\.br/i, "$1h-acsafeweb.safewebpss.com.br");
+  return origin;
 }
 async function getSwSettings(): Promise<SafewebSettings | null> {
   const [s] = await db.select().from(settingsTable).limit(1);
@@ -909,6 +916,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       if (!sw) {
         bioMsg = `[BIO_INDISPONIVEL] Sistema PSBio indisponível no momento — Safeweb não configurada. Tente novamente mais tarde.`;
       } else {
+        logger.info({ psbioUrl: sw.url, psbioUser: sw.username, cpf: cpfDigits, dataNascimento }, "PSBio global chamando");
         const bioResult = await swBiometriaPSBioGlobal(sw, cpfDigits, dataNascimento);
         logger.info({ cpf: cpfDigits, dataNascimento, bioResult }, "PSBio global raw response");
         const isTruthy = (v: unknown) => v === true || v === "true" || v === 1 || v === "sim" || v === "S" || v === "s";
