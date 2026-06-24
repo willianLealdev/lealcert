@@ -17,6 +17,7 @@ import { getApiError } from "@/lib/api-error";
 
 const PRODUCT_OPTIONS = ["e-CPF", "e-CNPJ", "e-PF", "e-PJ"];
 const ISSUANCE_OPTIONS = ["Presencial", "Videoconferência", "Fast", "Renovação"];
+const MODEL_OPTIONS = ["A1", "A3"];
 
 type CertForm = {
   name: string;
@@ -28,9 +29,10 @@ type CertForm = {
   safewebIdProduto: string;
   product: string;
   issuanceType: string;
+  model: string;
 };
 
-const EMPTY: CertForm = { name: "", description: "", price: "", priceContador: "", active: true, garHashProduto: "", safewebIdProduto: "", product: "", issuanceType: "" };
+const EMPTY: CertForm = { name: "", description: "", price: "", priceContador: "", active: true, garHashProduto: "", safewebIdProduto: "", product: "", issuanceType: "", model: "" };
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
@@ -127,6 +129,7 @@ export default function AdminCertificates() {
       safewebIdProduto: c.safewebIdProduto ?? "",
       product: c.product ?? "",
       issuanceType: c.issuanceType ?? "",
+      model: (c as any).model ?? "",
     });
     setEditId(c.id);
     setOpen(true);
@@ -145,6 +148,7 @@ export default function AdminCertificates() {
       safewebIdProduto: form.safewebIdProduto || undefined,
       product: form.product || undefined,
       issuanceType: form.issuanceType || undefined,
+      model: form.model || undefined,
     };
     if (editId !== null) update.mutate({ id: editId, data });
     else create.mutate({ data });
@@ -400,6 +404,11 @@ export default function AdminCertificates() {
                     {c.product}
                   </span>
                 )}
+                {(c as any).model && (
+                  <span className={`inline-flex items-center text-xs font-semibold rounded-full px-2 py-0.5 border ${(c as any).model === "A3" ? "text-purple-700 bg-purple-50 border-purple-200" : "text-orange-700 bg-orange-50 border-orange-200"}`}>
+                    {(c as any).model}
+                  </span>
+                )}
                 {issuanceBadge(c.issuanceType)}
                 {c.safewebIdProduto && (
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
@@ -500,6 +509,22 @@ export default function AdminCertificates() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Modelo</Label>
+              <Select value={form.model || "__none__"} onValueChange={v => set("model", v === "__none__" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Selecione o modelo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Não classificado —</SelectItem>
+                  {MODEL_OPTIONS.map(m => (
+                    <SelectItem key={m} value={m}>
+                      {m === "A1" ? "A1 — Arquivo digital (software)" : "A3 — Token / Cartão físico"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">A1 geralmente tem validade de 1 ano. A3 pode ter 1, 2 ou 3 anos. O chat filtra as opções com base neste campo.</p>
             </div>
 
             <div className="flex items-center gap-3">

@@ -213,15 +213,27 @@ Se [BIO_INDISPONIVEL]:
 ▶ PASSO 5 — CERTIFICADO + GARANTIA ESTENDIDA
 (Só após [BIO_OK])
 
-Pergunte em sequência:
-  1. **Tipo**: e-CPF (pessoa física) ou e-CNPJ (pessoa jurídica)?
-  2. **Validade**: 1 ano, 2 anos ou 3 anos?
-  3. TIPO DE EMISSÃO: SEMPRE **videoconferência** — NÃO mencione outros tipos, NÃO pergunte sobre isso.
+⚠️ SIGA ESTA ORDEM EXATA — não pule nem inverta as perguntas:
 
-Apresente o certificado com o preço EXATO de [CATALOGO_PRECOS]. Use SOMENTE os IDs e valores listados lá.
+  1. Pergunte: **"Qual o tipo do certificado? e-CPF (pessoa física) ou e-CNPJ (pessoa jurídica)?"**
+     Aguarde a resposta antes de continuar.
 
-Após confirmar o certificado, pergunte IMEDIATAMENTE:
-  4. **Garantia Estendida**: "Deseja adicionar a Garantia Estendida por +R$15,00? Ela garante suporte completo por 12 meses em caso de qualquer problema com o certificado."
+  2. Pergunte: **"Qual o modelo? A1 (arquivo digital, sem necessidade de hardware) ou A3 (token/cartão físico)?"**
+     Aguarde a resposta antes de continuar.
+
+  3. Com tipo e modelo em mãos, consulte o [CATALOGO_PRECOS] e apresente SOMENTE as opções que tenham:
+     • Produto = tipo escolhido (e-CPF ou e-CNPJ)
+     • Modelo = modelo escolhido (A1 ou A3)
+     • Emissão = Videoconferência
+     ⚠️ NÃO mostre opções de outros tipos, modelos ou emissão Presencial.
+     ⚠️ NÃO invente validades. Mostre SOMENTE as valididades disponíveis no catálogo para aquela combinação.
+     ⚠️ A1 geralmente tem apenas 1 ano. A3 pode ter 1, 2 ou 3 anos — mas apresente SÓ o que estiver no catálogo.
+
+  4. Apresente as opções numeradas com validade e preço. Pergunte qual o cliente prefere.
+     Aguarde a escolha antes de continuar.
+
+  5. Confirme o certificado escolhido e pergunte IMEDIATAMENTE:
+     **"Deseja adicionar a Garantia Estendida por +R$15,00? Ela garante suporte completo por 12 meses em caso de qualquer problema com o certificado."**
      • Registre a resposta (extendedWarranty: true/false) antes de avançar.
 
 ▶ PASSO 5.5 — VALIDAÇÃO DO REPRESENTANTE (SOMENTE e-CNPJ)
@@ -536,7 +548,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       // Injeta catálogo se verificado
       if (verifiedCpfCnpj) {
         const certs = await db
-          .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price })
+          .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price, product: certificatesTable.product, model: certificatesTable.model, validityMonths: certificatesTable.validityMonths, issuanceType: certificatesTable.issuanceType })
           .from(certificatesTable)
           .where(eq(certificatesTable.active, true));
 
@@ -544,8 +556,13 @@ router.post("/chat", async (req, res): Promise<void> => {
         if (certs.length === 0) {
           catalogMsg = `[CATALOGO_VAZIO] Nenhum certificado disponível no momento. Informe ao cliente que o catálogo está temporariamente indisponível.`;
         } else {
-          const lines = certs.map(c => `  - ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`).join("\n");
-          catalogMsg = `[CATALOGO_PRECOS] Catálogo oficial:\n${lines}\nUse SOMENTE estes IDs e valores.`;
+          const lines = certs.map(c => {
+            const valYears = c.validityMonths ? Math.round(c.validityMonths / 12) : 1;
+            const modelo = c.model ?? "A1";
+            const tipo = c.product ?? "";
+            return `  - ID:${c.id} | ${c.name} | Produto:${tipo} | Modelo:${modelo} | Validade:${valYears}ano(s) | Emissão:${c.issuanceType ?? ""} — R$ ${parseFloat(c.price).toFixed(2)}`;
+          }).join("\n");
+          catalogMsg = `[CATALOGO_PRECOS] Catálogo completo (use somente estes IDs e valores — filtre pelo produto e modelo escolhido pelo cliente):\n${lines}`;
         }
 
         await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: catalogMsg });
@@ -1184,7 +1201,7 @@ router.post("/chat", async (req, res): Promise<void> => {
 
       // Injetar catálogo
       const certs = await db
-        .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price })
+        .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price, product: certificatesTable.product, model: certificatesTable.model, validityMonths: certificatesTable.validityMonths, issuanceType: certificatesTable.issuanceType })
         .from(certificatesTable)
         .where(eq(certificatesTable.active, true));
 
@@ -1192,8 +1209,12 @@ router.post("/chat", async (req, res): Promise<void> => {
       if (certs.length === 0) {
         catalogMsg = `[CATALOGO_VAZIO] Nenhum certificado disponível no momento.`;
       } else {
-        const lines = certs.map(c => `  - ID:${c.id} | ${c.name} — R$ ${parseFloat(c.price).toFixed(2)}`).join("\n");
-        catalogMsg = `[CATALOGO_PRECOS] Catálogo oficial:\n${lines}\nUse SOMENTE estes IDs e valores.`;
+        const lines = certs.map(c => {
+          const valYears = c.validityMonths ? Math.round(c.validityMonths / 12) : 1;
+          const modelo = c.model ?? "A1";
+          return `  - ID:${c.id} | ${c.name} | Produto:${c.product ?? ""} | Modelo:${modelo} | Validade:${valYears}ano(s) | Emissão:${c.issuanceType ?? ""} — R$ ${parseFloat(c.price).toFixed(2)}`;
+        }).join("\n");
+        catalogMsg = `[CATALOGO_PRECOS] Catálogo completo (filtre pelo produto e modelo escolhido pelo cliente):\n${lines}`;
       }
       await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: catalogMsg });
 
