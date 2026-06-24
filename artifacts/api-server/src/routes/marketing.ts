@@ -5,7 +5,7 @@ import { promises as dns } from "dns";
 import multer from "multer";
 import { parse } from "csv-parse/sync";
 import * as xlsx from "xlsx";
-import { db, marketingContactsTable, marketingCampaignsTable, marketingSendsTable, marketingRepliesTable } from "@workspace/db";
+import { db, marketingContactsTable, marketingCampaignsTable, marketingSendsTable, marketingRepliesTable, settingsTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { sendMarketingEmail, sendReplyEmail } from "../lib/marketing-email";
@@ -103,6 +103,20 @@ router.get("/marketing/click/:token", async (req, res): Promise<void> => {
 });
 
 router.post("/marketing/webhook/inbound", async (req, res): Promise<void> => {
+  // ── Validação do secret (se configurado nas settings) ──────────────────────
+  const [s] = await db.select({ webhookSecret: settingsTable.webhookSecret }).from(settingsTable).limit(1);
+  const configuredSecret = s?.webhookSecret ?? null;
+  if (configuredSecret) {
+    const provided =
+      (req.query.secret as string | undefined) ??
+      req.headers["x-webhook-secret"] as string | undefined;
+    if (!provided || provided !== configuredSecret) {
+      logger.warn({ ip: req.ip }, "marketing/webhook/inbound: token inválido rejeitado");
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+  }
+
   const body = req.body ?? {};
   const fromEmail = body.from ?? body.sender ?? body.From ?? "";
   const fromName = body.fromName ?? body.from_name ?? body.FromName ?? null;

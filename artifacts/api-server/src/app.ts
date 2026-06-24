@@ -113,12 +113,22 @@ const chatLimiter = rateLimit({
   message: { error: "Muitas mensagens enviadas. Aguarde alguns minutos." },
 });
 
+// Webhook inbound: 60 req / 15 min per IP — prevents reply spam
+const webhookLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas requisições ao webhook." },
+});
+
 app.use("/api", generalLimiter);
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/forgot-password", authLimiter);
 app.use("/api/auth/resend-verification", authLimiter);  // prevent email spam
 app.use("/api/chat", chatLimiter);                      // prevent AI cost abuse
+app.use("/api/marketing/webhook/inbound", webhookLimiter);
 
 // ── Session (session-only cookie — expires when browser closes) ──────────────
 const PgSession = connectPgSimple(session);
