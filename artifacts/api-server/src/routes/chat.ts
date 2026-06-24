@@ -111,14 +111,11 @@ Preços só são informados após [CATALOGO_PRECOS] aparecer no histórico.
 FLUXO OBRIGATÓRIO — SIGA ESTA ORDEM EXATA
 ═══════════════════════════════════════
 
-▶ PASSO 1 — VERIFICAÇÃO INICIAL
-Peça o CPF (pessoa física, 11 dígitos) ou CNPJ (pessoa jurídica, 14 dígitos).
+▶ PASSO 1 — VERIFICAÇÃO DO CADASTRO
+Peça o CPF (pessoa física, 11 dígitos) ou CNPJ (pessoa jurídica, 14 dígitos) para localizar o cadastro.
 O sistema verificará automaticamente e injetará no histórico:
 • [USUARIO_VERIFICADO] — cliente ou contador já cadastrado
 • [USUARIO_NAO_CADASTRADO] — não existe cadastro
-• [BIO_OK] — biometria PSBio encontrada ✅
-• [BIO_FALHOU] — biometria não encontrada ❌
-• [BIO_INDISPONIVEL] — Safeweb não configurada ou CNPJ (verificação presencial)
 
 ▶ PASSO 2 — SE [USUARIO_NAO_CADASTRADO]
 Informe: "Não encontrei seu cadastro. Vou fazer o cadastro agora para prosseguir."
@@ -137,14 +134,34 @@ Colete UM A UM, na ordem abaixo (confirme cada dado antes de pedir o próximo):
 Quando tiver TODOS os dados, emita EXATAMENTE neste formato na linha seguinte (sem texto depois):
 ACAO:CRIAR_CADASTRO:{"userType":"cliente|contador","personType":"fisica|juridica","name":"<nome completo>","cpfCnpj":"<somente digitos 11 ou 14>","email":"<email>","phone":"<somente digitos>","zipCode":"<8digitos>","street":"<rua>","addressNumber":"<numero>","complement":"<complemento ou null>","neighborhood":"<bairro>","city":"<cidade>","addressState":"<UF>","companyName":"<razao_social ou null>","companyFantasyName":"<fantasia ou null>","responsibleCpf":"<cpf_responsavel ou null>","responsibleName":"<nome_responsavel ou null>","crcNumber":"<crc ou null>"}
 
-Aguarde [CADASTRO_CRIADO] no histórico antes de continuar para o PASSO 4.
+Aguarde [CADASTRO_CRIADO] no histórico antes de continuar para o PASSO 3.
 
-▶ PASSO 3 — SE [BIO_FALHOU]
+▶ PASSO 3 — VERIFICAÇÃO DE BIOMETRIA PSBio
+(Só após [USUARIO_VERIFICADO] ou [CADASTRO_CRIADO])
+
+⚠️ REGRA ABSOLUTA: A biometria é verificada SEMPRE pelo CPF do responsável legal — NUNCA pelo CNPJ.
+⚠️ CNPJ serve APENAS para localizar o cadastro. Para a biometria, peça SEMPRE o CPF.
+
+Informe ao cliente: "Agora vou verificar sua biometria no sistema PSBio nacional. Preciso do **CPF** e da **data de nascimento** do responsável legal pelo certificado."
+
+Colete em sequência:
+  1. CPF do responsável legal (somente 11 dígitos, nunca CNPJ)
+  2. Data de nascimento do responsável (DD/MM/AAAA)
+
+Quando tiver os dois dados, emita EXATAMENTE neste formato na linha seguinte (sem texto depois):
+ACAO:VERIFICAR_BIO:{"cpf":"<somente 11 digitos>","dataNascimento":"<DD/MM/AAAA>"}
+
+O sistema injetará no histórico:
+• [BIO_OK] — biometria PSBio encontrada ✅
+• [BIO_FALHOU] — biometria não encontrada ❌
+• [BIO_INDISPONIVEL] — sistema PSBio indisponível no momento
+
+▶ PASSO 4 — SE [BIO_FALHOU]
 Informe: "Sua biometria não foi encontrada no sistema PSBio nacional. Sem biometria válida não é possível emitir o certificado por videoconferência. Entre em contato com nosso suporte para regularizar."
 NÃO prossiga com venda. Ofereça abertura de chamado de suporte.
 
-▶ PASSO 4 — TIPO DE CERTIFICADO
-(Só após [USUARIO_VERIFICADO] ou [CADASTRO_CRIADO]) E ([BIO_OK] ou [BIO_INDISPONIVEL])
+▶ PASSO 5 — TIPO DE CERTIFICADO
+(Só após [BIO_OK])
 
 Pergunte:
 • **e-CPF** (pessoa física) ou **e-CNPJ** (pessoa jurídica)?
@@ -153,16 +170,16 @@ Pergunte:
 
 Apresente o certificado com o preço EXATO de [CATALOGO_PRECOS]. Use SOMENTE os IDs e valores listados lá.
 
-▶ PASSO 5 — DADOS DO PEDIDO
+▶ PASSO 6 — DADOS DO PEDIDO
 Para **e-CPF**: Nome completo, CPF, E-mail, Telefone (WhatsApp), CEP + número
 Para **e-CNPJ**: Razão Social, CNPJ, Nome do responsável, CPF do responsável, E-mail, Telefone (WhatsApp), CEP + número
 
 Se o cliente tem [USUARIO_VERIFICADO], confirme os dados cadastrados em vez de pedir novamente do zero.
 
-▶ PASSO 6 — GARANTIA ESTENDIDA
+▶ PASSO 7 — GARANTIA ESTENDIDA
 Pergunte: "Deseja Garantia Estendida? +R$15,00 — garante suporte completo por 12 meses em caso de qualquer problema com o certificado."
 
-▶ PASSO 7 — DOCUMENTOS
+▶ PASSO 8 — DOCUMENTOS
 Solicite os documentos. Na linha seguinte ao texto (sem nada depois):
 • e-CPF: ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
   Documentos: RG ou CNH (frente e verso) + Comprovante de residência
@@ -170,7 +187,7 @@ Solicite os documentos. Na linha seguinte ao texto (sem nada depois):
   Documentos: Cartão CNPJ + Contrato Social + RG/CNH do responsável (frente e verso) + Comprovante de endereço
 Aguarde [DOCUMENTOS_ENVIADOS] antes de continuar.
 
-▶ PASSO 8 — CONFIRMAÇÃO DOS DADOS
+▶ PASSO 9 — CONFIRMAÇÃO DOS DADOS
 Exiba TODOS os dados em formato de resumo claro:
 📋 **Resumo do Pedido**
 • Certificado: [nome e validade]
@@ -185,7 +202,7 @@ Exiba TODOS os dados em formato de resumo claro:
 
 Pergunta: "Os dados acima estão corretos? Confirme para gerar o QR Code PIX de pagamento."
 
-▶ PASSO 9 — CRIAR PEDIDO
+▶ PASSO 10 — CRIAR PEDIDO
 Execute SOMENTE após:
 ✅ Confirmação explícita do cliente ("sim", "confirmo", "correto", "pode prosseguir" etc.)
 ✅ [DOCUMENTOS_ENVIADOS] no histórico
@@ -195,7 +212,7 @@ ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":
 
 O sistema gerará o QR Code PIX automaticamente e exibirá na tela.
 
-▶ PASSO 10 — APÓS O PEDIDO
+▶ PASSO 11 — APÓS O PEDIDO
 Informe: "✅ Pedido criado! O QR Code PIX apareceu na tela. Após o pagamento nossa equipe agendará a videoconferência de emissão."
 Pergunte: "Tem algum horário de preferência para a videoconferência? (manhã/tarde, dias da semana)"
 
@@ -361,35 +378,6 @@ router.post("/chat", async (req, res): Promise<void> => {
         chatHistory.push({ role: "user" as const, content: catalogMsg });
       }
 
-      // ── Bio check PSBio (só para CPF de 11 dígitos, se ainda não checada) ─
-      if (!bioChecked) {
-        let bioMsg: string;
-        if (cpfCnpj.length === 14) {
-          // CNPJ: bio check do responsável será feito na videoconferência
-          bioMsg = `[BIO_INDISPONIVEL] CNPJ informado — biometria do responsável será verificada durante a videoconferência de emissão.`;
-        } else {
-          // CPF: check PSBio agora
-          try {
-            const sw = await getSwSettings();
-            if (!sw) {
-              bioMsg = `[BIO_INDISPONIVEL] Safeweb não configurada — biometria será verificada durante a emissão.`;
-            } else {
-              const bioResult = await swBiometriaPSBioGlobal(sw, cpfCnpj);
-              if (bioResult.encontrado === true) {
-                bioMsg = `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfCnpj}. Pode prosseguir com a emissão por videoconferência.`;
-              } else {
-                bioMsg = `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfCnpj}. Mensagem: ${bioResult.mensagem ?? "não encontrada"}. NÃO prossiga com venda.`;
-              }
-            }
-          } catch (bioErr) {
-            logger.warn({ err: bioErr }, "PSBio check failed — treating as indisponível");
-            bioMsg = `[BIO_INDISPONIVEL] Não foi possível verificar a biometria PSBio no momento. Continue o atendimento normalmente.`;
-          }
-        }
-
-        await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: bioMsg });
-        chatHistory.push({ role: "user" as const, content: bioMsg });
-      }
     }
   }
 
@@ -686,6 +674,34 @@ router.post("/chat", async (req, res): Promise<void> => {
         logger.error({ err: actionErr }, "Failed to process CRIAR_PEDIDO action");
         res.write(`data: ${JSON.stringify({ content: "\n\n❌ Erro ao criar o pedido. Tente novamente ou entre em contato com o suporte." })}\n\n`);
       }
+    }
+  }
+
+  // Ação: verificar biometria PSBio
+  if (fullResponse.includes("ACAO:VERIFICAR_BIO:")) {
+    try {
+      const jsonStr = fullResponse.split("ACAO:VERIFICAR_BIO:")[1].trim();
+      const bioData = JSON.parse(jsonStr) as { cpf: string; dataNascimento?: string };
+      const cpfDigits = String(bioData.cpf ?? "").replace(/\D/g, "").slice(0, 11);
+      if (!cpfDigits || cpfDigits.length !== 11) throw new Error("CPF inválido para verificação PSBio");
+
+      let bioMsg: string;
+      const sw = await getSwSettings();
+      if (!sw) {
+        bioMsg = `[BIO_INDISPONIVEL] Sistema PSBio indisponível no momento — Safeweb não configurada. Tente novamente mais tarde.`;
+      } else {
+        const bioResult = await swBiometriaPSBioGlobal(sw, cpfDigits);
+        if (bioResult.encontrado === true) {
+          bioMsg = `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfDigits}. Pode prosseguir com a emissão por videoconferência.`;
+        } else {
+          bioMsg = `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfDigits}. Mensagem: ${bioResult.mensagem ?? "não encontrada"}. NÃO prossiga com venda — oriente o cliente a abrir um chamado de suporte.`;
+        }
+      }
+
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: bioMsg });
+      res.write(`data: ${JSON.stringify({ content: "\n\n" + (bioMsg.startsWith("[BIO_OK]") ? "✅ Biometria encontrada! Podemos prosseguir." : bioMsg.startsWith("[BIO_FALHOU]") ? "❌ Biometria não encontrada no sistema PSBio nacional." : "⚠️ Sistema PSBio indisponível no momento.") })}\n\n`);
+    } catch (bioActionErr) {
+      logger.error({ err: bioActionErr }, "Failed to process VERIFICAR_BIO action");
     }
   }
 
