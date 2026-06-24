@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../lib/logger";
 import { sendOrderStatusEmail, sendTempPasswordEmail } from "../lib/email";
-import { swBiometriaPSBioGlobal, swConsultaCNPJ, type SafewebSettings } from "../lib/safeweb";
+import { swBiometriaPSBioGlobal, swConsultaCPF, swConsultaCNPJ, type SafewebSettings } from "../lib/safeweb";
 import { garPsBio } from "../lib/gestaoar";
 import multer from "multer";
 import path from "path";
@@ -243,15 +243,42 @@ Se [CNPJ_RFB_INDISPONIVEL]:
   Informe que a validação automática está indisponível e prossiga manualmente.
 
 ▶ PASSO 6 — DADOS DO PEDIDO
-Para **e-CPF**: Nome completo, CPF, Data de nascimento (DD/MM/AAAA), E-mail, Telefone (WhatsApp), CEP + número + complemento
-Para **e-CNPJ** (após [CNPJ_RESPONSAVEL_OK]): Use a razaoSocial já validada. Colete:
-  - E-mail, Telefone (WhatsApp)
-  - CEP + número + complemento (endereço da empresa)
-  - Dados do representante legal (CPF e data de nascimento já foram coletados no PASSO 5.5):
-    • Tipo de documento: RG (1), RNE (2), Passaporte (3) ou CNH (4)
-    • Número do documento
-    • Órgão emissor (ex: SSP-SP)
-    • CEP + endereço do representante (se diferente do endereço da empresa)
+
+═══ e-CPF ═══
+O nome do titular já foi obtido automaticamente no PASSO 3 (campo "Nome do titular:" no [BIO_OK]).
+Informe: "Seu nome registrado é **[nome do BIO_OK]**. Está correto?"
+• Se sim: use esse nome diretamente.
+• Se não: peça o nome correto.
+
+Colete na ordem:
+  1. Nome completo (confirmado acima)
+  2. Data de nascimento (DD/MM/AAAA) — geralmente já informada no PASSO 3
+  3. E-mail
+  4. Telefone WhatsApp (somente dígitos)
+  5. CEP + número + complemento (endereço do titular)
+  6. ⚠️ OBRIGATÓRIO — Nota Fiscal:
+     Pergunte: "A nota fiscal será emitida em **CPF** (seu nome) ou **CNPJ** (empresa)?"
+     • Se CPF: prossiga normalmente (nfCnpj = null)
+     • Se CNPJ: colete obrigatoriamente:
+         - CNPJ da empresa (14 dígitos)
+         - Razão Social da empresa
+
+═══ e-CNPJ ═══
+(Só após [CNPJ_RESPONSAVEL_OK])
+Os dados já conhecidos do [CNPJ_RESPONSAVEL_OK]: razaoSocial e repName (nome do representante).
+Informe: "Empresa: **[razaoSocial]** — Representante: **[repName]**. Confirma?"
+
+Colete na ordem:
+  1. E-mail da empresa
+  2. Telefone WhatsApp da empresa (somente dígitos)
+  3. CEP + número + complemento (endereço da empresa)
+  4. Dados do documento do representante legal:
+     • Tipo: RG (1), RNE (2), Passaporte (3) ou CNH (4)
+     • Número do documento
+     • Órgão emissor (ex: SSP-SP)
+  5. Endereço do representante — pergunte: "O endereço do representante é o mesmo da empresa?"
+     • Se sim: use o mesmo endereço da empresa para os campos representanteAddress*
+     • Se não: CEP + número + complemento do representante
 
 Se o cliente tem [USUARIO_VERIFICADO], confirme os dados cadastrados em vez de pedir novamente do zero.
 
@@ -295,7 +322,7 @@ Execute SOMENTE após:
 ✅ [DOCUMENTOS_ENVIADOS] no histórico
 
 Emita EXATAMENTE neste formato na linha seguinte (sem nada depois):
-ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome completo>","customerCpfCnpj":"<somente_digitos>","customerBirthDate":"<DD/MM/AAAA ou null>","customerEmail":"<email>","customerPhone":"<somente_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<8digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressComplement":"<complemento_ou_null>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<UF>","extendedWarranty":<true|false>,"customerCei":"<numero_cei_ou_null>","customerNis":"<numero_pis_nis_ou_null>","representanteCpf":"<cpf_do_representante_somente_digitos_ou_null>","representanteNascimento":"<DD/MM/AAAA_ou_null>","representanteDocTipo":"<1=RG|2=RNE|3=Passaporte|4=CNH|0=NaoInformado>","representanteDocNumero":"<numero_doc_ou_null>","representanteDocEmissor":"<orgao_emissor_ou_null>","representanteAddressZipcode":"<8digitos_ou_null>","representanteAddressStreet":"<rua_ou_null>","representanteAddressNumber":"<numero_ou_null>","representanteAddressComplement":"<complemento_ou_null>","representanteAddressNeighborhood":"<bairro_ou_null>","representanteAddressCity":"<cidade_ou_null>","representanteAddressState":"<UF_ou_null>"}
+ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome completo>","customerCpfCnpj":"<somente_digitos>","customerBirthDate":"<DD/MM/AAAA ou null>","customerEmail":"<email>","customerPhone":"<somente_digitos>","companyName":"<razao_social_ou_null>","nfCnpj":"<cnpj_nota_fiscal_14digitos_ou_null — preencher somente para e-CPF quando NF for emitida em CNPJ>","addressZipcode":"<8digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressComplement":"<complemento_ou_null>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<UF>","extendedWarranty":<true|false>,"customerCei":"<numero_cei_ou_null>","customerNis":"<numero_pis_nis_ou_null>","representanteCpf":"<cpf_do_representante_somente_digitos_ou_null>","representanteNascimento":"<DD/MM/AAAA_ou_null>","representanteDocTipo":"<1=RG|2=RNE|3=Passaporte|4=CNH|0=NaoInformado>","representanteDocNumero":"<numero_doc_ou_null>","representanteDocEmissor":"<orgao_emissor_ou_null>","representanteAddressZipcode":"<8digitos_ou_null>","representanteAddressStreet":"<rua_ou_null>","representanteAddressNumber":"<numero_ou_null>","representanteAddressComplement":"<complemento_ou_null>","representanteAddressNeighborhood":"<bairro_ou_null>","representanteAddressCity":"<cidade_ou_null>","representanteAddressState":"<UF_ou_null>"}
 
 O sistema gerará o QR Code PIX automaticamente e exibirá na tela.
 
@@ -735,6 +762,7 @@ router.post("/chat", async (req, res): Promise<void> => {
           representanteAddressNeighborhood?: string | null;
           representanteAddressCity?: string | null;
           representanteAddressState?: string | null;
+          nfCnpj?: string | null;
         };
 
         const certIdNum = typeof orderData.certificateId === "string"
@@ -797,6 +825,7 @@ router.post("/chat", async (req, res): Promise<void> => {
           customerEmail: orderData.customerEmail || null,
           customerPhone: orderData.customerPhone || null,
           companyName: orderData.companyName || null,
+          nfCnpj: orderData.nfCnpj ? orderData.nfCnpj.replace(/\D/g, "") || null : null,
           addressZipcode: orderData.addressZipcode || null,
           addressStreet: orderData.addressStreet || null,
           addressNumber: orderData.addressNumber || null,
@@ -935,9 +964,22 @@ router.post("/chat", async (req, res): Promise<void> => {
             || bioResult.status === "encontrado" || bioResult.status === "ENCONTRADO" || bioResult.status === "Encontrado"
             || bioResult.Status === "encontrado" || bioResult.Status === "ENCONTRADO" || bioResult.Status === "Encontrado"
             || bioResult.statusCode === 200;
-          bioMsg = encontrado
-            ? `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfDigits}. Pode prosseguir com a emissão por videoconferência.`
-            : `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfDigits}. Retorno API: ${JSON.stringify(bioResult)}. NÃO prossiga com venda — oriente o cliente a abrir um chamado de suporte.`;
+          if (encontrado) {
+            // Busca o nome do cliente automaticamente via consulta CPF (best-effort)
+            let nomeCliente: string | undefined;
+            try {
+              if (dataNascimento) {
+                const consultaResult = await swConsultaCPF(sw, cpfDigits, dataNascimento);
+                if (consultaResult.Codigo === 0) {
+                  nomeCliente = consultaResult.NomeCompleto ?? (consultaResult.Mensagem?.length > 3 ? consultaResult.Mensagem : undefined);
+                }
+              }
+            } catch { /* best-effort — não bloqueia o fluxo */ }
+            const nomeStr = nomeCliente ? ` Nome do titular: ${nomeCliente}.` : "";
+            bioMsg = `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfDigits}.${nomeStr} Pode prosseguir com a emissão por videoconferência.`;
+          } else {
+            bioMsg = `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfDigits}. Retorno API: ${JSON.stringify(bioResult)}. NÃO prossiga com venda — oriente o cliente a abrir um chamado de suporte.`;
+          }
         }
       } else {
         // Gestão AR
