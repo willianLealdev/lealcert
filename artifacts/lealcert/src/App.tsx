@@ -1,4 +1,5 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { useState, useEffect, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -40,7 +41,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = false }: { component: React.ComponentType; adminOnly?: boolean; agenteOnly?: boolean }) {
+function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = false, resetKey = 0 }: { component: React.ComponentType; adminOnly?: boolean; agenteOnly?: boolean; resetKey?: number }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -62,12 +63,23 @@ function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = 
 
   return (
     <Layout>
-      <Component />
+      <Component key={resetKey} />
     </Layout>
   );
 }
 
 function Router() {
+  const [location] = useLocation();
+  const [newOrderKey, setNewOrderKey] = useState(0);
+  const prevLocationRef = useRef("");
+
+  useEffect(() => {
+    if (location === "/orders/new" && prevLocationRef.current !== "/orders/new") {
+      setNewOrderKey(k => k + 1);
+    }
+    prevLocationRef.current = location;
+  }, [location]);
+
   return (
     <Switch>
       {/* Public routes */}
@@ -82,7 +94,7 @@ function Router() {
       {/* Protected user routes */}
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/orders" component={() => <ProtectedRoute component={Orders} />} />
-      <Route path="/orders/new" component={() => <ProtectedRoute component={NewOrder} />} />
+      <Route path="/orders/new" component={() => <ProtectedRoute component={NewOrder} resetKey={newOrderKey} />} />
       <Route path="/orders/:id" component={() => <ProtectedRoute component={OrderDetail} />} />
       <Route path="/support" component={() => <ProtectedRoute component={Support} />} />
       <Route path="/support/new" component={() => <ProtectedRoute component={NewTicket} />} />

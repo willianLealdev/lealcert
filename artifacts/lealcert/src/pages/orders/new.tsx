@@ -205,39 +205,8 @@ export default function NewOrder() {
   const consultaCpfAbortRef = useRef<AbortController | null>(null);
   const repConsultaCpfAbortRef = useRef<AbortController | null>(null);
 
-  const SESSION_KEY = "lealcert_order_local";
-
-  // Limpa o cache ao sair da página — ao navegar de volta sempre começa do zero
-  useEffect(() => {
-    return () => {
-      try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const certIdFirstFireRef = useRef(true);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (raw) {
-        const s = JSON.parse(raw) as Record<string, unknown>;
-        if (s?.psbioGatePassed) {
-          if (s.form && typeof s.form === "object") setForm(prev => ({ ...prev, ...(s.form as object) }));
-          if (s.step === 2 || s.step === 3) setStep(s.step as 1 | 2 | 3);
-          if (typeof s.nfType === "string") setNfType(s.nfType as "fisica" | "juridica");
-          if (typeof s.pickedProduct === "string") setPickedProduct(s.pickedProduct);
-          if (typeof s.pickedIssuance === "string") setPickedIssuance(s.pickedIssuance);
-          if (typeof s.pickedValidity === "string") setPickedValidity(s.pickedValidity);
-          if (typeof s.gateCpf === "string") gateCpfRef.current = s.gateCpf;
-          if (typeof s.gateBirthDate === "string") gateBirthDateRef.current = s.gateBirthDate;
-          if (typeof s.gateName === "string") gateNameRef.current = s.gateName;
-          if (typeof s.gateHasPsbio === "boolean") gateHasPsbioRef.current = s.gateHasPsbio;
-          if (typeof s.gateInputCpf === "string") setGateInputCpf(s.gateInputCpf);
-          if (typeof s.gateInputBirthDate === "string") setGateInputBirthDate(s.gateInputBirthDate);
-          if (s.gateStatus && s.gateStatus !== "loading") setGateStatus(s.gateStatus as GateStatus);
-          setPsbioGatePassed(true);
-        }
-      }
-    } catch { /* ignore */ }
     setSessionLoaded(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -300,21 +269,6 @@ export default function NewOrder() {
   // ── NF type ──
   const [nfType, setNfType] = useState<"fisica" | "juridica">("fisica");
 
-  useEffect(() => {
-    if (!sessionLoaded || !psbioGatePassed) return;
-    try {
-      localStorage.setItem(SESSION_KEY, JSON.stringify({
-        form, step, nfType, pickedProduct, pickedIssuance, pickedValidity,
-        psbioGatePassed,
-        gateCpf: gateCpfRef.current,
-        gateBirthDate: gateBirthDateRef.current,
-        gateName: gateNameRef.current,
-        gateHasPsbio: gateHasPsbioRef.current,
-        gateInputCpf, gateInputBirthDate,
-        gateStatus: gateStatus && gateStatus !== "loading" ? gateStatus : null,
-      }));
-    } catch { /* ignore */ }
-  }, [sessionLoaded, form, step, nfType, pickedProduct, pickedIssuance, pickedValidity, psbioGatePassed, gateInputCpf, gateInputBirthDate, gateStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Coupon ──
   const [couponCode, setCouponCode] = useState("");
