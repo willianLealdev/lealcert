@@ -372,7 +372,20 @@ export async function swHopePrimeiraEmissao(settings: SafewebSettings, data: Rec
 export async function swBiometriaValidar(settings: SafewebSettings, cpf: string): Promise<SwResult> {
   return swGet<SwResult>(settings, `${BIOMETRY_VALIDATE_PATH}/${cpf}`);
 }
-export interface SwPSBioResult { encontrado?: boolean | string | number; mensagem?: string; [key: string]: unknown }
+export interface SwPSBioResult {
+  encontrado?: boolean | string | number;
+  Encontrado?: boolean | string | number;
+  resultado?: boolean | string | number;
+  Resultado?: boolean | string | number;
+  biometria?: boolean | string | number;
+  Biometria?: boolean | string | number;
+  status?: string | number;
+  Status?: string | number;
+  statusCode?: number;
+  mensagem?: string;
+  Mensagem?: string;
+  [key: string]: unknown
+}
 export async function swBiometriaPSBioLocal(settings: SafewebSettings, cpf: string, dataNascimento?: string): Promise<SwPSBioResult> {
   const body: Record<string, string> = { cpf };
   if (dataNascimento) body.dataNascimento = dataNascimento;

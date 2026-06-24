@@ -896,8 +896,10 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Ação: verificar biometria PSBio
   if (fullResponse.includes("ACAO:VERIFICAR_BIO:")) {
     try {
-      const jsonStr = fullResponse.split("ACAO:VERIFICAR_BIO:")[1].trim();
-      const bioData = JSON.parse(jsonStr) as { cpf: string; dataNascimento?: string };
+      const rawAfter = fullResponse.split("ACAO:VERIFICAR_BIO:")[1].trim();
+      const jsonMatch = rawAfter.match(/^\{[\s\S]*?\}/);
+      if (!jsonMatch) throw new Error("Formato inválido na ação VERIFICAR_BIO — JSON não encontrado");
+      const bioData = JSON.parse(jsonMatch[0]) as { cpf: string; dataNascimento?: string };
       const cpfDigits = String(bioData.cpf ?? "").replace(/\D/g, "").slice(0, 11);
       if (!cpfDigits || cpfDigits.length !== 11) throw new Error("CPF inválido para verificação PSBio");
 
@@ -909,14 +911,16 @@ router.post("/chat", async (req, res): Promise<void> => {
       } else {
         const bioResult = await swBiometriaPSBioGlobal(sw, cpfDigits, dataNascimento);
         logger.info({ cpf: cpfDigits, dataNascimento, bioResult }, "PSBio global raw response");
-        const encontrado = bioResult.encontrado === true || bioResult.encontrado === "true" || bioResult.encontrado === 1
-          || bioResult.encontrado === "sim" || bioResult.encontrado === "S"
-          || (bioResult as Record<string, unknown>).resultado === true
-          || (bioResult as Record<string, unknown>).resultado === "true"
-          || (bioResult as Record<string, unknown>).biometria === true
-          || (bioResult as Record<string, unknown>).status === "encontrado"
-          || (bioResult as Record<string, unknown>).status === "ENCONTRADO"
-          || (bioResult as Record<string, unknown>).statusCode === 200;
+        const isTruthy = (v: unknown) => v === true || v === "true" || v === 1 || v === "sim" || v === "S" || v === "s";
+        const encontrado = isTruthy(bioResult.encontrado)
+          || isTruthy(bioResult.Encontrado)
+          || isTruthy(bioResult.resultado)
+          || isTruthy(bioResult.Resultado)
+          || isTruthy(bioResult.biometria)
+          || isTruthy(bioResult.Biometria)
+          || bioResult.status === "encontrado" || bioResult.status === "ENCONTRADO" || bioResult.status === "Encontrado"
+          || bioResult.Status === "encontrado" || bioResult.Status === "ENCONTRADO" || bioResult.Status === "Encontrado"
+          || bioResult.statusCode === 200;
         if (encontrado) {
           bioMsg = `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfDigits}. Pode prosseguir com a emissão por videoconferência.`;
         } else {
@@ -935,6 +939,7 @@ router.post("/chat", async (req, res): Promise<void> => {
       await streamFollowUp([{ role: "user", content: bioMsg }]);
     } catch (bioActionErr) {
       logger.error({ err: bioActionErr }, "Failed to process VERIFICAR_BIO action");
+      res.write(`data: ${JSON.stringify({ content: "\n\n❌ Erro ao verificar biometria: " + ((bioActionErr as Error).message ?? "falha inesperada") })}\n\n`);
     }
   }
 
@@ -1053,8 +1058,10 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Ação: validar representante CNPJ via Receita Federal (Safeweb)
   if (fullResponse.includes("ACAO:VALIDAR_CNPJ_RFB:")) {
     try {
-      const jsonStr = fullResponse.split("ACAO:VALIDAR_CNPJ_RFB:")[1].trim();
-      const rfbData = JSON.parse(jsonStr) as { cnpj: string; cpf: string; dataNascimento: string };
+      const rawAfterRfb = fullResponse.split("ACAO:VALIDAR_CNPJ_RFB:")[1].trim();
+      const jsonMatchRfb = rawAfterRfb.match(/^\{[\s\S]*?\}/);
+      if (!jsonMatchRfb) throw new Error("Formato inválido na ação VALIDAR_CNPJ_RFB");
+      const rfbData = JSON.parse(jsonMatchRfb[0]) as { cnpj: string; cpf: string; dataNascimento: string };
       const cnpjDigits = String(rfbData.cnpj ?? "").replace(/\D/g, "");
       const cpfDigits = String(rfbData.cpf ?? "").replace(/\D/g, "");
       const dataNasc = String(rfbData.dataNascimento ?? "").trim();
@@ -1091,8 +1098,10 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Ação: verificar pagamento
   if (fullResponse.includes("ACAO:VERIFICAR_PAGAMENTO:")) {
     try {
-      const jsonStr = fullResponse.split("ACAO:VERIFICAR_PAGAMENTO:")[1].trim();
-      const { orderId: vpOrderId } = JSON.parse(jsonStr) as { orderId: number };
+      const rawAfterVp = fullResponse.split("ACAO:VERIFICAR_PAGAMENTO:")[1].trim();
+      const jsonMatchVp = rawAfterVp.match(/^\{[\s\S]*?\}/);
+      if (!jsonMatchVp) throw new Error("Formato inválido na ação VERIFICAR_PAGAMENTO");
+      const { orderId: vpOrderId } = JSON.parse(jsonMatchVp[0]) as { orderId: number };
       const [orderRow] = await db.select({
         id: ordersTable.id, orderNumber: ordersTable.orderNumber,
         status: ordersTable.status, garPedido: ordersTable.garPedido,
@@ -1150,8 +1159,10 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Ação: agendar videoconferência
   if (fullResponse.includes("ACAO:AGENDAR:")) {
     try {
-      const jsonStr = fullResponse.split("ACAO:AGENDAR:")[1].trim();
-      const { orderId: agOrderId, slotId } = JSON.parse(jsonStr) as { orderId: number; slotId: number };
+      const rawAfterAg = fullResponse.split("ACAO:AGENDAR:")[1].trim();
+      const jsonMatchAg = rawAfterAg.match(/^\{[\s\S]*?\}/);
+      if (!jsonMatchAg) throw new Error("Formato inválido na ação AGENDAR");
+      const { orderId: agOrderId, slotId } = JSON.parse(jsonMatchAg[0]) as { orderId: number; slotId: number };
 
       const [slot] = await db.select().from(slotsTable)
         .where(and(eq(slotsTable.id, slotId), eq(slotsTable.active, true))).limit(1);
