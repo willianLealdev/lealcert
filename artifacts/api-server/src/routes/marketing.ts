@@ -135,7 +135,7 @@ router.post("/marketing/webhook/inbound", async (req, res): Promise<void> => {
 });
 
 // ─── Admin-only routes ────────────────────────────────────────────────────────
-router.use(requireAdmin);
+router.use("/marketing", requireAdmin);
 
 // ─── Stats ───────────────────────────────────────────────────────────────────
 router.get("/marketing/stats", async (req, res): Promise<void> => {

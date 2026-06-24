@@ -26,7 +26,7 @@ export default function ChangePassword() {
       onSuccess: async () => {
         toast({ title: "Senha alterada!", description: "Sua nova senha foi salva com sucesso." });
         await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-        setLocation("/dashboard");
+        setLocation(user?.role === "agente" ? "/consultar" : "/dashboard");
       },
       onError: (err: unknown) => {
         const msg = (err as { data?: { error?: string } })?.data?.error ?? "Erro ao alterar senha.";

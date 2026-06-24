@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
+import { logger } from "../lib/logger";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.session.userId) {
@@ -47,6 +48,7 @@ export async function requireAgenteOrAdmin(req: Request, res: Response, next: Ne
   const isAdmin = role === "admin" || String(req.session.userType ?? "") === "admin";
 
   if (!isAgente && !isAdmin) {
+    logger.warn({ sessionUserId: req.session.userId, sessionRole: req.session.role, sessionUserType: req.session.userType, roleAfterLookup: role }, "requireAgenteOrAdmin: acesso negado");
     res.status(403).json({ error: "Acesso negado. Apenas agentes de registro." });
     return;
   }
