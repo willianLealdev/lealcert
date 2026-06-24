@@ -176,6 +176,13 @@ Para **e-CNPJ**: Razão Social, CNPJ, Nome do responsável, CPF do responsável,
 
 Se o cliente tem [USUARIO_VERIFICADO], confirme os dados cadastrados em vez de pedir novamente do zero.
 
+Após coletar os dados principais, pergunte:
+"O titular ou responsável possui CEI, PIS ou NIS? (opcional — se sim, informe qual e o número)"
+• Se sim: registre o tipo (CEI ou PIS/NIS) e o número informado. Informe que precisará enviar também o documento comprobatório e emita na linha seguinte:
+  ACAO:SOLICITAR_DOCS:{"tipo":"outros"}
+  Aguarde [DOCUMENTOS_ENVIADOS] antes de continuar.
+• Se não: prossiga normalmente.
+
 ▶ PASSO 7 — GARANTIA ESTENDIDA
 Pergunte: "Deseja Garantia Estendida? +R$15,00 — garante suporte completo por 12 meses em caso de qualquer problema com o certificado."
 
@@ -186,6 +193,7 @@ Solicite os documentos. Na linha seguinte ao texto (sem nada depois):
 • e-CNPJ: ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
   Documentos: Cartão CNPJ + Contrato Social + RG/CNH do responsável (frente e verso) + Comprovante de endereço
 Aguarde [DOCUMENTOS_ENVIADOS] antes de continuar.
+Obs: se o cliente já enviou documento de CEI/PIS/NIS no PASSO 6, NÃO solicite novamente — os arquivos já foram registrados.
 
 ▶ PASSO 9 — CONFIRMAÇÃO DOS DADOS
 Exiba TODOS os dados em formato de resumo claro:
@@ -208,7 +216,7 @@ Execute SOMENTE após:
 ✅ [DOCUMENTOS_ENVIADOS] no histórico
 
 Emita EXATAMENTE neste formato na linha seguinte (sem nada depois):
-ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<somente_digitos>","customerEmail":"<email>","customerPhone":"<somente_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<8digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<UF>","extendedWarranty":<true|false>}
+ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<somente_digitos>","customerEmail":"<email>","customerPhone":"<somente_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<8digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<UF>","extendedWarranty":<true|false>,"customerCei":"<numero_cei_ou_null>","customerNis":"<numero_pis_nis_ou_null>"}
 
 O sistema gerará o QR Code PIX automaticamente e exibirá na tela.
 
@@ -548,6 +556,8 @@ router.post("/chat", async (req, res): Promise<void> => {
           addressCity?: string;
           addressState?: string;
           extendedWarranty: boolean;
+          customerCei?: string | null;
+          customerNis?: string | null;
         };
 
         const certIdNum = typeof orderData.certificateId === "string"
@@ -579,8 +589,12 @@ router.post("/chat", async (req, res): Promise<void> => {
         const allMsgs = await db.select().from(chatMessages)
           .where(eq(chatMessages.conversationId, sessionId))
           .orderBy(asc(chatMessages.createdAt));
-        const docKeyMsg = [...allMsgs].reverse().find(m => m.content.startsWith("[DOC_KEYS]"));
-        const chatDocuments = docKeyMsg ? docKeyMsg.content.replace("[DOC_KEYS] ", "").trim() : null;
+        // Merge all DOC_KEYS messages so uploads from different steps (cpf/cnpj + outros) are all kept
+        const allDocKeyMsgs = allMsgs.filter(m => m.content.startsWith("[DOC_KEYS]"));
+        const mergedDocKeys = allDocKeyMsgs.flatMap(m => {
+          try { return JSON.parse(m.content.replace("[DOC_KEYS] ", "").trim()) as unknown[]; } catch { return []; }
+        });
+        const chatDocuments = mergedDocKeys.length > 0 ? JSON.stringify(mergedDocKeys) : null;
 
         let orderNumber: string;
         while (true) {
@@ -610,6 +624,8 @@ router.post("/chat", async (req, res): Promise<void> => {
           addressState: orderData.addressState || null,
           extendedWarranty: orderData.extendedWarranty,
           chatDocuments,
+          customerCei: orderData.customerCei || null,
+          customerNis: orderData.customerNis || null,
         }).returning();
 
         // Gerar QR Code PIX

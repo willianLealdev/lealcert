@@ -65,7 +65,7 @@ function ChatWidget() {
   const [sessionError, setSessionError] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [micSupported] = useState(() => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window));
-  const [docRequest, setDocRequest] = useState<{ tipo: "cpf" | "cnpj" } | null>(null);
+  const [docRequest, setDocRequest] = useState<{ tipo: "cpf" | "cnpj" | "outros" } | null>(null);
   const [pixQrInfo, setPixQrInfo] = useState<PixQrInfo | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -182,7 +182,7 @@ function ChatWidget() {
               });
             }
             if (ev.action === "solicitar_docs" && ev.tipo) {
-              setDocRequest({ tipo: ev.tipo as "cpf" | "cnpj" });
+              setDocRequest({ tipo: ev.tipo as "cpf" | "cnpj" | "outros" });
             }
             if (ev.action === "order_created" && ev.orderNumber) {
               if (ev.qrCodeDataUrl) {
@@ -395,12 +395,14 @@ function ChatWidget() {
                 </div>
                 <div className="max-w-[90%] bg-white border border-blue-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm">
                   <p className="font-semibold text-gray-800 mb-2">
-                    📎 Documentos necessários ({docRequest.tipo === "cpf" ? "e-CPF" : "e-CNPJ"})
+                    📎 {docRequest.tipo === "cpf" ? "Documentos necessários (e-CPF)" : docRequest.tipo === "cnpj" ? "Documentos necessários (e-CNPJ)" : "Documento comprobatório (CEI / PIS / NIS)"}
                   </p>
                   <ul className="text-gray-600 text-xs space-y-1 mb-3">
                     {(docRequest.tipo === "cpf"
                       ? ["RG ou CNH — frente", "RG ou CNH — verso", "Comprovante de residência"]
-                      : ["Cartão CNPJ", "Contrato Social ou Requerimento de Empresário", "RG/CNH do responsável — frente", "RG/CNH do responsável — verso", "Comprovante de endereço da empresa"]
+                      : docRequest.tipo === "cnpj"
+                      ? ["Cartão CNPJ", "Contrato Social ou Requerimento de Empresário", "RG/CNH do responsável — frente", "RG/CNH do responsável — verso", "Comprovante de endereço da empresa"]
+                      : ["Documento que comprove o CEI, PIS ou NIS informado (ex: carteira de trabalho, extrato INSS ou comprovante emitido pelo portal gov.br)"]
                     ).map(doc => (
                       <li key={doc} className="flex items-center gap-1.5">
                         <CheckCircle2 className="h-3.5 w-3.5 text-blue-400 shrink-0" />
