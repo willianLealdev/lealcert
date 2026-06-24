@@ -206,6 +206,14 @@ export default function NewOrder() {
   const repConsultaCpfAbortRef = useRef<AbortController | null>(null);
 
   const SESSION_KEY = "lealcert_order_local";
+
+  // Limpa o cache ao sair da página — ao navegar de volta sempre começa do zero
+  useEffect(() => {
+    return () => {
+      try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const certIdFirstFireRef = useRef(true);
   useEffect(() => {
     try {
