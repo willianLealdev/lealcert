@@ -526,6 +526,49 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: fullResponse });
 
+  // ── Helper: dispara segunda chamada ao AI no mesmo stream SSE ────────────
+  async function streamFollowUp(extraMessages: { role: "user" | "assistant"; content: string }[]) {
+    const followMsgs = [
+      ...aiMessages,
+      { role: "assistant" as const, content: fullResponse },
+      ...extraMessages,
+    ];
+    let followText = "";
+    if (provider === "claude") {
+      const anthropic = new Anthropic({ apiKey: providerKey });
+      const claudeModel = aiSettings?.claudeModel || "claude-3-5-haiku-20241022";
+      try {
+        const stream = anthropic.messages.stream({
+          model: claudeModel, max_tokens: 1024, system: systemPrompt, messages: followMsgs,
+        });
+        for await (const event of stream) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            const c = event.delta.text;
+            if (c) { followText += c; res.write(`data: ${JSON.stringify({ content: c })}\n\n`); }
+          }
+        }
+      } catch (e) { logger.error({ err: e }, "streamFollowUp claude error"); }
+    } else {
+      const baseURL = provider === "deepseek" ? "https://api.deepseek.com" : undefined;
+      const model = provider === "deepseek" ? (aiSettings?.deepseekModel || "deepseek-chat") : (aiSettings?.openaiModel || "gpt-4o-mini");
+      const openai = new OpenAI({ apiKey: providerKey, ...(baseURL ? { baseURL } : {}) });
+      try {
+        const stream = await openai.chat.completions.create({
+          model, max_completion_tokens: 1024,
+          messages: [{ role: "system", content: systemPrompt }, ...followMsgs],
+          stream: true,
+        });
+        for await (const chunk of stream) {
+          const c = chunk.choices[0]?.delta?.content;
+          if (c) { followText += c; res.write(`data: ${JSON.stringify({ content: c })}\n\n`); }
+        }
+      } catch (e) { logger.error({ err: e }, "streamFollowUp openai error"); }
+    }
+    if (followText) {
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: followText });
+    }
+  }
+
   // ── 7. Processar ações da IA ───────────────────────────────────────────────
 
   // Ação: solicitar documentos
@@ -725,7 +768,14 @@ router.post("/chat", async (req, res): Promise<void> => {
       }
 
       await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: bioMsg });
-      res.write(`data: ${JSON.stringify({ content: "\n\n" + (bioMsg.startsWith("[BIO_OK]") ? "✅ Biometria encontrada! Podemos prosseguir." : bioMsg.startsWith("[BIO_FALHOU]") ? "❌ Biometria não encontrada no sistema PSBio nacional." : "⚠️ Sistema PSBio indisponível no momento.") })}\n\n`);
+      const bioLabel = bioMsg.startsWith("[BIO_OK]")
+        ? "✅ Biometria encontrada! Podemos prosseguir."
+        : bioMsg.startsWith("[BIO_FALHOU]")
+          ? "❌ Biometria não encontrada no sistema PSBio nacional."
+          : "⚠️ Sistema PSBio indisponível no momento.";
+      res.write(`data: ${JSON.stringify({ content: "\n\n" + bioLabel })}\n\n`);
+      // Continua automaticamente: AI responde ao resultado da biometria
+      await streamFollowUp([{ role: "user", content: bioMsg }]);
     } catch (bioActionErr) {
       logger.error({ err: bioActionErr }, "Failed to process VERIFICAR_BIO action");
     }
