@@ -824,7 +824,23 @@ router.post("/chat", async (req, res): Promise<void> => {
         if (!cert && typeof orderData.certificateId === "string") {
           const nameLike = (orderData.certificateId as string).toLowerCase().replace(/-/g, " ");
           const allCerts = await db.select().from(certificatesTable).where(eq(certificatesTable.active, true));
-          cert = allCerts.find(c => c.name.toLowerCase().includes(nameLike));
+          const matches = allCerts.filter(c => c.name.toLowerCase().includes(nameLike));
+          // Prefer highest price to avoid picking a R$0 duplicate
+          cert = matches.sort((a, b) => parseFloat(b.price) - parseFloat(a.price))[0];
+        }
+
+        // Safety: if cert found by ID but price is 0, try to find active duplicate with same attributes that has a price
+        if (cert && parseFloat(cert.price) === 0 && cert.active) {
+          const betterCert = (await db.select().from(certificatesTable).where(
+            and(
+              eq(certificatesTable.active, true),
+              eq(certificatesTable.product, cert.product ?? ""),
+              eq(certificatesTable.model, cert.model ?? ""),
+              eq(certificatesTable.validityMonths, cert.validityMonths),
+              eq(certificatesTable.issuanceType, cert.issuanceType ?? "")
+            )
+          )).sort((a, b) => parseFloat(b.price) - parseFloat(a.price))[0];
+          if (betterCert && parseFloat(betterCert.price) > 0) cert = betterCert;
         }
 
         if (!cert) throw new Error("Certificado não encontrado");
