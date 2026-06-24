@@ -7,4 +7,5 @@
 - [Session cookie in production](session-cookie-prod.md) — custom-fetch.ts must use credentials:"include" in fetch(); without it cookies are never sent and every auth check returns 401 even after successful login.
 - [Drizzle migration when schema bootstrapped via push](drizzle-migration-push.md) — schema created by drizzle-kit push has no tracking table; seed drizzle.__drizzle_migrations before calling migrate().
 - [IP Security system](ip-security-system.md) — login protection: 3 fails→block, Brazil 4h auto-unblock, foreign manual, new IP→email code verification, admin dashboard.
+- [Production database access](prod-db.md) — EasyPanel VPS; container `lealcert_cert-db-1`; banco `lealcert`; user `postgres`; padrão: `docker exec lealcert_cert-db-1 psql -U postgres -d lealcert -c "SQL"`.
 - [Global router.use without path is a footgun](global-router-use.md) — router.use(middleware) without a path in a router mounted without prefix intercepts ALL requests app-wide, not just that router's own paths.
