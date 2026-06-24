@@ -153,10 +153,10 @@ function ChatWidget() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { id: number };
       setSessionId(data.id);
-      const greetingText = "Olá! Sou a assistente da LealCert. Como posso te ajudar hoje? Diga o número da opção desejada: um para comprar certificado, dois para suporte, três para tirar dúvidas.";
+      const greetingText = "Olá! Sou a Niky, assistente da LealCert Certificados Digital. Como posso te ajudar hoje? Diga o número da opção desejada: um para comprar certificado, dois para suporte, três para tirar dúvidas.";
       setMessages([{
         role: "assistant",
-        content: "Olá! 👋 Sou a assistente da **LealCert**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:",
+        content: "Olá! 👋 Sou a **Niky**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:",
       }]);
       setShowMenuOptions(true);
       // Auto-activate voice mode: speak greeting then open mic automatically
@@ -445,7 +445,7 @@ function ChatWidget() {
               <Bot className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm">Assistente LealCert</div>
+              <div className="font-semibold text-sm">Niky — LealCert Certificados Digital</div>
               <div className="flex items-center gap-1.5 text-xs text-green-400">
                 <span className={`h-1.5 w-1.5 rounded-full ${isSpeaking ? "bg-yellow-400 animate-pulse" : "bg-green-400"}`} />
                 {isSpeaking ? "Falando…" : isListening ? "Ouvindo…" : voiceMode ? "Modo voz ativo" : "Online agora"}
