@@ -41,11 +41,7 @@ const router = Router();
 // ── Helpers ───────────────────────────────────────────────────────────────────
 /** Extract only the origin (scheme+host+port) from a URL — strips any path the user may have pasted */
 function normalizeSwUrl(raw: string): string {
-  let origin: string;
-  try { origin = new URL(raw).origin; } catch { origin = raw.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); }
-  origin = origin.replace(/^(https?:\/\/)pss\.safewebpss\.com\.br/i, "$1acsafeweb.safewebpss.com.br");
-  origin = origin.replace(/^(https?:\/\/)h-pss\.safewebpss\.com\.br/i, "$1h-acsafeweb.safewebpss.com.br");
-  return origin;
+  try { return new URL(raw).origin; } catch { return raw.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); }
 }
 
 async function getSwSettings(): Promise<SafewebSettings | null> {

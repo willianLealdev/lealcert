@@ -77,14 +77,7 @@ function buildPixPayload(pixKey: string, amount: number, txId: string, merchantN
 
 // ── Safeweb settings (for PSBio check) ───────────────────────────────────────
 function normalizeSwUrl(raw: string): string {
-  let origin: string;
-  try { origin = new URL(raw).origin; } catch { origin = raw.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); }
-  // Se salvaram a URL do PSS/Agenda no campo principal, converter para acsafeweb
-  // pss.safewebpss.com.br → acsafeweb.safewebpss.com.br (produção)
-  // h-pss.safewebpss.com.br → h-acsafeweb.safewebpss.com.br (homologação)
-  origin = origin.replace(/^(https?:\/\/)pss\.safewebpss\.com\.br/i, "$1acsafeweb.safewebpss.com.br");
-  origin = origin.replace(/^(https?:\/\/)h-pss\.safewebpss\.com\.br/i, "$1h-acsafeweb.safewebpss.com.br");
-  return origin;
+  try { return new URL(raw).origin; } catch { return raw.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); }
 }
 async function getSwSettings(): Promise<SafewebSettings | null> {
   const [s] = await db.select().from(settingsTable).limit(1);
