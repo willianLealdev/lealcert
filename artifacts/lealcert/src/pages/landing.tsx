@@ -153,11 +153,20 @@ function ChatWidget() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { id: number };
       setSessionId(data.id);
+      const greetingText = "Olá! Sou a assistente da LealCert. Como posso te ajudar hoje? Diga o número da opção desejada: um para comprar certificado, dois para suporte, três para tirar dúvidas.";
       setMessages([{
         role: "assistant",
         content: "Olá! 👋 Sou a assistente da **LealCert**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:",
       }]);
       setShowMenuOptions(true);
+      // Auto-activate voice mode: speak greeting then open mic automatically
+      if (micSupported) {
+        setVoiceMode(true);
+        voiceModeRef.current = true;
+        setTimeout(() => {
+          speakText(greetingText, () => setTimeout(() => toggleMicRef.current(), 400));
+        }, 300);
+      }
     } catch {
       setSessionError(true);
     } finally {
