@@ -255,13 +255,11 @@ Colete na ordem:
   2. Data de nascimento (DD/MM/AAAA) — geralmente já informada no PASSO 3
   3. E-mail
   4. Telefone WhatsApp (somente dígitos)
-  5. CEP + número + complemento (endereço do titular)
-  6. ⚠️ OBRIGATÓRIO — Nota Fiscal:
-     Pergunte: "A nota fiscal será emitida em **CPF** (seu nome) ou **CNPJ** (empresa)?"
-     • Se CPF: prossiga normalmente (nfCnpj = null)
-     • Se CNPJ: colete obrigatoriamente:
-         - CNPJ da empresa (14 dígitos)
-         - Razão Social da empresa
+  5. CEP + número + complemento (endereço do titular/responsável)
+  6. CEI, PIS ou NIS (opcional):
+     Pergunte: "O titular possui CEI, PIS ou NIS? (opcional — se sim, informe qual e o número)"
+     • Se sim: registre e emita na linha seguinte: ACAO:SOLICITAR_DOCS:{"tipo":"outros"}
+     • Se não: prossiga normalmente.
 
 ═══ e-CNPJ ═══
 (Só após [CNPJ_RESPONSAVEL_OK])
@@ -271,23 +269,33 @@ Informe: "Empresa: **[razaoSocial]** — Representante: **[repName]**. Confirma?
 Colete na ordem:
   1. E-mail da empresa
   2. Telefone WhatsApp da empresa (somente dígitos)
-  3. CEP + número + complemento (endereço da empresa)
-  4. Dados do documento do representante legal:
+  3. Dados do documento do representante legal:
      • Tipo: RG (1), RNE (2), Passaporte (3) ou CNH (4)
      • Número do documento
      • Órgão emissor (ex: SSP-SP)
-  5. Endereço do representante — pergunte: "O endereço do representante é o mesmo da empresa?"
-     • Se sim: use o mesmo endereço da empresa para os campos representanteAddress*
-     • Se não: CEP + número + complemento do representante
+  4. Endereço do representante (CEP + número + complemento)
+  5. CEI, PIS ou NIS do representante (opcional):
+     Pergunte: "O representante possui CEI, PIS ou NIS? (opcional)"
+     • Se sim: registre e emita: ACAO:SOLICITAR_DOCS:{"tipo":"outros"}
+     • Se não: prossiga normalmente.
 
 Se o cliente tem [USUARIO_VERIFICADO], confirme os dados cadastrados em vez de pedir novamente do zero.
 
-Após coletar os dados principais, pergunte:
-"O titular ou responsável possui CEI, PIS ou NIS? (opcional — se sim, informe qual e o número)"
-• Se sim: registre o tipo (CEI ou PIS/NIS) e o número informado. Informe que precisará enviar também o documento comprobatório e emita na linha seguinte:
-  ACAO:SOLICITAR_DOCS:{"tipo":"outros"}
-  Aguarde [DOCUMENTOS_ENVIADOS] antes de continuar.
-• Se não: prossiga normalmente.
+▶ PASSO 6.5 — NOTA FISCAL
+Colete os dados para emissão da nota fiscal do certificado. Pergunte:
+"A nota fiscal será emitida em **CPF** (seu nome) ou **CNPJ** (empresa)?"
+
+═══ Se CPF: ═══
+  - Use os dados do próprio titular (nfCnpj = null, nfNome = nome do titular)
+  - Pergunte: "O endereço de cobrança é o mesmo que o endereço informado?"
+    • Se sim: use o mesmo endereço (nfZipcode, nfStreet etc. = endereço do titular)
+    • Se não: colete CEP + rua + número + complemento + bairro + cidade + UF para a NF
+
+═══ Se CNPJ: ═══
+  Colete obrigatoriamente:
+  1. CNPJ para a nota fiscal (14 dígitos)
+  2. Razão Social da empresa
+  3. Endereço de cobrança (CEP + rua + número + complemento + bairro + cidade + UF)
 
 ▶ PASSO 7 — GARANTIA ESTENDIDA
 Pergunte: "Deseja Garantia Estendida? +R$15,00 — garante suporte completo por 12 meses em caso de qualquer problema com o certificado."
@@ -297,7 +305,7 @@ Solicite os documentos. Na linha seguinte ao texto (sem nada depois):
 • e-CPF: ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
   Documentos obrigatórios: RG ou CNH do titular (frente e verso) + Comprovante de residência
 • e-CNPJ: ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
-  Documentos obrigatórios: RG ou CNH do responsável + Cartão CNPJ + Ficha Cadastral (Contrato Social / Requerimento de Empresário) + Comprovante de endereço da empresa
+  Documentos obrigatórios: RG ou CNH do responsável + Cartão CNPJ + Ficha Cadastral (Contrato Social / Requerimento de Empresário) + Comprovante de endereço do representante
 Aguarde [DOCUMENTOS_ENVIADOS] antes de continuar.
 Obs: se o cliente já enviou documento de CEI/PIS/NIS no PASSO 6, NÃO solicite novamente — os arquivos já foram registrados.
 
@@ -311,6 +319,7 @@ Exiba TODOS os dados em formato de resumo claro:
 • E-mail: ...
 • Telefone: ...
 • Endereço: ...
+• Nota Fiscal: [CPF/CNPJ da NF] — [Nome/Razão Social] — [Endereço de cobrança]
 • Garantia estendida: Sim (+R$15,00) / Não
 • **Total: R$ X,XX**
 
@@ -322,7 +331,7 @@ Execute SOMENTE após:
 ✅ [DOCUMENTOS_ENVIADOS] no histórico
 
 Emita EXATAMENTE neste formato na linha seguinte (sem nada depois):
-ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome completo>","customerCpfCnpj":"<somente_digitos>","customerBirthDate":"<DD/MM/AAAA ou null>","customerEmail":"<email>","customerPhone":"<somente_digitos>","companyName":"<razao_social_ou_null>","nfCnpj":"<cnpj_nota_fiscal_14digitos_ou_null — preencher somente para e-CPF quando NF for emitida em CNPJ>","addressZipcode":"<8digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressComplement":"<complemento_ou_null>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<UF>","extendedWarranty":<true|false>,"customerCei":"<numero_cei_ou_null>","customerNis":"<numero_pis_nis_ou_null>","representanteCpf":"<cpf_do_representante_somente_digitos_ou_null>","representanteNascimento":"<DD/MM/AAAA_ou_null>","representanteDocTipo":"<1=RG|2=RNE|3=Passaporte|4=CNH|0=NaoInformado>","representanteDocNumero":"<numero_doc_ou_null>","representanteDocEmissor":"<orgao_emissor_ou_null>","representanteAddressZipcode":"<8digitos_ou_null>","representanteAddressStreet":"<rua_ou_null>","representanteAddressNumber":"<numero_ou_null>","representanteAddressComplement":"<complemento_ou_null>","representanteAddressNeighborhood":"<bairro_ou_null>","representanteAddressCity":"<cidade_ou_null>","representanteAddressState":"<UF_ou_null>"}
+ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome completo>","customerCpfCnpj":"<somente_digitos>","customerBirthDate":"<DD/MM/AAAA ou null>","customerEmail":"<email>","customerPhone":"<somente_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<8digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressComplement":"<complemento_ou_null>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<UF>","extendedWarranty":<true|false>,"customerCei":"<numero_cei_ou_null>","customerNis":"<numero_pis_nis_ou_null>","representanteCpf":"<cpf_do_representante_somente_digitos_ou_null>","representanteNascimento":"<DD/MM/AAAA_ou_null>","representanteDocTipo":"<1=RG|2=RNE|3=Passaporte|4=CNH|0=NaoInformado>","representanteDocNumero":"<numero_doc_ou_null>","representanteDocEmissor":"<orgao_emissor_ou_null>","representanteAddressZipcode":"<8digitos_ou_null>","representanteAddressStreet":"<rua_ou_null>","representanteAddressNumber":"<numero_ou_null>","representanteAddressComplement":"<complemento_ou_null>","representanteAddressNeighborhood":"<bairro_ou_null>","representanteAddressCity":"<cidade_ou_null>","representanteAddressState":"<UF_ou_null>","nfCnpj":"<cnpj_nota_fiscal_14digitos_ou_null>","nfNome":"<nome_ou_razao_social_para_nf>","nfZipcode":"<8digitos_cep_cobranca>","nfStreet":"<rua_cobranca>","nfNumber":"<numero_cobranca>","nfComplement":"<complemento_cobranca_ou_null>","nfNeighborhood":"<bairro_cobranca>","nfCity":"<cidade_cobranca>","nfState":"<UF_cobranca>"}
 
 O sistema gerará o QR Code PIX automaticamente e exibirá na tela.
 
@@ -763,6 +772,14 @@ router.post("/chat", async (req, res): Promise<void> => {
           representanteAddressCity?: string | null;
           representanteAddressState?: string | null;
           nfCnpj?: string | null;
+          nfNome?: string | null;
+          nfZipcode?: string | null;
+          nfStreet?: string | null;
+          nfNumber?: string | null;
+          nfComplement?: string | null;
+          nfNeighborhood?: string | null;
+          nfCity?: string | null;
+          nfState?: string | null;
         };
 
         const certIdNum = typeof orderData.certificateId === "string"
@@ -826,6 +843,14 @@ router.post("/chat", async (req, res): Promise<void> => {
           customerPhone: orderData.customerPhone || null,
           companyName: orderData.companyName || null,
           nfCnpj: orderData.nfCnpj ? orderData.nfCnpj.replace(/\D/g, "") || null : null,
+          nfNome: orderData.nfNome || null,
+          nfZipcode: orderData.nfZipcode ? orderData.nfZipcode.replace(/\D/g, "") || null : null,
+          nfStreet: orderData.nfStreet || null,
+          nfNumber: orderData.nfNumber || null,
+          nfComplement: orderData.nfComplement || null,
+          nfNeighborhood: orderData.nfNeighborhood || null,
+          nfCity: orderData.nfCity || null,
+          nfState: orderData.nfState || null,
           addressZipcode: orderData.addressZipcode || null,
           addressStreet: orderData.addressStreet || null,
           addressNumber: orderData.addressNumber || null,

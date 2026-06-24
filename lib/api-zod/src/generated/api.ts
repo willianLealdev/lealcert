@@ -689,7 +689,16 @@ export const CreateOrderBody = zod.object({
   "cnhPath": zod.string().optional(),
   "cartaoCnpjPath": zod.string().optional(),
   "fichaCadastralPath": zod.string().optional(),
-  "outrosPath": zod.string().optional()
+  "outrosPath": zod.string().optional(),
+  "nfCnpj": zod.string().optional(),
+  "nfNome": zod.string().optional(),
+  "nfZipcode": zod.string().optional(),
+  "nfStreet": zod.string().optional(),
+  "nfNumber": zod.string().optional(),
+  "nfComplement": zod.string().optional(),
+  "nfNeighborhood": zod.string().optional(),
+  "nfCity": zod.string().optional(),
+  "nfState": zod.string().optional()
 })
 
 

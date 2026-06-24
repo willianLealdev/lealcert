@@ -302,6 +302,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     addressComplement,
     representanteAddressZipcode, representanteAddressStreet, representanteAddressNumber,
     representanteAddressComplement, representanteAddressNeighborhood, representanteAddressCity, representanteAddressState,
+    nfCnpj, nfNome, nfZipcode, nfStreet, nfNumber, nfComplement, nfNeighborhood, nfCity, nfState,
   } = req.body ?? {};
 
   if (!certificateId || !customerName || !customerCpfCnpj || !clientType) {
@@ -367,6 +368,15 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     cartaoCnpjPath: cartaoCnpjPath || null,
     fichaCadastralPath: fichaCadastralPath || null,
     outrosPath: outrosPath || null,
+    nfCnpj: nfCnpj ? String(nfCnpj).replace(/\D/g, "") || null : null,
+    nfNome: nfNome || null,
+    nfZipcode: nfZipcode ? String(nfZipcode).replace(/\D/g, "") || null : null,
+    nfStreet: nfStreet || null,
+    nfNumber: nfNumber || null,
+    nfComplement: nfComplement || null,
+    nfNeighborhood: nfNeighborhood || null,
+    nfCity: nfCity || null,
+    nfState: nfState || null,
   }).returning();
 
   // Log order creation

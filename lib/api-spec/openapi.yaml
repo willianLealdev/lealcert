@@ -3195,6 +3195,24 @@ components:
           type: string
         outrosPath:
           type: string
+        nfCnpj:
+          type: string
+        nfNome:
+          type: string
+        nfZipcode:
+          type: string
+        nfStreet:
+          type: string
+        nfNumber:
+          type: string
+        nfComplement:
+          type: string
+        nfNeighborhood:
+          type: string
+        nfCity:
+          type: string
+        nfState:
+          type: string
 
     OrderUpdate:
       type: object

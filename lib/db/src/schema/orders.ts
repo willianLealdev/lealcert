@@ -81,8 +81,16 @@ export const ordersTable = pgTable("orders", {
   representanteDocTipo: text("representante_doc_tipo"),
   representanteDocNumero: text("representante_doc_numero"),
   representanteDocEmissor: text("representante_doc_emissor"),
-  // Nota Fiscal (e-CPF onde NF é emitida para CNPJ)
+  // Nota Fiscal
   nfCnpj: text("nf_cnpj"),
+  nfNome: text("nf_nome"),
+  nfZipcode: text("nf_zipcode"),
+  nfStreet: text("nf_street"),
+  nfNumber: text("nf_number"),
+  nfComplement: text("nf_complement"),
+  nfNeighborhood: text("nf_neighborhood"),
+  nfCity: text("nf_city"),
+  nfState: text("nf_state"),
   // Safeweb integration fields
   safewebSolicitacaoId: text("safeweb_solicitacao_id"),
   safewebStatus: text("safeweb_status"),

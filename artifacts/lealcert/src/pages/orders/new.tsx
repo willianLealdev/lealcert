@@ -7,11 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, Building2, User, Tag, CheckCircle, XCircle, CreditCard, BadgeCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Link } from "wouter";
 
@@ -96,7 +94,8 @@ function PPSub({ title, children }: { title: string; children: React.ReactNode }
 const STEPS = [
   { n: 1, label: "Certificado" },
   { n: 2, label: "Dados" },
-  { n: 3, label: "Pagamento" },
+  { n: 3, label: "Nota Fiscal" },
+  { n: 4, label: "Pagamento" },
 ];
 
 function StepBar({ current }: { current: number }) {
@@ -120,7 +119,7 @@ function StepBar({ current }: { current: number }) {
             </span>
           </div>
           {idx < STEPS.length - 1 && (
-            <div className={["h-0.5 w-16 sm:w-24 mx-2 mb-5 rounded transition-colors", current > s.n ? "bg-primary" : "bg-muted"].join(" ")} />
+            <div className={["h-0.5 w-12 sm:w-20 mx-2 mb-5 rounded transition-colors", current > s.n ? "bg-primary" : "bg-muted"].join(" ")} />
           )}
         </div>
       ))}
@@ -188,8 +187,8 @@ export default function NewOrder() {
 
   const { data: certificates } = useListCertificates({ activeOnly: true });
 
-  // ── Step ──
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // ── Step (1-4) ──
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [sessionLoaded, setSessionLoaded] = useState(false);
 
   // ── PSBio Gate ──
@@ -220,7 +219,7 @@ export default function NewOrder() {
   const [warrantyInfoOpen, setWarrantyInfoOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
 
-  // ── Form ──
+  // ── Form — dados do titular / empresa ──
   const [form, setForm] = useState({
     certificateId: "",
     clientType: "cpf",
@@ -232,6 +231,7 @@ export default function NewOrder() {
     companyName: "",
     inssNumber: "",
     extendedWarranty: false,
+    // endereço do titular (e-CPF) ou da empresa (e-CNPJ — não coletamos mais, mas mantemos para compatibilidade)
     addressZipcode: "",
     addressStreet: "",
     addressNumber: "",
@@ -258,6 +258,49 @@ export default function NewOrder() {
     representanteAddressState: "",
   });
 
+  // ── Nota Fiscal (etapa 3) ──
+  const [nfForm, setNfForm] = useState({
+    nfCpfCnpj: "",
+    nfNome: "",
+    nfZipcode: "",
+    nfStreet: "",
+    nfNumber: "",
+    nfComplement: "",
+    nfNeighborhood: "",
+    nfCity: "",
+    nfState: "",
+  });
+  const [nfCepLoading, setNfCepLoading] = useState(false);
+  const [nfCepFilled, setNfCepFilled] = useState(false);
+  const [nfCnpjLookup, setNfCnpjLookup] = useState("");
+
+  const { data: nfCnpjData, isFetching: nfCnpjFetching } = useQuery({
+    ...getCnpjLookupQueryOptions({ cnpj: nfCnpjLookup }),
+    enabled: nfCnpjLookup.length === 14,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!nfCnpjData) return;
+    const cepMasked = nfCnpjData.cep ? maskCepFn(nfCnpjData.cep.replace(/\D/g, "")) : "";
+    setNfForm(prev => ({
+      ...prev,
+      ...(nfCnpjData.razaoSocial ? { nfNome: prev.nfNome || nfCnpjData.razaoSocial! } : {}),
+      ...(cepMasked ? { nfZipcode: cepMasked } : {}),
+      ...(nfCnpjData.logradouro ? { nfStreet: nfCnpjData.logradouro } : {}),
+      ...(nfCnpjData.numero ? { nfNumber: nfCnpjData.numero } : {}),
+      ...(nfCnpjData.bairro ? { nfNeighborhood: nfCnpjData.bairro } : {}),
+      ...(nfCnpjData.municipio ? { nfCity: nfCnpjData.municipio } : {}),
+      ...(nfCnpjData.uf ? { nfState: nfCnpjData.uf } : {}),
+    }));
+    if (nfCnpjData.logradouro || nfCnpjData.cep) setNfCepFilled(true);
+  }, [nfCnpjData]);
+
+  function setNf(field: string, value: string) {
+    setNfForm(prev => ({ ...prev, [field]: value }));
+  }
+
   function set(field: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }));
   }
@@ -266,18 +309,12 @@ export default function NewOrder() {
   const [autoFilledCustomerName, setAutoFilledCustomerName] = useState(false);
   const [autoFilledRepName, setAutoFilledRepName] = useState(false);
 
-  // ── NF type ──
-  const [nfType, setNfType] = useState<"fisica" | "juridica">("fisica");
-
-
   // ── Coupon ──
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; type: string; value: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
 
   // ── CEP ──
-  const [cepLoading, setCepLoading] = useState(false);
-  const [cepFilled, setCepFilled] = useState(false);
   const [repCepLoading, setRepCepLoading] = useState(false);
   const [repCepFilled, setRepCepFilled] = useState(false);
 
@@ -302,7 +339,7 @@ export default function NewOrder() {
   const [outrosKey, setOutrosKey] = useState<string | null>(null);
   const outrosInputRef = useRef<HTMLInputElement>(null);
 
-  // ── CNPJ lookup ──
+  // ── CNPJ lookup (e-CNPJ RFB) ──
   const [cnpjToQuery, setCnpjToQuery] = useState("");
   const { data: cnpjData, isFetching: cnpjFetching, isError: cnpjError } = useQuery({
     ...getCnpjLookupQueryOptions({ cnpj: cnpjToQuery }),
@@ -313,22 +350,14 @@ export default function NewOrder() {
 
   useEffect(() => {
     if (!cnpjData) return;
-    const cepMasked = cnpjData.cep ? maskCepFn(cnpjData.cep.replace(/\D/g, "")) : "";
     setForm(prev => ({
       ...prev,
-      ...(cnpjData.razaoSocial ? { companyName: prev.companyName || cnpjData.razaoSocial!, customerName: prev.customerName || cnpjData.razaoSocial! } : {}),
-      ...(cepMasked ? { addressZipcode: cepMasked } : {}),
-      ...(cnpjData.logradouro ? { addressStreet: cnpjData.logradouro } : {}),
-      ...(cnpjData.numero ? { addressNumber: cnpjData.numero } : {}),
-      ...(cnpjData.bairro ? { addressNeighborhood: cnpjData.bairro } : {}),
-      ...(cnpjData.municipio ? { addressCity: cnpjData.municipio } : {}),
-      ...(cnpjData.uf ? { addressState: cnpjData.uf } : {}),
+      ...(cnpjData.razaoSocial ? { companyName: prev.companyName || cnpjData.razaoSocial! } : {}),
     }));
-    if (cnpjData.logradouro || cnpjData.cep) setCepFilled(true);
     if (cnpjData.razaoSocial) setAutoFilledCustomerName(true);
   }, [cnpjData]);
 
-  // ── Consulta RFB CNPJ (Safeweb — separado do PSBio) ──
+  // ── Consulta RFB CNPJ ──
   type CnpjRfbState = null | "loading" | { ok: true; razaoSocial: string } | { ok: false; mensagem: string };
   const [cnpjRfbState, setCnpjRfbState] = useState<CnpjRfbState>(null);
   const cnpjRfbAbortRef = useRef<AbortController | null>(null);
@@ -359,7 +388,6 @@ export default function NewOrder() {
           setForm(prev => ({
             ...prev,
             companyName: prev.companyName || data.razaoSocial!,
-            customerName: prev.customerName || data.razaoSocial!,
             ...(data.repName ? { repName: prev.repName || data.repName! } : {}),
           }));
           setAutoFilledCustomerName(true);
@@ -435,7 +463,6 @@ export default function NewOrder() {
   const isCnpjCert = selectedCert
     ? (selectedCert.product === "e-CNPJ" || selectedCert.product === "e-PJ" || /cnpj/i.test(selectedCert.name))
     : false;
-  const showCnpjFields = isCnpjCert || (!isCnpjCert && nfType === "juridica");
 
   const subtotal = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? 15 : 0);
   const discount = appliedCoupon
@@ -473,7 +500,7 @@ export default function NewOrder() {
     }));
     const isFirstFire = certIdFirstFireRef.current;
     certIdFirstFireRef.current = false;
-    if (!certIsCnpj && !isFirstFire) setNfType("fisica");
+    if (!isFirstFire) { /* no-op, just prevent unused */ }
     setCnpjToQuery("");
     setAutoFilledCustomerName(!!gName);
     setAutoFilledRepName(!!gName);
@@ -541,25 +568,6 @@ export default function NewOrder() {
   });
 
   // ── CEP helpers ──
-  async function fetchCep(raw: string) {
-    const digits = raw.replace(/\D/g, "");
-    if (digits.length !== 8) { if (cepFilled) setCepFilled(false); return; }
-    setCepLoading(true);
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-      const data = await res.json();
-      if (!data.erro) {
-        setForm(prev => ({ ...prev, addressStreet: data.logradouro || prev.addressStreet, addressNeighborhood: data.bairro || prev.addressNeighborhood, addressCity: data.localidade || prev.addressCity, addressState: data.uf || prev.addressState }));
-        setCepFilled(true);
-        toast({ title: "CEP encontrado!", description: `${data.localidade} — ${data.uf}` });
-      } else {
-        setCepFilled(false);
-        toast({ title: "CEP não encontrado", description: "Preencha o endereço manualmente.", variant: "destructive" });
-      }
-    } catch { setCepFilled(false); }
-    setCepLoading(false);
-  }
-
   async function fetchRepCep(raw: string) {
     const digits = raw.replace(/\D/g, "");
     if (digits.length !== 8) { if (repCepFilled) setRepCepFilled(false); return; }
@@ -574,6 +582,25 @@ export default function NewOrder() {
       } else { setRepCepFilled(false); }
     } catch { setRepCepFilled(false); }
     setRepCepLoading(false);
+  }
+
+  async function fetchNfCep(raw: string) {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length !== 8) { if (nfCepFilled) setNfCepFilled(false); return; }
+    setNfCepLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setNfForm(prev => ({ ...prev, nfStreet: data.logradouro || prev.nfStreet, nfNeighborhood: data.bairro || prev.nfNeighborhood, nfCity: data.localidade || prev.nfCity, nfState: data.uf || prev.nfState }));
+        setNfCepFilled(true);
+        toast({ title: "CEP encontrado!", description: `${data.localidade} — ${data.uf}` });
+      } else {
+        setNfCepFilled(false);
+        toast({ title: "CEP não encontrado", description: "Preencha o endereço manualmente.", variant: "destructive" });
+      }
+    } catch { setNfCepFilled(false); }
+    setNfCepLoading(false);
   }
 
   // ── Upload helper ──
@@ -620,6 +647,14 @@ export default function NewOrder() {
     window.scrollTo(0, 0);
   }
 
+  function goToStep4() {
+    if (!nfForm.nfCpfCnpj) { toast({ title: "Atenção", description: "Informe o CPF ou CNPJ para a nota fiscal.", variant: "destructive" }); return; }
+    if (!nfForm.nfNome) { toast({ title: "Atenção", description: "Informe o nome / razão social para a nota fiscal.", variant: "destructive" }); return; }
+    if (!nfForm.nfZipcode) { toast({ title: "Atenção", description: "Informe o CEP de cobrança para a nota fiscal.", variant: "destructive" }); return; }
+    setStep(4);
+    window.scrollTo(0, 0);
+  }
+
   // ── Submit ──
   async function handleSubmit() {
     let uploadedKey = cnhKey;
@@ -639,13 +674,14 @@ export default function NewOrder() {
     }
 
     const hasPsbioValue = gateHasPsbioRef.current;
+    const nfDigits = nfForm.nfCpfCnpj.replace(/\D/g, "");
 
     createOrder.mutate({
       data: {
         certificateId: Number(form.certificateId),
         clientType: isCnpjCert ? "cnpj" : "cpf",
         customerName: isCnpjCert ? (form.repName || form.customerName) : form.customerName,
-        customerCpfCnpj: form.customerCpfCnpj,
+        customerCpfCnpj: isCnpjCert ? form.customerCpfCnpj : form.customerCpfCnpj,
         customerEmail: form.customerEmail,
         customerPhone: form.customerPhone,
         customerBirthDate: form.customerBirthDate ? parseBrDate(form.customerBirthDate) : undefined,
@@ -653,13 +689,14 @@ export default function NewOrder() {
         companyName: form.companyName || undefined,
         inssNumber: form.inssNumber || undefined,
         extendedWarranty: form.extendedWarranty,
-        addressZipcode: form.addressZipcode || undefined,
-        addressStreet: form.addressStreet || undefined,
-        addressNumber: form.addressNumber || undefined,
-        addressComplement: form.addressComplement || undefined,
-        addressNeighborhood: form.addressNeighborhood || undefined,
-        addressCity: form.addressCity || undefined,
-        addressState: form.addressState || undefined,
+        // Para e-CPF: endereço do representante (igual ao titular); para e-CNPJ: não coletamos endereço da empresa
+        addressZipcode: form.representanteAddressZipcode || form.addressZipcode || undefined,
+        addressStreet: form.representanteAddressStreet || form.addressStreet || undefined,
+        addressNumber: form.representanteAddressNumber || form.addressNumber || undefined,
+        addressComplement: form.representanteAddressComplement || form.addressComplement || undefined,
+        addressNeighborhood: form.representanteAddressNeighborhood || form.addressNeighborhood || undefined,
+        addressCity: form.representanteAddressCity || form.addressCity || undefined,
+        addressState: form.representanteAddressState || form.addressState || undefined,
         representanteCpf: form.repCpf || undefined,
         representanteAddressZipcode: form.representanteAddressZipcode || undefined,
         representanteAddressStreet: form.representanteAddressStreet || undefined,
@@ -680,6 +717,16 @@ export default function NewOrder() {
         representanteDocEmissor: form.repDocTipo !== "0" && form.repDocOrgan && form.repDocUf
           ? (form.repDocOrgan + form.repDocUf).toUpperCase()
           : undefined,
+        // NF fields from step 3
+        nfCnpj: nfDigits.length === 14 ? nfDigits : undefined,
+        nfNome: nfForm.nfNome || undefined,
+        nfZipcode: nfForm.nfZipcode.replace(/\D/g, "") || undefined,
+        nfStreet: nfForm.nfStreet || undefined,
+        nfNumber: nfForm.nfNumber || undefined,
+        nfComplement: nfForm.nfComplement || undefined,
+        nfNeighborhood: nfForm.nfNeighborhood || undefined,
+        nfCity: nfForm.nfCity || undefined,
+        nfState: nfForm.nfState || undefined,
       },
     });
   }
@@ -688,11 +735,11 @@ export default function NewOrder() {
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
 
-  // ── Gate (PSBio) — tela antes da escolha do certificado ──────────────────
   if (!sessionLoaded) {
     return <div className="flex items-center justify-center min-h-[40vh]"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
+  // ── Gate (PSBio) ──────────────────────────────────────────────────────────
   if (!psbioGatePassed) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
@@ -791,13 +838,13 @@ export default function NewOrder() {
             <Button variant="outline" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />Voltar</Button>
           </Link>
         ) : (
-          <Button variant="outline" size="sm" onClick={() => { setStep((step - 1) as 1 | 2 | 3); window.scrollTo(0, 0); }}>
+          <Button variant="outline" size="sm" onClick={() => { setStep((step - 1) as 1 | 2 | 3 | 4); window.scrollTo(0, 0); }}>
             <ArrowLeft className="h-4 w-4 mr-2" />Voltar
           </Button>
         )}
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Novo Pedido</h1>
-          <p className="text-sm text-muted-foreground">Certificado Digital — Etapa {step} de 3</p>
+          <p className="text-sm text-muted-foreground">Certificado Digital — Etapa {step} de 4</p>
         </div>
       </div>
 
@@ -864,11 +911,15 @@ export default function NewOrder() {
                       return (
                         <button key={c.id} type="button" onClick={() => set("certificateId", String(c.id))}
                           className={["w-full grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3.5 text-left transition-colors", selected ? "bg-primary/5" : "hover:bg-muted/40"].join(" ")}>
-                          <span className={["text-sm font-medium", selected ? "text-primary" : ""].join(" ")}>{c.name}</span>
-                          <span className={["text-sm font-bold tabular-nums", selected ? "text-primary" : ""].join(" ")}>{formatBRL(certPrice(c))}</span>
-                          <span className={["h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0", selected ? "border-primary bg-primary" : "border-muted-foreground/40"].join(" ")}>
-                            {selected && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                          </span>
+                          <div>
+                            <p className="font-semibold text-sm">{c.name}</p>
+                            {c.description && <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>}
+                          </div>
+                          <p className="font-bold text-primary text-sm">{formatBRL(certPrice(c))}</p>
+                          <div className={["h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                            selected ? "border-primary bg-primary" : "border-muted-foreground/30"].join(" ")}>
+                            {selected && <div className="h-2 w-2 rounded-full bg-white" />}
+                          </div>
                         </button>
                       );
                     })}
@@ -876,27 +927,32 @@ export default function NewOrder() {
                 )
               )}
 
-              {!pickedProduct && certsWithMeta.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum modelo disponível. Configure os certificados no painel admin.</p>
-              )}
-
               {/* Extended warranty */}
-              <div className="flex items-center gap-3 p-3.5 border rounded-xl bg-muted/20">
-                <Checkbox id="warranty" checked={form.extendedWarranty} onCheckedChange={(v) => set("extendedWarranty", !!v)} />
-                <div className="flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="warranty" className="cursor-pointer font-medium">Garantia Estendida (+R$ 15,00)</Label>
-                    <button type="button" onClick={() => setWarrantyInfoOpen(true)} className="text-muted-foreground hover:text-primary transition-colors">
-                      <Info className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Protege contra imprevistos durante a emissão.</p>
+              {form.certificateId && (
+                <div className={["border rounded-xl overflow-hidden divide-y transition-colors cursor-pointer", form.extendedWarranty ? "border-amber-300 bg-amber-50/50" : ""].join(" ")}>
+                  <button type="button" onClick={() => set("extendedWarranty", !form.extendedWarranty)}
+                    className="w-full grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3.5 text-left">
+                    <div>
+                      <p className="font-semibold text-sm flex items-center gap-2">
+                        Garantia Estendida
+                        <button type="button" onClick={e => { e.stopPropagation(); setWarrantyInfoOpen(true); }}
+                          className="text-muted-foreground hover:text-primary transition-colors">
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Suporte completo por 12 meses em caso de problemas</p>
+                    </div>
+                    <p className="font-bold text-amber-600 text-sm">+ {formatBRL(15)}</p>
+                    <div className={["h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                      form.extendedWarranty ? "border-amber-500 bg-amber-500" : "border-muted-foreground/30"].join(" ")}>
+                      {form.extendedWarranty && <div className="h-2 w-2 rounded-full bg-white" />}
+                    </div>
+                  </button>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Accordion — tipos de emissão */}
           <Card>
             <CardContent className="pt-5 pb-4">
               <p className="text-center text-sm font-semibold mb-3">Entenda a diferença entre os tipos de emissão</p>
@@ -906,25 +962,21 @@ export default function NewOrder() {
                     value: "videoconferencia", label: "Videoconferência",
                     desc: "Validação de qualquer lugar via videoconferência com o Titular/Responsável.",
                     steps: ["Compra do Certificado", "Validação dos documentos (caso necessário)", "Agendamento da videoconferência", "Videoconferência", "Emissão"],
-                    color: "blue",
                   },
                   {
                     value: "presencial", label: "Presencial",
                     desc: "O Titular/Responsável escolhe um local de atendimento para emissão presencial.",
                     steps: ["Compra do Certificado", "Agendamento do atendimento", "Atendimento presencial para emissão", "Validação dos documentos (caso necessário)"],
-                    color: "emerald",
                   },
                   {
                     value: "fast", label: "Fast",
                     desc: "Emissão imediata e autônoma usando um e-CPF A3 existente para se identificar. Disponível 24h.",
                     steps: ["Compra do certificado", "Validação do pagamento", "Emissão"],
-                    color: "amber",
                   },
                   {
                     value: "renovacao", label: "Renovação",
                     desc: "Renovação on-line e autônoma usando um Certificado A3 existente e válido.",
                     steps: ["Escolha do certificado", "Validação do certificado válido existente", "Compra", "Emissão"],
-                    color: "violet",
                   },
                 ].map(({ value, label, desc, steps }) => (
                   <AccordionItem key={value} value={value} className="border-0">
@@ -955,11 +1007,11 @@ export default function NewOrder() {
       )}
 
       {/* ════════════════════════════════════════
-          ETAPA 2 — Dados do cliente
+          ETAPA 2 — Dados do titular / empresa
           ════════════════════════════════════════ */}
       {step === 2 && (
         <div className="space-y-6">
-          {/* Selected cert summary */}
+          {/* Cert summary */}
           {selectedCert && (
             <div className="flex items-center justify-between px-4 py-3 rounded-xl border bg-primary/5">
               <div className="flex items-center gap-2.5">
@@ -973,74 +1025,32 @@ export default function NewOrder() {
             </div>
           )}
 
-          {/* ── Dados do Cliente ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Dados do Cliente</CardTitle>
-              {selectedCert && (
-                <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full w-fit mt-1 ${isCnpjCert ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-700"}`}>
-                  {isCnpjCert ? <Building2 className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                  {isCnpjCert ? "e-CNPJ — Pessoa Jurídica" : "e-CPF — Pessoa Física"}
-                </div>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* NF type — only for e-CPF */}
-              {!isCnpjCert && (
-                <div className="space-y-2 pb-2 border-b">
-                  <Label className="text-sm font-medium">Nota fiscal do certificado em nome de:</Label>
-                  <RadioGroup value={nfType} onValueChange={v => { setNfType(v as "fisica" | "juridica"); setForm(prev => ({ ...prev, companyName: "", customerName: "", customerCpfCnpj: "" })); setCnpjToQuery(""); setAutoFilledCustomerName(false); }} className="flex gap-4 mt-1">
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="fisica" id="nf-fisica" />
-                      <Label htmlFor="nf-fisica" className="cursor-pointer font-normal flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Pessoa Física</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="juridica" id="nf-juridica" />
-                      <Label htmlFor="nf-juridica" className="cursor-pointer font-normal flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Pessoa Jurídica</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              )}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* CPF / CNPJ */}
-                <div className="space-y-2">
-                  <Label>{showCnpjFields ? "CNPJ *" : "CPF *"}</Label>
-                  <div className="relative">
-                    <Input value={form.customerCpfCnpj} onChange={e => {
-                      const v = showCnpjFields ? maskCnpj(e.target.value) : maskCpfCnpj(e.target.value);
-                      set("customerCpfCnpj", v);
-                      const digits = v.replace(/\D/g, "");
-                      if (showCnpjFields) {
-                        if (digits.length === 14) {
-                          setCnpjToQuery(digits);
-                          setCnpjRfbState(null);
-                          if (isCnpjCert && form.repCpf.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
-                            void triggerCnpjRfb(v, form.repCpf, form.repBirthDate);
-                          } else if (!isCnpjCert) {
-                            // e-CPF NF Jurídica: usa CPF+data do gate para consulta RFB Safeweb
-                            const gCpf = gateCpfRef.current;
-                            const gDate = gateBirthDateRef.current;
-                            if (gCpf && gDate) {
-                              const brDate = gDate.includes("-") ? gDate.split("-").reverse().join("/") : gDate;
-                              void triggerCnpjRfb(digits, gCpf, brDate);
-                            }
-                          }
-                        } else { setCnpjToQuery(""); setAutoFilledCustomerName(false); setCnpjRfbState(null); }
-                      } else {
+          {/* ── e-CPF: dados do responsável ── */}
+          {!isCnpjCert && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" />Dados do Responsável
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Dados do titular do certificado e-CPF.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>CPF *</Label>
+                    <div className="relative">
+                      <Input value={form.customerCpfCnpj} onChange={e => {
+                        const v = maskCpfCnpj(e.target.value);
+                        set("customerCpfCnpj", v);
+                        const digits = v.replace(/\D/g, "");
                         if (digits.length === 11 && form.customerBirthDate.length === 10) {
                           void triggerConsultaCpf(digits, form.customerBirthDate, "customer");
                         }
-                      }
-                    }} required placeholder={showCnpjFields ? "00.000.000/0001-00" : "000.000.000-00"} className="pr-8" />
-                    {cnpjFetching && showCnpjFields && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
+                      }} required placeholder="000.000.000-00" />
+                    </div>
                   </div>
-                </div>
-
-                {/* Data de Nascimento — PF */}
-                {!showCnpjFields && (
                   <div className="space-y-2">
-                    <Label>Data de Nascimento</Label>
+                    <Label>Data de Nascimento *</Label>
                     <div className="relative">
                       <Input value={form.customerBirthDate} onChange={e => {
                         const v = maskDate(e.target.value);
@@ -1052,33 +1062,109 @@ export default function NewOrder() {
                       {autoFilledCustomerName && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />}
                     </div>
                   </div>
-                )}
-
-                {/* Razão Social — PJ */}
-                {showCnpjFields && (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label className="flex items-center gap-1">Nome Completo *{autoFilledCustomerName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                    <Input value={form.customerName} onChange={e => { set("customerName", e.target.value); setAutoFilledCustomerName(false); }} required
+                      className={autoFilledCustomerName ? "bg-emerald-50 border-emerald-200" : ""} />
+                  </div>
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-1">
-                      Razão Social *
-                      {(cnpjFetching || cnpjRfbState === "loading") && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                      {!cnpjFetching && (cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok || (!isCnpjCert && cnpjData?.razaoSocial && form.companyName)) && <CheckCircle className="h-3 w-3 text-emerald-500" />}
-                    </Label>
-                    <Input value={form.companyName} onChange={e => { set("companyName", e.target.value); setAutoFilledCustomerName(false); }} required
-                      className={(cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok || (!isCnpjCert && !!cnpjData?.razaoSocial)) && form.companyName ? "bg-emerald-50 border-emerald-200" : ""}
-                      placeholder={cnpjFetching || cnpjRfbState === "loading" ? "Consultando..." : ""} />
-                    {cnpjError && !isCnpjCert && cnpjToQuery.length === 14 &&
-                     cnpjRfbState !== "loading" && !(cnpjRfbState && (cnpjRfbState as {ok:boolean}).ok) && (
-                      <p className="text-xs text-destructive mt-1">CNPJ não encontrado. Preencha a razão social manualmente.</p>
+                    <Label>E-mail *</Label>
+                    <Input type="email" value={form.customerEmail} onChange={e => set("customerEmail", e.target.value)} required placeholder="cliente@email.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Telefone / WhatsApp *</Label>
+                    <Input value={form.customerPhone} onChange={e => set("customerPhone", maskPhone(e.target.value))} required placeholder="(11) 99999-0000" />
+                  </div>
+                </div>
+
+                {/* CEI / NIS / PIS */}
+                <div className="space-y-3 pt-2 border-t">
+                  <p className="text-sm font-medium">Número Adicional <span className="text-muted-foreground font-normal text-xs">(opcional — escolha apenas um)</span></p>
+                  <div className="flex flex-wrap gap-4">
+                    {(["cei", "nis", "pis"] as const).map(tipo => (
+                      <label key={tipo} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="radio" name="repNumeroTipo" value={tipo} checked={form.repNumeroTipo === tipo}
+                          onChange={() => setForm(f => ({ ...f, repNumeroTipo: tipo, customerCei: tipo === "cei" ? f.customerCei : "", customerNis: tipo === "nis" ? f.customerNis : "", inssNumber: tipo === "pis" ? f.inssNumber : "" }))}
+                          className="accent-primary" />
+                        <span className="text-sm font-medium">{tipo === "pis" ? "PIS" : tipo.toUpperCase()}</span>
+                      </label>
+                    ))}
+                    {form.repNumeroTipo && (
+                      <button type="button" onClick={() => setForm(f => ({ ...f, repNumeroTipo: "", customerCei: "", customerNis: "", inssNumber: "" }))} className="text-xs text-muted-foreground hover:text-destructive">limpar</button>
                     )}
                   </div>
-                )}
+                  {form.repNumeroTipo === "cei" && <Input value={form.customerCei} onChange={e => set("customerCei", e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="CEI — até 12 dígitos" maxLength={12} />}
+                  {form.repNumeroTipo === "nis" && <Input value={form.customerNis} onChange={e => set("customerNis", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="NIS — até 11 dígitos" maxLength={11} />}
+                  {form.repNumeroTipo === "pis" && <Input value={form.inssNumber} onChange={e => set("inssNumber", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="PIS — 11 dígitos" maxLength={11} />}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-                {/* CPF + DtNascimento do responsável — só para e-CNPJ (consulta RFB via Safeweb) */}
-                {isCnpjCert && (<>
-                  <div className="space-y-2">
-                    <Label>CPF do Responsável *</Label>
-                    <Input
-                      value={form.repCpf}
-                      onChange={e => {
+          {/* ── e-CNPJ: empresa + representante ── */}
+          {isCnpjCert && (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" />Dados da Empresa
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">Informe o CNPJ e a razão social. O representante será validado automaticamente.</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>CNPJ *</Label>
+                      <div className="relative">
+                        <Input value={form.customerCpfCnpj} onChange={e => {
+                          const v = maskCnpj(e.target.value);
+                          set("customerCpfCnpj", v);
+                          const digits = v.replace(/\D/g, "");
+                          if (digits.length === 14) {
+                            setCnpjToQuery(digits);
+                            setCnpjRfbState(null);
+                            if (form.repCpf.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
+                              void triggerCnpjRfb(v, form.repCpf, form.repBirthDate);
+                            }
+                          } else { setCnpjToQuery(""); setAutoFilledCustomerName(false); setCnpjRfbState(null); }
+                        }} required placeholder="00.000.000/0001-00" className="pr-8" />
+                        {cnpjFetching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        Razão Social *
+                        {(cnpjFetching || cnpjRfbState === "loading") && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                        {!cnpjFetching && cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok && <CheckCircle className="h-3 w-3 text-emerald-500" />}
+                      </Label>
+                      <Input value={form.companyName} onChange={e => { set("companyName", e.target.value); setAutoFilledCustomerName(false); }} required
+                        className={(cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok) && form.companyName ? "bg-emerald-50 border-emerald-200" : ""}
+                        placeholder={cnpjFetching || cnpjRfbState === "loading" ? "Consultando..." : ""} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>E-mail da Empresa *</Label>
+                      <Input type="email" value={form.customerEmail} onChange={e => set("customerEmail", e.target.value)} required placeholder="empresa@email.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Telefone / WhatsApp *</Label>
+                      <Input value={form.customerPhone} onChange={e => set("customerPhone", maskPhone(e.target.value))} required placeholder="(11) 99999-0000" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-primary" />Dados do Representante Legal
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">Pessoa física responsável pela emissão do certificado.</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>CPF do Representante *</Label>
+                      <Input value={form.repCpf} onChange={e => {
                         const v = maskCpfCnpj(e.target.value);
                         set("repCpf", v);
                         setCnpjRfbState(null);
@@ -1086,178 +1172,156 @@ export default function NewOrder() {
                         if (cpfDigits.length === 11 && form.repBirthDate.length === 10) {
                           void triggerCnpjRfb(form.customerCpfCnpj, v, form.repBirthDate);
                         }
-                      }}
-                      placeholder="000.000.000-00"
-                      maxLength={14}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Data de Nascimento do Responsável *</Label>
-                    <Input
-                      value={form.repBirthDate}
-                      onChange={e => {
+                      }} placeholder="000.000.000-00" maxLength={14} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data de Nascimento do Representante *</Label>
+                      <Input value={form.repBirthDate} onChange={e => {
                         const v = maskDate(e.target.value);
                         set("repBirthDate", v);
                         setCnpjRfbState(null);
                         if (form.repCpf.replace(/\D/g, "").length === 11 && v.length === 10) {
                           void triggerCnpjRfb(form.customerCpfCnpj, form.repCpf, v);
                         }
-                      }}
-                      placeholder="dd/mm/aaaa"
-                      maxLength={10}
-                      required
-                    />
-                  </div>
-                  {cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok && (
-                    <div className="sm:col-span-2 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                      <CheckCircle className="h-4 w-4 shrink-0" />
-                      <span>RFB confirmado — <strong>{cnpjRfbState.razaoSocial}</strong></span>
+                      }} placeholder="dd/mm/aaaa" maxLength={10} required />
                     </div>
-                  )}
-                  {cnpjRfbState && cnpjRfbState !== "loading" && !cnpjRfbState.ok && (
-                    <div className="sm:col-span-2 flex items-center gap-2 text-sm text-destructive bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                      <XCircle className="h-4 w-4 shrink-0" />
-                      <span>{(cnpjRfbState as { ok: false; mensagem: string }).mensagem}</span>
-                    </div>
-                  )}
-                </>)}
-
-                {/* Nome Completo — PF */}
-                {!showCnpjFields && (
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label className="flex items-center gap-1">Nome Completo *{autoFilledCustomerName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
-                    <Input value={form.customerName} onChange={e => { set("customerName", e.target.value); setAutoFilledCustomerName(false); }} required
-                      className={autoFilledCustomerName ? "bg-emerald-50 border-emerald-200" : ""} />
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label>E-mail *</Label>
-                  <Input type="email" value={form.customerEmail} onChange={e => set("customerEmail", e.target.value)} required placeholder="cliente@email.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Telefone / WhatsApp *</Label>
-                  <Input value={form.customerPhone} onChange={e => set("customerPhone", maskPhone(e.target.value))} required placeholder="(11) 99999-0000" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ── Endereço ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />Endereço</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>CEP</Label>
-                  <div className="relative">
-                    <Input value={form.addressZipcode} onChange={e => { const m = maskCepFn(e.target.value); set("addressZipcode", m); fetchCep(m); }} placeholder="00000-000" maxLength={9} className="pr-9" />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                      {cepLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    {cnpjRfbState && cnpjRfbState !== "loading" && cnpjRfbState.ok && (
+                      <div className="sm:col-span-2 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                        <CheckCircle className="h-4 w-4 shrink-0" />
+                        <span>RFB confirmado — <strong>{cnpjRfbState.razaoSocial}</strong></span>
+                      </div>
+                    )}
+                    {cnpjRfbState && cnpjRfbState !== "loading" && !cnpjRfbState.ok && (
+                      <div className="sm:col-span-2 flex items-center gap-2 text-sm text-destructive bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                        <XCircle className="h-4 w-4 shrink-0" />
+                        <span>{(cnpjRfbState as { ok: false; mensagem: string }).mensagem}</span>
+                      </div>
+                    )}
+                    {cnpjError && cnpjToQuery.length === 14 && cnpjRfbState !== "loading" && !(cnpjRfbState && (cnpjRfbState as {ok:boolean}).ok) && (
+                      <p className="sm:col-span-2 text-xs text-destructive">CNPJ não encontrado. Preencha a razão social manualmente.</p>
+                    )}
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label className="flex items-center gap-1">
+                        Nome Completo do Representante *
+                        {autoFilledRepName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
+                      </Label>
+                      <Input value={form.repName} onChange={e => { set("repName", e.target.value); setAutoFilledRepName(false); }} required
+                        className={autoFilledRepName ? "bg-emerald-50 border-emerald-200" : ""} />
                     </div>
                   </div>
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label className="flex items-center gap-1">Rua / Logradouro{cepFilled && form.addressStreet && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
-                  <Input value={form.addressStreet} onChange={e => set("addressStreet", e.target.value)} className={cepFilled && form.addressStreet ? "bg-emerald-50 border-emerald-200" : ""} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Número</Label>
-                  <Input value={form.addressNumber} onChange={e => set("addressNumber", e.target.value)} placeholder="123" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Complemento <span className="text-xs text-muted-foreground">(opcional)</span></Label>
-                  <Input value={form.addressComplement} onChange={e => set("addressComplement", e.target.value)} placeholder="Apto, Sala..." maxLength={20} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">Bairro{cepFilled && form.addressNeighborhood && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
-                  <Input value={form.addressNeighborhood} onChange={e => set("addressNeighborhood", e.target.value)} className={cepFilled && form.addressNeighborhood ? "bg-emerald-50 border-emerald-200" : ""} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">Cidade{cepFilled && form.addressCity && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
-                  <Input value={form.addressCity} onChange={e => set("addressCity", e.target.value)} className={cepFilled && form.addressCity ? "bg-emerald-50 border-emerald-200" : ""} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">UF{cepFilled && form.addressState && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
-                  <Input value={form.addressState} onChange={e => set("addressState", e.target.value)} maxLength={2} placeholder="SP" className={cepFilled && form.addressState ? "bg-emerald-50 border-emerald-200" : ""} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* ── Representante Legal ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Dados do Representante Legal</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {isCnpjCert ? "Pessoa física responsável pela empresa para emissão do certificado." : "Responsável pela emissão do certificado digital."}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>CPF do Representante *</Label>
-                  <Input value={form.repCpf} onChange={e => {
-                    const v = maskCpfCnpj(e.target.value);
-                    set("repCpf", v);
-                    if (!isCnpjCert && v.replace(/\D/g, "").length === 11 && form.repBirthDate.length === 10) {
-                      void triggerConsultaCpf(v, form.repBirthDate, "rep");
-                    }
-                  }} placeholder="000.000.000-00" required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Data de Nascimento *</Label>
-                  <Input value={form.repBirthDate} onChange={e => {
-                    const v = maskDate(e.target.value);
-                    set("repBirthDate", v);
-                    if (!isCnpjCert && form.repCpf.replace(/\D/g, "").length === 11 && v.length === 10) {
-                      void triggerConsultaCpf(form.repCpf, v, "rep");
-                    }
-                  }} placeholder="dd/mm/aaaa" maxLength={10} required />
-                </div>
-              </div>
+                  {/* CEI / NIS / PIS */}
+                  <div className="space-y-3 pt-2 border-t">
+                    <p className="text-sm font-medium">Número Adicional <span className="text-muted-foreground font-normal text-xs">(opcional — escolha apenas um)</span></p>
+                    <div className="flex flex-wrap gap-4">
+                      {(["cei", "nis", "pis"] as const).map(tipo => (
+                        <label key={tipo} className="flex items-center gap-2 cursor-pointer select-none">
+                          <input type="radio" name="repNumeroTipo" value={tipo} checked={form.repNumeroTipo === tipo}
+                            onChange={() => setForm(f => ({ ...f, repNumeroTipo: tipo, customerCei: tipo === "cei" ? f.customerCei : "", customerNis: tipo === "nis" ? f.customerNis : "", inssNumber: tipo === "pis" ? f.inssNumber : "" }))}
+                            className="accent-primary" />
+                          <span className="text-sm font-medium">{tipo === "pis" ? "PIS" : tipo.toUpperCase()}</span>
+                        </label>
+                      ))}
+                      {form.repNumeroTipo && (
+                        <button type="button" onClick={() => setForm(f => ({ ...f, repNumeroTipo: "", customerCei: "", customerNis: "", inssNumber: "" }))} className="text-xs text-muted-foreground hover:text-destructive">limpar</button>
+                      )}
+                    </div>
+                    {form.repNumeroTipo === "cei" && <Input value={form.customerCei} onChange={e => set("customerCei", e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="CEI — até 12 dígitos" maxLength={12} />}
+                    {form.repNumeroTipo === "nis" && <Input value={form.customerNis} onChange={e => set("customerNis", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="NIS — até 11 dígitos" maxLength={11} />}
+                    {form.repNumeroTipo === "pis" && <Input value={form.inssNumber} onChange={e => set("inssNumber", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="PIS — 11 dígitos" maxLength={11} />}
+                  </div>
 
+                  {/* Endereço do representante */}
+                  <div className="space-y-3 pt-2 border-t">
+                    <p className="text-sm font-medium flex items-center gap-1"><MapPin className="h-4 w-4 text-primary" />Endereço do Representante Legal *</p>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>CEP *</Label>
+                        <div className="relative">
+                          <Input value={form.representanteAddressZipcode} onChange={e => { const m = maskCepFn(e.target.value); set("representanteAddressZipcode", m); fetchRepCep(m); }} placeholder="00000-000" maxLength={9} className="pr-9" />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                            {repCepLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label className="flex items-center gap-1">Rua / Logradouro *{repCepFilled && form.representanteAddressStreet && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                        <Input value={form.representanteAddressStreet} onChange={e => set("representanteAddressStreet", e.target.value)} className={repCepFilled && form.representanteAddressStreet ? "bg-emerald-50 border-emerald-200" : ""} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Número *</Label>
+                        <Input value={form.representanteAddressNumber} onChange={e => set("representanteAddressNumber", e.target.value)} placeholder="123" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Complemento <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                        <Input value={form.representanteAddressComplement} onChange={e => set("representanteAddressComplement", e.target.value)} placeholder="Apto, Sala..." maxLength={20} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1">Bairro{repCepFilled && form.representanteAddressNeighborhood && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                        <Input value={form.representanteAddressNeighborhood} onChange={e => set("representanteAddressNeighborhood", e.target.value)} className={repCepFilled && form.representanteAddressNeighborhood ? "bg-emerald-50 border-emerald-200" : ""} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1">Cidade{repCepFilled && form.representanteAddressCity && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                        <Input value={form.representanteAddressCity} onChange={e => set("representanteAddressCity", e.target.value)} className={repCepFilled && form.representanteAddressCity ? "bg-emerald-50 border-emerald-200" : ""} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1">UF{repCepFilled && form.representanteAddressState && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                        <Input value={form.representanteAddressState} onChange={e => set("representanteAddressState", e.target.value)} maxLength={2} placeholder="SP" className={repCepFilled && form.representanteAddressState ? "bg-emerald-50 border-emerald-200" : ""} />
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Nome do Representante */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  Nome Completo do Representante *
-                  {autoFilledRepName && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}
-                </Label>
-                <Input value={form.repName} onChange={e => { set("repName", e.target.value); setAutoFilledRepName(false); }} required
-                  className={autoFilledRepName ? "bg-emerald-50 border-emerald-200" : ""} />
-              </div>
+                  {/* Documento do representante */}
+                  <div className="space-y-3 pt-2 border-t">
+                    <p className="text-sm font-medium">Documento de Identificação *</p>
+                    <div className="space-y-2">
+                      <Label>Tipo de Documento *</Label>
+                      <select value={form.repDocTipo} onChange={e => setForm(f => ({ ...f, repDocTipo: e.target.value, repDocNumero: "", repDocOrgan: "", repDocUf: "" }))}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                        <option value="0">Selecione o tipo</option>
+                        <option value="1">RG</option><option value="2">RNE</option><option value="3">Passaporte</option><option value="4">CNH</option>
+                      </select>
+                    </div>
+                    {form.repDocTipo !== "0" && (
+                      <>
+                        <div className="space-y-2">
+                          <Label>Número do Documento</Label>
+                          <Input value={form.repDocNumero} onChange={e => set("repDocNumero", e.target.value)} placeholder={form.repDocTipo === "3" ? "Ex: BR123456" : "Ex: 12.345.678-9"} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label>Órgão Expedidor <span className="text-muted-foreground font-normal text-xs">(máx. 4 car.)</span></Label>
+                            <Input value={form.repDocOrgan} onChange={e => set("repDocOrgan", e.target.value.toUpperCase().slice(0, 4))} placeholder="SSP" maxLength={4} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>UF</Label>
+                            <select value={form.repDocUf} onChange={e => set("repDocUf", e.target.value)}
+                              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                              <option value="">Selecione</option>
+                              {["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map(uf => (
+                                <option key={uf} value={uf}>{uf}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
 
-              {/* CEI / NIS / PIS */}
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Número Adicional <span className="text-muted-foreground font-normal text-xs">(opcional — escolha apenas um)</span></p>
-                <div className="flex flex-wrap gap-4">
-                  {(["cei", "nis", "pis"] as const).map(tipo => (
-                    <label key={tipo} className="flex items-center gap-2 cursor-pointer select-none">
-                      <input type="radio" name="repNumeroTipo" value={tipo} checked={form.repNumeroTipo === tipo}
-                        onChange={() => setForm(f => ({ ...f, repNumeroTipo: tipo, customerCei: tipo === "cei" ? f.customerCei : "", customerNis: tipo === "nis" ? f.customerNis : "", inssNumber: tipo === "pis" ? f.inssNumber : "" }))}
-                        className="accent-primary" />
-                      <span className="text-sm font-medium">{tipo === "pis" ? "PIS" : tipo.toUpperCase()}</span>
-                    </label>
-                  ))}
-                  {form.repNumeroTipo && (
-                    <button type="button" onClick={() => setForm(f => ({ ...f, repNumeroTipo: "", customerCei: "", customerNis: "", inssNumber: "" }))} className="text-xs text-muted-foreground hover:text-destructive">limpar</button>
-                  )}
-                </div>
-                {form.repNumeroTipo === "cei" && <Input value={form.customerCei} onChange={e => set("customerCei", e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="CEI — até 12 dígitos" maxLength={12} />}
-                {form.repNumeroTipo === "nis" && <Input value={form.customerNis} onChange={e => set("customerNis", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="NIS — até 11 dígitos" maxLength={11} />}
-                {form.repNumeroTipo === "pis" && <Input value={form.inssNumber} onChange={e => set("inssNumber", e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="PIS — 11 dígitos" maxLength={11} />}
-              </div>
-
-              {/* Endereço do representante */}
-              <div className="space-y-3">
-                <p className="text-sm font-medium flex items-center gap-1"><MapPin className="h-4 w-4 text-primary" />Endereço do Representante Legal *</p>
-                <div className="grid gap-3 sm:grid-cols-3">
+          {/* ── e-CPF: endereço do responsável ── */}
+          {!isCnpjCert && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />Endereço do Responsável</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-2">
-                    <Label>CEP *</Label>
+                    <Label>CEP</Label>
                     <div className="relative">
                       <Input value={form.representanteAddressZipcode} onChange={e => { const m = maskCepFn(e.target.value); set("representanteAddressZipcode", m); fetchRepCep(m); }} placeholder="00000-000" maxLength={9} className="pr-9" />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
@@ -1266,11 +1330,11 @@ export default function NewOrder() {
                     </div>
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label className="flex items-center gap-1">Rua / Logradouro *{repCepFilled && form.representanteAddressStreet && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                    <Label className="flex items-center gap-1">Rua / Logradouro{repCepFilled && form.representanteAddressStreet && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
                     <Input value={form.representanteAddressStreet} onChange={e => set("representanteAddressStreet", e.target.value)} className={repCepFilled && form.representanteAddressStreet ? "bg-emerald-50 border-emerald-200" : ""} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Número *</Label>
+                    <Label>Número</Label>
                     <Input value={form.representanteAddressNumber} onChange={e => set("representanteAddressNumber", e.target.value)} placeholder="123" />
                   </div>
                   <div className="space-y-2">
@@ -1290,46 +1354,9 @@ export default function NewOrder() {
                     <Input value={form.representanteAddressState} onChange={e => set("representanteAddressState", e.target.value)} maxLength={2} placeholder="SP" className={repCepFilled && form.representanteAddressState ? "bg-emerald-50 border-emerald-200" : ""} />
                   </div>
                 </div>
-              </div>
-
-              {/* Documento de identificação */}
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Documento de Identificação *</p>
-                <div className="space-y-2">
-                  <Label>Tipo de Documento *</Label>
-                  <select value={form.repDocTipo} onChange={e => setForm(f => ({ ...f, repDocTipo: e.target.value, repDocNumero: "", repDocOrgan: "", repDocUf: "" }))}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                    <option value="0">Selecione o tipo</option>
-                    <option value="1">RG</option><option value="2">RNE</option><option value="3">Passaporte</option><option value="4">CNH</option>
-                  </select>
-                </div>
-                {form.repDocTipo !== "0" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Número do Documento</Label>
-                      <Input value={form.repDocNumero} onChange={e => set("repDocNumero", e.target.value)} placeholder={form.repDocTipo === "3" ? "Ex: BR123456" : "Ex: 12.345.678-9"} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label>Órgão Expedidor <span className="text-muted-foreground font-normal text-xs">(máx. 4 car.)</span></Label>
-                        <Input value={form.repDocOrgan} onChange={e => set("repDocOrgan", e.target.value.toUpperCase().slice(0, 4))} placeholder="SSP" maxLength={4} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>UF</Label>
-                        <select value={form.repDocUf} onChange={e => set("repDocUf", e.target.value)}
-                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                          <option value="">Selecione</option>
-                          {["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map(uf => (
-                            <option key={uf} value={uf}>{uf}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* ── Documentos ── */}
           <Card>
@@ -1353,7 +1380,7 @@ export default function NewOrder() {
               {form.repNumeroTipo && (
                 <div>
                   <Label className="mb-2 block">Documento comprobatório ({form.repNumeroTipo === "pis" ? "PIS" : form.repNumeroTipo.toUpperCase()})</Label>
-                  <p className="text-xs text-muted-foreground mb-2">Documento que comprove o {form.repNumeroTipo === "pis" ? "PIS" : form.repNumeroTipo.toUpperCase()} informado (PDF, JPG ou PNG, máx. 5 MB).</p>
+                  <p className="text-xs text-muted-foreground mb-2">Documento que comprove o {form.repNumeroTipo === "pis" ? "PIS" : form.repNumeroTipo.toUpperCase()} informado.</p>
                   <UploadWidget
                     label="Clique para selecionar arquivo" hint="PDF, JPG, JPEG ou PNG — máx. 5 MB"
                     file={outrosFile} fileKey={outrosKey} uploading={outrosUploading}
@@ -1365,7 +1392,7 @@ export default function NewOrder() {
                 </div>
               )}
 
-              {form.clientType === "cnpj" && (
+              {isCnpjCert && (
                 <>
                   <div>
                     <Label className="mb-2 block">Cartão CNPJ *</Label>
@@ -1397,15 +1424,111 @@ export default function NewOrder() {
           </Card>
 
           <Button className="w-full h-12 text-base" onClick={goToStep3}>
+            Avançar para Nota Fiscal <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════
+          ETAPA 3 — Nota Fiscal
+          ════════════════════════════════════════ */}
+      {step === 3 && (
+        <div className="space-y-6">
+          {selectedCert && (
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl border bg-primary/5">
+              <div className="flex items-center gap-2.5">
+                <BadgeCheck className="h-5 w-5 text-primary shrink-0" />
+                <p className="text-sm font-semibold text-primary">{selectedCert.name}</p>
+              </div>
+              <span className="font-bold text-primary">{formatBRL(certPrice(selectedCert))}</span>
+            </div>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />Dados para Nota Fiscal
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Informe os dados para emissão da nota fiscal do certificado.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>CPF ou CNPJ *</Label>
+                  <div className="relative">
+                    <Input value={nfForm.nfCpfCnpj} onChange={e => {
+                      const v = maskCpfCnpj(e.target.value);
+                      setNf("nfCpfCnpj", v);
+                      const digits = v.replace(/\D/g, "");
+                      if (digits.length === 14) {
+                        setNfCnpjLookup(digits);
+                      } else { setNfCnpjLookup(""); }
+                    }} required placeholder="CPF (000.000.000-00) ou CNPJ" />
+                    {nfCnpjFetching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    Nome / Razão Social *
+                    {nfCnpjFetching && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                  </Label>
+                  <Input value={nfForm.nfNome} onChange={e => setNf("nfNome", e.target.value)} required
+                    placeholder={nfCnpjFetching ? "Consultando..." : "Nome completo ou Razão Social"}
+                    className={nfCnpjData?.razaoSocial && nfForm.nfNome ? "bg-emerald-50 border-emerald-200" : ""} />
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2 border-t">
+                <p className="text-sm font-medium flex items-center gap-1"><MapPin className="h-4 w-4 text-primary" />Endereço de Cobrança *</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>CEP *</Label>
+                    <div className="relative">
+                      <Input value={nfForm.nfZipcode} onChange={e => { const m = maskCepFn(e.target.value); setNf("nfZipcode", m); fetchNfCep(m); }} placeholder="00000-000" maxLength={9} className="pr-9" />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                        {nfCepLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label className="flex items-center gap-1">Rua / Logradouro *{nfCepFilled && nfForm.nfStreet && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                    <Input value={nfForm.nfStreet} onChange={e => setNf("nfStreet", e.target.value)} className={nfCepFilled && nfForm.nfStreet ? "bg-emerald-50 border-emerald-200" : ""} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Número *</Label>
+                    <Input value={nfForm.nfNumber} onChange={e => setNf("nfNumber", e.target.value)} placeholder="123" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Complemento <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                    <Input value={nfForm.nfComplement} onChange={e => setNf("nfComplement", e.target.value)} placeholder="Apto, Sala..." maxLength={20} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">Bairro{nfCepFilled && nfForm.nfNeighborhood && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                    <Input value={nfForm.nfNeighborhood} onChange={e => setNf("nfNeighborhood", e.target.value)} className={nfCepFilled && nfForm.nfNeighborhood ? "bg-emerald-50 border-emerald-200" : ""} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">Cidade{nfCepFilled && nfForm.nfCity && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                    <Input value={nfForm.nfCity} onChange={e => setNf("nfCity", e.target.value)} className={nfCepFilled && nfForm.nfCity ? "bg-emerald-50 border-emerald-200" : ""} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">UF{nfCepFilled && nfForm.nfState && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                    <Input value={nfForm.nfState} onChange={e => setNf("nfState", e.target.value)} maxLength={2} placeholder="SP" className={nfCepFilled && nfForm.nfState ? "bg-emerald-50 border-emerald-200" : ""} />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button className="w-full h-12 text-base" onClick={goToStep4}>
             Avançar para Pagamento <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </div>
       )}
 
       {/* ════════════════════════════════════════
-          ETAPA 3 — Pagamento
+          ETAPA 4 — Pagamento
           ════════════════════════════════════════ */}
-      {step === 3 && (
+      {step === 4 && (
         <div className="space-y-6">
           {/* Resumo */}
           <Card>
@@ -1510,7 +1633,7 @@ export default function NewOrder() {
             <p><strong>Agendamento após pagamento.</strong> O horário de atendimento será selecionado na tela de detalhes do pedido, assim que o pagamento for confirmado.</p>
           </div>
 
-          {/* Botão confirmar */}
+          {/* Confirmar */}
           <Button className="w-full h-12 text-base" onClick={handleSubmit} disabled={createOrder.isPending}>
             {createOrder.isPending
               ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando pedido...</>
@@ -1518,16 +1641,31 @@ export default function NewOrder() {
           </Button>
           <p className="text-xs text-center text-muted-foreground -mt-2">
             Ao confirmar, você concorda com a{" "}
-            <button
-              type="button"
-              onClick={() => setPrivacyOpen(true)}
-              className="underline underline-offset-2 hover:text-primary transition-colors"
-            >
+            <button type="button" onClick={() => setPrivacyOpen(true)} className="underline underline-offset-2 hover:text-primary transition-colors">
               Política de Privacidade
             </button>
           </p>
         </div>
       )}
+
+      {/* Warranty info dialog */}
+      <Dialog open={warrantyInfoOpen} onOpenChange={setWarrantyInfoOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Garantia Estendida</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>A Garantia Estendida oferece suporte completo por <strong>12 meses</strong> em caso de qualquer problema com o certificado digital:</p>
+            <ul className="list-disc ml-5 space-y-1">
+              <li>Revogação por motivo de perda ou roubo do dispositivo</li>
+              <li>Problemas técnicos na instalação do certificado</li>
+              <li>Suporte prioritário via WhatsApp e e-mail</li>
+              <li>Re-emissão sem custo adicional em caso de falha técnica comprovada</li>
+            </ul>
+            <p className="text-xs">Valor: R$ 15,00 (único, pago junto com o certificado).</p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Privacy Policy dialog */}
       <Dialog open={privacyOpen} onOpenChange={setPrivacyOpen}>
@@ -1537,13 +1675,11 @@ export default function NewOrder() {
             <p className="text-xs text-muted-foreground mt-0.5">Versão 5.1 — Última atualização: 23/02/2026</p>
           </DialogHeader>
           <div className="overflow-y-auto flex-1 px-6 py-6 space-y-8 text-sm">
-
             <PPSection title="1. Introdução">
               <p>A Política de Privacidade e Uso de Dados Pessoais tem como objetivo principal evidenciar a transparência do compromisso da Safeweb em garantir a proteção dos dados fornecidos pelos titulares de dados pessoais.</p>
               <p>Não fornecemos informações pessoais para terceiros sem a devida autorização e não divulgamos informações que possam identificar os titulares dos dados, salvo em casos de pedido judicial ou determinação legal.</p>
               <p>A aceitação da nossa Política se dará quando você acessar ou utilizar o site, aplicativo ou serviços da Safeweb, em observância à Lei Geral de Proteção de Dados Pessoais n° 13.709/2018 (LGPD).</p>
             </PPSection>
-
             <PPSection title="2. Definições">
               <dl className="space-y-2">
                 {([
@@ -1565,7 +1701,6 @@ export default function NewOrder() {
                 ))}
               </dl>
             </PPSection>
-
             <PPSection title="3. Direitos dos Usuários sobre os Dados Pessoais">
               <PPSub title="3.1 Direito de Revogação"><p>Titulares de dados pessoais tratados pela Safeweb poderão solicitar a revogação das permissões de uso de dados, uma vez que o prazo legal do tratamento esteja expirado.</p></PPSub>
               <PPSub title="3.2 Direito de Divulgação"><p>A Safeweb não divulga os dados pessoais dos titulares, exceto por determinação legal ou a pedido do próprio titular do dado.</p></PPSub>
@@ -1573,18 +1708,15 @@ export default function NewOrder() {
               <PPSub title="3.4 Direito à Exclusão"><p>O titular tem direito à exclusão definitiva dos dados pessoais que tiver fornecido à Safeweb, ao término da relação entre as partes, quando ultrapassado o período obrigatório de armazenamento.</p></PPSub>
               <PPSub title="3.5 Direito à Portabilidade"><p>As solicitações de portabilidade de dados serão analisadas caso a caso, via <a href="https://portaldotitular.safecomply.com.br/safecomply/safeweb" target="_blank" rel="noopener noreferrer" className="text-primary underline">portaldotitular.safecomply.com.br</a>.</p></PPSub>
             </PPSection>
-
             <PPSection title="4. Responsabilidades dos Titulares">
               <p>Os titulares dos dados pessoais têm a obrigação de assegurar que os dados fornecidos à Safeweb são precisos, completos e atualizados.</p>
             </PPSection>
-
             <PPSection title="5. Política de Cookies">
               <p>Ao utilizar o nosso site, você concorda com a utilização dos cookies. Cookies são arquivos de texto que visam facilitar ou aprimorar a experiência do usuário. Você pode alterar a configuração a qualquer tempo no seu navegador.</p>
               <ul className="list-disc ml-5 mt-2 space-y-1 text-muted-foreground">
                 {["Preferências, recursos e serviços", "Plugins", "Publicidade personalizada", "Análise e pesquisa", "Usabilidade", "Essenciais"].map(c => <li key={c}>{c}</li>)}
               </ul>
             </PPSection>
-
             <PPSection title="6. Controlador de Dados">
               <div className="overflow-x-auto mt-2">
                 <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
@@ -1606,7 +1738,6 @@ export default function NewOrder() {
                 </table>
               </div>
             </PPSection>
-
             <PPSection title="7. Sobre o Tratamento dos Seus Dados Pessoais">
               <PPSub title="7.1 Quais informações são coletadas?">
                 <ul className="list-disc ml-5 space-y-1 text-muted-foreground">
@@ -1622,36 +1753,12 @@ export default function NewOrder() {
                 <p>Para dados pessoais de titulares de certificação digital, por no mínimo 7 (sete) anos a partir da expiração ou revogação do Certificado Digital, conforme DOC-ICP-05, item 5.5.2.</p>
               </PPSub>
             </PPSection>
-
             <PPSection title="8. Atualização da Política">
               <p>A Safeweb se reserva ao direito de alterar essa Política periodicamente. Sempre que houver alterações que ensejem novas autorizações, será publicada uma nova versão sujeita a novo consentimento.</p>
             </PPSection>
-
-            <PPSection title="9. Legislação Aplicável">
-              <p>Este documento é regido pela legislação brasileira. Foro da Comarca de Porto Alegre/RS para dirimir quaisquer questões oriundas do presente documento.</p>
-            </PPSection>
-
-            <PPSection title="10. Contato">
-              <p>Para dúvidas, entre em contato pelo e-mail <a href="mailto:privacidade@safeweb.com.br" className="text-primary underline">privacidade@safeweb.com.br</a> ou pelo <a href="https://portaldotitular.safecomply.com.br/safecomply/safeweb" target="_blank" rel="noopener noreferrer" className="text-primary underline">Portal de Atendimento ao Titular</a>.</p>
-            </PPSection>
-
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Warranty dialog */}
-      <Dialog open={warrantyInfoOpen} onOpenChange={setWarrantyInfoOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Info className="h-5 w-5 text-blue-600" />Garantia Estendida</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-            <p>A <strong className="text-foreground">Garantia Estendida</strong> oferece o direito de emitir um novo certificado digital sem custo adicional caso o certificado atual seja danificado ou extraviado, dentro do prazo de <strong className="text-foreground">90 dias</strong> a partir da data de emissão.</p>
-            <p>Toda reemissão realizada dentro do período de garantia é <strong className="text-foreground">gratuita</strong> para o cliente.</p>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800">
-              <p className="font-medium mb-1">Importante</p>
-              <p className="text-xs">Alterações de dados cadastrais ou informações inerentes ao certificado <strong>não são cobertas</strong> pela Garantia Estendida.</p>
-            </div>
+          <div className="px-6 py-4 border-t shrink-0">
+            <Button className="w-full" onClick={() => setPrivacyOpen(false)}>Entendi e Aceito</Button>
           </div>
         </DialogContent>
       </Dialog>

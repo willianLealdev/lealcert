@@ -455,6 +455,15 @@ export interface OrderInput {
   cartaoCnpjPath?: string;
   fichaCadastralPath?: string;
   outrosPath?: string;
+  nfCnpj?: string;
+  nfNome?: string;
+  nfZipcode?: string;
+  nfStreet?: string;
+  nfNumber?: string;
+  nfComplement?: string;
+  nfNeighborhood?: string;
+  nfCity?: string;
+  nfState?: string;
 }
 
 export type OrderUpdateStatus = typeof OrderUpdateStatus[keyof typeof OrderUpdateStatus];
