@@ -5,7 +5,7 @@ import {
   Shield, CheckCircle2, Clock, Award, Users, FileText,
   ChevronRight, MessageCircle, X, Send, Loader2, Bot,
   Star, Lock, Zap, Phone, Mail, MapPin, Menu, Mic, MicOff,
-  Upload, Paperclip, Volume2, VolumeX
+  Volume2, VolumeX, Upload, Paperclip
 } from "lucide-react";
 
 const CERTS = [
@@ -89,15 +89,17 @@ function ChatWidget() {
   const voiceModeRef = useRef(false);
   const audioEnabledRef = useRef(true);
   const toggleMicRef = useRef<() => void>(() => {});
+  const voiceModeRef = useRef(false);
+  const audioEnabledRef = useRef(true);
+
+  useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
+  useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
   const speakText = useCallback((text: string, onDone?: () => void) => {
-    if (!audioEnabledRef.current || !("speechSynthesis" in window)) {
-      onDone?.();
-      return;
-    }
+    if (!audioEnabledRef.current || !("speechSynthesis" in window)) { onDone?.(); return; }
     window.speechSynthesis.cancel();
     // Strip markdown, emojis, action lines and special chars for clean TTS
     const clean = text
@@ -159,7 +161,7 @@ function ChatWidget() {
         content: "Olá! 👋 Sou a **Niky**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:",
       }]);
       setShowMenuOptions(true);
-      // Auto-activate voice mode: speak greeting then open mic automatically
+      // Auto-ativar modo voz: fala saudação e depois abre mic
       if (micSupported) {
         setVoiceMode(true);
         voiceModeRef.current = true;
@@ -266,12 +268,10 @@ function ChatWidget() {
       });
     } finally {
       setLoading(false);
-      // Speak the assistant reply and, if in voice mode, reactivate mic after speaking
+      // Fala resposta e, se modo voz ativo, reabre o mic automaticamente
       if (assistantContent) {
         speakText(assistantContent, () => {
-          if (voiceModeRef.current) {
-            setTimeout(() => toggleMicRef.current(), 400);
-          }
+          if (voiceModeRef.current) setTimeout(() => toggleMicRef.current(), 400);
         });
       }
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -325,17 +325,14 @@ function ChatWidget() {
     if (!micSupported) return;
 
     if (isListening) {
-      pendingSendRef.current = true;
+      // Clique manual para parar: cancela TTS e para gravação (onend ainda envia se houver texto)
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
       recognitionRef.current?.stop();
-      // If manually stopping in voice mode, exit voice mode
-      setVoiceMode(false);
-      voiceModeRef.current = false;
       return;
     }
 
-    if (typeof window !== "undefined" && window.speechSynthesis?.speaking) {
-      window.speechSynthesis.cancel();
-    }
+    // Cancela TTS antes de iniciar gravação
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
@@ -344,7 +341,7 @@ function ChatWidget() {
 
     transcriptRef.current = "";
     recognition.lang = "pt-BR";
-    recognition.continuous = true;
+    recognition.continuous = false;   // para automaticamente ao detectar silêncio
     recognition.interimResults = true;
 
     recognition.onresult = (e: SpeechRecognitionEvent) => {
@@ -362,10 +359,10 @@ function ChatWidget() {
       const raw = transcriptRef.current.trim();
       transcriptRef.current = "";
       if (raw) {
-        // Tem fala: envia e o mic reabre depois do bot responder (via speakText callback)
+        // Tem fala: envia automaticamente e o TTS vai reabrir o mic depois
         const msg = normalizeVoiceText(raw);
         setInput("");
-        sendRef.current(msg);
+        void sendRef.current(msg);
       } else if (voiceModeRef.current) {
         // Silêncio/timeout sem fala: reabre o mic automaticamente no modo voz
         setTimeout(() => toggleMicRef.current(), 400);
@@ -396,13 +393,7 @@ function ChatWidget() {
     window.speechSynthesis.cancel();
     setVoiceMode(true);
     voiceModeRef.current = true;
-    // Speak greeting then activate mic
-    const lastAssistant = [...messages].reverse().find(m => m.role === "assistant");
-    if (lastAssistant?.content) {
-      speakText(lastAssistant.content, () => setTimeout(() => toggleMicRef.current(), 400));
-    } else {
-      setTimeout(() => toggleMicRef.current(), 200);
-    }
+    setTimeout(() => toggleMicRef.current(), 200);
   }
 
   function stopVoiceMode() {
@@ -459,17 +450,13 @@ function ChatWidget() {
               <button
                 onClick={() => voiceMode ? stopVoiceMode() : startVoiceMode()}
                 title={voiceMode ? "Desativar modo voz" : "Ativar conversa por voz"}
-                className={`p-1.5 rounded-lg transition-colors ${voiceMode ? "bg-green-500 hover:bg-green-600" : "hover:bg-white/10"}`}
+                className={`p-1.5 rounded-lg transition-colors ${voiceMode ? "bg-green-500/80 hover:bg-green-600" : "hover:bg-white/10"}`}
               >
-                {voiceMode ? <Mic className="h-4 w-4" /> : <Mic className="h-4 w-4 opacity-60" />}
+                <Mic className={`h-4 w-4 ${voiceMode ? "" : "opacity-60"}`} />
               </button>
             )}
             <button
-              onClick={() => {
-                const next = !audioEnabled;
-                setAudioEnabled(next);
-                if (!next) window.speechSynthesis.cancel();
-              }}
+              onClick={() => { const next = !audioEnabled; setAudioEnabled(next); if (!next) window.speechSynthesis.cancel(); }}
               title={audioEnabled ? "Silenciar voz" : "Ativar voz"}
               className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
             >
@@ -664,26 +651,18 @@ function ChatWidget() {
                 <button onClick={startSession} className="underline font-medium ml-2">Reconectar</button>
               </div>
             )}
-            {voiceMode && !isListening && !loading && isSpeaking && (
+            {voiceMode && isSpeaking && !isListening && (
               <div className="mb-2 flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded-lg px-3 py-1.5">
                 <Volume2 className="h-3.5 w-3.5 animate-pulse shrink-0" />
-                <span className="font-medium">Assistente falando…</span>
+                <span className="font-medium">Niky está falando…</span>
                 <button onClick={stopVoiceMode} className="ml-auto underline text-gray-500">Encerrar voz</button>
               </div>
             )}
-            {voiceMode && isListening && (
+            {isListening && (
               <div className="mb-2 flex items-center gap-2 text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-1.5">
                 <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
-                <span className="font-medium">Pode falar agora…</span>
-                <span className="ml-auto text-gray-400 italic truncate">{input || "ouvindo…"}</span>
-                <button onClick={stopVoiceMode} className="ml-2 underline text-gray-500 shrink-0">Sair</button>
-              </div>
-            )}
-            {!voiceMode && isListening && (
-              <div className="mb-2 flex items-center gap-2 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">
-                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-                <span className="font-medium">Ouvindo… clique em parar para enviar</span>
-                <span className="ml-auto text-gray-400 italic truncate">{input || "aguardando fala…"}</span>
+                <span className="font-medium">Pode falar agora… envio automático ao parar</span>
+                <span className="ml-auto text-gray-400 italic truncate max-w-[110px]">{input || "ouvindo…"}</span>
               </div>
             )}
             {voiceMode && !isListening && !isSpeaking && !loading && (
@@ -699,7 +678,7 @@ function ChatWidget() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={isListening ? "Ouvindo…" : isSpeaking ? "Assistente falando…" : voiceMode ? "Modo voz — ou digite aqui" : starting ? "Conectando…" : "Digite sua mensagem…"}
+                placeholder={isListening ? "Ouvindo…" : isSpeaking ? "Niky está falando…" : voiceMode ? "Modo voz — ou digite aqui" : starting ? "Conectando…" : "Digite sua mensagem…"}
                 disabled={loading || starting || isListening || isSpeaking}
                 className="flex-1 text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] placeholder:text-gray-400 disabled:opacity-50 transition-all"
               />
