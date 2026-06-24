@@ -361,21 +361,25 @@ function ChatWidget() {
       recognitionRef.current = null;
       const raw = transcriptRef.current.trim();
       transcriptRef.current = "";
-      if (pendingSendRef.current && raw) {
-        pendingSendRef.current = false;
+      if (raw) {
+        // Tem fala: envia e o mic reabre depois do bot responder (via speakText callback)
         const msg = normalizeVoiceText(raw);
         setInput("");
         sendRef.current(msg);
-      } else {
-        pendingSendRef.current = false;
+      } else if (voiceModeRef.current) {
+        // Silêncio/timeout sem fala: reabre o mic automaticamente no modo voz
+        setTimeout(() => toggleMicRef.current(), 400);
       }
     };
 
-    recognition.onerror = () => {
-      pendingSendRef.current = false;
+    recognition.onerror = (e: { error: string }) => {
       setIsListening(false);
       recognitionRef.current = null;
       transcriptRef.current = "";
+      // No modo voz, reabre o mic a menos que seja erro de permissão
+      if (voiceModeRef.current && e.error !== "not-allowed" && e.error !== "service-not-allowed") {
+        setTimeout(() => toggleMicRef.current(), 600);
+      }
     };
 
     recognitionRef.current = recognition;
