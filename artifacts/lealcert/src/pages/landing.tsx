@@ -36,7 +36,7 @@ type PixQrInfo = { qrCodeDataUrl: string | null; pixPayload: string | null; pixK
 
 function getDocList(tipo: "cpf" | "cnpj" | "outros"): string[] {
   if (tipo === "cpf") return ["RG ou CNH — frente", "RG ou CNH — verso", "Comprovante de residência"];
-  if (tipo === "cnpj") return ["Cartão CNPJ", "Contrato Social ou Requerimento de Empresário", "RG/CNH do responsável — frente", "RG/CNH do responsável — verso", "Comprovante de endereço da empresa"];
+  if (tipo === "cnpj") return ["RG ou CNH do responsável", "Cartão CNPJ (emitido pela Receita Federal)", "Ficha Cadastral (Contrato Social ou Requerimento de Empresário)", "Comprovante de endereço da empresa"];
   return ["Documento comprobatório do CEI, PIS ou NIS"];
 }
 
@@ -74,6 +74,7 @@ function ChatWidget() {
   const [micSupported] = useState(() => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window));
   const [docRequest, setDocRequest] = useState<{ tipo: "cpf" | "cnpj" | "outros" } | null>(null);
   const [pixQrInfo, setPixQrInfo] = useState<PixQrInfo | null>(null);
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const [docFiles, setDocFiles] = useState<(File | null)[]>([]);
   const [uploading, setUploading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -167,6 +168,7 @@ function ChatWidget() {
               done?: boolean;
               action?: string;
               tipo?: string;
+              orderId?: number;
               orderNumber?: string;
               total?: number;
               pixKey?: string | null;
@@ -190,6 +192,7 @@ function ChatWidget() {
               setDocRequest({ tipo: ev.tipo as "cpf" | "cnpj" | "outros" });
             }
             if (ev.action === "order_created" && ev.orderNumber) {
+              if (ev.orderId) setCreatedOrderId(ev.orderId);
               setPixQrInfo({
                 qrCodeDataUrl: ev.qrCodeDataUrl ?? null,
                 pixPayload: ev.pixPayload ?? null,
@@ -505,21 +508,35 @@ function ChatWidget() {
                     </div>
                   ) : pixQrInfo.pixKey ? (
                     <div className="space-y-2">
-                      <p className="text-xs text-gray-600 font-medium">📲 Pague via PIX usando a chave abaixo:</p>
+                      <p className="text-xs text-gray-600 font-medium">📲 Pague via PIX:</p>
                       <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                         <p className="text-xs text-gray-500 mb-1 font-medium">Chave PIX:</p>
                         <p className="font-mono text-sm text-gray-900 break-all select-all">{pixQrInfo.pixKey}</p>
                       </div>
                       <p className="text-xs text-gray-500">Valor: <span className="font-semibold text-gray-800">R$ {pixQrInfo.total.toFixed(2).replace(".", ",")}</span></p>
+                      {pixQrInfo.pixPayload && (
+                        <button
+                          onClick={() => { void navigator.clipboard.writeText(pixQrInfo.pixPayload!); }}
+                          className="w-full text-xs px-3 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-medium"
+                        >
+                          📋 Copiar código PIX (Copia e Cola)
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                       <p className="text-xs text-amber-800 font-medium">⏳ Nossa equipe entrará em contato com os dados de pagamento em breve.</p>
                     </div>
                   )}
-                  <p className="text-xs text-gray-400 text-center mt-3">
-                    Após o pagamento nossa equipe agendará a videoconferência de emissão
-                  </p>
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 text-center mb-2">Após efetuar o pagamento, clique no botão abaixo:</p>
+                    <button
+                      onClick={() => void send("Já paguei o PIX!")}
+                      className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors font-semibold shadow-sm"
+                    >
+                      ✅ Já paguei!
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

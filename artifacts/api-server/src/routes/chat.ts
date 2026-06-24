@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { eq, asc, and, or } from "drizzle-orm";
-import { db, conversations, chatMessages, certificatesTable, usersTable, ordersTable, settingsTable, ticketsTable, messagesTable } from "@workspace/db";
+import { eq, asc, and, or, gt } from "drizzle-orm";
+import { db, conversations, chatMessages, certificatesTable, usersTable, ordersTable, settingsTable, ticketsTable, messagesTable, slotsTable } from "@workspace/db";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../lib/logger";
 import { sendOrderStatusEmail, sendTempPasswordEmail } from "../lib/email";
-import { swBiometriaPSBioGlobal, type SafewebSettings } from "../lib/safeweb";
+import { swBiometriaPSBioGlobal, swConsultaCNPJ, type SafewebSettings } from "../lib/safeweb";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -211,9 +211,42 @@ Pergunte:
 
 Apresente o certificado com o preço EXATO de [CATALOGO_PRECOS]. Use SOMENTE os IDs e valores listados lá.
 
+▶ PASSO 5.5 — VALIDAÇÃO DO REPRESENTANTE (SOMENTE e-CNPJ)
+⚠️ OBRIGATÓRIO para e-CNPJ. NÃO pule este passo.
+Após o cliente confirmar que quer e-CNPJ, informe:
+"Para e-CNPJ, preciso validar na Receita Federal se o CPF informado é o representante legal do CNPJ."
+Colete em sequência:
+  1. CNPJ da empresa (14 dígitos)
+  2. CPF do representante legal (11 dígitos) — geralmente o mesmo CPF da biometria
+  3. Data de nascimento do representante (DD/MM/AAAA) — geralmente a mesma já informada
+
+Quando tiver os três, emita EXATAMENTE:
+ACAO:VALIDAR_CNPJ_RFB:{"cnpj":"<14 digitos>","cpf":"<11 digitos>","dataNascimento":"<DD/MM/AAAA>"}
+
+O sistema injetará no histórico:
+• [CNPJ_RESPONSAVEL_OK:{"razaoSocial":"...","repName":"..."}] — CPF é representante legal ✅
+• [CNPJ_RESPONSAVEL_INVALIDO:{"mensagem":"..."}] — CPF NÃO confere com o CNPJ ❌
+• [CNPJ_RFB_INDISPONIVEL] — sistema indisponível no momento
+
+Se [CNPJ_RESPONSAVEL_OK]:
+  Use a razaoSocial e repName retornados para preencher os dados automaticamente.
+  Informe: "✅ Validação concluída! [Nome da empresa] — representante confirmado."
+  Continue para o PASSO 6.
+
+Se [CNPJ_RESPONSAVEL_INVALIDO]:
+  Informe: "❌ O CPF informado não consta como representante legal deste CNPJ na Receita Federal."
+  Peça: "Verifique o CNPJ e o CPF e tente novamente, ou informe dados corretos."
+  NÃO prossiga. Repita a coleta.
+
+Se [CNPJ_RFB_INDISPONIVEL]:
+  Informe que a validação automática está indisponível e prossiga manualmente.
+
 ▶ PASSO 6 — DADOS DO PEDIDO
 Para **e-CPF**: Nome completo, CPF, E-mail, Telefone (WhatsApp), CEP + número
-Para **e-CNPJ**: Razão Social, CNPJ, Nome do responsável, CPF do responsável, E-mail, Telefone (WhatsApp), CEP + número
+Para **e-CNPJ** (após [CNPJ_RESPONSAVEL_OK]): Use a razaoSocial já validada. Colete:
+  - E-mail, Telefone (WhatsApp)
+  - CEP + número (endereço da empresa)
+  - Endereço do representante (se diferente)
 
 Se o cliente tem [USUARIO_VERIFICADO], confirme os dados cadastrados em vez de pedir novamente do zero.
 
@@ -230,9 +263,9 @@ Pergunte: "Deseja Garantia Estendida? +R$15,00 — garante suporte completo por 
 ▶ PASSO 8 — DOCUMENTOS
 Solicite os documentos. Na linha seguinte ao texto (sem nada depois):
 • e-CPF: ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
-  Documentos: RG ou CNH (frente e verso) + Comprovante de residência
+  Documentos obrigatórios: RG ou CNH do titular (frente e verso) + Comprovante de residência
 • e-CNPJ: ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
-  Documentos: Cartão CNPJ + Contrato Social + RG/CNH do responsável (frente e verso) + Comprovante de endereço
+  Documentos obrigatórios: RG ou CNH do responsável + Cartão CNPJ + Ficha Cadastral (Contrato Social / Requerimento de Empresário) + Comprovante de endereço da empresa
 Aguarde [DOCUMENTOS_ENVIADOS] antes de continuar.
 Obs: se o cliente já enviou documento de CEI/PIS/NIS no PASSO 6, NÃO solicite novamente — os arquivos já foram registrados.
 
@@ -262,8 +295,45 @@ ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":
 O sistema gerará o QR Code PIX automaticamente e exibirá na tela.
 
 ▶ PASSO 11 — APÓS O PEDIDO
-Informe: "✅ Pedido criado! O QR Code PIX apareceu na tela. Após o pagamento nossa equipe agendará a videoconferência de emissão."
-Pergunte: "Tem algum horário de preferência para a videoconferência? (manhã/tarde, dias da semana)"
+O QR Code PIX (ou chave PIX copia e cola) foi exibido na tela.
+Informe: "✅ Pedido criado! Realize o pagamento via PIX conforme exibido na tela. Assim que efetuar o pagamento, me avise aqui."
+Aguarde o cliente confirmar o pagamento.
+
+▶ PASSO 12 — VERIFICAÇÃO DO PAGAMENTO
+Quando o cliente disser que pagou ("paguei", "já paguei", "efetuei", "feito", "ok paguei", etc.), emita EXATAMENTE:
+ACAO:VERIFICAR_PAGAMENTO:{"orderId":<id_numerico_do_pedido>}
+O sistema injetará no histórico:
+• [PAGAMENTO_CONFIRMADO:{"protocolo":"...","orderId":X}] — pagamento confirmado
+• [PAGAMENTO_PENDENTE] — ainda não identificado
+
+Se [PAGAMENTO_PENDENTE]:
+  Informe: "Ainda não identificamos seu pagamento. O PIX pode levar alguns minutos. Aguarde e me avise novamente."
+  NÃO prossiga.
+
+Se [PAGAMENTO_CONFIRMADO]:
+  Exiba: "✅ Pagamento confirmado! Protocolo: **[protocolo]**. Guarde este número — você precisará dele em qualquer atendimento de suporte."
+  Pergunte: "Deseja agendar agora a videoconferência para a emissão do certificado?"
+
+▶ PASSO 13 — AGENDAMENTO DA VIDEOCONFERÊNCIA
+Se o cliente disser SIM, emita:
+ACAO:BUSCAR_HORARIOS:{}
+O sistema injetará [HORARIOS_DISPONIVEIS:{"slots":[{"id":N,"dataHora":"DD/MM/AAAA HH:MM"},...]}].
+Apresente os horários de forma clara e numerada. Pergunte qual o cliente prefere.
+Quando o cliente escolher, emita:
+ACAO:AGENDAR:{"orderId":<id>,"slotId":<id_do_slot>}
+O sistema injetará [AGENDAMENTO_CONFIRMADO:{"dataHora":"DD/MM/AAAA HH:MM","orderId":X}].
+Confirme: "✅ Agendamento confirmado para **[data e hora]**!"
+Informe os documentos que o cliente deve ter em mãos para a videoconferência:
+• e-CPF: RG ou CNH (frente e verso) + Comprovante de residência
+• e-CNPJ: Cartão CNPJ + Contrato Social ou Req. de Empresário + RG/CNH do responsável (frente e verso) + Comprovante de endereço
+
+Se o cliente disser NÃO ao agendamento, informe que pode agendar a qualquer momento pelo suporte.
+
+▶ REGRA ANTI-DUPLICATA
+Se [PEDIDO_CRIADO] já aparecer no histórico desta conversa:
+  NÃO execute ACAO:CRIAR_PEDIDO novamente.
+  Informe: "Já existe um pedido criado nesta sessão. Para adquirir outro certificado, inicie uma nova conversa."
+  Ofereça ajuda sobre o pedido existente (verificar pagamento, agendar, etc.).
 
 ═══════════════════════════════════════
 CONSULTA DE STATUS DE PEDIDO
@@ -620,7 +690,11 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // Ação: criar pedido
   if (fullResponse.includes("ACAO:CRIAR_PEDIDO:")) {
-    if (!verifiedCpfCnpj) {
+    // Guard: evita pedido duplicado na mesma sessão
+    const hasPedidoCriado = chatHistory.some(m => m.content.startsWith("[PEDIDO_CRIADO]"));
+    if (hasPedidoCriado) {
+      res.write(`data: ${JSON.stringify({ content: "\n\n⚠️ Já existe um pedido criado nesta sessão. Para adquirir outro certificado, inicie uma nova conversa." })}\n\n`);
+    } else if (!verifiedCpfCnpj) {
       res.write(`data: ${JSON.stringify({ content: "\n\n❌ Não é possível criar pedidos sem validação de cadastro. Informe seu CPF ou CNPJ para continuar." })}\n\n`);
     } else {
       try {
@@ -755,6 +829,13 @@ router.post("/chat", async (req, res): Promise<void> => {
         })}\n\n`);
 
         await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: confirmMsg });
+
+        // Inject [PEDIDO_CRIADO] so the AI and guard can detect duplicate attempts
+        await db.insert(chatMessages).values({
+          conversationId: sessionId,
+          role: "system",
+          content: `[PEDIDO_CRIADO] orderId:${order.id} orderNumber:${order.orderNumber} clientType:${orderData.clientType} total:${total.toFixed(2)}`,
+        });
 
         if (orderData.customerEmail) {
           try {
@@ -931,6 +1012,132 @@ router.post("/chat", async (req, res): Promise<void> => {
       logger.error({ err: cadastroErr }, "Failed to process CRIAR_CADASTRO action");
       const errMsg = (cadastroErr as Error).message ?? "Erro ao criar cadastro";
       res.write(`data: ${JSON.stringify({ content: `\n\n❌ Não foi possível criar o cadastro: ${errMsg}. Verifique os dados e tente novamente.` })}\n\n`);
+    }
+  }
+
+  // Ação: validar representante CNPJ via Receita Federal (Safeweb)
+  if (fullResponse.includes("ACAO:VALIDAR_CNPJ_RFB:")) {
+    try {
+      const jsonStr = fullResponse.split("ACAO:VALIDAR_CNPJ_RFB:")[1].trim();
+      const rfbData = JSON.parse(jsonStr) as { cnpj: string; cpf: string; dataNascimento: string };
+      const cnpjDigits = String(rfbData.cnpj ?? "").replace(/\D/g, "");
+      const cpfDigits = String(rfbData.cpf ?? "").replace(/\D/g, "");
+      const dataNasc = String(rfbData.dataNascimento ?? "").trim();
+      if (!cnpjDigits || cnpjDigits.length !== 14 || !cpfDigits || cpfDigits.length !== 11 || !dataNasc) {
+        throw new Error("CNPJ (14 dígitos), CPF (11 dígitos) e data de nascimento são obrigatórios");
+      }
+      const sw = await getSwSettings();
+      let injMsg: string;
+      if (!sw) {
+        injMsg = `[CNPJ_RFB_INDISPONIVEL] Sistema Safeweb não configurado. Prossiga sem a validação automática.`;
+      } else {
+        const result = await swConsultaCNPJ(sw, cnpjDigits, cpfDigits, dataNasc);
+        logger.info({ cnpj: cnpjDigits, cpf: cpfDigits, result }, "swConsultaCNPJ raw response");
+        if (result.Codigo === 0) {
+          const nomeCompleto = typeof result.NomeCompleto === "string" ? result.NomeCompleto.trim() : "";
+          const mensagem = typeof result.Mensagem === "string" ? result.Mensagem.trim() : "";
+          const razaoSocial = nomeCompleto || mensagem || "Empresa";
+          const repName = mensagem || nomeCompleto || "";
+          injMsg = `[CNPJ_RESPONSAVEL_OK:{"razaoSocial":"${razaoSocial}","repName":"${repName}","cnpj":"${cnpjDigits}","cpf":"${cpfDigits}"}]`;
+        } else {
+          const msgErr = typeof result.Mensagem === "string" ? result.Mensagem : "CPF do responsável não confere com a Receita Federal.";
+          injMsg = `[CNPJ_RESPONSAVEL_INVALIDO:{"mensagem":"${msgErr}","codigo":${result.Codigo ?? -1}}]`;
+        }
+      }
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: injMsg });
+      await streamFollowUp([{ role: "user" as const, content: injMsg }]);
+    } catch (rfbErr) {
+      logger.error({ err: rfbErr }, "Failed to process VALIDAR_CNPJ_RFB action");
+      const errMsg = (rfbErr as Error).message ?? "Erro ao validar CNPJ";
+      res.write(`data: ${JSON.stringify({ content: `\n\n❌ ${errMsg}` })}\n\n`);
+    }
+  }
+
+  // Ação: verificar pagamento
+  if (fullResponse.includes("ACAO:VERIFICAR_PAGAMENTO:")) {
+    try {
+      const jsonStr = fullResponse.split("ACAO:VERIFICAR_PAGAMENTO:")[1].trim();
+      const { orderId: vpOrderId } = JSON.parse(jsonStr) as { orderId: number };
+      const [orderRow] = await db.select({
+        id: ordersTable.id, orderNumber: ordersTable.orderNumber,
+        status: ordersTable.status, garPedido: ordersTable.garPedido,
+        safewebSolicitacaoId: ordersTable.safewebSolicitacaoId,
+      }).from(ordersTable).where(eq(ordersTable.id, vpOrderId)).limit(1);
+
+      const paidStatuses = ["paid", "protocol_assigned", "aguardando_validacao", "emitido", "completed"];
+      if (!orderRow || !paidStatuses.includes(orderRow.status)) {
+        const injMsg = `[PAGAMENTO_PENDENTE] orderId:${vpOrderId}`;
+        await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: injMsg });
+        await streamFollowUp([{ role: "user" as const, content: injMsg }]);
+      } else {
+        const protocolo = orderRow.garPedido ?? orderRow.safewebSolicitacaoId ?? orderRow.orderNumber;
+        const injMsg = `[PAGAMENTO_CONFIRMADO:{"protocolo":"${protocolo}","orderId":${vpOrderId}}]`;
+        await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: injMsg });
+        res.write(`data: ${JSON.stringify({ action: "payment_confirmed", protocolo, orderId: vpOrderId })}\n\n`);
+        await streamFollowUp([{ role: "user" as const, content: injMsg }]);
+      }
+    } catch (vpErr) {
+      logger.error({ err: vpErr }, "Failed to process VERIFICAR_PAGAMENTO action");
+      res.write(`data: ${JSON.stringify({ content: "\n\n❌ Erro ao verificar pagamento. Tente novamente." })}\n\n`);
+    }
+  }
+
+  // Ação: buscar horários disponíveis
+  if (fullResponse.includes("ACAO:BUSCAR_HORARIOS:")) {
+    try {
+      const now = new Date();
+      const slots = await db.select({ id: slotsTable.id, slotDatetime: slotsTable.slotDatetime })
+        .from(slotsTable)
+        .where(and(eq(slotsTable.active, true), gt(slotsTable.slotDatetime, now)))
+        .orderBy(asc(slotsTable.slotDatetime))
+        .limit(10);
+
+      let injMsg: string;
+      if (slots.length === 0) {
+        injMsg = `[HORARIOS_INDISPONIVEIS] Nenhum horário disponível no momento.`;
+      } else {
+        const formatted = slots.map(s => {
+          const d = new Date(s.slotDatetime);
+          const pad = (n: number) => String(n).padStart(2, "0");
+          const dataHora = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          return { id: s.id, dataHora };
+        });
+        injMsg = `[HORARIOS_DISPONIVEIS:${JSON.stringify({ slots: formatted })}]`;
+      }
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: injMsg });
+      await streamFollowUp([{ role: "user" as const, content: injMsg }]);
+    } catch (bhErr) {
+      logger.error({ err: bhErr }, "Failed to process BUSCAR_HORARIOS action");
+      res.write(`data: ${JSON.stringify({ content: "\n\n❌ Erro ao buscar horários. Tente novamente." })}\n\n`);
+    }
+  }
+
+  // Ação: agendar videoconferência
+  if (fullResponse.includes("ACAO:AGENDAR:")) {
+    try {
+      const jsonStr = fullResponse.split("ACAO:AGENDAR:")[1].trim();
+      const { orderId: agOrderId, slotId } = JSON.parse(jsonStr) as { orderId: number; slotId: number };
+
+      const [slot] = await db.select().from(slotsTable)
+        .where(and(eq(slotsTable.id, slotId), eq(slotsTable.active, true))).limit(1);
+      if (!slot) throw new Error("Horário indisponível ou já reservado");
+
+      // Reservar slot e salvar no pedido
+      await db.update(slotsTable).set({ active: false }).where(eq(slotsTable.id, slotId));
+      await db.update(ordersTable).set({ scheduledAt: slot.slotDatetime }).where(eq(ordersTable.id, agOrderId));
+
+      const d = new Date(slot.slotDatetime);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const dataHora = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+      const injMsg = `[AGENDAMENTO_CONFIRMADO:{"dataHora":"${dataHora}","orderId":${agOrderId}}]`;
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: injMsg });
+      res.write(`data: ${JSON.stringify({ action: "agendamento_confirmado", dataHora, orderId: agOrderId })}\n\n`);
+      await streamFollowUp([{ role: "user" as const, content: injMsg }]);
+    } catch (agErr) {
+      logger.error({ err: agErr }, "Failed to process AGENDAR action");
+      const msg = (agErr as Error).message ?? "Erro ao agendar";
+      res.write(`data: ${JSON.stringify({ content: `\n\n❌ ${msg}. Tente outro horário ou entre em contato com o suporte.` })}\n\n`);
     }
   }
 
