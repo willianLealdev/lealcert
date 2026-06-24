@@ -6,6 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../lib/logger";
 import { sendOrderStatusEmail, sendTempPasswordEmail } from "../lib/email";
 import { swBiometriaPSBioGlobal, swConsultaCNPJ, type SafewebSettings } from "../lib/safeweb";
+import { garPsBio } from "../lib/gestaoar";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -75,7 +76,7 @@ function buildPixPayload(pixKey: string, amount: number, txId: string, merchantN
   return body + crc16(body);
 }
 
-// ── Safeweb settings (for PSBio check) ───────────────────────────────────────
+// ── Safeweb settings ─────────────────────────────────────────────────────────
 function normalizeSwUrl(raw: string): string {
   try { return new URL(raw).origin; } catch { return raw.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); }
 }
@@ -905,27 +906,49 @@ router.post("/chat", async (req, res): Promise<void> => {
 
       const dataNascimento = bioData.dataNascimento?.trim() || undefined;
       let bioMsg: string;
-      const sw = await getSwSettings();
-      if (!sw) {
-        bioMsg = `[BIO_INDISPONIVEL] Sistema PSBio indisponível no momento — Safeweb não configurada. Tente novamente mais tarde.`;
-      } else {
-        logger.info({ psbioUrl: sw.url, psbioUser: sw.username, cpf: cpfDigits, dataNascimento }, "PSBio global chamando");
-        const bioResult = await swBiometriaPSBioGlobal(sw, cpfDigits, dataNascimento);
-        logger.info({ cpf: cpfDigits, dataNascimento, bioResult }, "PSBio global raw response");
-        const isTruthy = (v: unknown) => v === true || v === "true" || v === 1 || v === "sim" || v === "S" || v === "s";
-        const encontrado = isTruthy(bioResult.encontrado)
-          || isTruthy(bioResult.Encontrado)
-          || isTruthy(bioResult.resultado)
-          || isTruthy(bioResult.Resultado)
-          || isTruthy(bioResult.biometria)
-          || isTruthy(bioResult.Biometria)
-          || bioResult.status === "encontrado" || bioResult.status === "ENCONTRADO" || bioResult.status === "Encontrado"
-          || bioResult.Status === "encontrado" || bioResult.Status === "ENCONTRADO" || bioResult.Status === "Encontrado"
-          || bioResult.statusCode === 200;
-        if (encontrado) {
-          bioMsg = `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfDigits}. Pode prosseguir com a emissão por videoconferência.`;
+
+      // Espelha exatamente a lógica de orders.ts /consulta-previa:
+      // provider ativo decide qual PSBio chamar; Safeweb sempre usa safewebUrl (não homologação)
+      const [sRow] = await db.select().from(settingsTable).limit(1);
+      const activeProvider = sRow?.activeProvider ?? "gestaoar";
+      let encontrado = false;
+
+      if (activeProvider === "safeweb") {
+        if (!sRow?.safewebUrl || !sRow?.safewebUsername || !sRow?.safewebPassword) {
+          bioMsg = `[BIO_INDISPONIVEL] Sistema PSBio indisponível no momento — Safeweb não configurada. Tente novamente mais tarde.`;
         } else {
-          bioMsg = `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfDigits}. Retorno API: ${JSON.stringify(bioResult)}. NÃO prossiga com venda — oriente o cliente a abrir um chamado de suporte.`;
+          const sw: SafewebSettings = {
+            url: normalizeSwUrl(sRow.safewebUrl),
+            username: sRow.safewebUsername,
+            password: sRow.safewebPassword,
+          };
+          logger.info({ psbioUrl: sw.url, psbioUser: sw.username, cpf: cpfDigits, dataNascimento }, "PSBio global chamando");
+          const bioResult = await swBiometriaPSBioGlobal(sw, cpfDigits, dataNascimento);
+          logger.info({ cpf: cpfDigits, dataNascimento, bioResult }, "PSBio global raw response");
+          const isTruthy = (v: unknown) => v === true || v === "true" || v === 1 || v === "sim" || v === "S" || v === "s";
+          encontrado = isTruthy(bioResult.encontrado)
+            || isTruthy(bioResult.Encontrado)
+            || isTruthy(bioResult.resultado)
+            || isTruthy(bioResult.Resultado)
+            || isTruthy(bioResult.biometria)
+            || isTruthy(bioResult.Biometria)
+            || bioResult.status === "encontrado" || bioResult.status === "ENCONTRADO" || bioResult.status === "Encontrado"
+            || bioResult.Status === "encontrado" || bioResult.Status === "ENCONTRADO" || bioResult.Status === "Encontrado"
+            || bioResult.statusCode === 200;
+          bioMsg = encontrado
+            ? `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfDigits}. Pode prosseguir com a emissão por videoconferência.`
+            : `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfDigits}. Retorno API: ${JSON.stringify(bioResult)}. NÃO prossiga com venda — oriente o cliente a abrir um chamado de suporte.`;
+        }
+      } else {
+        // Gestão AR
+        if (!sRow?.garApiKey) {
+          bioMsg = `[BIO_INDISPONIVEL] Sistema PSBio indisponível no momento — Gestão AR não configurada. Tente novamente mais tarde.`;
+        } else {
+          const psBioResult = await garPsBio(sRow.garApiKey, cpfDigits);
+          encontrado = psBioResult?.IsOk === true;
+          bioMsg = encontrado
+            ? `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfDigits}. Pode prosseguir com a emissão por videoconferência.`
+            : `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfDigits}. NÃO prossiga com venda — oriente o cliente a abrir um chamado de suporte.`;
         }
       }
 
