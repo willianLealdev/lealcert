@@ -32,7 +32,13 @@ const BENEFITS = [
 ];
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
-type PixQrInfo = { qrCodeDataUrl: string; pixPayload: string | null; pixKey: string | null; total: number; orderNumber: string };
+type PixQrInfo = { qrCodeDataUrl: string | null; pixPayload: string | null; pixKey: string | null; total: number; orderNumber: string };
+
+function getDocList(tipo: "cpf" | "cnpj" | "outros"): string[] {
+  if (tipo === "cpf") return ["RG ou CNH — frente", "RG ou CNH — verso", "Comprovante de residência"];
+  if (tipo === "cnpj") return ["Cartão CNPJ", "Contrato Social ou Requerimento de Empresário", "RG/CNH do responsável — frente", "RG/CNH do responsável — verso", "Comprovante de endereço da empresa"];
+  return ["Documento comprobatório do CEI, PIS ou NIS"];
+}
 
 function normalizeVoiceText(text: string): string {
   let t = text;
@@ -68,11 +74,11 @@ function ChatWidget() {
   const [micSupported] = useState(() => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window));
   const [docRequest, setDocRequest] = useState<{ tipo: "cpf" | "cnpj" | "outros" } | null>(null);
   const [pixQrInfo, setPixQrInfo] = useState<PixQrInfo | null>(null);
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [docFiles, setDocFiles] = useState<(File | null)[]>([]);
   const [uploading, setUploading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const docFileInputsRef = useRef<(HTMLInputElement | null)[]>([]);
   const recognitionRef = useRef<{ start(): void; stop(): void; abort(): void; onresult: ((e: SpeechRecognitionEvent) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; lang: string; continuous: boolean; interimResults: boolean } | null>(null);
   const sendRef = useRef<(msg?: string) => Promise<void>>(() => Promise.resolve());
   const transcriptRef = useRef("");
@@ -86,15 +92,11 @@ function ChatWidget() {
   useEffect(() => { sendRef.current = send; });
 
   useEffect(() => {
-    if (prevLoadingRef.current && !loading) {
-      const lastMsg = messages[messages.length - 1];
-      if (lastMsg?.role === "assistant" && lastMsg.content) {
-        speakAssistant(lastMsg.content);
-      }
+    if (docRequest) {
+      setDocFiles(new Array(getDocList(docRequest.tipo).length).fill(null) as (File | null)[]);
+      docFileInputsRef.current = [];
     }
-    prevLoadingRef.current = loading;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
+  }, [docRequest]);
 
   async function startSession() {
     if (sessionId) return;
@@ -188,15 +190,13 @@ function ChatWidget() {
               setDocRequest({ tipo: ev.tipo as "cpf" | "cnpj" | "outros" });
             }
             if (ev.action === "order_created" && ev.orderNumber) {
-              if (ev.qrCodeDataUrl) {
-                setPixQrInfo({
-                  qrCodeDataUrl: ev.qrCodeDataUrl,
-                  pixPayload: ev.pixPayload ?? null,
-                  pixKey: ev.pixKey ?? null,
-                  total: ev.total ?? 0,
-                  orderNumber: ev.orderNumber,
-                });
-              }
+              setPixQrInfo({
+                qrCodeDataUrl: ev.qrCodeDataUrl ?? null,
+                pixPayload: ev.pixPayload ?? null,
+                pixKey: ev.pixKey ?? null,
+                total: ev.total ?? 0,
+                orderNumber: ev.orderNumber,
+              });
             }
           } catch { /* ignore parse errors */ }
         }
@@ -214,11 +214,12 @@ function ChatWidget() {
   }
 
   async function uploadDocs() {
-    if (!pendingFiles.length || !sessionId) return;
+    const files = docFiles.filter((f): f is File => f !== null);
+    if (!files.length || !sessionId) return;
     setUploading(true);
     try {
       const formData = new FormData();
-      pendingFiles.forEach(f => formData.append("files", f));
+      files.forEach(f => formData.append("files", f));
       formData.append("sessionId", String(sessionId));
       const res = await fetch("/api/chat/upload-docs", {
         method: "POST",
@@ -228,7 +229,7 @@ function ChatWidget() {
       if (!res.ok) throw new Error("Upload failed");
       const data = await res.json() as { files: string[] };
       setDocRequest(null);
-      setPendingFiles([]);
+      setDocFiles([]);
       const names = data.files.join(", ");
       await sendRef.current(`[DOCUMENTOS_ENVIADOS] Arquivos enviados: ${names}. Por favor, prossiga com a criação do pedido.`);
     } catch {
@@ -413,97 +414,112 @@ function ChatWidget() {
               </div>
             )}
             {loading && messages[messages.length - 1]?.content === "" && null}
-            {docRequest && (
-              <div className="flex justify-start gap-2">
-                <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3.5 w-3.5 text-white" />
-                </div>
-                <div className="max-w-[90%] bg-white border border-blue-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm">
-                  <p className="font-semibold text-gray-800 mb-2">
-                    📎 {docRequest.tipo === "cpf" ? "Documentos necessários (e-CPF)" : docRequest.tipo === "cnpj" ? "Documentos necessários (e-CNPJ)" : "Documento comprobatório (CEI / PIS / NIS)"}
-                  </p>
-                  <ul className="text-gray-600 text-xs space-y-1 mb-3">
-                    {(docRequest.tipo === "cpf"
-                      ? ["RG ou CNH — frente", "RG ou CNH — verso", "Comprovante de residência"]
-                      : docRequest.tipo === "cnpj"
-                      ? ["Cartão CNPJ", "Contrato Social ou Requerimento de Empresário", "RG/CNH do responsável — frente", "RG/CNH do responsável — verso", "Comprovante de endereço da empresa"]
-                      : ["Documento que comprove o CEI, PIS ou NIS informado (ex: carteira de trabalho, extrato INSS ou comprovante emitido pelo portal gov.br)"]
-                    ).map(doc => (
-                      <li key={doc} className="flex items-center gap-1.5">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                        {doc}
-                      </li>
-                    ))}
-                  </ul>
-                  {pendingFiles.length > 0 && (
-                    <div className="mb-3 space-y-1">
-                      {pendingFiles.map(f => (
-                        <div key={f.name} className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 rounded px-2 py-1">
-                          <FileText className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{f.name}</span>
+            {docRequest && (() => {
+              const docList = getDocList(docRequest.tipo);
+              const allSelected = docFiles.every(f => f !== null) && docFiles.length === docList.length;
+              const anySelected = docFiles.some(f => f !== null);
+              return (
+                <div className="flex justify-start gap-2">
+                  <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <div className="max-w-[92%] bg-white border border-blue-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm">
+                    <p className="font-semibold text-gray-800 mb-3">
+                      📎 {docRequest.tipo === "cpf" ? "Documentos necessários — e-CPF" : docRequest.tipo === "cnpj" ? "Documentos necessários — e-CNPJ" : "Documento comprobatório (CEI / PIS / NIS)"}
+                    </p>
+                    <div className="space-y-2 mb-3">
+                      {docList.map((doc, i) => (
+                        <div key={doc} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-700 font-medium truncate">{doc}</p>
+                            {docFiles[i] ? (
+                              <p className="text-xs text-green-600 truncate mt-0.5 flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                {docFiles[i]!.name}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-gray-400 mt-0.5">Nenhum arquivo selecionado</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => docFileInputsRef.current[i]?.click()}
+                            className="shrink-0 flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md bg-white border border-gray-300 hover:bg-blue-50 hover:border-blue-400 text-gray-600 hover:text-blue-600 transition-colors"
+                          >
+                            <Paperclip className="h-3 w-3" />
+                            {docFiles[i] ? "Trocar" : "Selecionar"}
+                          </button>
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            className="hidden"
+                            ref={el => { docFileInputsRef.current[i] = el; }}
+                            onChange={e => {
+                              const file = e.target.files?.[0] ?? null;
+                              setDocFiles(prev => { const c = [...prev]; c[i] = file; return c; });
+                            }}
+                          />
                         </div>
                       ))}
                     </div>
-                  )}
-                  <div className="flex gap-2 flex-wrap">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-                    >
-                      <Paperclip className="h-3.5 w-3.5" />
-                      {pendingFiles.length > 0 ? "Adicionar mais" : "Selecionar arquivos"}
-                    </button>
-                    {pendingFiles.length > 0 && (
+                    {anySelected && (
                       <button
                         onClick={uploadDocs}
                         disabled={uploading}
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+                        className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
                       >
-                        {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                        {uploading ? "Enviando…" : "Enviar documentos"}
+                        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {uploading ? "Enviando…" : allSelected ? "Enviar todos os documentos" : `Enviar ${docFiles.filter(Boolean).length} de ${docList.length} documentos`}
                       </button>
                     )}
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             {pixQrInfo && (
               <div className="flex justify-start gap-2">
                 <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
                   <Bot className="h-3.5 w-3.5 text-white" />
                 </div>
                 <div className="max-w-[90%] bg-white border border-green-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-4 text-sm">
-                  <p className="font-bold text-gray-800 mb-1">✅ Pedido #{pixQrInfo.orderNumber}</p>
+                  <p className="font-bold text-gray-800 mb-1">✅ Pedido #{pixQrInfo.orderNumber} criado!</p>
                   <p className="text-green-700 font-semibold mb-3 text-base">Total: R$ {pixQrInfo.total.toFixed(2).replace(".", ",")}</p>
-                  <div className="flex flex-col items-center gap-3">
-                    <img
-                      src={pixQrInfo.qrCodeDataUrl}
-                      alt="QR Code PIX"
-                      className="w-48 h-48 rounded-lg border border-gray-200 shadow-sm"
-                    />
-                    <p className="text-xs text-gray-500 text-center">
-                      Aponte a câmera do celular para o QR Code ou copie a chave abaixo
-                    </p>
-                    {pixQrInfo.pixKey && (
-                      <div className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2">
+                  {pixQrInfo.qrCodeDataUrl ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <p className="text-xs text-gray-600 font-medium self-start">📲 Pague via PIX:</p>
+                      <img
+                        src={pixQrInfo.qrCodeDataUrl}
+                        alt="QR Code PIX"
+                        className="w-48 h-48 rounded-lg border border-gray-200 shadow-sm"
+                      />
+                      <p className="text-xs text-gray-500 text-center">
+                        Aponte a câmera do celular para o QR Code ou use o botão abaixo
+                      </p>
+                      {pixQrInfo.pixPayload && (
+                        <button
+                          onClick={() => { void navigator.clipboard.writeText(pixQrInfo.pixPayload!); }}
+                          className="w-full text-xs px-3 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-medium"
+                        >
+                          📋 Copiar código PIX (Copia e Cola)
+                        </button>
+                      )}
+                    </div>
+                  ) : pixQrInfo.pixKey ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-600 font-medium">📲 Pague via PIX usando a chave abaixo:</p>
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                         <p className="text-xs text-gray-500 mb-1 font-medium">Chave PIX:</p>
-                        <p className="font-mono text-xs text-gray-800 break-all select-all">{pixQrInfo.pixKey}</p>
+                        <p className="font-mono text-sm text-gray-900 break-all select-all">{pixQrInfo.pixKey}</p>
                       </div>
-                    )}
-                    {pixQrInfo.pixPayload && (
-                      <button
-                        onClick={() => {
-                          void navigator.clipboard.writeText(pixQrInfo.pixPayload!);
-                        }}
-                        className="w-full text-xs px-3 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-medium"
-                      >
-                        📋 Copiar código PIX (Copia e Cola)
-                      </button>
-                    )}
-                    <p className="text-xs text-gray-400 text-center">
-                      Após o pagamento nossa equipe entrará em contato para agendar a videoconferência
-                    </p>
-                  </div>
+                      <p className="text-xs text-gray-500">Valor: <span className="font-semibold text-gray-800">R$ {pixQrInfo.total.toFixed(2).replace(".", ",")}</span></p>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <p className="text-xs text-amber-800 font-medium">⏳ Nossa equipe entrará em contato com os dados de pagamento em breve.</p>
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-400 text-center mt-3">
+                    Após o pagamento nossa equipe agendará a videoconferência de emissão
+                  </p>
                 </div>
               </div>
             )}
@@ -524,18 +540,6 @@ function ChatWidget() {
                 <span className="ml-auto text-gray-400 italic truncate">{input || "aguardando fala…"}</span>
               </div>
             )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*,.pdf"
-              className="hidden"
-              onChange={e => {
-                const files = Array.from(e.target.files ?? []);
-                if (files.length) setPendingFiles(prev => [...prev, ...files]);
-                e.target.value = "";
-              }}
-            />
             <div className="flex items-center gap-2">
               <input
                 ref={inputRef}
