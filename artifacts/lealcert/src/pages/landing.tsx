@@ -43,6 +43,17 @@ function getDocList(tipo: "cpf" | "cnpj" | "outros"): string[] {
 function normalizeVoiceText(text: string): string {
   let t = text;
 
+  // Siglas faladas em português via voz → forma escrita
+  // "cê pê éfe" / "cê pê efe" → "CPF"
+  t = t.replace(/\bc[eê]\s+p[eê]\s+[eé]fe\b/gi, "CPF");
+  t = t.replace(/\bc[eê]\s+p[eê]\s+fe\b/gi, "CPF");
+  // "cê ene pê jota" / "cê ene pê jê" → "CNPJ"
+  t = t.replace(/\bc[eê]\s+ene\s+p[eê]\s+jo[t]?[a-z]*\b/gi, "CNPJ");
+  t = t.replace(/\bc[eê]\s+ene\s+p[eê]\s+j[eê]\b/gi, "CNPJ");
+  // "cê pê éfe" como palavra única transcrita
+  t = t.replace(/\bcepeefe\b/gi, "CPF");
+  t = t.replace(/\bcenepeje\b/gi, "CNPJ");
+
   // "arroba" → "@"
   t = t.replace(/\s*\barroba\b\s*/gi, "@");
 

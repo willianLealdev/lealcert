@@ -321,12 +321,15 @@ Se o cliente tem [USUARIO_VERIFICADO], confirme os dados cadastrados em vez de p
 
 ▶ PASSO 7 — NOTA FISCAL
 (Só após [DOCUMENTOS_ENVIADOS])
-Colete os dados para emissão da nota fiscal do certificado. Pergunte:
+Colete os dados para emissão da nota fiscal do certificado. Pergunte UMA VEZ:
 "A nota fiscal será emitida em **CPF** (seu nome) ou **CNPJ** (empresa)?"
 
+REGRA CRÍTICA: Assim que o cliente responder "CPF", "cpf", "pessoa física", "meu nome" ou qualquer variante — NUNCA repita esta pergunta. Prossiga IMEDIATAMENTE para a próxima etapa do CPF.
+Da mesma forma: "CNPJ", "cnpj", "empresa", "pessoa jurídica" → NUNCA repita. Vá direto para coletar os dados do CNPJ.
+
 ═══ Se CPF: ═══
-  - Use os dados do próprio titular (nfCnpj = null, nfNome = nome do titular)
-  - Pergunte: "O endereço de cobrança é o mesmo endereço informado?"
+  - IMEDIATAMENTE use os dados do próprio titular (nfCnpj = null, nfNome = nome do titular)
+  - Pergunte APENAS: "O endereço de cobrança é o mesmo endereço informado?"
     • Se sim: use o mesmo endereço (nfZipcode/nfStreet etc. = endereço do titular)
     • Se não: colete CEP + rua + número + complemento + bairro + cidade + UF para a NF
 
