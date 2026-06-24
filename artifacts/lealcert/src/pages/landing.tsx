@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   Shield, CheckCircle2, Clock, Award, Users, FileText,
   ChevronRight, MessageCircle, X, Send, Loader2, Bot,
   Star, Lock, Zap, Phone, Mail, MapPin, Menu, Mic, MicOff,
-  Upload, Paperclip
+  Upload, Paperclip, Volume2, VolumeX
 } from "lucide-react";
 
 const CERTS = [
@@ -77,14 +77,59 @@ function ChatWidget() {
   const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const [docFiles, setDocFiles] = useState<(File | null)[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const docFileInputsRef = useRef<(HTMLInputElement | null)[]>([]);
   const recognitionRef = useRef<{ start(): void; stop(): void; abort(): void; onresult: ((e: SpeechRecognitionEvent) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; lang: string; continuous: boolean; interimResults: boolean } | null>(null);
   const sendRef = useRef<(msg?: string) => Promise<void>>(() => Promise.resolve());
   const transcriptRef = useRef("");
-  const pendingSendRef = useRef(false);
-  const prevLoadingRef = useRef(false);
+  const voiceModeRef = useRef(false);
+  const audioEnabledRef = useRef(true);
+  const toggleMicRef = useRef<() => void>(() => {});
+
+  useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
+  useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
+
+  const speakText = useCallback((text: string, onDone?: () => void) => {
+    if (!audioEnabledRef.current || !("speechSynthesis" in window)) {
+      onDone?.();
+      return;
+    }
+    window.speechSynthesis.cancel();
+    // Strip markdown, emojis, action lines and special chars for clean TTS
+    const clean = text
+      .split("\n")
+      .filter(l => !l.startsWith("ACAO:") && !l.startsWith("["))
+      .join(" ")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/[*_~>#\-]/g, "")
+      .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
+      .replace(/[\u2600-\u27BF]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!clean) { onDone?.(); return; }
+
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.lang = "pt-BR";
+    utter.rate = 1.4;
+    utter.pitch = 0.9;
+    // Prefer a pt-BR male voice
+    const voices = window.speechSynthesis.getVoices();
+    const ptVoice = voices.find(v => v.lang === "pt-BR" && v.name.toLowerCase().includes("male"))
+      ?? voices.find(v => v.lang === "pt-BR" && !v.name.toLowerCase().includes("female"))
+      ?? voices.find(v => v.lang === "pt-BR")
+      ?? voices.find(v => v.lang.startsWith("pt"));
+    if (ptVoice) utter.voice = ptVoice;
+
+    utter.onstart = () => setIsSpeaking(true);
+    utter.onend = () => { setIsSpeaking(false); onDone?.(); };
+    utter.onerror = () => { setIsSpeaking(false); onDone?.(); };
+    window.speechSynthesis.speak(utter);
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -212,6 +257,14 @@ function ChatWidget() {
       });
     } finally {
       setLoading(false);
+      // Speak the assistant reply and, if in voice mode, reactivate mic after speaking
+      if (assistantContent) {
+        speakText(assistantContent, () => {
+          if (voiceModeRef.current) {
+            setTimeout(() => toggleMicRef.current(), 400);
+          }
+        });
+      }
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }
@@ -265,6 +318,9 @@ function ChatWidget() {
     if (isListening) {
       pendingSendRef.current = true;
       recognitionRef.current?.stop();
+      // If manually stopping in voice mode, exit voice mode
+      setVoiceMode(false);
+      voiceModeRef.current = false;
       return;
     }
 
@@ -319,6 +375,31 @@ function ChatWidget() {
     setInput("");
   }
 
+  // Keep toggleMicRef always up-to-date so speakText callback can call it
+  useEffect(() => { toggleMicRef.current = toggleMic; });
+
+  function startVoiceMode() {
+    if (!micSupported) return;
+    window.speechSynthesis.cancel();
+    setVoiceMode(true);
+    voiceModeRef.current = true;
+    // Speak greeting then activate mic
+    const lastAssistant = [...messages].reverse().find(m => m.role === "assistant");
+    if (lastAssistant?.content) {
+      speakText(lastAssistant.content, () => setTimeout(() => toggleMicRef.current(), 400));
+    } else {
+      setTimeout(() => toggleMicRef.current(), 200);
+    }
+  }
+
+  function stopVoiceMode() {
+    window.speechSynthesis.cancel();
+    setVoiceMode(false);
+    voiceModeRef.current = false;
+    setIsSpeaking(false);
+    recognitionRef.current?.stop();
+  }
+
   function renderContent(text: string) {
     const lines = text.split("\n");
     return lines.map((line, i) => {
@@ -351,17 +432,37 @@ function ChatWidget() {
       {open && (
         <div className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 flex flex-col w-full sm:w-[400px] h-full sm:h-[600px] bg-white rounded-none sm:rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
           <div className="flex items-center gap-3 px-4 py-3 bg-[#0f172a] text-white shrink-0">
-            <div className="h-9 w-9 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0">
+            <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 transition-all ${isSpeaking ? "bg-green-500 animate-pulse" : "bg-[#2563eb]"}`}>
               <Bot className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-sm">Assistente LealCert</div>
               <div className="flex items-center gap-1.5 text-xs text-green-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-                Online agora
+                <span className={`h-1.5 w-1.5 rounded-full ${isSpeaking ? "bg-yellow-400 animate-pulse" : "bg-green-400"}`} />
+                {isSpeaking ? "Falando…" : isListening ? "Ouvindo…" : voiceMode ? "Modo voz ativo" : "Online agora"}
               </div>
             </div>
-            <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+            {micSupported && (
+              <button
+                onClick={() => voiceMode ? stopVoiceMode() : startVoiceMode()}
+                title={voiceMode ? "Desativar modo voz" : "Ativar conversa por voz"}
+                className={`p-1.5 rounded-lg transition-colors ${voiceMode ? "bg-green-500 hover:bg-green-600" : "hover:bg-white/10"}`}
+              >
+                {voiceMode ? <Mic className="h-4 w-4" /> : <Mic className="h-4 w-4 opacity-60" />}
+              </button>
+            )}
+            <button
+              onClick={() => {
+                const next = !audioEnabled;
+                setAudioEnabled(next);
+                if (!next) window.speechSynthesis.cancel();
+              }}
+              title={audioEnabled ? "Silenciar voz" : "Ativar voz"}
+              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 opacity-50" />}
+            </button>
+            <button onClick={() => { stopVoiceMode(); setOpen(false); }} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -550,11 +651,33 @@ function ChatWidget() {
                 <button onClick={startSession} className="underline font-medium ml-2">Reconectar</button>
               </div>
             )}
-            {isListening && (
+            {voiceMode && !isListening && !loading && isSpeaking && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded-lg px-3 py-1.5">
+                <Volume2 className="h-3.5 w-3.5 animate-pulse shrink-0" />
+                <span className="font-medium">Assistente falando…</span>
+                <button onClick={stopVoiceMode} className="ml-auto underline text-gray-500">Encerrar voz</button>
+              </div>
+            )}
+            {voiceMode && isListening && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-1.5">
+                <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                <span className="font-medium">Pode falar agora…</span>
+                <span className="ml-auto text-gray-400 italic truncate">{input || "ouvindo…"}</span>
+                <button onClick={stopVoiceMode} className="ml-2 underline text-gray-500 shrink-0">Sair</button>
+              </div>
+            )}
+            {!voiceMode && isListening && (
               <div className="mb-2 flex items-center gap-2 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">
                 <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" />
                 <span className="font-medium">Ouvindo… clique em parar para enviar</span>
                 <span className="ml-auto text-gray-400 italic truncate">{input || "aguardando fala…"}</span>
+              </div>
+            )}
+            {voiceMode && !isListening && !isSpeaking && !loading && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-1.5">
+                <Mic className="h-3.5 w-3.5 shrink-0" />
+                <span className="font-medium">Modo voz ativo — aguardando…</span>
+                <button onClick={stopVoiceMode} className="ml-auto underline text-gray-500">Encerrar</button>
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -563,19 +686,21 @@ function ChatWidget() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={isListening ? "Ouvindo…" : starting ? "Conectando…" : "Digite sua mensagem…"}
-                disabled={loading || starting || isListening}
+                placeholder={isListening ? "Ouvindo…" : isSpeaking ? "Assistente falando…" : voiceMode ? "Modo voz — ou digite aqui" : starting ? "Conectando…" : "Digite sua mensagem…"}
+                disabled={loading || starting || isListening || isSpeaking}
                 className="flex-1 text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] placeholder:text-gray-400 disabled:opacity-50 transition-all"
               />
               {micSupported && (
                 <button
-                  onClick={toggleMic}
-                  disabled={loading || starting}
-                  title={isListening ? "Parar gravação" : "Falar mensagem"}
+                  onClick={voiceMode ? stopVoiceMode : toggleMic}
+                  disabled={loading || starting || isSpeaking}
+                  title={voiceMode ? "Encerrar modo voz" : isListening ? "Parar gravação" : "Falar mensagem"}
                   className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all shrink-0 disabled:opacity-40 ${
-                    isListening
-                      ? "bg-red-500 text-white animate-pulse hover:bg-red-600"
-                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                    voiceMode
+                      ? "bg-green-500 text-white hover:bg-green-600"
+                      : isListening
+                        ? "bg-red-500 text-white animate-pulse hover:bg-red-600"
+                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                   }`}
                 >
                   {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -583,7 +708,7 @@ function ChatWidget() {
               )}
               <button
                 onClick={() => send()}
-                disabled={!input.trim() || loading || starting || isListening}
+                disabled={!input.trim() || loading || starting || isListening || isSpeaking}
                 className="h-10 w-10 flex items-center justify-center bg-[#2563eb] text-white rounded-xl disabled:opacity-40 hover:bg-blue-700 transition-colors shrink-0"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
