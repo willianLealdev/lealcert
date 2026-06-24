@@ -851,34 +851,85 @@ router.post("/chat", async (req, res): Promise<void> => {
           representanteAddressState: orderData.representanteAddressState || null,
         }).returning();
 
-        // Gerar QR Code PIX
+        // Gerar pagamento PIX via MercadoPago (mesmo fluxo de orders.ts /payment)
         const [settings] = await db.select().from(settingsTable).limit(1);
-        const pixKey = (settings as Record<string, unknown>)["pixKey"] as string | null
-          ?? (settings as Record<string, unknown>)["mpPixKey"] as string | null
-          ?? null;
-        const appName = settings?.appName ?? "LealCert";
-        const contactCity = (settings as Record<string, unknown>)["contactCity"] as string | null ?? "SAO PAULO";
+        const mpToken = settings?.mpAccessToken ?? "";
+        const siteUrl = settings?.siteUrl ?? "https://lealcert.com.br";
 
         let qrCodeDataUrl: string | null = null;
         let pixPayload: string | null = null;
+        let pixKey: string | null = null;
 
-        if (pixKey) {
+        if (mpToken) {
           try {
-            pixPayload = buildPixPayload(pixKey, total, order.orderNumber, appName, contactCity);
-            qrCodeDataUrl = await QRCode.toDataURL(pixPayload, {
-              width: 300,
-              margin: 2,
-              color: { dark: "#000000", light: "#ffffff" },
+            const cpfDigits = orderData.customerCpfCnpj.replace(/\D/g, "");
+            const payerEmail = orderData.customerEmail || "cliente@lealcert.com.br";
+            const nameParts = (orderData.customerName || "Cliente").split(" ");
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(" ") || firstName;
+
+            const mpPixBody = {
+              transaction_amount: total,
+              description: cert.name ?? "Certificado Digital",
+              payment_method_id: "pix",
+              external_reference: order.orderNumber,
+              notification_url: `${siteUrl}/api/mp/webhook`,
+              payer: {
+                email: payerEmail,
+                first_name: firstName,
+                last_name: lastName,
+                identification: {
+                  type: cpfDigits.length === 14 ? "CNPJ" : "CPF",
+                  number: cpfDigits,
+                },
+              },
+            };
+
+            const mpResp = await fetch("https://api.mercadopago.com/v1/payments", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${mpToken}`,
+                "Content-Type": "application/json",
+                "X-Idempotency-Key": `${order.orderNumber}-${Date.now()}`,
+              },
+              body: JSON.stringify(mpPixBody),
             });
-          } catch (qrErr) {
-            logger.warn({ err: qrErr }, "QR Code generation failed");
+            const mpData = await mpResp.json() as {
+              id?: number;
+              point_of_interaction?: { transaction_data?: { qr_code?: string; qr_code_base64?: string } };
+              message?: string; error?: string;
+            };
+
+            if (mpResp.ok && mpData.id) {
+              await db.update(ordersTable)
+                .set({ mpPreferenceId: String(mpData.id), mpPaymentId: String(mpData.id) })
+                .where(eq(ordersTable.id, order.id));
+
+              const txData = mpData.point_of_interaction?.transaction_data;
+              pixPayload = txData?.qr_code ?? null;
+
+              if (pixPayload) {
+                try {
+                  qrCodeDataUrl = await QRCode.toDataURL(pixPayload, {
+                    width: 300, margin: 2,
+                    color: { dark: "#000000", light: "#ffffff" },
+                  });
+                } catch { /* keep pixPayload even if QR image fails */ }
+              }
+            } else {
+              logger.warn({ mpData }, "MercadoPago PIX creation failed for chat order");
+            }
+          } catch (mpErr) {
+            logger.warn({ err: mpErr }, "MercadoPago PIX generation failed");
           }
+        } else {
+          logger.warn({ orderId: order.id }, "MP Access Token não configurado — pedido criado sem PIX automático");
         }
 
         const confirmMsg = qrCodeDataUrl
-          ? `✅ **Pedido #${order.orderNumber} criado!**\n\nTotal: **R$ ${total.toFixed(2)}**\n\nO QR Code PIX foi gerado na tela. Após o pagamento, entre em contato para agendar a videoconferência.\n\n📧 Confirmação enviada para **${orderData.customerEmail}**.`
-          : pixKey
-            ? `✅ **Pedido #${order.orderNumber} criado!**\n\nTotal: **R$ ${total.toFixed(2)}**\n\n**Chave PIX:** \`${pixKey}\`\nValor: R$ ${total.toFixed(2)}\n\nApós o pagamento, entre em contato para agendar a videoconferência.\n\n📧 Confirmação enviada para **${orderData.customerEmail}**.`
+          ? `✅ **Pedido #${order.orderNumber} criado!**\n\nTotal: **R$ ${total.toFixed(2)}**\n\nO QR Code PIX apareceu na tela. Após o pagamento, me avise aqui para agendar a videoconferência.\n\n📧 Confirmação enviada para **${orderData.customerEmail}**.`
+          : pixPayload
+            ? `✅ **Pedido #${order.orderNumber} criado!**\n\nTotal: **R$ ${total.toFixed(2)}**\n\n**Código PIX (Copia e Cola):**\n\`${pixPayload}\`\n\nApós o pagamento, me avise para agendar a videoconferência.\n\n📧 Confirmação enviada para **${orderData.customerEmail}**.`
             : `✅ **Pedido #${order.orderNumber} criado!**\n\nTotal: **R$ ${total.toFixed(2)}**\n\nNossa equipe enviará os dados de pagamento para **${orderData.customerEmail}** em breve.`;
 
         res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
