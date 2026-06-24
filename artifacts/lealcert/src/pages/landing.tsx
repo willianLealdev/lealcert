@@ -63,6 +63,7 @@ function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [sessionError, setSessionError] = useState(false);
+  const [showMenuOptions, setShowMenuOptions] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [micSupported] = useState(() => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window));
   const [docRequest, setDocRequest] = useState<{ tipo: "cpf" | "cnpj" | "outros" } | null>(null);
@@ -106,8 +107,9 @@ function ChatWidget() {
       setSessionId(data.id);
       setMessages([{
         role: "assistant",
-        content: "Olá! 👋 Sou a assistente de vendas da **LealCert**.\n\nEstou aqui para te ajudar a encontrar e adquirir o certificado digital ideal para você ou sua empresa.\n\nComo posso te ajudar hoje?",
+        content: "Olá! 👋 Sou a assistente da **LealCert**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:",
       }]);
+      setShowMenuOptions(true);
     } catch {
       setSessionError(true);
     } finally {
@@ -128,6 +130,7 @@ function ChatWidget() {
     if (!userMsg || loading) return;
     if (!sessionId) { await startSession(); return; }
     setInput("");
+    setShowMenuOptions(false);
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
     setLoading(true);
 
@@ -387,6 +390,28 @@ function ChatWidget() {
                 </div>
               </div>
             ))}
+            {showMenuOptions && !loading && (
+              <div className="flex justify-start gap-2">
+                <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { label: "🛒 Comprar certificado digital", msg: "1" },
+                    { label: "🎫 Abrir chamado de suporte", msg: "2" },
+                    { label: "❓ Tirar dúvidas sobre certificados", msg: "3" },
+                  ].map(opt => (
+                    <button
+                      key={opt.msg}
+                      onClick={() => send(opt.msg)}
+                      className="text-left text-sm px-4 py-2 rounded-xl border-2 border-[#2563eb] text-[#2563eb] bg-white hover:bg-[#2563eb] hover:text-white transition-all duration-150 font-medium shadow-sm"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {loading && messages[messages.length - 1]?.content === "" && null}
             {docRequest && (
               <div className="flex justify-start gap-2">
