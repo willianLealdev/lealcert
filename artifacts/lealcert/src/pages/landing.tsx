@@ -73,12 +73,25 @@ function ChatWidget() {
   const recognitionRef = useRef<{ start(): void; stop(): void; abort(): void; onresult: ((e: SpeechRecognitionEvent) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; lang: string; continuous: boolean; interimResults: boolean } | null>(null);
   const sendRef = useRef<(msg?: string) => Promise<void>>(() => Promise.resolve());
   const transcriptRef = useRef("");
+  const pendingSendRef = useRef(false);
+  const prevLoadingRef = useRef(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
   useEffect(() => { sendRef.current = send; });
+
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.role === "assistant" && lastMsg.content) {
+        speakAssistant(lastMsg.content);
+      }
+    }
+    prevLoadingRef.current = loading;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   async function startSession() {
     if (sessionId) return;
@@ -199,12 +212,34 @@ function ChatWidget() {
     }
   }
 
+  function speakAssistant(text: string) {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const clean = text
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/#+\s/g, "")
+      .replace(/\n+/g, " ")
+      .trim();
+    if (!clean) return;
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.lang = "pt-BR";
+    utter.rate = 1.4;
+    window.speechSynthesis.speak(utter);
+  }
+
   function toggleMic() {
     if (!micSupported) return;
 
     if (isListening) {
+      pendingSendRef.current = true;
       recognitionRef.current?.stop();
       return;
+    }
+
+    if (typeof window !== "undefined" && window.speechSynthesis?.speaking) {
+      window.speechSynthesis.cancel();
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -214,7 +249,7 @@ function ChatWidget() {
 
     transcriptRef.current = "";
     recognition.lang = "pt-BR";
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
 
     recognition.onresult = (e: SpeechRecognitionEvent) => {
@@ -231,14 +266,18 @@ function ChatWidget() {
       recognitionRef.current = null;
       const raw = transcriptRef.current.trim();
       transcriptRef.current = "";
-      if (raw) {
+      if (pendingSendRef.current && raw) {
+        pendingSendRef.current = false;
         const msg = normalizeVoiceText(raw);
         setInput("");
         sendRef.current(msg);
+      } else {
+        pendingSendRef.current = false;
       }
     };
 
     recognition.onerror = () => {
+      pendingSendRef.current = false;
       setIsListening(false);
       recognitionRef.current = null;
       transcriptRef.current = "";
@@ -391,7 +430,7 @@ function ChatWidget() {
             {isListening && (
               <div className="mb-2 flex items-center gap-2 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-1.5">
                 <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-                <span className="font-medium">Ouvindo… envio automático ao parar</span>
+                <span className="font-medium">Ouvindo… clique em parar para enviar</span>
                 <span className="ml-auto text-gray-400 italic truncate">{input || "aguardando fala…"}</span>
               </div>
             )}
