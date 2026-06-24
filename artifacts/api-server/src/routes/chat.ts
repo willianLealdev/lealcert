@@ -242,11 +242,15 @@ Se [CNPJ_RFB_INDISPONIVEL]:
   Informe que a validação automática está indisponível e prossiga manualmente.
 
 ▶ PASSO 6 — DADOS DO PEDIDO
-Para **e-CPF**: Nome completo, CPF, E-mail, Telefone (WhatsApp), CEP + número
+Para **e-CPF**: Nome completo, CPF, Data de nascimento (DD/MM/AAAA), E-mail, Telefone (WhatsApp), CEP + número + complemento
 Para **e-CNPJ** (após [CNPJ_RESPONSAVEL_OK]): Use a razaoSocial já validada. Colete:
   - E-mail, Telefone (WhatsApp)
-  - CEP + número (endereço da empresa)
-  - Endereço do representante (se diferente)
+  - CEP + número + complemento (endereço da empresa)
+  - Dados do representante legal (CPF e data de nascimento já foram coletados no PASSO 5.5):
+    • Tipo de documento: RG (1), RNE (2), Passaporte (3) ou CNH (4)
+    • Número do documento
+    • Órgão emissor (ex: SSP-SP)
+    • CEP + endereço do representante (se diferente do endereço da empresa)
 
 Se o cliente tem [USUARIO_VERIFICADO], confirme os dados cadastrados em vez de pedir novamente do zero.
 
@@ -290,7 +294,7 @@ Execute SOMENTE após:
 ✅ [DOCUMENTOS_ENVIADOS] no histórico
 
 Emita EXATAMENTE neste formato na linha seguinte (sem nada depois):
-ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome>","customerCpfCnpj":"<somente_digitos>","customerEmail":"<email>","customerPhone":"<somente_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<8digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<UF>","extendedWarranty":<true|false>,"customerCei":"<numero_cei_ou_null>","customerNis":"<numero_pis_nis_ou_null>"}
+ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome completo>","customerCpfCnpj":"<somente_digitos>","customerBirthDate":"<DD/MM/AAAA ou null>","customerEmail":"<email>","customerPhone":"<somente_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<8digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressComplement":"<complemento_ou_null>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<UF>","extendedWarranty":<true|false>,"customerCei":"<numero_cei_ou_null>","customerNis":"<numero_pis_nis_ou_null>","representanteCpf":"<cpf_do_representante_somente_digitos_ou_null>","representanteNascimento":"<DD/MM/AAAA_ou_null>","representanteDocTipo":"<1=RG|2=RNE|3=Passaporte|4=CNH|0=NaoInformado>","representanteDocNumero":"<numero_doc_ou_null>","representanteDocEmissor":"<orgao_emissor_ou_null>","representanteAddressZipcode":"<8digitos_ou_null>","representanteAddressStreet":"<rua_ou_null>","representanteAddressNumber":"<numero_ou_null>","representanteAddressComplement":"<complemento_ou_null>","representanteAddressNeighborhood":"<bairro_ou_null>","representanteAddressCity":"<cidade_ou_null>","representanteAddressState":"<UF_ou_null>"}
 
 O sistema gerará o QR Code PIX automaticamente e exibirá na tela.
 
@@ -704,18 +708,32 @@ router.post("/chat", async (req, res): Promise<void> => {
           clientType: "cpf" | "cnpj";
           customerName: string;
           customerCpfCnpj: string;
+          customerBirthDate?: string | null;
           customerEmail: string;
           customerPhone?: string;
           companyName?: string;
           addressZipcode?: string;
           addressStreet?: string;
           addressNumber?: string;
+          addressComplement?: string | null;
           addressNeighborhood?: string;
           addressCity?: string;
           addressState?: string;
           extendedWarranty: boolean;
           customerCei?: string | null;
           customerNis?: string | null;
+          representanteCpf?: string | null;
+          representanteNascimento?: string | null;
+          representanteDocTipo?: string | null;
+          representanteDocNumero?: string | null;
+          representanteDocEmissor?: string | null;
+          representanteAddressZipcode?: string | null;
+          representanteAddressStreet?: string | null;
+          representanteAddressNumber?: string | null;
+          representanteAddressComplement?: string | null;
+          representanteAddressNeighborhood?: string | null;
+          representanteAddressCity?: string | null;
+          representanteAddressState?: string | null;
         };
 
         const certIdNum = typeof orderData.certificateId === "string"
@@ -762,6 +780,9 @@ router.post("/chat", async (req, res): Promise<void> => {
           if (!existing) break;
         }
 
+        const repCpf = orderData.representanteCpf ? orderData.representanteCpf.replace(/\D/g, "") || null : null;
+        const repDocTipo = orderData.representanteDocTipo ? String(orderData.representanteDocTipo).replace(/\D/g, "") || null : null;
+
         const [order] = await db.insert(ordersTable).values({
           orderNumber,
           userId,
@@ -771,12 +792,14 @@ router.post("/chat", async (req, res): Promise<void> => {
           clientType: orderData.clientType,
           customerName: orderData.customerName,
           customerCpfCnpj: orderData.customerCpfCnpj.replace(/\D/g, ""),
+          customerBirthDate: orderData.customerBirthDate || null,
           customerEmail: orderData.customerEmail || null,
           customerPhone: orderData.customerPhone || null,
           companyName: orderData.companyName || null,
           addressZipcode: orderData.addressZipcode || null,
           addressStreet: orderData.addressStreet || null,
           addressNumber: orderData.addressNumber || null,
+          addressComplement: orderData.addressComplement || null,
           addressNeighborhood: orderData.addressNeighborhood || null,
           addressCity: orderData.addressCity || null,
           addressState: orderData.addressState || null,
@@ -784,6 +807,18 @@ router.post("/chat", async (req, res): Promise<void> => {
           chatDocuments,
           customerCei: orderData.customerCei || null,
           customerNis: orderData.customerNis || null,
+          representanteCpf: repCpf,
+          representanteNascimento: orderData.representanteNascimento || null,
+          representanteDocTipo: repDocTipo,
+          representanteDocNumero: orderData.representanteDocNumero || null,
+          representanteDocEmissor: orderData.representanteDocEmissor || null,
+          representanteAddressZipcode: orderData.representanteAddressZipcode || null,
+          representanteAddressStreet: orderData.representanteAddressStreet || null,
+          representanteAddressNumber: orderData.representanteAddressNumber || null,
+          representanteAddressComplement: orderData.representanteAddressComplement || null,
+          representanteAddressNeighborhood: orderData.representanteAddressNeighborhood || null,
+          representanteAddressCity: orderData.representanteAddressCity || null,
+          representanteAddressState: orderData.representanteAddressState || null,
         }).returning();
 
         // Gerar QR Code PIX
