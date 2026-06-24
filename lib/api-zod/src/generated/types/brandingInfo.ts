@@ -17,4 +17,6 @@ export interface BrandingInfo {
   contactAddress?: string | null;
   /** Ambiente Safeweb ativo: producao | homologacao | null (não configurado) */
   safewebAmbiente?: string | null;
+  /** Provedor ativo: gestaoar | safeweb */
+  activeProvider?: string | null;
 }

@@ -2645,7 +2645,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, contador]
+          enum: [admin, contador, agente]
         userType:
           type: string
           enum: [contador, cliente]
@@ -2982,6 +2982,9 @@ components:
         fichaCadastralPath:
           type: string
           nullable: true
+        outrosPath:
+          type: string
+          nullable: true
         chatDocuments:
           type: string
           nullable: true
@@ -3189,6 +3192,8 @@ components:
         cartaoCnpjPath:
           type: string
         fichaCadastralPath:
+          type: string
+        outrosPath:
           type: string
 
     OrderUpdate:

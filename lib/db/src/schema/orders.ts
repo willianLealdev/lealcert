@@ -37,6 +37,7 @@ export const ordersTable = pgTable("orders", {
   cnhPath: text("cnh_path"),
   cartaoCnpjPath: text("cartao_cnpj_path"),
   fichaCadastralPath: text("ficha_cadastral_path"),
+  outrosPath: text("outros_path"),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   protocolNumber: text("protocol_number"),
   extendedWarranty: boolean("extended_warranty").notNull().default(false),

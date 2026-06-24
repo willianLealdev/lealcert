@@ -33,6 +33,7 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     cnhPath: o.cnhPath,
     cartaoCnpjPath: o.cartaoCnpjPath,
     fichaCadastralPath: o.fichaCadastralPath,
+    outrosPath: o.outrosPath,
     chatDocuments: o.chatDocuments ?? null,
     scheduledAt: o.scheduledAt,
     protocolNumber: o.protocolNumber,
@@ -297,7 +298,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     customerCei, customerNis,
     representanteCpf, representanteNascimento,
     representanteDocTipo, representanteDocNumero, representanteDocEmissor,
-    cnhPath, cartaoCnpjPath, fichaCadastralPath,
+    cnhPath, cartaoCnpjPath, fichaCadastralPath, outrosPath,
     addressComplement,
     representanteAddressZipcode, representanteAddressStreet, representanteAddressNumber,
     representanteAddressComplement, representanteAddressNeighborhood, representanteAddressCity, representanteAddressState,
@@ -365,6 +366,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     cnhPath: cnhPath || null,
     cartaoCnpjPath: cartaoCnpjPath || null,
     fichaCadastralPath: fichaCadastralPath || null,
+    outrosPath: outrosPath || null,
   }).returning();
 
   // Log order creation

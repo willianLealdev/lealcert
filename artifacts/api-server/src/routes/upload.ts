@@ -9,7 +9,7 @@ const router = Router();
 
 const UPLOAD_BASE = path.resolve(process.cwd(), "uploads");
 // Pré-cria todos os diretórios de upload no startup para evitar falhas na primeira requisição
-for (const dir of ["chat-docs", "cnh", "cartao-cnpj", "ficha-cadastral"]) {
+for (const dir of ["chat-docs", "cnh", "cartao-cnpj", "ficha-cadastral", "outros"]) {
   fs.mkdirSync(path.join(UPLOAD_BASE, dir), { recursive: true });
 }
 const CHAT_DOCS_DIR = path.join(UPLOAD_BASE, "chat-docs");
@@ -61,7 +61,7 @@ router.get("/uploads/chat-docs/:filename", requireAuth, (req, res): void => {
   res.sendFile(filePath);
 });
 
-const TIPOS = ["cnh", "cartao-cnpj", "ficha-cadastral"] as const;
+const TIPOS = ["cnh", "cartao-cnpj", "ficha-cadastral", "outros"] as const;
 type Tipo = (typeof TIPOS)[number];
 
 function makeUploadDir(tipo: Tipo) {

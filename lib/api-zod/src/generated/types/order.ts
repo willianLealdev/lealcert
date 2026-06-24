@@ -29,6 +29,7 @@ export interface Order {
   cnhPath?: string | null;
   cartaoCnpjPath?: string | null;
   fichaCadastralPath?: string | null;
+  outrosPath?: string | null;
   chatDocuments?: string | null;
   scheduledAt?: string | null;
   protocolNumber?: string | null;

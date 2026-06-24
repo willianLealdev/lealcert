@@ -198,7 +198,7 @@ export const VerifyEmailResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador']),
+  "role": zod.enum(['admin', 'contador', 'agente']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -244,7 +244,7 @@ export const LoginResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador']),
+  "role": zod.enum(['admin', 'contador', 'agente']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -302,7 +302,7 @@ export const GetMeResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador']),
+  "role": zod.enum(['admin', 'contador', 'agente']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -346,7 +346,7 @@ export const UpdateProfileResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador']),
+  "role": zod.enum(['admin', 'contador', 'agente']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -601,6 +601,7 @@ export const ListOrdersResponseItem = zod.object({
   "cnhPath": zod.string().nullish(),
   "cartaoCnpjPath": zod.string().nullish(),
   "fichaCadastralPath": zod.string().nullish(),
+  "outrosPath": zod.string().nullish(),
   "chatDocuments": zod.string().nullish(),
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),
@@ -687,7 +688,8 @@ export const CreateOrderBody = zod.object({
   "representanteDocEmissor": zod.string().optional(),
   "cnhPath": zod.string().optional(),
   "cartaoCnpjPath": zod.string().optional(),
-  "fichaCadastralPath": zod.string().optional()
+  "fichaCadastralPath": zod.string().optional(),
+  "outrosPath": zod.string().optional()
 })
 
 
@@ -759,6 +761,7 @@ export const GetOrderResponse = zod.object({
   "cnhPath": zod.string().nullish(),
   "cartaoCnpjPath": zod.string().nullish(),
   "fichaCadastralPath": zod.string().nullish(),
+  "outrosPath": zod.string().nullish(),
   "chatDocuments": zod.string().nullish(),
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),
@@ -841,6 +844,7 @@ export const UpdateOrderResponse = zod.object({
   "cnhPath": zod.string().nullish(),
   "cartaoCnpjPath": zod.string().nullish(),
   "fichaCadastralPath": zod.string().nullish(),
+  "outrosPath": zod.string().nullish(),
   "chatDocuments": zod.string().nullish(),
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),
@@ -1872,7 +1876,8 @@ export const GetBrandingResponse = zod.object({
   "contactWhatsapp": zod.string().nullish(),
   "contactEmailSupport": zod.string().nullish(),
   "contactAddress": zod.string().nullish(),
-  "safewebAmbiente": zod.string().nullish().describe('Ambiente Safeweb ativo: producao | homologacao | null (não configurado)')
+  "safewebAmbiente": zod.string().nullish().describe('Ambiente Safeweb ativo: producao | homologacao | null (não configurado)'),
+  "activeProvider": zod.string().nullish().describe('Provedor ativo: gestaoar | safeweb')
 })
 
 
@@ -2095,6 +2100,7 @@ export const GetRecentOrdersResponseItem = zod.object({
   "cnhPath": zod.string().nullish(),
   "cartaoCnpjPath": zod.string().nullish(),
   "fichaCadastralPath": zod.string().nullish(),
+  "outrosPath": zod.string().nullish(),
   "chatDocuments": zod.string().nullish(),
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),

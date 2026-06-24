@@ -335,6 +335,11 @@ export default function NewOrder() {
   const [fichaKey, setFichaKey] = useState<string | null>(null);
   const fichaInputRef = useRef<HTMLInputElement>(null);
 
+  const [outrosFile, setOutrosFile] = useState<File | null>(null);
+  const [outrosUploading, setOutrosUploading] = useState(false);
+  const [outrosKey, setOutrosKey] = useState<string | null>(null);
+  const outrosInputRef = useRef<HTMLInputElement>(null);
+
   // ── CNPJ lookup ──
   const [cnpjToQuery, setCnpjToQuery] = useState("");
   const { data: cnpjData, isFetching: cnpjFetching, isError: cnpjError } = useQuery({
@@ -610,7 +615,7 @@ export default function NewOrder() {
   }
 
   // ── Upload helper ──
-  async function uploadDoc(file: File, tipo: "cnh" | "cartao-cnpj" | "ficha-cadastral", setUploading: (v: boolean) => void, setKey: (k: string) => void, label: string): Promise<string | null> {
+  async function uploadDoc(file: File, tipo: "cnh" | "cartao-cnpj" | "ficha-cadastral" | "outros", setUploading: (v: boolean) => void, setKey: (k: string) => void, label: string): Promise<string | null> {
     setUploading(true);
     try {
       const fd = new FormData();
@@ -707,6 +712,7 @@ export default function NewOrder() {
         fichaCadastralPath: fichaKey || undefined,
         customerCei: form.customerCei || undefined,
         customerNis: form.customerNis || undefined,
+        outrosPath: outrosKey || undefined,
         representanteDocTipo: form.repDocTipo !== "0" ? form.repDocTipo as "1" | "2" | "3" | "4" : undefined,
         representanteDocNumero: form.repDocTipo !== "0" && form.repDocNumero ? form.repDocNumero : undefined,
         representanteDocEmissor: form.repDocTipo !== "0" && form.repDocOrgan && form.repDocUf
@@ -1381,6 +1387,21 @@ export default function NewOrder() {
                   onClear={() => { setCnhFile(null); setCnhKey(null); if (cnhInputRef.current) cnhInputRef.current.value = ""; }}
                 />
               </div>
+
+              {form.repNumeroTipo && (
+                <div>
+                  <Label className="mb-2 block">Documento comprobatório ({form.repNumeroTipo === "pis" ? "PIS" : form.repNumeroTipo.toUpperCase()})</Label>
+                  <p className="text-xs text-muted-foreground mb-2">Documento que comprove o {form.repNumeroTipo === "pis" ? "PIS" : form.repNumeroTipo.toUpperCase()} informado (PDF, JPG ou PNG, máx. 5 MB).</p>
+                  <UploadWidget
+                    label="Clique para selecionar arquivo" hint="PDF, JPG, JPEG ou PNG — máx. 5 MB"
+                    file={outrosFile} fileKey={outrosKey} uploading={outrosUploading}
+                    inputRef={outrosInputRef}
+                    onChange={f => { if (f && f.size > 5 * 1024 * 1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setOutrosFile(f); setOutrosKey(null); }}
+                    onUpload={() => outrosFile && uploadDoc(outrosFile, "outros", setOutrosUploading, setOutrosKey, "Documento comprobatório")}
+                    onClear={() => { setOutrosFile(null); setOutrosKey(null); if (outrosInputRef.current) outrosInputRef.current.value = ""; }}
+                  />
+                </div>
+              )}
 
               {form.clientType === "cnpj" && (
                 <>

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Search, FileDown, FileText, User } from "lucide-react";
-import type { AgentDocumentResult } from "@workspace/api-client-react";
+type AgentDocumentResult = { protocolo: string; displayName: string; clientType: string; documents: { label: string; key: string; url: string }[] };
 
 const apiFetch = (url: string, init?: RequestInit) =>
   fetch(url, { credentials: "include", ...init });
@@ -128,7 +128,7 @@ export default function AgenteConsultar() {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
                   Documentos disponíveis ({result.documents.length})
                 </p>
-                {result.documents.map((doc) => (
+                {result.documents.map((doc: { label: string; key: string; url: string }) => (
                   <div
                     key={doc.key}
                     className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"

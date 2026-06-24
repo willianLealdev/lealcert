@@ -44,4 +44,5 @@ export interface OrderInput {
   cnhPath?: string;
   cartaoCnpjPath?: string;
   fichaCadastralPath?: string;
+  outrosPath?: string;
 }

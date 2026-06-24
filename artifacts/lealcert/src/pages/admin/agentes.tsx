@@ -9,7 +9,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, RefreshCw, UserCheck, UserX } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Agent, AgentInput, AgentUpdate } from "@workspace/api-client-react";
+type Agent = { id: number; name: string; email: string | null; cpfCnpj: string; phone: string | null; isActive: boolean; mustChangePassword: boolean; createdAt: string };
+type AgentInput = { name: string; email: string; cpfCnpj: string; phone?: string };
+type AgentUpdate = { name?: string; phone?: string; isActive?: boolean };
 import { getApiError } from "@/lib/api-error";
 
 const apiFetch = (url: string, init?: RequestInit) =>
