@@ -128,7 +128,7 @@ function ChatWidget() {
 
     const utter = new SpeechSynthesisUtterance(clean);
     utter.lang = "pt-BR";
-    utter.rate = 1.35;
+    utter.rate = 1.5;
     utter.pitch = 0.9;
     // Prefer a pt-BR male voice
     const voices = window.speechSynthesis.getVoices();
