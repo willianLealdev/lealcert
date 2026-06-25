@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { BrandingProvider } from "@/lib/branding";
 import { InstallPrompt } from "@/components/install-prompt";
+import { PwaUpdateBanner } from "@/components/pwa-update-banner";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/layout";
 import Landing from "@/pages/landing";
@@ -130,6 +131,7 @@ function App() {
         </WouterRouter>
         <Toaster />
         <InstallPrompt />
+        <PwaUpdateBanner />
       </TooltipProvider>
     </QueryClientProvider>
   );
