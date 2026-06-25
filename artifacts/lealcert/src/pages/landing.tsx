@@ -74,11 +74,19 @@ type SpeechRecognitionEvent = { results: { transcript: string; isFinal: boolean 
 
 function detectMobile(): boolean {
   if (typeof navigator === "undefined") return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    || (navigator.maxTouchPoints > 1 && typeof window !== "undefined" && window.innerWidth < 1024);
+  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) return true;
+  if (typeof window !== "undefined" && navigator.maxTouchPoints > 1 && window.innerWidth < 1024) return true;
+  return false;
 }
 
-const IS_MOBILE = detectMobile();
+function detectIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+const IS_MOBILE       = detectMobile();
+const IS_IOS          = detectIOS();
 const ASSISTANT_NAME    = IS_MOBILE ? "Niky" : "Will";
 const ASSISTANT_ARTICLE = IS_MOBILE ? "a"    : "o";
 
@@ -114,12 +122,39 @@ function ChatWidget() {
   const audioEnabledRef = useRef(true);
   const toggleMicRef = useRef<() => void>(() => {});
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const iosAudioUnlockedRef = useRef(false);
+  const pendingGreetingRef = useRef<string | null>(null);
+  const [micDenied, setMicDenied] = useState(false);
+  const [iosAudioLocked, setIosAudioLocked] = useState(IS_IOS);
 
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
+  const unlockIOSAudio = useCallback(() => {
+    if (!IS_IOS || iosAudioUnlockedRef.current || !("speechSynthesis" in window)) return;
+    // iOS exige gesto do usuário para desbloquear speechSynthesis
+    const u = new SpeechSynthesisUtterance("");
+    window.speechSynthesis.speak(u);
+    window.speechSynthesis.cancel();
+    iosAudioUnlockedRef.current = true;
+    setIosAudioLocked(false);
+    // Se havia saudação pendente, fala agora
+    if (pendingGreetingRef.current) {
+      const text = pendingGreetingRef.current;
+      pendingGreetingRef.current = null;
+      setTimeout(() => {
+        speakTextRef.current(text, () => setTimeout(() => toggleMicRef.current(), 400));
+      }, 200);
+    }
+  }, []);
+
+  // ref para chamar speakText dentro de callbacks (evita stale closure)
+  const speakTextRef = useRef<(text: string, onDone?: () => void) => void>(() => {});
+
   const speakText = useCallback((text: string, onDone?: () => void) => {
     if (!audioEnabledRef.current || !("speechSynthesis" in window)) { onDone?.(); return; }
+    // iOS: sem gesto do usuário o áudio é bloqueado silenciosamente
+    if (IS_IOS && !iosAudioUnlockedRef.current) { onDone?.(); return; }
     window.speechSynthesis.cancel();
     // Strip markdown, emojis, action lines and special chars for clean TTS
     const clean = text
@@ -194,6 +229,7 @@ function ChatWidget() {
   }, [messages, loading]);
 
   useEffect(() => { sendRef.current = send; });
+  useEffect(() => { speakTextRef.current = speakText; });
 
   useEffect(() => {
     if (docRequest) {
@@ -221,9 +257,14 @@ function ChatWidget() {
       if (micSupported) {
         setVoiceMode(true);
         voiceModeRef.current = true;
-        setTimeout(() => {
-          speakText(greetingText, () => setTimeout(() => toggleMicRef.current(), 400));
-        }, 300);
+        if (IS_IOS) {
+          // iOS: speechSynthesis exige gesto do usuário — guarda saudação para falar após o 1º toque
+          pendingGreetingRef.current = greetingText;
+        } else {
+          setTimeout(() => {
+            speakText(greetingText, () => setTimeout(() => toggleMicRef.current(), 400));
+          }, 300);
+        }
       }
     } catch {
       setSessionError(true);
@@ -365,8 +406,11 @@ function ChatWidget() {
     }
   }
 
-  function toggleMic() {
+  async function toggleMic() {
     if (!micSupported) return;
+
+    // iOS: desbloqueia áudio no primeiro gesto do usuário
+    if (IS_IOS) unlockIOSAudio();
 
     if (isListening) {
       // Clique MicOff: captura transcript imediatamente e aborta sem esperar onend
@@ -383,6 +427,19 @@ function ChatWidget() {
       return;
     }
 
+    // Solicita permissão de microfone explicitamente (obrigatório no iOS Safari)
+    if (navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t => t.stop());
+        setMicDenied(false);
+      } catch {
+        setMicDenied(true);
+        if (voiceModeRef.current) { setVoiceMode(false); voiceModeRef.current = false; }
+        return;
+      }
+    }
+
     // Cancela TTS antes de iniciar gravação
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 
@@ -393,7 +450,8 @@ function ChatWidget() {
 
     transcriptRef.current = "";
     recognition.lang = "pt-BR";
-    recognition.continuous = true;    // grava continuamente até o usuário clicar em parar
+    // iOS Safari não suporta continuous=true de forma confiável — usamos false
+    recognition.continuous = !IS_IOS;
     recognition.interimResults = true;
 
     const clearSilenceTimer = () => {
@@ -474,6 +532,7 @@ function ChatWidget() {
 
   function startVoiceMode() {
     if (!micSupported) return;
+    if (IS_IOS) unlockIOSAudio();
     window.speechSynthesis.cancel();
     setVoiceMode(true);
     voiceModeRef.current = true;
@@ -735,10 +794,26 @@ function ChatWidget() {
                 <button onClick={startSession} className="underline font-medium ml-2">Reconectar</button>
               </div>
             )}
+            {micDenied && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-orange-700 bg-orange-50 rounded-lg px-3 py-1.5">
+                <MicOff className="h-3.5 w-3.5 shrink-0" />
+                <span className="font-medium">Permissão de microfone negada. Habilite nas configurações do navegador.</span>
+                <button onClick={() => setMicDenied(false)} className="ml-auto text-gray-400 hover:text-gray-600">✕</button>
+              </div>
+            )}
+            {IS_IOS && iosAudioLocked && sessionId && !micDenied && (
+              <button
+                onClick={() => { unlockIOSAudio(); void toggleMicRef.current(); }}
+                className="mb-2 w-full flex items-center justify-center gap-2 text-xs font-medium text-[#2563eb] bg-blue-50 hover:bg-blue-100 rounded-lg px-3 py-2 transition-colors"
+              >
+                <Volume2 className="h-3.5 w-3.5" />
+                Toque aqui para ativar áudio e microfone
+              </button>
+            )}
             {voiceMode && isSpeaking && !isListening && !awaitingEmail && (
               <div className="mb-2 flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded-lg px-3 py-1.5">
                 <Volume2 className="h-3.5 w-3.5 animate-pulse shrink-0" />
-                <span className="font-medium">Will está falando…</span>
+                <span className="font-medium">{ASSISTANT_NAME} está falando…</span>
                 <button onClick={stopVoiceMode} className="ml-auto underline text-gray-500">Encerrar voz</button>
               </div>
             )}
@@ -768,7 +843,7 @@ function ChatWidget() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={awaitingEmail ? "Digite seu e-mail aqui…" : isListening ? "Ouvindo…" : isSpeaking ? "Will está falando…" : voiceMode ? "Modo voz — ou digite aqui" : starting ? "Conectando…" : "Digite sua mensagem…"}
+                placeholder={awaitingEmail ? "Digite seu e-mail aqui…" : isListening ? "Ouvindo…" : isSpeaking ? `${ASSISTANT_NAME} está falando…` : voiceMode ? "Modo voz — ou digite aqui" : starting ? "Conectando…" : "Digite sua mensagem…"}
                 disabled={loading || starting || isListening || (isSpeaking && !awaitingEmail)}
                 className="flex-1 text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] placeholder:text-gray-400 disabled:opacity-50 transition-all"
               />
