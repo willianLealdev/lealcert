@@ -126,22 +126,54 @@ function ChatWidget() {
       .trim();
     if (!clean) { onDone?.(); return; }
 
-    const utter = new SpeechSynthesisUtterance(clean);
-    utter.lang = "pt-BR";
-    utter.rate = 1.5;
-    utter.pitch = 0.9;
-    // Prefer a pt-BR male voice
-    const voices = window.speechSynthesis.getVoices();
-    const ptVoice = voices.find(v => v.lang === "pt-BR" && v.name.toLowerCase().includes("male"))
-      ?? voices.find(v => v.lang === "pt-BR" && !v.name.toLowerCase().includes("female"))
-      ?? voices.find(v => v.lang === "pt-BR")
-      ?? voices.find(v => v.lang.startsWith("pt"));
-    if (ptVoice) utter.voice = ptVoice;
+    const KNOWN_MALE_PT = /\b(felipe|daniel|carlos|miguel|gustavo|antonio|reed|thomas|luca)\b/i;
+    const KNOWN_FEMALE_PT = /\b(luciana|maria|google|francisca|joana|ines)\b/i;
 
-    utter.onstart = () => setIsSpeaking(true);
-    utter.onend = () => { setIsSpeaking(false); onDone?.(); };
-    utter.onerror = () => { setIsSpeaking(false); onDone?.(); };
-    window.speechSynthesis.speak(utter);
+    const pickVoice = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined => {
+      // 1. Nome masculino conhecido, pt-BR exato
+      const named = voices.find(v => v.lang === "pt-BR" && KNOWN_MALE_PT.test(v.name));
+      if (named) return named;
+      // 2. Palavra "male" no nome
+      const maleName = voices.find(v => v.lang === "pt-BR" && v.name.toLowerCase().includes("male"));
+      if (maleName) return maleName;
+      // 3. pt-BR que não seja nome feminino conhecido
+      const notFemale = voices.find(v => v.lang === "pt-BR" && !KNOWN_FEMALE_PT.test(v.name));
+      if (notFemale) return notFemale;
+      // 4. qualquer pt-BR
+      return voices.find(v => v.lang === "pt-BR") ?? voices.find(v => v.lang.startsWith("pt"));
+    };
+
+    const doSpeak = (voices: SpeechSynthesisVoice[]) => {
+      const utter = new SpeechSynthesisUtterance(clean);
+      utter.lang = "pt-BR";
+      utter.rate = 1.5;
+      utter.pitch = 0.9;
+      const v = pickVoice(voices);
+      if (v) utter.voice = v;
+      utter.onstart = () => setIsSpeaking(true);
+      utter.onend = () => { setIsSpeaking(false); onDone?.(); };
+      utter.onerror = () => { setIsSpeaking(false); onDone?.(); };
+      window.speechSynthesis.speak(utter);
+    };
+
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      doSpeak(voices);
+    } else {
+      // Vozes ainda não carregadas — aguarda o evento e tenta novamente
+      const onChanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        doSpeak(window.speechSynthesis.getVoices());
+      };
+      window.speechSynthesis.onvoiceschanged = onChanged;
+      // Fallback: se o evento não disparar em 800ms, fala sem voz específica
+      setTimeout(() => {
+        if (window.speechSynthesis.onvoiceschanged === onChanged) {
+          window.speechSynthesis.onvoiceschanged = null;
+          doSpeak([]);
+        }
+      }, 800);
+    }
   }, []);
 
   useEffect(() => {
