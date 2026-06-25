@@ -98,14 +98,10 @@ function ChatWidget() {
   const recognitionRef = useRef<{ start(): void; stop(): void; abort(): void; onresult: ((e: SpeechRecognitionEvent) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; lang: string; continuous: boolean; interimResults: boolean } | null>(null);
   const sendRef = useRef<(msg?: string) => Promise<void>>(() => Promise.resolve());
   const transcriptRef = useRef("");
+  const pendingSendRef = useRef(false);
   const voiceModeRef = useRef(false);
   const audioEnabledRef = useRef(true);
   const toggleMicRef = useRef<() => void>(() => {});
-  const voiceModeRef = useRef(false);
-  const audioEnabledRef = useRef(true);
-
-  useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
-  useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
@@ -321,28 +317,12 @@ function ChatWidget() {
     }
   }
 
-  function speakAssistant(text: string) {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const clean = text
-      .replace(/\*\*([^*]+)\*\*/g, "$1")
-      .replace(/`([^`]+)`/g, "$1")
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-      .replace(/#+\s/g, "")
-      .replace(/\n+/g, " ")
-      .trim();
-    if (!clean) return;
-    const utter = new SpeechSynthesisUtterance(clean);
-    utter.lang = "pt-BR";
-    utter.rate = 1.4;
-    window.speechSynthesis.speak(utter);
-  }
-
   function toggleMic() {
     if (!micSupported) return;
 
     if (isListening) {
-      // Clique manual para parar: cancela TTS e para gravação (onend ainda envia se houver texto)
+      // Clique MicOff: sinaliza envio pendente e para a gravação
+      pendingSendRef.current = true;
       if ("speechSynthesis" in window) window.speechSynthesis.cancel();
       recognitionRef.current?.stop();
       return;
@@ -358,7 +338,7 @@ function ChatWidget() {
 
     transcriptRef.current = "";
     recognition.lang = "pt-BR";
-    recognition.continuous = false;   // para automaticamente ao detectar silêncio
+    recognition.continuous = true;    // grava continuamente até o usuário clicar em parar
     recognition.interimResults = true;
 
     recognition.onresult = (e: SpeechRecognitionEvent) => {
@@ -375,18 +355,21 @@ function ChatWidget() {
       recognitionRef.current = null;
       const raw = transcriptRef.current.trim();
       transcriptRef.current = "";
-      if (raw) {
-        // Tem fala: envia automaticamente e o TTS vai reabrir o mic depois
+      if (pendingSendRef.current && raw) {
+        // Envio acionado pelo clique em MicOff
+        pendingSendRef.current = false;
         const msg = normalizeVoiceText(raw);
         setInput("");
         void sendRef.current(msg);
-      } else if (voiceModeRef.current) {
-        // Silêncio/timeout sem fala: reabre o mic automaticamente no modo voz
-        setTimeout(() => toggleMicRef.current(), 400);
+      } else {
+        pendingSendRef.current = false;
+        // Sem envio pendente mas no modo voz: reabre mic para continuar a conversa
+        if (voiceModeRef.current) setTimeout(() => toggleMicRef.current(), 400);
       }
     };
 
     recognition.onerror = (e: { error: string }) => {
+      pendingSendRef.current = false;
       setIsListening(false);
       recognitionRef.current = null;
       transcriptRef.current = "";
@@ -708,7 +691,7 @@ function ChatWidget() {
               {micSupported && (
                 <button
                   onClick={voiceMode ? stopVoiceMode : toggleMic}
-                  disabled={loading || starting || isSpeaking}
+                  disabled={loading || starting}
                   title={voiceMode ? "Encerrar modo voz" : isListening ? "Parar gravação" : "Falar mensagem"}
                   className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all shrink-0 disabled:opacity-40 ${
                     voiceMode
