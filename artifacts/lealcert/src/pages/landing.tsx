@@ -112,8 +112,9 @@ function ChatWidget() {
     // Strip markdown, emojis, action lines and special chars for clean TTS
     const clean = text
       .split("\n")
-      .filter(l => !l.startsWith("ACAO:") && !l.startsWith("["))
+      .filter(l => !l.startsWith("ACAO:"))
       .join(" ")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
       .replace(/\*\*([^*]+)\*\*/g, "$1")
       .replace(/`([^`]+)`/g, "$1")
       .replace(/[*_~>#\-]/g, "")
@@ -690,9 +691,9 @@ function ChatWidget() {
               />
               {micSupported && (
                 <button
-                  onClick={voiceMode ? stopVoiceMode : toggleMic}
+                  onClick={isListening ? toggleMic : voiceMode ? stopVoiceMode : toggleMic}
                   disabled={loading || starting}
-                  title={voiceMode ? "Encerrar modo voz" : isListening ? "Parar gravação" : "Falar mensagem"}
+                  title={isListening ? "Parar gravação e enviar" : voiceMode ? "Encerrar modo voz" : "Falar mensagem"}
                   className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all shrink-0 disabled:opacity-40 ${
                     voiceMode
                       ? "bg-green-500 text-white hover:bg-green-600"
