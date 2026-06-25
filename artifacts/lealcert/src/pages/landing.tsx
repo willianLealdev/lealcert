@@ -691,7 +691,7 @@ function ChatWidget() {
               />
               {micSupported && (
                 <button
-                  onClick={isListening ? toggleMic : voiceMode ? stopVoiceMode : toggleMic}
+                  onClick={isListening || isSpeaking ? toggleMic : voiceMode ? stopVoiceMode : toggleMic}
                   disabled={loading || starting}
                   title={isListening ? "Parar gravação e enviar" : voiceMode ? "Encerrar modo voz" : "Falar mensagem"}
                   className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all shrink-0 disabled:opacity-40 ${
