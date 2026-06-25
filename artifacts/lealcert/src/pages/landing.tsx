@@ -99,6 +99,7 @@ function ChatWidget() {
   const sendRef = useRef<(msg?: string) => Promise<void>>(() => Promise.resolve());
   const transcriptRef = useRef("");
   const pendingSendRef = useRef(false);
+  const directSentRef = useRef(false);
   const voiceModeRef = useRef(false);
   const audioEnabledRef = useRef(true);
   const toggleMicRef = useRef<() => void>(() => {});
@@ -322,10 +323,17 @@ function ChatWidget() {
     if (!micSupported) return;
 
     if (isListening) {
-      // Clique MicOff: sinaliza envio pendente e para a gravação
-      pendingSendRef.current = true;
+      // Clique MicOff: captura transcript imediatamente e aborta sem esperar onend
+      const raw = transcriptRef.current.trim();
+      transcriptRef.current = "";
+      pendingSendRef.current = false;
+      directSentRef.current = true; // sinaliza para onend ignorar
       if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-      recognitionRef.current?.stop();
+      recognitionRef.current?.abort();
+      recognitionRef.current = null;
+      setIsListening(false);
+      setInput("");
+      if (raw) void sendRef.current(normalizeVoiceText(raw));
       return;
     }
 
@@ -354,17 +362,21 @@ function ChatWidget() {
     recognition.onend = () => {
       setIsListening(false);
       recognitionRef.current = null;
+      // Se já enviamos diretamente no clique do MicOff, apenas limpamos
+      if (directSentRef.current) {
+        directSentRef.current = false;
+        transcriptRef.current = "";
+        return;
+      }
       const raw = transcriptRef.current.trim();
       transcriptRef.current = "";
       if (pendingSendRef.current && raw) {
-        // Envio acionado pelo clique em MicOff
         pendingSendRef.current = false;
         const msg = normalizeVoiceText(raw);
         setInput("");
         void sendRef.current(msg);
       } else {
         pendingSendRef.current = false;
-        // Sem envio pendente mas no modo voz: reabre mic para continuar a conversa
         if (voiceModeRef.current) setTimeout(() => toggleMicRef.current(), 400);
       }
     };
