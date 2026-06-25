@@ -167,10 +167,10 @@ function ChatWidget() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { id: number };
       setSessionId(data.id);
-      const greetingText = "Olá! Sou a Niky, assistente da LealCert Certificados Digital. Como posso te ajudar hoje? Diga o número da opção desejada: um para comprar certificado, dois para suporte, três para tirar dúvidas.";
+      const greetingText = "Olá! Sou o Will, assistente da LealCert Certificados Digital. Como posso te ajudar hoje? Diga o número da opção desejada: um para comprar certificado, dois para suporte, três para tirar dúvidas.";
       setMessages([{
         role: "assistant",
-        content: "Olá! 👋 Sou a **Niky**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:",
+        content: "Olá! 👋 Sou o **Will**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:",
       }]);
       setShowMenuOptions(true);
       // Auto-ativar modo voz: fala saudação e depois abre mic
@@ -281,7 +281,7 @@ function ChatWidget() {
       });
     } finally {
       setLoading(false);
-      // Detecta se a Niky está pedindo o e-mail → pausa o mic e libera o input para digitação
+      // Detecta se o Will está pedindo o e-mail → pausa o mic e libera o input para digitação
       const isAskingEmail = /digit.*e-?mail|e-?mail.*digit|campo.*e-?mail|e-?mail.*campo|por favor.*digit/i.test(assistantContent)
         && !/confirmação|enviado|enviada|cadastrado|enviamos/i.test(assistantContent);
       if (isAskingEmail) setAwaitingEmail(true);
@@ -457,7 +457,7 @@ function ChatWidget() {
               <Bot className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm">Niky — LealCert Certificados Digital</div>
+              <div className="font-semibold text-sm">Will — LealCert Certificados Digital</div>
               <div className="flex items-center gap-1.5 text-xs text-green-400">
                 <span className={`h-1.5 w-1.5 rounded-full ${isSpeaking ? "bg-yellow-400 animate-pulse" : "bg-green-400"}`} />
                 {isSpeaking ? "Falando…" : isListening ? "Ouvindo…" : voiceMode ? "Modo voz ativo" : "Online agora"}
@@ -671,7 +671,7 @@ function ChatWidget() {
             {voiceMode && isSpeaking && !isListening && !awaitingEmail && (
               <div className="mb-2 flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded-lg px-3 py-1.5">
                 <Volume2 className="h-3.5 w-3.5 animate-pulse shrink-0" />
-                <span className="font-medium">Niky está falando…</span>
+                <span className="font-medium">Will está falando…</span>
                 <button onClick={stopVoiceMode} className="ml-auto underline text-gray-500">Encerrar voz</button>
               </div>
             )}
@@ -701,7 +701,7 @@ function ChatWidget() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={awaitingEmail ? "Digite seu e-mail aqui…" : isListening ? "Ouvindo…" : isSpeaking ? "Niky está falando…" : voiceMode ? "Modo voz — ou digite aqui" : starting ? "Conectando…" : "Digite sua mensagem…"}
+                placeholder={awaitingEmail ? "Digite seu e-mail aqui…" : isListening ? "Ouvindo…" : isSpeaking ? "Will está falando…" : voiceMode ? "Modo voz — ou digite aqui" : starting ? "Conectando…" : "Digite sua mensagem…"}
                 disabled={loading || starting || isListening || (isSpeaking && !awaitingEmail)}
                 className="flex-1 text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] placeholder:text-gray-400 disabled:opacity-50 transition-all"
               />
