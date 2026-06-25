@@ -103,6 +103,7 @@ function ChatWidget() {
   const voiceModeRef = useRef(false);
   const audioEnabledRef = useRef(true);
   const toggleMicRef = useRef<() => void>(() => {});
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
@@ -350,6 +351,27 @@ function ChatWidget() {
     recognition.continuous = true;    // grava continuamente até o usuário clicar em parar
     recognition.interimResults = true;
 
+    const clearSilenceTimer = () => {
+      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+    };
+
+    const armSilenceTimer = () => {
+      clearSilenceTimer();
+      silenceTimerRef.current = setTimeout(() => {
+        // Silêncio detectado: envia automaticamente (mesmo comportamento do clique MicOff)
+        if (recognitionRef.current !== recognition) return;
+        const raw = transcriptRef.current.trim();
+        transcriptRef.current = "";
+        pendingSendRef.current = false;
+        directSentRef.current = true;
+        recognition.abort();
+        recognitionRef.current = null;
+        setIsListening(false);
+        setInput("");
+        if (raw) void sendRef.current(normalizeVoiceText(raw));
+      }, 1500);
+    };
+
     recognition.onresult = (e: SpeechRecognitionEvent) => {
       let full = "";
       for (let i = 0; i < e.results.length; i++) {
@@ -357,12 +379,15 @@ function ChatWidget() {
       }
       transcriptRef.current = full;
       setInput(full);
+      // Reinicia o timer a cada nova fala detectada
+      armSilenceTimer();
     };
 
     recognition.onend = () => {
+      clearSilenceTimer();
       setIsListening(false);
       recognitionRef.current = null;
-      // Se já enviamos diretamente no clique do MicOff, apenas limpamos
+      // Se já enviamos diretamente (clique MicOff ou silêncio), apenas limpamos
       if (directSentRef.current) {
         directSentRef.current = false;
         transcriptRef.current = "";
@@ -382,6 +407,7 @@ function ChatWidget() {
     };
 
     recognition.onerror = (e: { error: string }) => {
+      clearSilenceTimer();
       pendingSendRef.current = false;
       setIsListening(false);
       recognitionRef.current = null;
