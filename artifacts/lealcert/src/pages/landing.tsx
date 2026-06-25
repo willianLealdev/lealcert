@@ -72,6 +72,16 @@ function normalizeVoiceText(text: string): string {
 
 type SpeechRecognitionEvent = { results: { transcript: string; isFinal: boolean }[][] };
 
+function detectMobile(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    || (navigator.maxTouchPoints > 1 && typeof window !== "undefined" && window.innerWidth < 1024);
+}
+
+const IS_MOBILE = detectMobile();
+const ASSISTANT_NAME    = IS_MOBILE ? "Niky" : "Will";
+const ASSISTANT_ARTICLE = IS_MOBILE ? "a"    : "o";
+
 function ChatWidget() {
   const [open, setOpen] = useState(true);
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -126,20 +136,23 @@ function ChatWidget() {
       .trim();
     if (!clean) { onDone?.(); return; }
 
-    const KNOWN_MALE_PT = /\b(felipe|daniel|carlos|miguel|gustavo|antonio|reed|thomas|luca)\b/i;
+    const KNOWN_MALE_PT   = /\b(felipe|daniel|carlos|miguel|gustavo|antonio|reed|thomas|luca)\b/i;
     const KNOWN_FEMALE_PT = /\b(luciana|maria|google|francisca|joana|ines)\b/i;
 
     const pickVoice = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined => {
-      // 1. Nome masculino conhecido, pt-BR exato
+      if (IS_MOBILE) {
+        // Mobile/tablet: prefere voz feminina pt-BR (Niky)
+        const female = voices.find(v => v.lang === "pt-BR" && KNOWN_FEMALE_PT.test(v.name));
+        if (female) return female;
+        return voices.find(v => v.lang === "pt-BR") ?? voices.find(v => v.lang.startsWith("pt"));
+      }
+      // Desktop: prefere voz masculina pt-BR (Will)
       const named = voices.find(v => v.lang === "pt-BR" && KNOWN_MALE_PT.test(v.name));
       if (named) return named;
-      // 2. Palavra "male" no nome
       const maleName = voices.find(v => v.lang === "pt-BR" && v.name.toLowerCase().includes("male"));
       if (maleName) return maleName;
-      // 3. pt-BR que não seja nome feminino conhecido
       const notFemale = voices.find(v => v.lang === "pt-BR" && !KNOWN_FEMALE_PT.test(v.name));
       if (notFemale) return notFemale;
-      // 4. qualquer pt-BR
       return voices.find(v => v.lang === "pt-BR") ?? voices.find(v => v.lang.startsWith("pt"));
     };
 
@@ -198,10 +211,10 @@ function ChatWidget() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { id: number };
       setSessionId(data.id);
-      const greetingText = "Olá! Sou o Will, assistente da LealCert Certificados Digital. Como posso te ajudar hoje? Diga o número da opção desejada: um para comprar certificado, dois para suporte, três para tirar dúvidas.";
+      const greetingText = `Olá! Sou ${ASSISTANT_ARTICLE} ${ASSISTANT_NAME}, assistente da LealCert Certificados Digital. Como posso te ajudar hoje? Diga o número da opção desejada: um para comprar certificado, dois para suporte, três para tirar dúvidas.`;
       setMessages([{
         role: "assistant",
-        content: "Olá! 👋 Sou o **Will**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:",
+        content: `Olá! 👋 Sou ${ASSISTANT_ARTICLE} **${ASSISTANT_NAME}**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:`,
       }]);
       setShowMenuOptions(true);
       // Auto-ativar modo voz: fala saudação e depois abre mic
@@ -245,7 +258,7 @@ function ChatWidget() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ message: userMsg, sessionId }),
+        body: JSON.stringify({ message: userMsg, sessionId, assistantName: ASSISTANT_NAME }),
       });
 
       if (!res.body) throw new Error("No stream");
@@ -511,7 +524,7 @@ function ChatWidget() {
               <Bot className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm">Will — LealCert Certificados Digital</div>
+              <div className="font-semibold text-sm">{ASSISTANT_NAME} — LealCert Certificados Digital</div>
               <div className="flex items-center gap-1.5 text-xs text-green-400">
                 <span className={`h-1.5 w-1.5 rounded-full ${isSpeaking ? "bg-yellow-400 animate-pulse" : "bg-green-400"}`} />
                 {isSpeaking ? "Falando…" : isListening ? "Ouvindo…" : voiceMode ? "Modo voz ativo" : "Online agora"}

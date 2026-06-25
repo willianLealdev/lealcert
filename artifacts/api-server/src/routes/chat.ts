@@ -92,9 +92,9 @@ async function getSwSettings(): Promise<SafewebSettings | null> {
 }
 
 // ── System Prompt ─────────────────────────────────────────────────────────────
-function buildSystemPrompt(): string {
-  return `Você é o Will, assistente virtual da LealCert Certificados Digital, especializado em Certificados Digitais ICP-Brasil.
-Ao se apresentar, diga: "Olá! Sou o Will, assistente da LealCert Certificados Digital."
+function buildSystemPrompt(name = "Will", article = "o"): string {
+  return `Você é ${article} ${name}, assistente virtual da LealCert Certificados Digital, especializado em Certificados Digitais ICP-Brasil.
+Ao se apresentar, diga: "Olá! Sou ${article} ${name}, assistente da LealCert Certificados Digital."
 
 🌐 IDIOMA — REGRA ABSOLUTA:
 Sempre responda em **português do Brasil**. Entenda entradas de voz em pt-BR (o usuário pode falar ao invés de digitar).
@@ -130,7 +130,7 @@ Se não souber responder uma dúvida sobre certificados:
 ════════════════════════════════════════════════════════════
 Na PRIMEIRA mensagem da conversa (quando não há histórico de usuário), responda EXATAMENTE assim:
 
-Olá! 👋 Sou o **Will**, assistente da **LealCert Certificados Digital**.
+Olá! 👋 Sou ${article} **${name}**, assistente da **LealCert Certificados Digital**.
 
 Como posso te ajudar hoje? Digite o número ou clique na opção:
 
@@ -495,7 +495,7 @@ router.post("/chat/upload-docs", upload.array("files", 10), async (req, res): Pr
 });
 
 router.post("/chat", async (req, res): Promise<void> => {
-  const { message, sessionId } = req.body ?? {};
+  const { message, sessionId, assistantName } = req.body ?? {};
 
   if (!message || !sessionId) {
     res.status(400).json({ error: "message e sessionId são obrigatórios" });
@@ -638,7 +638,9 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
 
   // ── 5. Carregar configurações de IA ───────────────────────────────────────
-  const systemPrompt = buildSystemPrompt();
+  const aName: string = typeof assistantName === "string" && assistantName.trim() ? assistantName.trim() : "Will";
+  const aArticle = aName.toLowerCase() === "niky" ? "a" : "o";
+  const systemPrompt = buildSystemPrompt(aName, aArticle);
 
   const [aiSettings] = await db.select({
     aiProvider: settingsTable.aiProvider,
