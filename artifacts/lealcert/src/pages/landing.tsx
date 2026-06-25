@@ -91,6 +91,7 @@ function ChatWidget() {
   const [voiceMode, setVoiceMode] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [awaitingEmail, setAwaitingEmail] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const docFileInputsRef = useRef<(HTMLInputElement | null)[]>([]);
@@ -200,6 +201,7 @@ function ChatWidget() {
     if (!userMsg || loading) return;
     if (!sessionId) { await startSession(); return; }
     setInput("");
+    setAwaitingEmail(false);
     setShowMenuOptions(false);
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
     setLoading(true);
@@ -279,10 +281,14 @@ function ChatWidget() {
       });
     } finally {
       setLoading(false);
-      // Fala resposta e, se modo voz ativo, reabre o mic automaticamente
+      // Detecta se a Niky está pedindo o e-mail → pausa o mic e libera o input para digitação
+      const isAskingEmail = /digit.*e-?mail|e-?mail.*digit|campo.*e-?mail|e-?mail.*campo|por favor.*digit/i.test(assistantContent)
+        && !/confirmação|enviado|enviada|cadastrado|enviamos/i.test(assistantContent);
+      if (isAskingEmail) setAwaitingEmail(true);
       if (assistantContent) {
         speakText(assistantContent, () => {
-          if (voiceModeRef.current) setTimeout(() => toggleMicRef.current(), 400);
+          // Não abre o mic se estiver esperando e-mail por digitação
+          if (voiceModeRef.current && !isAskingEmail) setTimeout(() => toggleMicRef.current(), 400);
         });
       }
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -662,7 +668,7 @@ function ChatWidget() {
                 <button onClick={startSession} className="underline font-medium ml-2">Reconectar</button>
               </div>
             )}
-            {voiceMode && isSpeaking && !isListening && (
+            {voiceMode && isSpeaking && !isListening && !awaitingEmail && (
               <div className="mb-2 flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded-lg px-3 py-1.5">
                 <Volume2 className="h-3.5 w-3.5 animate-pulse shrink-0" />
                 <span className="font-medium">Niky está falando…</span>
@@ -676,11 +682,17 @@ function ChatWidget() {
                 <span className="ml-auto text-gray-400 italic truncate max-w-[110px]">{input || "ouvindo…"}</span>
               </div>
             )}
-            {voiceMode && !isListening && !isSpeaking && !loading && (
+            {voiceMode && !isListening && !isSpeaking && !loading && !awaitingEmail && (
               <div className="mb-2 flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-1.5">
                 <Mic className="h-3.5 w-3.5 shrink-0" />
                 <span className="font-medium">Modo voz ativo — aguardando…</span>
                 <button onClick={stopVoiceMode} className="ml-auto underline text-gray-500">Encerrar</button>
+              </div>
+            )}
+            {awaitingEmail && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
+                <Mail className="h-3.5 w-3.5 shrink-0" />
+                <span className="font-medium">Digite o e-mail — mic pausado</span>
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -689,8 +701,8 @@ function ChatWidget() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={isListening ? "Ouvindo…" : isSpeaking ? "Niky está falando…" : voiceMode ? "Modo voz — ou digite aqui" : starting ? "Conectando…" : "Digite sua mensagem…"}
-                disabled={loading || starting || isListening || isSpeaking}
+                placeholder={awaitingEmail ? "Digite seu e-mail aqui…" : isListening ? "Ouvindo…" : isSpeaking ? "Niky está falando…" : voiceMode ? "Modo voz — ou digite aqui" : starting ? "Conectando…" : "Digite sua mensagem…"}
+                disabled={loading || starting || isListening || (isSpeaking && !awaitingEmail)}
                 className="flex-1 text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] placeholder:text-gray-400 disabled:opacity-50 transition-all"
               />
               {micSupported && (
