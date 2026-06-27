@@ -99,75 +99,55 @@ router.post("/orders/consulta-previa", requireAuth, async (req, res): Promise<vo
   const activeProvider = s?.activeProvider ?? "gestaoar";
 
   try {
-    if (activeProvider === "safeweb") {
-      if (!s?.safewebUrl || !s?.safewebUsername || !s?.safewebPassword) {
-        res.json({ ok: true, hasPsbio: true, mensagem: "Safeweb não configurado — validação ignorada", requiresPresencial: false });
-        return;
-      }
-
-      const sw: SafewebSettings = {
-        url: s.safewebUrl,
-        username: s.safewebUsername,
-        password: s.safewebPassword,
-        cnpjAr: s.safewebCnpjAr ?? undefined,
-      };
-
-      // PSBio Global (principal — busca em todos os sistemas)
-      const cpfParaPsbio = (cpf ?? cpfResponsavel ?? "").replace(/\D/g, "");
-      if (!cpfParaPsbio) {
-        res.status(400).json({ error: "CPF obrigatório para consulta PSBio." });
-        return;
-      }
-      const psbioResult = await swBiometriaPSBioGlobal(sw, cpfParaPsbio);
-      const hasPsbio = psbioResult.encontrado === true;
-
-      // Consulta prévia (best-effort — para obter nome do titular)
-      let customerName: string | undefined;
-      try {
-        let consultaResult;
-        if (cnpj) {
-          consultaResult = await swConsultaCNPJ(sw, cnpj.replace(/\D/g, ""), (cpfResponsavel ?? "").replace(/\D/g, ""), dataNascimento);
-        } else {
-          consultaResult = await swConsultaCPF(sw, cpf.replace(/\D/g, ""), dataNascimento);
-        }
-        if (consultaResult.Codigo === 0 && typeof consultaResult.Mensagem === "string" && consultaResult.Mensagem.length > 2) {
-          customerName = consultaResult.Mensagem;
-        }
-        if (typeof consultaResult.NomeCompleto === "string") {
-          customerName = consultaResult.NomeCompleto;
-        }
-      } catch {
-        // ConsultaPrevia falhou — não é crítico, PSBio foi feito com sucesso
-        logger.warn("ConsultaPrevia falhou (best-effort), PSBio OK");
-      }
-
-      res.json({
-        ok: true,
-        hasPsbio,
-        customerName,
-        mensagem: hasPsbio
-          ? "CPF com biometria (PSBio) cadastrada — emissão por videoconferência disponível"
-          : "CPF sem biometria (PSBio) — atendimento presencial necessário",
-        requiresPresencial: !hasPsbio,
-      });
-    } else {
-      // Gestão AR — verifica PSBio
-      if (!s?.garApiKey) {
-        res.json({ ok: true, hasPsbio: true, mensagem: "Gestão AR não configurada — validação ignorada", requiresPresencial: false });
-        return;
-      }
-      const documento = (cpf ?? cnpj ?? "").replace(/\D/g, "");
-      const psBioResult = await garPsBio(s.garApiKey, documento);
-      const hasPsbio = psBioResult?.IsOk === true;
-      res.json({
-        ok: true,
-        hasPsbio,
-        mensagem: hasPsbio
-          ? "PSBio disponível — emissão por videoconferência disponível"
-          : "Sem PSBio — atendimento presencial necessário",
-        requiresPresencial: !hasPsbio,
-      });
+    // PSBio Global — sempre usa Safeweb (sistema nacional, independente do provider ativo)
+    if (!s?.safewebUrl || !s?.safewebUsername || !s?.safewebPassword) {
+      res.json({ ok: true, hasPsbio: true, mensagem: "PSBio não configurado — validação ignorada", requiresPresencial: false });
+      return;
     }
+
+    const sw: SafewebSettings = {
+      url: s.safewebUrl,
+      username: s.safewebUsername,
+      password: s.safewebPassword,
+      cnpjAr: s.safewebCnpjAr ?? undefined,
+    };
+
+    const cpfParaPsbio = (cpf ?? cpfResponsavel ?? "").replace(/\D/g, "");
+    if (!cpfParaPsbio) {
+      res.status(400).json({ error: "CPF obrigatório para consulta PSBio." });
+      return;
+    }
+    const psbioResult = await swBiometriaPSBioGlobal(sw, cpfParaPsbio);
+    const hasPsbio = psbioResult.encontrado === true;
+
+    // Consulta prévia (best-effort — para obter nome do titular)
+    let customerName: string | undefined;
+    try {
+      let consultaResult;
+      if (cnpj) {
+        consultaResult = await swConsultaCNPJ(sw, cnpj.replace(/\D/g, ""), (cpfResponsavel ?? "").replace(/\D/g, ""), dataNascimento);
+      } else {
+        consultaResult = await swConsultaCPF(sw, cpf.replace(/\D/g, ""), dataNascimento);
+      }
+      if (consultaResult.Codigo === 0 && typeof consultaResult.Mensagem === "string" && consultaResult.Mensagem.length > 2) {
+        customerName = consultaResult.Mensagem;
+      }
+      if (typeof consultaResult.NomeCompleto === "string") {
+        customerName = consultaResult.NomeCompleto;
+      }
+    } catch {
+      logger.warn("ConsultaPrevia falhou (best-effort), PSBio OK");
+    }
+
+    res.json({
+      ok: true,
+      hasPsbio,
+      customerName,
+      mensagem: hasPsbio
+        ? "CPF com biometria (PSBio) cadastrada — emissão por videoconferência disponível"
+        : "CPF sem biometria (PSBio) — atendimento presencial necessário",
+      requiresPresencial: !hasPsbio,
+    });
   } catch (err) {
     logger.error({ err }, "Consulta prévia error");
     res.status(422).json({ ok: false, hasPsbio: false, mensagem: "Não foi possível consultar os dados. Tente novamente.", requiresPresencial: true });

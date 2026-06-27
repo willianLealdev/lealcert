@@ -1,16 +1,19 @@
 ---
-name: PSBio no chat — padrão correto
-description: Como o handler VERIFICAR_BIO no chat deve chamar o PSBio, espelhando orders.ts
+name: PSBio sempre global (Safeweb) — decisão de produto
+description: PSBio usa sempre swBiometriaPSBioGlobal, independente do provider ativo (GAR ou Safeweb)
 ---
 
 ## Regra
 
-O handler `VERIFICAR_BIO` em `chat.ts` deve espelhar **exatamente** a lógica de `orders.ts /consulta-previa`:
+PSBio é um sistema **nacional** gerenciado pela Safeweb. Independente do `activeProvider` (gestaoar ou safeweb), a consulta biométrica deve **sempre** chamar `swBiometriaPSBioGlobal` com as credenciais Safeweb de produção.
 
-1. Ler `activeProvider` da tabela settings
-2. Se `safeweb`: construir `SafewebSettings` com `s.safewebUrl + s.safewebUsername + s.safewebPassword` (campos de produção, **não** os campos `*Homologacao`)
-3. Se `gestaoar`: chamar `garPsBio(s.garApiKey, cpf)`
+Isso vale em dois pontos do código:
+1. `orders.ts` — rota `POST /orders/consulta-previa`
+2. `chat.ts` — handler `VERIFICAR_BIO`
 
-**Why:** O PSBio é a mesma base nacional independente de `safewebAmbiente`. O campo `safewebUrlHomologacao` existe apenas para o fluxo de criação de certificados (Add), não para consulta PSBio. Usar as credenciais de homologação para PSBio causava falha silenciosa (retornava `encontrado: false` ou auth 404).
+**Why:** O endpoint GAR `GarAPIs/PsBio` retorna 404 (não existe). O PSBio nacional é mantido pela Safeweb, não pelo GAR. Usar `garPsBio` para o provider GAR causava falha com HTTP 404.
 
-**How to apply:** Nunca usar `getSwSettings()` (que respeita `isHomol`) para PSBio no chat. Construir `SafewebSettings` inline lendo `safewebUrl` diretamente, como `orders.ts` faz.
+**How to apply:**
+- Nunca usar `garPsBio` para consulta PSBio, mesmo com `activeProvider === "gestaoar"`
+- Construir `SafewebSettings` com `safewebUrl` + `safewebUsername` + `safewebPassword` (produção, nunca `*Homologacao`)
+- Se credenciais Safeweb não estiverem configuradas → retornar `hasPsbio: true` (ignorar validação)
