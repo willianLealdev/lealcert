@@ -3,6 +3,7 @@ import { eq, sql, and, inArray } from "drizzle-orm";
 import { db, certificatesTable, settingsTable, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { swListarProdutos, type SafewebSettings } from "../lib/safeweb";
+import { garTabelaPrecos, type GarProduto } from "../lib/gestaoar";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -192,6 +193,102 @@ router.post("/certificates/import-safeweb", requireAdmin, async (req, res): Prom
   `);
 
   res.json({ imported, updated, skipped: 0, total: unique.length });
+});
+
+// ── Import from Gestão AR ─────────────────────────────────────────────────────
+router.post("/certificates/import-gar", requireAdmin, async (req, res): Promise<void> => {
+  const [settings] = await db.select().from(settingsTable).limit(1);
+  if (!settings?.garApiKey) {
+    res.status(400).json({ error: "Chave API da Gestão AR não configurada. Acesse Configurações primeiro." });
+    return;
+  }
+  const documento = settings.garHashVendedor ?? "";
+  if (!documento) {
+    res.status(400).json({ error: "Hash Vendedor da Gestão AR não configurado. Acesse Configurações → Gestão AR." });
+    return;
+  }
+
+  const TIPOS_PRODUTO = [0, 1, 2, 3, 4];
+  const seen = new Set<string>();
+  const allProdutos: GarProduto[] = [];
+
+  for (const tipo of TIPOS_PRODUTO) {
+    try {
+      const result = await garTabelaPrecos(settings.garApiKey, documento, tipo, 0);
+      for (const p of result.Produtos ?? []) {
+        if (!seen.has(p.HashProduto)) {
+          seen.add(p.HashProduto);
+          allProdutos.push(p);
+        }
+      }
+    } catch (err) {
+      logger.warn({ tipo, err }, "import-gar: erro ao buscar TipoProduto");
+    }
+  }
+
+  if (!allProdutos.length) {
+    res.status(400).json({ error: "Nenhum produto retornado pela Gestão AR. Verifique as credenciais e o Hash Vendedor." });
+    return;
+  }
+
+  function deriveIssuanceFromGar(descricao: string): string | null {
+    const d = (descricao ?? "").toLowerCase();
+    if (d.includes("video") || d.includes("vídeo")) return "Videoconferência";
+    if (d.includes("renova")) return "Renovação";
+    if (d.includes("fast")) return "Fast";
+    if (d.includes("presenc")) return "Presencial";
+    return descricao || null;
+  }
+
+  function deriveProductFromGar(nome: string, tipoProdutoDescricao: string): string | null {
+    const n = (nome + " " + tipoProdutoDescricao).toLowerCase().replace(/[^a-z0-9]/g, " ");
+    if (n.includes("cnpj")) return "e-CNPJ";
+    if (n.includes("cpf")) return "e-CPF";
+    if (n.match(/\be pj\b/) || n.match(/\bepj\b/)) return "e-PJ";
+    if (n.match(/\be pf\b/) || n.match(/\bepf\b/)) return "e-PF";
+    return null;
+  }
+
+  const existingRows = await db
+    .select({ id: certificatesTable.id, garHashProduto: certificatesTable.garHashProduto })
+    .from(certificatesTable);
+  const existingMap = new Map(
+    existingRows.filter(r => r.garHashProduto).map(r => [r.garHashProduto!, r.id])
+  );
+
+  let imported = 0;
+  let updated = 0;
+  for (const p of allProdutos) {
+    const issuanceType = deriveIssuanceFromGar(p.TipoEmissaoDescricao);
+    const product = deriveProductFromGar(p.Nome, p.TipoProdutoDescricao);
+    const model = (p.TipoCertificado === "A1" || p.TipoCertificado === "A3") ? p.TipoCertificado : null;
+    const validityMonths = (p.Validade || 1) * 12;
+    const price = p.ValorVenda ? p.ValorVenda.toFixed(2) : "0.00";
+
+    if (existingMap.has(p.HashProduto)) {
+      await db
+        .update(certificatesTable)
+        .set({ issuanceType, product, model, validityMonths })
+        .where(eq(certificatesTable.id, existingMap.get(p.HashProduto)!));
+      updated++;
+    } else {
+      await db.insert(certificatesTable).values({
+        name: p.Nome,
+        description: null,
+        price,
+        active: true,
+        garHashProduto: p.HashProduto,
+        validityMonths,
+        safewebIdProduto: null,
+        issuanceType,
+        product,
+        model,
+      });
+      imported++;
+    }
+  }
+
+  res.json({ imported, updated, skipped: 0, total: allProdutos.length });
 });
 
 router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {

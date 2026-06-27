@@ -1537,6 +1537,13 @@ export type ImportSafewebCertificates200 = {
   total: number;
 };
 
+export type ImportGarCertificates200 = {
+  imported: number;
+  updated: number;
+  skipped: number;
+  total: number;
+};
+
 export type ListOrdersParams = {
 status?: string;
 search?: string;

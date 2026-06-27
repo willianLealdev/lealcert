@@ -530,6 +530,17 @@ export const ImportSafewebCertificatesResponse = zod.object({
 
 
 /**
+ * @summary Import certificate models from Gestão AR API (admin only)
+ */
+export const ImportGarCertificatesResponse = zod.object({
+  "imported": zod.number(),
+  "updated": zod.number(),
+  "skipped": zod.number(),
+  "total": zod.number()
+})
+
+
+/**
  * @summary Update certificate model (admin only)
  */
 export const UpdateCertificateParams = zod.object({

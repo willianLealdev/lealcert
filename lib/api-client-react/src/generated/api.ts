@@ -96,6 +96,7 @@ import type {
   GetSafewebConfigParams,
   GetSafewebSlotsParams,
   HealthStatus,
+  ImportGarCertificates200,
   ImportSafewebCertificates200,
   InboundWebhookInput,
   IpBlock,
@@ -2302,6 +2303,76 @@ export const useImportSafewebCertificates = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getImportSafewebCertificatesMutationOptions(options));
+    }
+
+export const getImportGarCertificatesUrl = () => {
+
+
+
+
+  return `/api/certificates/import-gar`
+}
+
+/**
+ * @summary Import certificate models from Gestão AR API (admin only)
+ */
+export const importGarCertificates = async ( options?: RequestInit): Promise<ImportGarCertificates200> => {
+
+  return customFetch<ImportGarCertificates200>(getImportGarCertificatesUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getImportGarCertificatesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importGarCertificates>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importGarCertificates>>, TError,void, TContext> => {
+
+const mutationKey = ['importGarCertificates'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importGarCertificates>>, void> = () => {
+
+
+          return  importGarCertificates(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportGarCertificatesMutationResult = NonNullable<Awaited<ReturnType<typeof importGarCertificates>>>
+
+    export type ImportGarCertificatesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Import certificate models from Gestão AR API (admin only)
+ */
+export const useImportGarCertificates = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importGarCertificates>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importGarCertificates>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getImportGarCertificatesMutationOptions(options));
     }
 
 export const getUpdateCertificateUrl = (id: number,) => {

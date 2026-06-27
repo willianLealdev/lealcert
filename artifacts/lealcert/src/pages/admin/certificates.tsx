@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListCertificates, useCreateCertificate, useUpdateCertificate, useDeleteCertificate, useGetGarProdutos, useImportSafewebCertificates, useBatchToggleCertificates, useBatchDeleteCertificates } from "@workspace/api-client-react";
+import { useListCertificates, useCreateCertificate, useUpdateCertificate, useDeleteCertificate, useGetGarProdutos, useImportSafewebCertificates, useImportGarCertificates, useBatchToggleCertificates, useBatchDeleteCertificates } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -116,6 +116,18 @@ export default function AdminCertificates() {
       onError: e => toast({ title: "Erro ao importar", description: getApiError(e), variant: "destructive" }),
     },
   });
+  const importGar = useImportGarCertificates({
+    mutation: {
+      onSuccess: (data) => {
+        toast({
+          title: `Importação GAR concluída`,
+          description: `${data.imported} novos, ${data.updated} atualizados (total GAR: ${data.total}).`,
+        });
+        refetch();
+      },
+      onError: e => toast({ title: "Erro ao importar GAR", description: getApiError(e), variant: "destructive" }),
+    },
+  });
 
   function openCreate() { setForm(EMPTY); setEditId(null); setOpen(true); }
   function openEdit(c: NonNullable<typeof certs>[number]) {
@@ -180,6 +192,18 @@ export default function AdminCertificates() {
           <p className="text-muted-foreground text-sm sm:text-base">Modelos e preços dos certificados.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={() => importGar.mutate()}
+            disabled={importGar.isPending}
+            title="Importar produtos do catálogo Gestão AR"
+          >
+            {importGar.isPending
+              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              : <Download className="h-4 w-4 mr-2" />}
+            <span className="hidden sm:inline">Importar GAR</span>
+            <span className="sm:hidden">GAR</span>
+          </Button>
           <Button
             variant="outline"
             onClick={() => importSafeweb.mutate()}

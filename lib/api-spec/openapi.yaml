@@ -656,6 +656,29 @@ paths:
                   total:
                     type: integer
 
+  /certificates/import-gar:
+    post:
+      operationId: importGarCertificates
+      tags: [certificates]
+      summary: Import certificate models from Gestão AR API (admin only)
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [imported, updated, skipped, total]
+                properties:
+                  imported:
+                    type: integer
+                  updated:
+                    type: integer
+                  skipped:
+                    type: integer
+                  total:
+                    type: integer
+
   /certificates/{id}:
     patch:
       operationId: updateCertificate

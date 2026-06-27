@@ -101,6 +101,7 @@ export * from './getMeStatsParams';
 export * from './getMeStatsRange';
 export * from './healthStatus';
 export * from './importContactsResult';
+export * from './importGarCertificates200';
 export * from './importSafewebCertificates200';
 export * from './inboundWebhookInput';
 export * from './ipBlock';
