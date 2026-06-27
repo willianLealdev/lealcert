@@ -474,6 +474,8 @@ export async function garExcluirAgendamento(
 }
 
 // ── Relatório de Vendas do Parceiro ─────────────────────────────────────────
+// Endpoint exclusivo da API Safeweb Juntos (host diferente do GAR base)
+const GAR_JUNTOS_BASE = "https://apiar.safeweb.com.br/Juntosapi/api/GarAPIs";
 
 export interface GarParceiroVendasItem {
   HashVenda?: string;
@@ -495,11 +497,16 @@ export async function garParceiroVendas(
   dataInicial: string,
   dataFinal: string,
 ): Promise<GarParceiroVendasItem[]> {
-  const result = await garPost<GarParceiroVendasItem[] | Record<string, unknown>>("parceiroVendas", {
-    apikey: apiKey,
-    HashVendedor: hashVendedor,
-    DataInicial: dataInicial,
-    DataFinal: dataFinal,
+  const url = `${GAR_JUNTOS_BASE}/parceiroVendas`;
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ apikey: apiKey, HashVendedor: hashVendedor, DataInicial: dataInicial, DataFinal: dataFinal }),
   });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(`parceiroVendas HTTP ${resp.status}: ${text.slice(0, 200)}`);
+  }
+  const result = await resp.json() as GarParceiroVendasItem[] | Record<string, unknown>;
   return Array.isArray(result) ? result : [];
 }
