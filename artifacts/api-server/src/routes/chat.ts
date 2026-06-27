@@ -640,8 +640,8 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
 
   // ── 5. Carregar configurações de IA ───────────────────────────────────────
-  const aName = "Will";
-  const aArticle = "o";
+  const aName: string = typeof assistantName === "string" && assistantName.trim() ? assistantName.trim() : "Will";
+  const aArticle = aName.toLowerCase() === "niky" ? "a" : "o";
   const systemPrompt = buildSystemPrompt(aName, aArticle);
 
   const [aiSettings] = await db.select({

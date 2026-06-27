@@ -87,8 +87,8 @@ function detectIOS(): boolean {
 
 const IS_MOBILE       = detectMobile();
 const IS_IOS          = detectIOS();
-const ASSISTANT_NAME    = "Will";
-const ASSISTANT_ARTICLE = "o";
+const ASSISTANT_NAME    = IS_MOBILE ? "Niky" : "Will";
+const ASSISTANT_ARTICLE = IS_MOBILE ? "a"    : "o";
 
 function ChatWidget() {
   const [open, setOpen] = useState(true);
@@ -176,7 +176,7 @@ function ChatWidget() {
 
     const pickVoice = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined => {
       if (IS_MOBILE) {
-        // Mobile/tablet: prefere voz feminina pt-BR
+        // Mobile/tablet: prefere voz feminina pt-BR (Niky)
         const female = voices.find(v => v.lang === "pt-BR" && KNOWN_FEMALE_PT.test(v.name));
         if (female) return female;
         return voices.find(v => v.lang === "pt-BR") ?? voices.find(v => v.lang.startsWith("pt"));
