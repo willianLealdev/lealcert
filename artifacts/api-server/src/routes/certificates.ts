@@ -227,25 +227,13 @@ router.post("/certificates/batch-delete", requireAdmin, async (req, res): Promis
     return;
   }
   const numericIds = ids.map(Number).filter(n => Number.isFinite(n) && n > 0);
-
-  // Descobre quais têm pedidos pagos
-  const paidOrders = await db
-    .select({ certificateId: ordersTable.certificateId })
-    .from(ordersTable)
-    .where(and(
-      inArray(ordersTable.certificateId, numericIds),
-      eq(ordersTable.status, "paid"),
-    ));
-  const blockedIds = new Set(paidOrders.map(o => o.certificateId).filter(Boolean));
-  const deletableIds = numericIds.filter(id => !blockedIds.has(id));
-
-  let deleted = 0;
-  if (deletableIds.length > 0) {
-    await db.delete(certificatesTable).where(inArray(certificatesTable.id, deletableIds));
-    deleted = deletableIds.length;
+  if (numericIds.length === 0) {
+    res.json({ deleted: 0, skipped: 0, skippedIds: [] });
+    return;
   }
-
-  res.json({ deleted, skipped: blockedIds.size, skippedIds: Array.from(blockedIds) });
+  // Pedidos vinculados têm certificateId zerado via ON DELETE SET NULL no banco
+  await db.delete(certificatesTable).where(inArray(certificatesTable.id, numericIds));
+  res.json({ deleted: numericIds.length, skipped: 0, skippedIds: [] });
 });
 
 router.post("/certificates/batch-toggle", requireAdmin, async (req, res): Promise<void> => {
@@ -269,16 +257,12 @@ router.delete("/certificates/:id", requireAdmin, async (req, res): Promise<void>
     return;
   }
   try {
+    // Pedidos vinculados têm certificateId zerado via ON DELETE SET NULL no banco
     await db.delete(certificatesTable).where(eq(certificatesTable.id, id));
     res.sendStatus(204);
   } catch (err) {
     logger.error({ err, id }, "Erro ao deletar certificado");
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("foreign key") || msg.includes("violates") || msg.includes("constraint")) {
-      res.status(409).json({ error: "Este certificado possui pedidos vinculados e não pode ser excluído." });
-    } else {
-      res.status(500).json({ error: "Erro ao excluir o certificado. Verifique os logs do servidor." });
-    }
+    res.status(500).json({ error: "Erro ao excluir o certificado. Verifique os logs do servidor." });
   }
 });
 export default router;

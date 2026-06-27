@@ -215,7 +215,7 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
   const paidPeriodOrders = periodOrders.filter(o => isPaid(o.status));
   const modelCount = new Map<string, number>();
   for (const o of paidPeriodOrders) {
-    const name = certMap.get(o.certificateId) ?? "Desconhecido";
+    const name = (o.certificateId != null ? certMap.get(o.certificateId) : undefined) ?? "Desconhecido";
     modelCount.set(name, (modelCount.get(name) ?? 0) + 1);
   }
   const models_breakdown = Array.from(modelCount.entries()).sort((a, b) => b[1] - a[1]).map(([label, c]) => ({ label, c }));
@@ -365,7 +365,7 @@ router.get("/dashboard/me-stats", requireAuth, async (req, res): Promise<void> =
   const paidPeriod = periodOrders.filter(o => isPaid(o.status));
   const modelCount = new Map<string, number>();
   for (const o of paidPeriod) {
-    const name = certMap.get(o.certificateId) ?? "Desconhecido";
+    const name = (o.certificateId != null ? certMap.get(o.certificateId) : undefined) ?? "Desconhecido";
     modelCount.set(name, (modelCount.get(name) ?? 0) + 1);
   }
   const models_breakdown = Array.from(modelCount.entries()).sort((a, b) => b[1] - a[1]).map(([label, c]) => ({ label, c }));

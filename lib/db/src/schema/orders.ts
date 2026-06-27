@@ -22,7 +22,7 @@ export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
-  certificateId: integer("certificate_id").notNull().references(() => certificatesTable.id),
+  certificateId: integer("certificate_id").references(() => certificatesTable.id, { onDelete: "set null" }),
   status: orderStatusEnum("status").notNull().default("created"),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
   clientType: clientTypeEnum("client_type").notNull().default("cpf"),

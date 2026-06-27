@@ -602,7 +602,9 @@ router.post("/chat", async (req, res): Promise<void> => {
 
         let statusMsg: string;
         if (order) {
-          const certName = (await db.select({ name: certificatesTable.name }).from(certificatesTable).where(eq(certificatesTable.id, order.certificateId)).limit(1))[0]?.name ?? "—";
+          const certName = order.certificateId
+            ? (await db.select({ name: certificatesTable.name }).from(certificatesTable).where(eq(certificatesTable.id, order.certificateId)).limit(1))[0]?.name ?? "—"
+            : "—";
           const statusLabel = STATUS_LABELS[order.status] ?? order.status;
           const dataStr = new Date(order.createdAt).toLocaleDateString("pt-BR");
           statusMsg = `[STATUS_PEDIDO] Pedido #${order.orderNumber} | Produto: ${certName} | Status: ${statusLabel} | Total: R$ ${parseFloat(order.total).toFixed(2)} | Data: ${dataStr}`;
