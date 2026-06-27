@@ -229,6 +229,9 @@ export default function AdminSettings() {
     </Button>
   );
 
+  // SMTP bloqueado — credenciais fixas no banco, não editáveis via painel
+  const smtpLocked = !!(form.smtpHostDb && form.smtpUserDb && form.smtpPassDb);
+
   // Derive domain from mailFrom or smtpUserDb for DNS instructions
   const emailDomain = (() => {
     const src = form.mailFrom || form.smtpUserDb;
@@ -527,14 +530,20 @@ export default function AdminSettings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {smtpLocked && (
+                  <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                    <span className="text-base">🔒</span>
+                    <span><strong>Servidor de e-mail configurado.</strong> As credenciais SMTP estão protegidas e não podem ser alteradas por aqui.</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Servidor SMTP (Host)</Label>
-                    <Input value={form.smtpHostDb} onChange={e => set("smtpHostDb", e.target.value)} placeholder="smtp.seudominio.com.br" />
+                    <Input value={form.smtpHostDb} onChange={e => set("smtpHostDb", e.target.value)} placeholder="smtp.seudominio.com.br" disabled={smtpLocked} />
                   </div>
                   <div className="space-y-2">
                     <Label>Porta</Label>
-                    <Select value={form.smtpPortDb} onValueChange={v => set("smtpPortDb", v)}>
+                    <Select value={form.smtpPortDb} onValueChange={v => set("smtpPortDb", v)} disabled={smtpLocked}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="587">587 — STARTTLS (recomendado)</SelectItem>
@@ -547,11 +556,11 @@ export default function AdminSettings() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Usuário SMTP</Label>
-                    <Input value={form.smtpUserDb} onChange={e => set("smtpUserDb", e.target.value)} placeholder="naoresponda@seudominio.com.br" autoComplete="off" />
+                    <Input value={form.smtpUserDb} onChange={e => set("smtpUserDb", e.target.value)} placeholder="naoresponda@seudominio.com.br" autoComplete="off" disabled={smtpLocked} />
                   </div>
                   <div className="space-y-2">
                     <Label>Senha SMTP</Label>
-                    <MaskedInput value={form.smtpPassDb} onChange={v => set("smtpPassDb", v)} placeholder="Senha do servidor de e-mail" />
+                    <MaskedInput value={form.smtpPassDb} onChange={v => set("smtpPassDb", v)} placeholder="Senha do servidor de e-mail" disabled={smtpLocked} />
                   </div>
                 </div>
                 <div className="space-y-2">

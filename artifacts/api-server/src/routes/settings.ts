@@ -134,9 +134,14 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (contactWhatsapp !== undefined) u.contactWhatsapp = contactWhatsapp;
   if (contactEmailSupport !== undefined) u.contactEmailSupport = contactEmailSupport;
   if (contactAddress !== undefined) u.contactAddress = contactAddress;
-  if (smtpHostDb !== undefined) u.smtpHostDb = smtpHostDb;
-  if (smtpPortDb !== undefined) u.smtpPortDb = smtpPortDb;
-  if (smtpUserDb !== undefined) u.smtpUserDb = smtpUserDb;
+  // ⚠️ SMTP BLOQUEADO — credenciais fixas, não permitir sobrescrever via painel
+  // NÃO ALTERAR ESTA LÓGICA. As credenciais de e-mail são gerenciadas diretamente no banco.
+  const smtpAlreadySet = !!(s.smtpHostDb && s.smtpUserDb && s.smtpPassDb);
+  if (!smtpAlreadySet) {
+    if (smtpHostDb !== undefined) u.smtpHostDb = smtpHostDb;
+    if (smtpPortDb !== undefined) u.smtpPortDb = smtpPortDb;
+    if (smtpUserDb !== undefined) u.smtpUserDb = smtpUserDb;
+  }
   if (vapidSubject !== undefined) u.vapidSubject = vapidSubject;
   if (vapidPublicKey !== undefined) u.vapidPublicKey = vapidPublicKey;
   if (aiProvider !== undefined) u.aiProvider = aiProvider;
@@ -152,7 +157,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("safewebPassword", safewebPassword);
   set("safewebPasswordHomologacao", safewebPasswordHomologacao);
   set("evolutionApiKey", evolutionApiKey);
-  set("smtpPassDb", smtpPassDb);
+  if (!smtpAlreadySet) set("smtpPassDb", smtpPassDb);
   set("vapidPrivateKey", vapidPrivateKey);
   set("openaiApiKey", openaiApiKey);
   set("deepseekApiKey", deepseekApiKey);

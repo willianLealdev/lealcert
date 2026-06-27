@@ -2,7 +2,9 @@ import path from "path";
 import { logger } from "./logger";
 import { db, settingsTable } from "@workspace/db";
 
-// Fetch SMTP + branding from DB — tudo configurado pelo painel admin
+// ⚠️ NÃO ALTERAR ESTA FUNÇÃO.
+// Configurações de e-mail (SMTP) são fixas no banco de dados e protegidas contra alteração via painel.
+// Host: 109.199.97.235 | Port: 465 | User: certificados@lealcert.com.br
 async function getEmailConfig() {
   const rows = await db.select({
     appName: settingsTable.appName,
