@@ -117,8 +117,23 @@ export default function AdminRelatoriosGar() {
       {/* Erro */}
       {error && (
         <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-4 text-sm text-red-700">
-            {(error as { message?: string }).message ?? "Erro ao consultar a Gestão AR."}
+          <CardContent className="pt-4 text-sm text-red-700 space-y-1">
+            <p className="font-semibold">Erro ao consultar a Gestão AR (Juntos)</p>
+            <p className="text-red-600">
+              {(() => {
+                const msg = (error as { data?: { error?: string }; message?: string })?.data?.error
+                  ?? (error as { message?: string })?.message
+                  ?? "";
+                if (msg.includes("Hash do Vendedor")) return msg;
+                if (msg.includes("502") || msg.includes("<!DOCTYPE") || msg.includes("html"))
+                  return "O servidor da Gestão AR retornou erro 502. Verifique se a API Key e o Hash do Vendedor estão corretos nas Configurações.";
+                if (msg.includes("401") || msg.includes("403"))
+                  return "Credenciais inválidas. Verifique a API Key e o Hash do Vendedor nas Configurações.";
+                if (msg.includes("404"))
+                  return "Endpoint não encontrado. Verifique as configurações da Gestão AR.";
+                return "Não foi possível buscar os dados. Verifique as configurações da Gestão AR e tente novamente.";
+              })()}
+            </p>
           </CardContent>
         </Card>
       )}
