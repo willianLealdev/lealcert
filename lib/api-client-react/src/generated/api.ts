@@ -65,6 +65,7 @@ import type {
   GarFormaPagamento,
   GarLocalAgendamento,
   GarMunicipio,
+  GarParceiroVendasItem,
   GarPsBioInput,
   GarPsBioResult,
   GarRenovacaoItem,
@@ -82,6 +83,7 @@ import type {
   GetGarFamilias200Item,
   GetGarLocaisParams,
   GetGarMunicipiosParams,
+  GetGarParceiroVendasParams,
   GetGarPedidosCliente200,
   GetGarPedidosContador200,
   GetGarProdutosParams,
@@ -5510,6 +5512,90 @@ export function useGetGarPedidosContador<TData = Awaited<ReturnType<typeof getGa
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetGarPedidosContadorQueryOptions(documento,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetGarParceiroVendasUrl = (params: GetGarParceiroVendasParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/gestaoar/parceiro-vendas?${stringifiedParams}` : `/api/gestaoar/parceiro-vendas`
+}
+
+/**
+ * @summary Relatório de vendas do parceiro na Gestão AR (cruzado com pedidos locais)
+ */
+export const getGarParceiroVendas = async (params: GetGarParceiroVendasParams, options?: RequestInit): Promise<GarParceiroVendasItem[]> => {
+
+  return customFetch<GarParceiroVendasItem[]>(getGetGarParceiroVendasUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGarParceiroVendasQueryKey = (params?: GetGarParceiroVendasParams,) => {
+    return [
+    `/api/gestaoar/parceiro-vendas`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGarParceiroVendasQueryOptions = <TData = Awaited<ReturnType<typeof getGarParceiroVendas>>, TError = ErrorType<unknown>>(params: GetGarParceiroVendasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarParceiroVendas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGarParceiroVendasQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGarParceiroVendas>>> = ({ signal }) => getGarParceiroVendas(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGarParceiroVendas>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGarParceiroVendasQueryResult = NonNullable<Awaited<ReturnType<typeof getGarParceiroVendas>>>
+export type GetGarParceiroVendasQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Relatório de vendas do parceiro na Gestão AR (cruzado com pedidos locais)
+ */
+
+export function useGetGarParceiroVendas<TData = Awaited<ReturnType<typeof getGarParceiroVendas>>, TError = ErrorType<unknown>>(
+ params: GetGarParceiroVendasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGarParceiroVendas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGarParceiroVendasQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

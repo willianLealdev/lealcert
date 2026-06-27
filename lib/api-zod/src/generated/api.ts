@@ -1476,6 +1476,31 @@ export const GetGarPedidosContadorResponse = zod.object({
 
 
 /**
+ * @summary Relatório de vendas do parceiro na Gestão AR (cruzado com pedidos locais)
+ */
+export const GetGarParceiroVendasQueryParams = zod.object({
+  "dataInicial": zod.coerce.string(),
+  "dataFinal": zod.coerce.string()
+})
+
+export const GetGarParceiroVendasResponseItem = zod.object({
+  "HashVenda": zod.string().optional(),
+  "PedidoVenda": zod.string().optional(),
+  "ProdutoVenda": zod.string().optional(),
+  "EmailCliente": zod.string().optional(),
+  "FormaPagamento": zod.number().optional(),
+  "FormaPagamentoDescricao": zod.string().optional(),
+  "ValorTotal": zod.number().optional(),
+  "sValor": zod.string().optional(),
+  "Status": zod.number().optional(),
+  "Descricao": zod.string().optional(),
+  "DataEscrita": zod.string().optional(),
+  "localOrderId": zod.number().nullish()
+})
+export const GetGarParceiroVendasResponse = zod.array(GetGarParceiroVendasResponseItem)
+
+
+/**
  * @summary Histórico completo de eventos de um pedido
  */
 export const GetOrderEventsParams = zod.object({

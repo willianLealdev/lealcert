@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { db, settingsTable, ordersTable, usersTable, orderEventsTable, certificateRenewalsTable, certificatesTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
@@ -26,6 +26,7 @@ import {
   garDiasSemana,
   garFamilias,
   garAgendar,
+  garParceiroVendas,
 } from "../lib/gestaoar";
 
 const router = Router();
@@ -691,6 +692,39 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
   } catch (err) {
     logger.error({ err }, "GAR Agendar error");
     res.status(502).json({ error: "Erro ao confirmar agendamento na Gestão AR." });
+  }
+});
+
+// ── Relatório de Vendas do Parceiro ──────────────────────────────────────────
+router.get("/gestaoar/parceiro-vendas", requireAdmin, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+  if (!s?.garHashVendedor) {
+    res.status(400).json({ error: "Hash do Vendedor não configurado. Acesse Configurações → Gestão AR para inserir o hashVendedor." });
+    return;
+  }
+  const { dataInicial, dataFinal } = req.query as Record<string, string>;
+  if (!dataInicial || !dataFinal) {
+    res.status(400).json({ error: "dataInicial e dataFinal são obrigatórios." });
+    return;
+  }
+  try {
+    const items = await garParceiroVendas(s.garApiKey, s.garHashVendedor, dataInicial, dataFinal);
+    const pedidoNums = items.map(i => i.PedidoVenda).filter((v): v is string => Boolean(v));
+    const localOrders = pedidoNums.length > 0
+      ? await db.select({ id: ordersTable.id, garPedido: ordersTable.garPedido })
+          .from(ordersTable)
+          .where(inArray(ordersTable.garPedido, pedidoNums))
+      : [];
+    const localMap = new Map(localOrders.map(o => [o.garPedido, o.id]));
+    const enriched = items.map(item => ({
+      ...item,
+      localOrderId: item.PedidoVenda ? (localMap.get(item.PedidoVenda) ?? null) : null,
+    }));
+    res.json(enriched);
+  } catch (err) {
+    logger.error({ err }, "GAR parceiroVendas error");
+    res.status(502).json({ error: "Erro ao consultar vendas na Gestão AR." });
   }
 });
 

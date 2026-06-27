@@ -1466,6 +1466,24 @@ paths:
               schema:
                 type: object
 
+  /gestaoar/parceiro-vendas:
+    get:
+      operationId: getGarParceiroVendas
+      tags: [gestaoar]
+      summary: Relatório de vendas do parceiro na Gestão AR (cruzado com pedidos locais)
+      parameters:
+        - { name: dataInicial, in: query, required: true, schema: { type: string } }
+        - { name: dataFinal, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Lista de vendas do parceiro enriquecida com referência local
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GarParceiroVendasItem"
+
   /orders/{id}/events:
     get:
       operationId: getOrderEvents
@@ -3859,6 +3877,22 @@ components:
       properties:
         UF: { type: string }
         Municipio: { type: string }
+
+    GarParceiroVendasItem:
+      type: object
+      properties:
+        HashVenda:        { type: string }
+        PedidoVenda:      { type: string }
+        ProdutoVenda:     { type: string }
+        EmailCliente:     { type: string }
+        FormaPagamento:   { type: integer }
+        FormaPagamentoDescricao: { type: string }
+        ValorTotal:       { type: number }
+        sValor:           { type: string }
+        Status:           { type: integer }
+        Descricao:        { type: string }
+        DataEscrita:      { type: string }
+        localOrderId:     { type: integer, nullable: true }
 
     GarStatusPedido:
       type: object

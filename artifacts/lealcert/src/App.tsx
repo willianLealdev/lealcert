@@ -33,6 +33,7 @@ import AdminRenovacoes from "@/pages/admin/renovacoes";
 import AdminCoupons from "@/pages/admin/coupons";
 import AdminIpSecurity from "@/pages/admin/ip-security";
 import AdminAgentes from "@/pages/admin/agentes";
+import AdminRelatoriosGar from "@/pages/admin/relatorios-gar";
 import AgenteConsultar from "@/pages/agente/consultar";
 import PrivacyPolicy from "@/pages/privacy-policy";
 
@@ -111,6 +112,7 @@ function Router() {
       <Route path="/admin/coupons" component={() => <ProtectedRoute component={AdminCoupons} adminOnly />} />
       <Route path="/admin/ip-security" component={() => <ProtectedRoute component={AdminIpSecurity} adminOnly />} />
       <Route path="/admin/agentes" component={() => <ProtectedRoute component={AdminAgentes} adminOnly />} />
+      <Route path="/admin/relatorios-gar" component={() => <ProtectedRoute component={AdminRelatoriosGar} adminOnly />} />
       {/* Agente routes */}
       <Route path="/consultar" component={() => <ProtectedRoute component={AgenteConsultar} agenteOnly />} />
       <Route component={NotFound} />

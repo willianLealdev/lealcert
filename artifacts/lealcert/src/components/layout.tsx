@@ -38,6 +38,7 @@ import {
   ShieldCheck,
   FileSearch,
   UserCog,
+  BarChart2,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 
@@ -60,6 +61,7 @@ const adminNav = [
   { name: "Descontos", href: "/admin/coupons", icon: Tag },
   { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
   { name: "Segurança de IP", href: "/admin/ip-security", icon: ShieldCheck },
+  { name: "Relatórios GAR", href: "/admin/relatorios-gar", icon: BarChart2 },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 

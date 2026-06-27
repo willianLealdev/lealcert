@@ -848,6 +848,21 @@ export interface GarMunicipio {
   Municipio: string;
 }
 
+export interface GarParceiroVendasItem {
+  HashVenda?: string;
+  PedidoVenda?: string;
+  ProdutoVenda?: string;
+  EmailCliente?: string;
+  FormaPagamento?: number;
+  FormaPagamentoDescricao?: string;
+  ValorTotal?: number;
+  sValor?: string;
+  Status?: number;
+  Descricao?: string;
+  DataEscrita?: string;
+  localOrderId?: number | null;
+}
+
 export interface GarStatusPedido {
   HashVenda?: string;
   Pedido?: string;
@@ -1601,6 +1616,11 @@ dataFinal: string;
 export type GetGarPedidosCliente200 = { [key: string]: unknown };
 
 export type GetGarPedidosContador200 = { [key: string]: unknown };
+
+export type GetGarParceiroVendasParams = {
+dataInicial: string;
+dataFinal: string;
+};
 
 export type SendRenewalAlert200 = {
   ok?: boolean;

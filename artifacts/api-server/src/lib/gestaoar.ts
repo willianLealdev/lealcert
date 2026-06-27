@@ -472,3 +472,34 @@ export async function garExcluirAgendamento(
     HashVenda: hashVenda,
   });
 }
+
+// ── Relatório de Vendas do Parceiro ─────────────────────────────────────────
+
+export interface GarParceiroVendasItem {
+  HashVenda?: string;
+  PedidoVenda?: string;
+  ProdutoVenda?: string;
+  EmailCliente?: string;
+  FormaPagamento?: number;
+  FormaPagamentoDescricao?: string;
+  ValorTotal?: number;
+  sValor?: string;
+  Status?: number;
+  Descricao?: string;
+  DataEscrita?: string;
+}
+
+export async function garParceiroVendas(
+  apiKey: string,
+  hashVendedor: string,
+  dataInicial: string,
+  dataFinal: string,
+): Promise<GarParceiroVendasItem[]> {
+  const result = await garPost<GarParceiroVendasItem[] | Record<string, unknown>>("parceiroVendas", {
+    apikey: apiKey,
+    HashVendedor: hashVendedor,
+    DataInicial: dataInicial,
+    DataFinal: dataFinal,
+  });
+  return Array.isArray(result) ? result : [];
+}
