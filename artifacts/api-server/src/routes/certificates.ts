@@ -264,7 +264,21 @@ router.post("/certificates/batch-toggle", requireAdmin, async (req, res): Promis
 
 router.delete("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  await db.delete(certificatesTable).where(eq(certificatesTable.id, id));
-  res.sendStatus(204);
+  if (!Number.isFinite(id) || id <= 0) {
+    res.status(400).json({ error: "ID inválido." });
+    return;
+  }
+  try {
+    await db.delete(certificatesTable).where(eq(certificatesTable.id, id));
+    res.sendStatus(204);
+  } catch (err) {
+    logger.error({ err, id }, "Erro ao deletar certificado");
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("foreign key") || msg.includes("violates") || msg.includes("constraint")) {
+      res.status(409).json({ error: "Este certificado possui pedidos vinculados e não pode ser excluído." });
+    } else {
+      res.status(500).json({ error: "Erro ao excluir o certificado. Verifique os logs do servidor." });
+    }
+  }
 });
 export default router;
