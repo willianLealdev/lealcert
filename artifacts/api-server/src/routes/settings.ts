@@ -47,6 +47,7 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     scheduleCloseHour: s.scheduleCloseHour ?? "18",
     scheduleStepMin: s.scheduleStepMin ?? "60",
     scheduleClosedDates: s.scheduleClosedDates ?? "",
+    garDocumento: s.garDocumento,
     garFormaPagamento: s.garFormaPagamento ?? "11",
     garPreferirVideoconferencia: s.garPreferirVideoconferencia ?? "1",
     safewebUrl: s.safewebUrl,
@@ -86,7 +87,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   const {
     appName, mpAccessToken, mpPublicKey, webhookSecret, mailFrom, siteUrl,
     scheduleOpenDays, scheduleOpenHour, scheduleCloseHour, scheduleStepMin, scheduleClosedDates,
-    garApiKey, garHashVendedor, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
+    garApiKey, garDocumento, garHashVendedor, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
     safewebUrl, safewebUrlHomologacao, safewebAmbiente, safewebUsername, safewebPassword,
     safewebUsernameHomologacao, safewebPasswordHomologacao,
     safewebCnpjAr, safewebCodigoParceiro, activeProvider,
@@ -116,6 +117,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (scheduleCloseHour !== undefined) u.scheduleCloseHour = scheduleCloseHour;
   if (scheduleStepMin !== undefined) u.scheduleStepMin = scheduleStepMin;
   if (scheduleClosedDates !== undefined) u.scheduleClosedDates = scheduleClosedDates;
+  if (garDocumento !== undefined) u.garDocumento = garDocumento;
   if (garFormaPagamento !== undefined) u.garFormaPagamento = garFormaPagamento;
   if (garPreferirVideoconferencia !== undefined) u.garPreferirVideoconferencia = garPreferirVideoconferencia;
   if (safewebUrl !== undefined) u.safewebUrl = safewebUrl;
