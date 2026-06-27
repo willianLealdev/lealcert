@@ -16,7 +16,7 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     userId: o.userId,
     userName: userName ?? null,
     certificateId: o.certificateId,
-    certificateName: certName ?? null,
+    certificateName: certName ?? o.certNameSnapshot ?? null,
     status: o.status,
     total: parseFloat(o.total),
     clientType: o.clientType,
@@ -377,6 +377,8 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     nfNeighborhood: nfNeighborhood || null,
     nfCity: nfCity || null,
     nfState: nfState || null,
+    certNameSnapshot: cert.name,
+    certProductSnapshot: cert.product || null,
   }).returning();
 
   // Log order creation

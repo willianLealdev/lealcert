@@ -91,6 +91,10 @@ export const ordersTable = pgTable("orders", {
   nfNeighborhood: text("nf_neighborhood"),
   nfCity: text("nf_city"),
   nfState: text("nf_state"),
+  // Snapshot do certificado no momento da criação do pedido
+  // Garante que nome e tipo fiquem preservados mesmo se o catálogo for alterado/excluído
+  certNameSnapshot: text("cert_name_snapshot"),
+  certProductSnapshot: text("cert_product_snapshot"),
   // Safeweb integration fields
   safewebSolicitacaoId: text("safeweb_solicitacao_id"),
   safewebStatus: text("safeweb_status"),
