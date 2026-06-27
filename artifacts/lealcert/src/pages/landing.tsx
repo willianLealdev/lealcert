@@ -75,7 +75,10 @@ type SpeechRecognitionEvent = { results: { transcript: string; isFinal: boolean 
 function detectMobile(): boolean {
   if (typeof navigator === "undefined") return false;
   if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) return true;
-  if (typeof window !== "undefined" && navigator.maxTouchPoints > 1 && window.innerWidth < 1024) return true;
+  if (typeof window !== "undefined") {
+    if (window.matchMedia("(pointer: coarse)").matches) return true;
+    if (navigator.maxTouchPoints > 1 && window.innerWidth < 1024) return true;
+  }
   return false;
 }
 
