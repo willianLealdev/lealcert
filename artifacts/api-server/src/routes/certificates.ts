@@ -202,15 +202,18 @@ router.post("/certificates/import-gar", requireAdmin, async (req, res): Promise<
     res.status(400).json({ error: "Chave API da Gestão AR não configurada. Acesse Configurações primeiro." });
     return;
   }
-  const documento = settings.garDocumento ?? settings.garHashVendedor ?? "";
-  if (!documento) {
+  const documentoRaw = settings.garDocumento ?? settings.garHashVendedor ?? "";
+  if (!documentoRaw) {
     res.status(400).json({ error: "CNPJ da AR (Documento) não configurado. Acesse Configurações → Gestão AR." });
     return;
   }
+  // Strip formatting — GAR espera apenas dígitos (ex: 45737998000140, não 45.737.998/0001-40)
+  const documento = documentoRaw.replace(/\D/g, "");
 
   const TIPOS_PRODUTO = [0, 1, 2, 3, 4];
   const seen = new Set<string>();
   const allProdutos: GarProduto[] = [];
+  const erros: string[] = [];
 
   for (const tipo of TIPOS_PRODUTO) {
     try {
@@ -222,12 +225,15 @@ router.post("/certificates/import-gar", requireAdmin, async (req, res): Promise<
         }
       }
     } catch (err) {
+      const msg = (err as Error).message ?? String(err);
       logger.warn({ tipo, err }, "import-gar: erro ao buscar TipoProduto");
+      erros.push(`TipoProduto=${tipo}: ${msg}`);
     }
   }
 
   if (!allProdutos.length) {
-    res.status(400).json({ error: "Nenhum produto retornado pela Gestão AR. Verifique as credenciais e o CNPJ da AR (Documento)." });
+    const detalhe = erros.length ? ` Detalhes: ${erros[0]}` : "";
+    res.status(400).json({ error: `Nenhum produto retornado pela Gestão AR. Documento usado: ${documento}.${detalhe}` });
     return;
   }
 
