@@ -20,6 +20,7 @@ export interface AppSettings {
   scheduleStepMin?: string;
   scheduleClosedDates?: string;
   garApiKey?: string | null;
+  garDocumento?: string | null;
   garHashVendedor?: string | null;
   garHashTabela?: string | null;
   garFormaPagamento?: string;

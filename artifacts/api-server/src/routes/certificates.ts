@@ -202,9 +202,9 @@ router.post("/certificates/import-gar", requireAdmin, async (req, res): Promise<
     res.status(400).json({ error: "Chave API da Gestão AR não configurada. Acesse Configurações primeiro." });
     return;
   }
-  const documento = settings.garHashVendedor ?? "";
+  const documento = settings.garDocumento ?? settings.garHashVendedor ?? "";
   if (!documento) {
-    res.status(400).json({ error: "Hash Vendedor da Gestão AR não configurado. Acesse Configurações → Gestão AR." });
+    res.status(400).json({ error: "CNPJ da AR (Documento) não configurado. Acesse Configurações → Gestão AR." });
     return;
   }
 
@@ -227,7 +227,7 @@ router.post("/certificates/import-gar", requireAdmin, async (req, res): Promise<
   }
 
   if (!allProdutos.length) {
-    res.status(400).json({ error: "Nenhum produto retornado pela Gestão AR. Verifique as credenciais e o Hash Vendedor." });
+    res.status(400).json({ error: "Nenhum produto retornado pela Gestão AR. Verifique as credenciais e o CNPJ da AR (Documento)." });
     return;
   }
 

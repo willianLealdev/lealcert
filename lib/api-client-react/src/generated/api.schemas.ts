@@ -623,6 +623,7 @@ export interface AppSettings {
   scheduleStepMin?: string;
   scheduleClosedDates?: string;
   garApiKey?: string | null;
+  garDocumento?: string | null;
   garHashVendedor?: string | null;
   garHashTabela?: string | null;
   garFormaPagamento?: string;
@@ -676,6 +677,7 @@ export interface AppSettingsUpdate {
   scheduleStepMin?: string;
   scheduleClosedDates?: string;
   garApiKey?: string;
+  garDocumento?: string;
   garHashVendedor?: string;
   garHashTabela?: string;
   garFormaPagamento?: string;
