@@ -232,18 +232,8 @@ router.post("/certificates/batch-delete", requireAdmin, async (req, res): Promis
     return;
   }
   try {
-    // Descobrir quais certificados ainda têm pedidos vinculados
-    const referenced = await db
-      .selectDistinct({ certId: ordersTable.certificateId })
-      .from(ordersTable)
-      .where(inArray(ordersTable.certificateId, numericIds));
-    const referencedIds = new Set(referenced.map(r => r.certId).filter((id): id is number => id != null));
-    const toDelete = numericIds.filter(id => !referencedIds.has(id));
-    const skippedIds = numericIds.filter(id => referencedIds.has(id));
-    if (toDelete.length > 0) {
-      await db.delete(certificatesTable).where(inArray(certificatesTable.id, toDelete));
-    }
-    res.json({ deleted: toDelete.length, skipped: skippedIds.length, skippedIds });
+    await db.delete(certificatesTable).where(inArray(certificatesTable.id, numericIds));
+    res.json({ deleted: numericIds.length, skipped: 0, skippedIds: [] });
   } catch (err) {
     logger.error({ err }, "Erro ao excluir certificados em lote");
     res.status(500).json({ error: "Erro ao excluir certificados. Verifique os logs do servidor." });
@@ -271,14 +261,6 @@ router.delete("/certificates/:id", requireAdmin, async (req, res): Promise<void>
     return;
   }
   try {
-    const [linked] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(ordersTable)
-      .where(eq(ordersTable.certificateId, id));
-    if ((linked?.count ?? 0) > 0) {
-      res.status(409).json({ error: "Certificado possui pedidos vinculados e não pode ser excluído." });
-      return;
-    }
     await db.delete(certificatesTable).where(eq(certificatesTable.id, id));
     res.sendStatus(204);
   } catch (err) {
