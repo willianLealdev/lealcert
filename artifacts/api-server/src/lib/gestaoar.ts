@@ -1,4 +1,4 @@
-const GAR_BASE = "https://gestaoar.com.br/ComercialAPI/api/GarAPIs";
+const GAR_BASE = "https://apiar.safeweb.com.br/Juntosapi/api/GarAPIs";
 
 export interface GarSettings {
   apiKey: string;
@@ -17,7 +17,9 @@ async function garPost<T>(path: string, body: Record<string, unknown>): Promise<
   });
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
-    throw new Error(`Gestão AR ${path} HTTP ${resp.status}: ${text}`);
+    // Se a resposta for HTML (página de erro do servidor), não exibir o HTML cru
+    const detail = text.trimStart().startsWith("<") ? `HTTP ${resp.status}` : text.slice(0, 200);
+    throw new Error(`Gestão AR ${path} ${detail}`);
   }
   return resp.json() as Promise<T>;
 }

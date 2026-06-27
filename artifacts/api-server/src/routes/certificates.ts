@@ -3,7 +3,7 @@ import { eq, sql, and, inArray } from "drizzle-orm";
 import { db, certificatesTable, settingsTable, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { swListarProdutos, type SafewebSettings } from "../lib/safeweb";
-import { garTabelaPrecos, type GarProduto } from "../lib/gestaoar";
+import { garTabelaPrecos, garTiposProduto, garTiposEmissao, type GarProduto } from "../lib/gestaoar";
 import { logger } from "../lib/logger";
 
 const router = Router();
