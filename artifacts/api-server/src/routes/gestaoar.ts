@@ -711,8 +711,8 @@ router.get("/gestaoar/parceiro-vendas", requireAdmin, async (req, res): Promise<
   try {
     const allItems = await garParceiroVendas(s.garApiKey, s.garHashVendedor, dataInicial, dataFinal);
 
-    // Filtra apenas pedidos reais (Id > 0, sem Observacao de erro)
-    const realItems = allItems.filter(i => (i.Id ?? 0) > 0 && !i.Observacao);
+    // Filtra apenas pedidos reais (Id > 0)
+    const realItems = allItems.filter(i => (i.Id ?? 0) > 0);
 
     // Filtro de parceiro: prioridade ao garHashParceiro (HashVendedor no pedido),
     // depois ao garDocumento (CNPJ da AR como CNPJCPFVendedor).
