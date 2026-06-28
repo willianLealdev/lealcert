@@ -480,17 +480,39 @@ export async function garExcluirAgendamento(
 const GAR_JUNTOS_BASE = "https://apiar.safeweb.com.br/Juntosapi/api/GarAPIs";
 
 export interface GarParceiroVendasItem {
-  HashVenda?: string;
-  PedidoVenda?: string;
-  ProdutoVenda?: string;
+  Id?: number;
+  NomeAR?: string;
+  HashPessoa?: string;
+  HashVendedor?: string;
+  HashProduto?: string;
+  HashTabela?: string;
+  HashLancamento?: string;
+  Protocolo?: string;
+  IdTipoVenda?: number;
+  TipoVenda?: string;
+  IdStatusVenda?: number;
+  StatusVenda?: string;
+  DataConfirmacao?: string;
+  CNPJCPFCliente?: string;
+  NomeCliente?: string;
   EmailCliente?: string;
-  FormaPagamento?: number;
-  FormaPagamentoDescricao?: string;
-  ValorTotal?: number;
-  sValor?: string;
+  DDDCliente?: string;
+  TelefoneCliente?: string;
+  idTipoEmissao?: number;
+  TipoEmissao?: string;
+  Produto?: string;
+  Validade?: number;
+  ValorVenda?: number;
+  ValorCusto?: number;
+  DataVenda?: string;
+  FormaPagamento?: string;
+  idStatusFinanceiro?: number;
+  StatusFinanceiro?: string;
+  ValorPago?: number;
+  CNPJCPFVendedor?: string;
+  NomeVendedor?: string;
+  Observacao?: string;
   Status?: number;
-  Descricao?: string;
-  DataEscrita?: string;
 }
 
 export async function garParceiroVendas(

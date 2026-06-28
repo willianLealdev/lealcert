@@ -710,7 +710,7 @@ router.get("/gestaoar/parceiro-vendas", requireAdmin, async (req, res): Promise<
   }
   try {
     const items = await garParceiroVendas(s.garApiKey, s.garHashVendedor, dataInicial, dataFinal);
-    const pedidoNums = items.map(i => i.PedidoVenda).filter((v): v is string => Boolean(v));
+    const pedidoNums = items.map(i => i.Protocolo).filter((v): v is string => Boolean(v));
     const localOrders = pedidoNums.length > 0
       ? await db.select({ id: ordersTable.id, garPedido: ordersTable.garPedido })
           .from(ordersTable)
@@ -719,7 +719,7 @@ router.get("/gestaoar/parceiro-vendas", requireAdmin, async (req, res): Promise<
     const localMap = new Map(localOrders.map(o => [o.garPedido, o.id]));
     const enriched = items.map(item => ({
       ...item,
-      localOrderId: item.PedidoVenda ? (localMap.get(item.PedidoVenda) ?? null) : null,
+      localOrderId: item.Protocolo ? (localMap.get(item.Protocolo) ?? null) : null,
     }));
     res.json(enriched);
   } catch (err) {

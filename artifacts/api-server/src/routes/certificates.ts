@@ -3,7 +3,7 @@ import { eq, sql, and, inArray } from "drizzle-orm";
 import { db, certificatesTable, settingsTable, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { swListarProdutos, type SafewebSettings } from "../lib/safeweb";
-import { garTabelaPrecos, garTiposProduto, garTiposEmissao, type GarProduto } from "../lib/gestaoar";
+import { garTabelaPrecos, garParceiroVendas, garTiposProduto, garTiposEmissao, type GarProduto } from "../lib/gestaoar";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -202,56 +202,81 @@ router.post("/certificates/import-gar", requireAdmin, async (req, res): Promise<
     res.status(400).json({ error: "Chave API da Gestão AR não configurada. Acesse Configurações primeiro." });
     return;
   }
-  const documentoRaw = settings.garDocumento ?? settings.garHashVendedor ?? "";
-  if (!documentoRaw) {
-    res.status(400).json({ error: "CNPJ da AR (Documento) não configurado. Acesse Configurações → Gestão AR." });
-    return;
-  }
-  // Strip formatting — GAR espera apenas dígitos (ex: 45737998000140, não 45.737.998/0001-40)
-  const documento = documentoRaw.replace(/\D/g, "");
 
-  const TIPOS_PRODUTO = [0, 1, 2, 3, 4];
-  const seen = new Set<string>();
-  const allProdutos: GarProduto[] = [];
-  const erros: string[] = [];
-
-  for (const tipo of TIPOS_PRODUTO) {
+  // Obter HashVendedor: primeiro tenta das configurações, senão busca via TabelaPrecos
+  let hashVendedor = settings.garHashVendedor ?? "";
+  if (!hashVendedor) {
+    const documentoRaw = settings.garDocumento ?? "";
+    if (!documentoRaw) {
+      res.status(400).json({ error: "CNPJ da AR ou Hash do Vendedor não configurado. Acesse Configurações → Gestão AR." });
+      return;
+    }
+    const documento = documentoRaw.replace(/\D/g, "");
     try {
-      const result = await garTabelaPrecos(settings.garApiKey, documento, tipo, 0);
-      for (const p of result.Produtos ?? []) {
-        if (!seen.has(p.HashProduto)) {
-          seen.add(p.HashProduto);
-          allProdutos.push(p);
-        }
-      }
+      const tabela = await garTabelaPrecos(settings.garApiKey, documento, 0, 0);
+      hashVendedor = tabela.HashVendedor ?? "";
     } catch (err) {
-      const msg = (err as Error).message ?? String(err);
-      logger.warn({ tipo, err }, "import-gar: erro ao buscar TipoProduto");
-      erros.push(`TipoProduto=${tipo}: ${msg}`);
+      logger.warn({ err }, "import-gar: falha ao obter HashVendedor via TabelaPrecos");
+    }
+    if (!hashVendedor) {
+      res.status(400).json({ error: `Não foi possível obter o Hash do Vendedor GAR. Configure o Hash do Vendedor em Configurações → Gestão AR.` });
+      return;
     }
   }
 
-  if (!allProdutos.length) {
-    const detalhe = erros.length ? ` Detalhes: ${erros[0]}` : "";
-    res.status(400).json({ error: `Nenhum produto retornado pela Gestão AR. Documento usado: ${documento}.${detalhe}` });
+  // Busca vendas dos últimos 31 dias para extrair produtos únicos
+  const now = new Date();
+  const dataFinal = now.toISOString().slice(0, 10);
+  const dataInicial = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  let vendas: import("../lib/gestaoar").GarParceiroVendasItem[] = [];
+  try {
+    vendas = await garParceiroVendas(settings.garApiKey, hashVendedor, dataInicial, dataFinal);
+  } catch (err) {
+    logger.error({ err }, "import-gar: erro ao buscar parceiroVendas");
+    res.status(400).json({ error: `Erro ao consultar vendas GAR: ${(err as Error).message}` });
     return;
   }
 
-  function deriveIssuanceFromGar(descricao: string): string | null {
-    const d = (descricao ?? "").toLowerCase();
-    if (d.includes("video") || d.includes("vídeo")) return "Videoconferência";
-    if (d.includes("renova")) return "Renovação";
-    if (d.includes("fast")) return "Fast";
-    if (d.includes("presenc")) return "Presencial";
-    return descricao || null;
+  // Filtrar itens válidos com período de observação
+  const realItems = vendas.filter(v => (v.Id ?? 0) > 0 && v.HashProduto && !v.Observacao);
+
+  // Extrair produtos únicos por HashProduto (ignorar produtos internos)
+  const SKIP_NOMES = ["VENDA EM LOTE", "ACORDO OPERACIONAL", "VISITA VIP", "SSL INTERNACIONAL"];
+  const seen = new Map<string, { nome: string; tipoEmissao: string; idTipoEmissao: number; validade: number; price: number }>();
+
+  for (const v of realItems) {
+    const hp = v.HashProduto!;
+    const nome = (v.Produto ?? "").trim();
+    if (!nome || SKIP_NOMES.includes(nome)) continue;
+    if (!seen.has(hp)) {
+      seen.set(hp, {
+        nome,
+        tipoEmissao: v.TipoEmissao ?? "",
+        idTipoEmissao: v.idTipoEmissao ?? 0,
+        validade: v.Validade ?? 12,
+        price: v.ValorVenda ?? 0,
+      });
+    }
   }
 
-  function deriveProductFromGar(nome: string, tipoProdutoDescricao: string): string | null {
-    const n = (nome + " " + tipoProdutoDescricao).toLowerCase().replace(/[^a-z0-9]/g, " ");
+  if (!seen.size) {
+    res.status(400).json({ error: `Nenhuma venda encontrada nos últimos 31 dias para extrair produtos. HashVendedor usado: ${hashVendedor}.` });
+    return;
+  }
+
+  function deriveProductFromName(nome: string): string | null {
+    const n = nome.toLowerCase().replace(/[^a-z0-9]/g, " ");
     if (n.includes("cnpj")) return "e-CNPJ";
     if (n.includes("cpf")) return "e-CPF";
-    if (n.match(/\be pj\b/) || n.match(/\bepj\b/)) return "e-PJ";
+    if (n.match(/\be pj\b/) || n.match(/\bepj\b/) || n.includes("pj nf")) return "e-PJ";
     if (n.match(/\be pf\b/) || n.match(/\bepf\b/)) return "e-PF";
+    return null;
+  }
+
+  function deriveModelFromName(nome: string): string | null {
+    if (/\bA3\b/.test(nome)) return "A3";
+    if (/\bA1\b/.test(nome)) return "A1";
     return null;
   }
 
@@ -264,26 +289,26 @@ router.post("/certificates/import-gar", requireAdmin, async (req, res): Promise<
 
   let imported = 0;
   let updated = 0;
-  for (const p of allProdutos) {
-    const issuanceType = deriveIssuanceFromGar(p.TipoEmissaoDescricao);
-    const product = deriveProductFromGar(p.Nome, p.TipoProdutoDescricao);
-    const model = (p.TipoCertificado === "A1" || p.TipoCertificado === "A3") ? p.TipoCertificado : null;
-    const validityMonths = (p.Validade || 1) * 12;
-    const price = p.ValorVenda ? p.ValorVenda.toFixed(2) : "0.00";
+  for (const [hp, p] of seen) {
+    const product = deriveProductFromName(p.nome);
+    const model = deriveModelFromName(p.nome);
+    const validityMonths = p.validade;
+    const issuanceType = p.tipoEmissao || null;
+    const price = p.price > 0 ? p.price.toFixed(2) : "0.00";
 
-    if (existingMap.has(p.HashProduto)) {
+    if (existingMap.has(hp)) {
       await db
         .update(certificatesTable)
         .set({ issuanceType, product, model, validityMonths })
-        .where(eq(certificatesTable.id, existingMap.get(p.HashProduto)!));
+        .where(eq(certificatesTable.id, existingMap.get(hp)!));
       updated++;
     } else {
       await db.insert(certificatesTable).values({
-        name: p.Nome,
+        name: p.nome,
         description: null,
         price,
-        active: true,
-        garHashProduto: p.HashProduto,
+        active: false,
+        garHashProduto: hp,
         validityMonths,
         safewebIdProduto: null,
         issuanceType,
@@ -294,7 +319,7 @@ router.post("/certificates/import-gar", requireAdmin, async (req, res): Promise<
     }
   }
 
-  res.json({ imported, updated, skipped: 0, total: allProdutos.length });
+  res.json({ imported, updated, skipped: 0, total: seen.size });
 });
 
 router.patch("/certificates/:id", requireAdmin, async (req, res): Promise<void> => {
