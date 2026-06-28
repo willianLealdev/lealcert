@@ -179,7 +179,7 @@ function ChatWidget() {
 
     const pickVoice = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined => {
       if (IS_MOBILE) {
-        // Mobile/tablet: prefere voz feminina pt-BR (Niky)
+        // Mobile/tablet: prefere voz feminina pt-BR
         const female = voices.find(v => v.lang === "pt-BR" && KNOWN_FEMALE_PT.test(v.name));
         if (female) return female;
         return voices.find(v => v.lang === "pt-BR") ?? voices.find(v => v.lang.startsWith("pt"));
