@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Shield, CheckCircle2, Clock, Award, Users, FileText,
   ChevronRight, MessageCircle, X, Send, Loader2, Bot,
-  Star, Lock, Zap, Phone, Mail, MapPin, Menu, Mic, MicOff,
+  Star, Lock, Zap, Phone, Mail, MapPin, Menu,
   Volume2, VolumeX, Upload, Paperclip
 } from "lucide-react";
 
@@ -90,8 +90,8 @@ function detectIOS(): boolean {
 
 const IS_MOBILE       = detectMobile();
 const IS_IOS          = detectIOS();
-const ASSISTANT_NAME    = IS_MOBILE ? "Niky" : "Will";
-const ASSISTANT_ARTICLE = IS_MOBILE ? "a"    : "o";
+const ASSISTANT_NAME    = "Niky";
+const ASSISTANT_ARTICLE = "a";
 
 function ChatWidget() {
   const [open, setOpen] = useState(true);
@@ -592,15 +592,6 @@ function ChatWidget() {
                 {isSpeaking ? "Falando…" : isListening ? "Ouvindo…" : voiceMode ? "Modo voz ativo" : "Online agora"}
               </div>
             </div>
-            {micSupported && (
-              <button
-                onClick={() => voiceMode ? stopVoiceMode() : startVoiceMode()}
-                title={voiceMode ? "Desativar modo voz" : "Ativar conversa por voz"}
-                className={`p-1.5 rounded-lg transition-colors ${voiceMode ? "bg-green-500/80 hover:bg-green-600" : "hover:bg-white/10"}`}
-              >
-                <Mic className={`h-4 w-4 ${voiceMode ? "" : "opacity-60"}`} />
-              </button>
-            )}
             <button
               onClick={() => { const next = !audioEnabled; setAudioEnabled(next); if (!next) window.speechSynthesis.cancel(); }}
               title={audioEnabled ? "Silenciar voz" : "Ativar voz"}
@@ -797,47 +788,25 @@ function ChatWidget() {
                 <button onClick={startSession} className="underline font-medium ml-2">Reconectar</button>
               </div>
             )}
-            {micDenied && (
-              <div className="mb-2 flex items-center gap-2 text-xs text-orange-700 bg-orange-50 rounded-lg px-3 py-1.5">
-                <MicOff className="h-3.5 w-3.5 shrink-0" />
-                <span className="font-medium">Permissão de microfone negada. Habilite nas configurações do navegador.</span>
-                <button onClick={() => setMicDenied(false)} className="ml-auto text-gray-400 hover:text-gray-600">✕</button>
-              </div>
-            )}
-            {IS_IOS && iosAudioLocked && sessionId && !micDenied && (
+            {IS_IOS && iosAudioLocked && sessionId && (
               <button
-                onClick={() => { unlockIOSAudio(); void toggleMicRef.current(); }}
+                onClick={unlockIOSAudio}
                 className="mb-2 w-full flex items-center justify-center gap-2 text-xs font-medium text-[#2563eb] bg-blue-50 hover:bg-blue-100 rounded-lg px-3 py-2 transition-colors"
               >
                 <Volume2 className="h-3.5 w-3.5" />
-                Toque aqui para ativar áudio e microfone
+                Toque aqui para ativar o áudio
               </button>
             )}
-            {voiceMode && isSpeaking && !isListening && !awaitingEmail && (
+            {isSpeaking && !awaitingEmail && (
               <div className="mb-2 flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded-lg px-3 py-1.5">
                 <Volume2 className="h-3.5 w-3.5 animate-pulse shrink-0" />
                 <span className="font-medium">{ASSISTANT_NAME} está falando…</span>
-                <button onClick={stopVoiceMode} className="ml-auto underline text-gray-500">Encerrar voz</button>
-              </div>
-            )}
-            {isListening && (
-              <div className="mb-2 flex items-center gap-2 text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-1.5">
-                <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
-                <span className="font-medium">Pode falar agora… envio automático ao parar</span>
-                <span className="ml-auto text-gray-400 italic truncate max-w-[110px]">{input || "ouvindo…"}</span>
-              </div>
-            )}
-            {voiceMode && !isListening && !isSpeaking && !loading && !awaitingEmail && (
-              <div className="mb-2 flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-1.5">
-                <Mic className="h-3.5 w-3.5 shrink-0" />
-                <span className="font-medium">Modo voz ativo — aguardando…</span>
-                <button onClick={stopVoiceMode} className="ml-auto underline text-gray-500">Encerrar</button>
               </div>
             )}
             {awaitingEmail && (
               <div className="mb-2 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
                 <Mail className="h-3.5 w-3.5 shrink-0" />
-                <span className="font-medium">Digite o e-mail — mic pausado</span>
+                <span className="font-medium">Digite seu e-mail abaixo</span>
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -846,29 +815,13 @@ function ChatWidget() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={awaitingEmail ? "Digite seu e-mail aqui…" : isListening ? "Ouvindo…" : isSpeaking ? `${ASSISTANT_NAME} está falando…` : voiceMode ? "Modo voz — ou digite aqui" : starting ? "Conectando…" : "Digite sua mensagem…"}
-                disabled={loading || starting || isListening || (isSpeaking && !awaitingEmail)}
+                placeholder={awaitingEmail ? "Digite seu e-mail aqui…" : isSpeaking ? `${ASSISTANT_NAME} está falando…` : starting ? "Conectando…" : "Digite sua mensagem…"}
+                disabled={loading || starting || (isSpeaking && !awaitingEmail)}
                 className="flex-1 text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] placeholder:text-gray-400 disabled:opacity-50 transition-all"
               />
-              {micSupported && (
-                <button
-                  onClick={isListening || isSpeaking ? toggleMic : voiceMode ? stopVoiceMode : toggleMic}
-                  disabled={loading || starting}
-                  title={isListening ? "Parar gravação e enviar" : voiceMode ? "Encerrar modo voz" : "Falar mensagem"}
-                  className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all shrink-0 disabled:opacity-40 ${
-                    voiceMode
-                      ? "bg-green-500 text-white hover:bg-green-600"
-                      : isListening
-                        ? "bg-red-500 text-white animate-pulse hover:bg-red-600"
-                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                  }`}
-                >
-                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                </button>
-              )}
               <button
                 onClick={() => send()}
-                disabled={!input.trim() || loading || starting || isListening || isSpeaking}
+                disabled={!input.trim() || loading || starting || isSpeaking}
                 className="h-10 w-10 flex items-center justify-center bg-[#2563eb] text-white rounded-xl disabled:opacity-40 hover:bg-blue-700 transition-colors shrink-0"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
