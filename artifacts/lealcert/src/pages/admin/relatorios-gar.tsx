@@ -38,13 +38,25 @@ function formatDate(raw?: string): string {
   return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
-const STATUS_LABELS: Record<number, string> = {
-  1: "Aguardando pagamento",
-  2: "Pago",
-  3: "Cancelado",
-  4: "Emitido",
-  5: "Expirado",
-};
+function statusBadge(item: GarParceiroVendasItem) {
+  const s = item.StatusVenda ?? "";
+  const variant =
+    s === "Confirmada" ? "default"
+    : s === "Não Confirmada" ? "secondary"
+    : s === "Cancelado" ? "destructive"
+    : "outline";
+  return <Badge variant={variant} className="text-xs">{s || "—"}</Badge>;
+}
+
+function statusFinBadge(item: GarParceiroVendasItem) {
+  const s = item.StatusFinanceiro ?? "";
+  const color =
+    s === "Pago" ? "text-green-700"
+    : s === "Em aberto" ? "text-amber-700"
+    : s === "Cancelado" ? "text-red-600"
+    : "text-slate-500";
+  return <span className={`text-xs ${color}`}>{s || "—"}</span>;
+}
 
 export default function AdminRelatoriosGar() {
   const now = new Date();
@@ -59,7 +71,7 @@ export default function AdminRelatoriosGar() {
   const items = data ?? [];
 
   const totais = useMemo(() => {
-    const total = items.reduce((acc: number, i: GarParceiroVendasItem) => acc + (i.ValorTotal ?? 0), 0);
+    const total = items.reduce((acc: number, i: GarParceiroVendasItem) => acc + (i.ValorVenda ?? 0), 0);
     const encontrados = items.filter((i: GarParceiroVendasItem) => i.localOrderId != null).length;
     return { total, encontrados, count: items.length };
   }, [items]);
@@ -187,36 +199,41 @@ export default function AdminRelatoriosGar() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Pedido GAR</TableHead>
+                    <TableHead>ID GAR</TableHead>
                     <TableHead>Produto</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Forma Pagto.</TableHead>
+                    <TableHead>Pagamento</TableHead>
+                    <TableHead>Financeiro</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Status GAR</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead>Pedido local</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((item: GarParceiroVendasItem, idx: number) => (
-                    <TableRow key={item.HashVenda ?? idx}>
-                      <TableCell className="font-mono text-xs">{item.PedidoVenda ?? "—"}</TableCell>
-                      <TableCell className="max-w-[180px] truncate" title={item.ProdutoVenda ?? ""}>
-                        {item.ProdutoVenda ?? "—"}
+                    <TableRow key={item.HashLancamento ?? item.Id ?? idx}>
+                      <TableCell className="font-mono text-xs text-slate-500">
+                        {item.Id ?? "—"}
                       </TableCell>
-                      <TableCell className="text-xs">{item.EmailCliente ?? "—"}</TableCell>
-                      <TableCell className="text-xs">{item.FormaPagamentoDescricao ?? "—"}</TableCell>
+                      <TableCell className="max-w-[160px] truncate text-sm" title={item.Produto ?? ""}>
+                        {item.Produto ?? "—"}
+                        {item.Validade ? <span className="ml-1 text-xs text-slate-400">({item.Validade}m)</span> : null}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        <p className="font-medium text-slate-800">{item.NomeCliente ?? "—"}</p>
+                        <p className="text-slate-400">{item.EmailCliente ?? ""}</p>
+                        <p className="text-slate-400">{item.CNPJCPFCliente ?? ""}</p>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-600 max-w-[120px] truncate" title={item.FormaPagamento ?? ""}>
+                        {item.FormaPagamento ?? "—"}
+                      </TableCell>
+                      <TableCell>{statusFinBadge(item)}</TableCell>
                       <TableCell className="text-right font-medium">
-                        {item.sValor ?? formatBRL(item.ValorTotal)}
+                        {formatBRL(item.ValorVenda)}
                       </TableCell>
-                      <TableCell>
-                        <span className="text-xs text-slate-600">
-                          {item.Status != null
-                            ? STATUS_LABELS[item.Status] ?? `Status ${item.Status}`
-                            : item.Descricao ?? "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">{formatDate(item.DataEscrita)}</TableCell>
+                      <TableCell>{statusBadge(item)}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{formatDate(item.DataVenda)}</TableCell>
                       <TableCell>
                         {item.localOrderId != null ? (
                           <Link href={`/orders/${item.localOrderId}`}>

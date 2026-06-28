@@ -3914,17 +3914,37 @@ components:
     GarParceiroVendasItem:
       type: object
       properties:
-        HashVenda:        { type: string }
-        PedidoVenda:      { type: string }
-        ProdutoVenda:     { type: string }
+        Id:               { type: integer }
+        HashLancamento:   { type: string }
+        HashVendedor:     { type: string }
+        HashProduto:      { type: string }
+        TipoVenda:        { type: string }
+        IdStatusVenda:    { type: integer }
+        StatusVenda:      { type: string }
+        StatusFinanceiro: { type: string }
+        IdStatusFinanceiro: { type: integer }
+        DataVenda:        { type: string }
+        DataConfirmacao:  { type: string }
+        DataVencimento:   { type: string }
+        CNPJCPFCliente:   { type: string }
+        NomeCliente:      { type: string }
         EmailCliente:     { type: string }
-        FormaPagamento:   { type: integer }
-        FormaPagamentoDescricao: { type: string }
-        ValorTotal:       { type: number }
-        sValor:           { type: string }
-        Status:           { type: integer }
-        Descricao:        { type: string }
-        DataEscrita:      { type: string }
+        DDDCliente:       { type: string }
+        TelefoneCliente:  { type: string }
+        CidadeCliente:    { type: string }
+        UFCliente:        { type: string }
+        Produto:          { type: string }
+        Validade:         { type: integer }
+        ValorVenda:       { type: number }
+        ValorPago:        { type: number }
+        FormaPagamento:   { type: string }
+        TipoEmissao:      { type: string }
+        CNPJCPFVendedor:  { type: string }
+        NomeVendedor:     { type: string }
+        EmailVendedor:    { type: string }
+        TabelaVenda:      { type: string }
+        Observacao:       { type: string }
+        NomeAR:           { type: string }
         localOrderId:     { type: integer, nullable: true }
 
     GarStatusPedido:

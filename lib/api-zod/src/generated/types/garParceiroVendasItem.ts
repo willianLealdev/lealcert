@@ -7,16 +7,36 @@
  */
 
 export interface GarParceiroVendasItem {
-  HashVenda?: string;
-  PedidoVenda?: string;
-  ProdutoVenda?: string;
+  Id?: number;
+  HashLancamento?: string;
+  HashVendedor?: string;
+  HashProduto?: string;
+  TipoVenda?: string;
+  IdStatusVenda?: number;
+  StatusVenda?: string;
+  StatusFinanceiro?: string;
+  IdStatusFinanceiro?: number;
+  DataVenda?: string;
+  DataConfirmacao?: string;
+  DataVencimento?: string;
+  CNPJCPFCliente?: string;
+  NomeCliente?: string;
   EmailCliente?: string;
-  FormaPagamento?: number;
-  FormaPagamentoDescricao?: string;
-  ValorTotal?: number;
-  sValor?: string;
-  Status?: number;
-  Descricao?: string;
-  DataEscrita?: string;
+  DDDCliente?: string;
+  TelefoneCliente?: string;
+  CidadeCliente?: string;
+  UFCliente?: string;
+  Produto?: string;
+  Validade?: number;
+  ValorVenda?: number;
+  ValorPago?: number;
+  FormaPagamento?: string;
+  TipoEmissao?: string;
+  CNPJCPFVendedor?: string;
+  NomeVendedor?: string;
+  EmailVendedor?: string;
+  TabelaVenda?: string;
+  Observacao?: string;
+  NomeAR?: string;
   localOrderId?: number | null;
 }
