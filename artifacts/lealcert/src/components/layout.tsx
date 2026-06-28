@@ -39,6 +39,7 @@ import {
   FileSearch,
   UserCog,
   BarChart2,
+  X,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 
@@ -254,6 +255,47 @@ function PushBellButton({ collapsed }: { collapsed: boolean }) {
   );
 }
 
+function PushBanner() {
+  const push = usePush();
+  const [location] = useLocation();
+  const [dismissed, setDismissed] = useState(false);
+
+  // Reset dismiss every time the user navigates to a new page
+  useEffect(() => { setDismissed(false); }, [location]);
+
+  if (
+    !push.supported ||
+    push.subscribed ||
+    push.permission === "denied" ||
+    push.loading ||
+    dismissed
+  ) return null;
+
+  return (
+    <div className="mb-4 flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 shadow-sm">
+      <Bell className="h-4 w-4 shrink-0 text-amber-600" />
+      <p className="flex-1 text-sm font-medium">
+        Ative as notificações push para receber alertas de pedidos e suporte em tempo real.
+      </p>
+      <button
+        type="button"
+        onClick={() => void push.subscribe()}
+        className="shrink-0 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition-colors"
+      >
+        Ativar agora
+      </button>
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        className="shrink-0 p-1 rounded text-amber-600 hover:text-amber-800 transition-colors"
+        title="Fechar"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const branding = useBranding();
@@ -453,6 +495,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 overflow-auto">
           <div className="p-4 md:p-8 max-w-6xl mx-auto">
+            <PushBanner />
             {children}
           </div>
         </main>
