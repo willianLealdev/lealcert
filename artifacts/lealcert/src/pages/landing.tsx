@@ -90,8 +90,8 @@ function detectIOS(): boolean {
 
 const IS_MOBILE       = detectMobile();
 const IS_IOS          = detectIOS();
-const ASSISTANT_NAME    = "Niky";
-const ASSISTANT_ARTICLE = "a";
+const ASSISTANT_NAME    = IS_MOBILE ? "Niky" : "Will";
+const ASSISTANT_ARTICLE = IS_MOBILE ? "a"    : "o";
 
 function ChatWidget() {
   const [open, setOpen] = useState(true);
