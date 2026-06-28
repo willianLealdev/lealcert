@@ -62,24 +62,43 @@ async function removeSubscription(endpoint: string): Promise<void> {
  * Times out after 10s.
  */
 async function getSwRegistration(): Promise<ServiceWorkerRegistration> {
-  // If no SW is registered yet, try to register the default one
-  const registrations = await navigator.serviceWorker.getRegistrations();
-  if (registrations.length === 0) {
-    try {
-      await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-    } catch {
-      // ignore — ready() below will fail with timeout if truly unavailable
-    }
+  const TIMEOUT_MS = 15_000;
+  const ERR_MSG = "Não foi possível ativar as notificações. Verifique se o site está aberto pelo Chrome e tente novamente.";
+
+  let reg: ServiceWorkerRegistration;
+  try {
+    // register() is idempotent — returns existing registration if already registered
+    reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  } catch {
+    throw new Error(ERR_MSG);
   }
 
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(
-      () => reject(new Error("Notificações indisponíveis neste dispositivo. Tente pelo app instalado ou Chrome.")),
-      10_000,
-    )
-  );
+  // If there's already an active SW, return immediately
+  if (reg.active) return reg;
 
-  return Promise.race([navigator.serviceWorker.ready, timeout]);
+  // Otherwise wait for the installing/waiting SW to activate
+  return new Promise<ServiceWorkerRegistration>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(ERR_MSG)), TIMEOUT_MS);
+    const done = (r: ServiceWorkerRegistration) => { clearTimeout(timer); resolve(r); };
+
+    const sw = reg.installing ?? reg.waiting;
+    if (!sw) {
+      // No SW in pipeline — fall back to serviceWorker.ready
+      navigator.serviceWorker.ready.then(done).catch(() => reject(new Error(ERR_MSG)));
+      return;
+    }
+
+    sw.addEventListener("statechange", function handler() {
+      if (sw.state === "activated") {
+        sw.removeEventListener("statechange", handler);
+        done(reg);
+      } else if (sw.state === "redundant") {
+        sw.removeEventListener("statechange", handler);
+        clearTimeout(timer);
+        reject(new Error(ERR_MSG));
+      }
+    });
+  });
 }
 
 export function usePush() {

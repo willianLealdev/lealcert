@@ -183,6 +183,9 @@ function PushBellButton({ collapsed }: { collapsed: boolean }) {
     if (push.loading || push.permission === "denied") return;
     if (push.subscribed) {
       setDialog("deactivate");
+    } else if (push.error || push.permission === "granted") {
+      // Retry directly (permission already granted or recovering from error)
+      void push.subscribe();
     } else {
       setDialog("activate");
     }
