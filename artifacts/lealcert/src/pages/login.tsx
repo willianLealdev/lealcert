@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLogin, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, Eye, EyeOff, Phone, MessageCircle, Mail, MapPin, ShieldAlert, Clock, KeyRound } from "lucide-react";
+import { Loader2, ShieldCheck, Eye, EyeOff, Phone, MessageCircle, Mail, MapPin, ShieldAlert, Clock, KeyRound, RefreshCw } from "lucide-react";
 
 type Step = "credentials" | "ip-verify";
 type IpBlockInfo = { code: "ip_banned" | "ip_blocked"; error: string; isForeign?: boolean; unblockAt?: string } | null;
@@ -24,6 +24,8 @@ export default function Login() {
   const [step, setStep] = useState<Step>("credentials");
   const [ipCode, setIpCode] = useState("");
   const [ipVerifyLoading, setIpVerifyLoading] = useState(false);
+  const [ipResendLoading, setIpResendLoading] = useState(false);
+  const [ipResendCooldown, setIpResendCooldown] = useState(0);
   const [ipBlockInfo, setIpBlockInfo] = useState<IpBlockInfo>(null);
   const { user } = useAuth();
   const branding = useBranding();
@@ -71,6 +73,35 @@ export default function Login() {
     else setLocation(homeRoute(user.role));
     return null;
   }
+
+  useEffect(() => {
+    if (ipResendCooldown <= 0) return;
+    const t = setTimeout(() => setIpResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [ipResendCooldown]);
+
+  const handleResendIpCode = async () => {
+    setIpResendLoading(true);
+    try {
+      const res = await fetch("/api/auth/resend-ip-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ cpfCnpj }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Erro", description: data.error ?? "Não foi possível reenviar.", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Código reenviado!", description: "Verifique sua caixa de entrada." });
+      setIpResendCooldown(60);
+    } catch {
+      toast({ title: "Erro", description: "Não foi possível reenviar o código.", variant: "destructive" });
+    } finally {
+      setIpResendLoading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,14 +300,31 @@ export default function Login() {
                     {ipVerifyLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Verificando...</> : "Confirmar acesso"}
                   </Button>
                 </form>
-                <div className="mt-5 text-center">
-                  <button
-                    type="button"
-                    onClick={() => { setStep("credentials"); setIpCode(""); }}
-                    className="text-sm text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
-                  >
-                    Voltar ao login
-                  </button>
+                <div className="mt-5 space-y-3">
+                  <div className="flex justify-center">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleResendIpCode}
+                      disabled={ipResendLoading || ipResendCooldown > 0}
+                      className="text-blue-200/60 hover:text-blue-300"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 mr-2 ${ipResendLoading ? "animate-spin" : ""}`} />
+                      {ipResendCooldown > 0
+                        ? `Reenviar em ${ipResendCooldown}s`
+                        : "Reenviar código"}
+                    </Button>
+                  </div>
+                  <div className="text-center pt-2 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => { setStep("credentials"); setIpCode(""); }}
+                      className="text-sm text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                    >
+                      Voltar ao login
+                    </button>
+                  </div>
                 </div>
               </>
             )}

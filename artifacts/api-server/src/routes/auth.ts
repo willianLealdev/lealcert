@@ -640,6 +640,45 @@ router.post("/auth/verify-ip", async (req, res): Promise<void> => {
   });
 });
 
+// ── POST /auth/resend-ip-verification — Reenviar código de IP ─────────────────
+router.post("/auth/resend-ip-verification", async (req, res): Promise<void> => {
+  const { cpfCnpj } = req.body ?? {};
+  if (!cpfCnpj) {
+    res.status(400).json({ error: "CPF/CNPJ é obrigatório." });
+    return;
+  }
+  const digits = cpfCnpj.replace(/\D/g, "");
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.cpfCnpj, digits)).limit(1);
+  if (!user || !user.email) {
+    res.status(400).json({ error: "Usuário não encontrado." });
+    return;
+  }
+
+  // Rate limit: só permite reenvio a cada 60 segundos
+  const [last] = await db
+    .select()
+    .from(ipVerificationsTable)
+    .where(eq(ipVerificationsTable.userId, user.id))
+    .orderBy(desc(ipVerificationsTable.createdAt))
+    .limit(1);
+
+  const now = new Date();
+  if (last && (now.getTime() - new Date(last.createdAt).getTime()) < 60_000) {
+    res.status(429).json({ error: "Aguarde 60 segundos antes de reenviar o código." });
+    return;
+  }
+
+  const code = generateIpVerificationCode();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  await db.insert(ipVerificationsTable).values({ userId: user.id, ip: getClientIp(req as Parameters<typeof getClientIp>[0]), code, expiresAt });
+  try {
+    await sendIpVerificationEmail(user.email, user.name, code);
+  } catch (err) {
+    logger.error({ err }, "Falha ao reenviar e-mail de verificação de IP");
+  }
+  res.json({ message: "Código reenviado." });
+});
+
 router.post("/auth/forgot-password", async (req, res): Promise<void> => {
   const { cpfCnpj } = req.body ?? {};
   if (!cpfCnpj) {

@@ -18,12 +18,12 @@ async function getEmailConfig() {
   const s = rows[0];
   const appName = s?.appName ?? "LealCert";
   const siteUrl = s?.siteUrl ?? "https://lealcert.com.br";
-  // SMTP configurado exclusivamente pelo painel admin (tabela settings no banco)
-  const host = s?.smtpHostDb || null;
-  const port = parseInt(s?.smtpPortDb ?? "587", 10);
-  const user = s?.smtpUserDb || null;
-  const pass = s?.smtpPassDb || null;
-  const from = s?.mailFrom || `${appName} <naoresponda@lealcert.com.br>`;
+  // SMTP: DB tem prioridade; fallback para env vars se DB não configurado
+  const host = s?.smtpHostDb || process.env.SMTP_HOST || null;
+  const port = parseInt(s?.smtpPortDb ?? process.env.SMTP_PORT ?? "587", 10);
+  const user = s?.smtpUserDb || process.env.SMTP_USER || null;
+  const pass = s?.smtpPassDb || process.env.SMTP_PASS || null;
+  const from = s?.mailFrom || process.env.SMTP_FROM || `${appName} <naoresponda@lealcert.com.br>`;
   const logoUrl = s?.logoUrl ?? null;
 
   return { appName, siteUrl, host, port, user, pass, from, logoUrl };
