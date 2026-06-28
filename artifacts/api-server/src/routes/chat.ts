@@ -482,6 +482,11 @@ function generateProvisionalPassword(): string {
 // ── Routes ────────────────────────────────────────────────────────────────────
 router.post("/chat/session", async (req, res): Promise<void> => {
   const [conv] = await db.insert(conversations).values({ title: "Chat de Vendas" }).returning();
+  // Salvar a saudação inicial como mensagem do assistente no banco.
+  // Sem isso, quando o usuário manda "1", o histórico da IA fica vazio (sem mensagem
+  // prévia do assistente) e ela repete o menu de boas-vindas achando que é o primeiro contato.
+  const greeting = `Olá! 👋 Sou o Will, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:\n\n**1** 🛒 Comprar certificado digital\n**2** 🎫 Abrir chamado de suporte\n**3** ❓ Tirar dúvidas sobre certificados`;
+  await db.insert(chatMessages).values({ conversationId: conv.id, role: "assistant", content: greeting });
   res.status(201).json({ id: conv.id, title: conv.title, createdAt: conv.createdAt });
 });
 
