@@ -104,12 +104,17 @@ const authLimiter = rateLimit({
   message: { error: "Muitas tentativas. Aguarde 15 minutos antes de tentar novamente." },
 });
 
-// Chat: 30 messages / 15 min per IP — prevents AI cost exhaustion
+// Chat: 60 messages / 15 min per IP — prevents AI cost abuse from anonymous users
 const chatLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Não limitar usuários autenticados
+    if ((req.session as unknown as Record<string, unknown>)?.userId) return true;
+    return false;
+  },
   message: { error: "Muitas mensagens enviadas. Aguarde alguns minutos." },
 });
 
