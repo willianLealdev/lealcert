@@ -160,7 +160,7 @@ export function usePush() {
 
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
 
       const ok = await saveSubscription(sub);
@@ -168,7 +168,10 @@ export function usePush() {
 
       setState(s => ({ ...s, subscribed: true, loading: false, error: null }));
     } catch (err) {
-      setState(s => ({ ...s, loading: false, error: (err as Error).message }));
+      const msg = err instanceof DOMException
+        ? `Erro ao ativar notificações: ${err.name} — ${err.message}`
+        : (err as Error).message;
+      setState(s => ({ ...s, loading: false, error: msg }));
     }
   }, []);
 

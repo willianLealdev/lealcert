@@ -14,9 +14,10 @@ import { sendPushToUser } from "../lib/push";
 const router = Router();
 
 // ── Public key ──────────────────────────────────────────────────────────────
-router.get("/push/public-key", async (_req, res): Promise<void> => {
+router.get("/push/public-key", async (req, res): Promise<void> => {
   const [s] = await db.select({ vapidPublicKey: settingsTable.vapidPublicKey }).from(settingsTable).limit(1);
   if (!s?.vapidPublicKey) {
+    req.log.warn("push/public-key: VAPID public key not configured in settings table");
     res.status(503).json({ error: "VAPID public key not configured" });
     return;
   }
