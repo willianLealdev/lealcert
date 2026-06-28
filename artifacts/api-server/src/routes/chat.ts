@@ -290,11 +290,21 @@ Colete na ordem:
   2. Data de nascimento (DD/MM/AAAA) — geralmente já informada no PASSO 3
   3. E-mail
   4. Telefone WhatsApp (somente dígitos)
-  5. CEP + número + complemento (endereço do titular/responsável)
-  6. CEI, PIS ou NIS (opcional):
+  5. CEP + número + complemento (endereço do titular)
+  6. Dados do documento de identificação do titular:
+     • Tipo: RG (1) ou CNH (4)
+     • Número do documento
+     • Órgão emissor (ex: SSP-SP)
+  7. CEI, PIS ou NIS (opcional):
      Pergunte: "O titular possui CEI, PIS ou NIS? (opcional — se sim, informe qual e o número)"
      • Se sim: registre o número e informe que precisará enviar também o documento comprobatório.
      • Se não: prossiga normalmente.
+
+REGRA e-CPF: Para e-CPF, o titular É o representante. No ACAO:CRIAR_PEDIDO preencha:
+  • representanteCpf = customerCpfCnpj (CPF do titular)
+  • representanteNascimento = customerBirthDate (data de nascimento do titular)
+  • representanteDocTipo / representanteDocNumero / representanteDocEmissor = dados coletados no item 6
+  • representanteAddress* = mesmo endereço do titular (addressZipcode, addressStreet, etc.)
 
 Após coletar os dados acima, solicite os documentos:
 → Emita na linha seguinte (sem nada depois): ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
