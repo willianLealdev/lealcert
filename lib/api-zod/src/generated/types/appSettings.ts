@@ -22,6 +22,7 @@ export interface AppSettings {
   garApiKey?: string | null;
   garDocumento?: string | null;
   garHashVendedor?: string | null;
+  garHashParceiro?: string | null;
   garHashTabela?: string | null;
   garFormaPagamento?: string;
   garPreferirVideoconferencia?: string;

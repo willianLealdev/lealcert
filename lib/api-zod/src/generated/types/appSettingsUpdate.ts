@@ -21,6 +21,7 @@ export interface AppSettingsUpdate {
   garApiKey?: string;
   garDocumento?: string;
   garHashVendedor?: string;
+  garHashParceiro?: string;
   garHashTabela?: string;
   garFormaPagamento?: string;
   garPreferirVideoconferencia?: string;

@@ -709,7 +709,8 @@ router.get("/gestaoar/parceiro-vendas", requireAdmin, async (req, res): Promise<
     return;
   }
   try {
-    const items = await garParceiroVendas(s.garApiKey, s.garHashVendedor, dataInicial, dataFinal);
+    const hashParaRelatorio = s.garHashParceiro || s.garHashVendedor;
+    const items = await garParceiroVendas(s.garApiKey, hashParaRelatorio, dataInicial, dataFinal);
     const pedidoNums = items.map(i => i.Protocolo).filter((v): v is string => Boolean(v));
     const localOrders = pedidoNums.length > 0
       ? await db.select({ id: ordersTable.id, garPedido: ordersTable.garPedido })

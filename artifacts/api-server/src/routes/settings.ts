@@ -26,6 +26,7 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     webhookSecret: mask(s.webhookSecret),
     garApiKey: mask(s.garApiKey),
     garHashVendedor: mask(s.garHashVendedor),
+    garHashParceiro: mask(s.garHashParceiro),
     garHashTabela: mask(s.garHashTabela),
     safewebPassword: mask(s.safewebPassword),
     safewebPasswordHomologacao: mask(s.safewebPasswordHomologacao),
@@ -87,7 +88,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   const {
     appName, mpAccessToken, mpPublicKey, webhookSecret, mailFrom, siteUrl,
     scheduleOpenDays, scheduleOpenHour, scheduleCloseHour, scheduleStepMin, scheduleClosedDates,
-    garApiKey, garDocumento, garHashVendedor, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
+    garApiKey, garDocumento, garHashVendedor, garHashParceiro, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
     safewebUrl, safewebUrlHomologacao, safewebAmbiente, safewebUsername, safewebPassword,
     safewebUsernameHomologacao, safewebPasswordHomologacao,
     safewebCnpjAr, safewebCodigoParceiro, activeProvider,
@@ -150,6 +151,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("webhookSecret", webhookSecret);
   set("garApiKey", garApiKey);
   set("garHashVendedor", garHashVendedor);
+  set("garHashParceiro", garHashParceiro);
   set("garHashTabela", garHashTabela);
   set("safewebPassword", safewebPassword);
   set("safewebPasswordHomologacao", safewebPasswordHomologacao);

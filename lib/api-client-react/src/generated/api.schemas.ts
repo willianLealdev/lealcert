@@ -625,6 +625,7 @@ export interface AppSettings {
   garApiKey?: string | null;
   garDocumento?: string | null;
   garHashVendedor?: string | null;
+  garHashParceiro?: string | null;
   garHashTabela?: string | null;
   garFormaPagamento?: string;
   garPreferirVideoconferencia?: string;
@@ -679,6 +680,7 @@ export interface AppSettingsUpdate {
   garApiKey?: string;
   garDocumento?: string;
   garHashVendedor?: string;
+  garHashParceiro?: string;
   garHashTabela?: string;
   garFormaPagamento?: string;
   garPreferirVideoconferencia?: string;

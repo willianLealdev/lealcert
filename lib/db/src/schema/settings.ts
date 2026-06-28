@@ -19,6 +19,7 @@ export const settingsTable = pgTable("settings", {
   garApiKey: text("gar_api_key"),
   garDocumento: text("gar_documento"),
   garHashVendedor: text("gar_hash_vendedor"),
+  garHashParceiro: text("gar_hash_parceiro"),
   garHashTabela: text("gar_hash_tabela"),
   garFormaPagamento: text("gar_forma_pagamento").default("11"),
   garPreferirVideoconferencia: text("gar_preferir_videoconferencia").default("1"),

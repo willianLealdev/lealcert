@@ -3514,6 +3514,9 @@ components:
         garHashVendedor:
           type: string
           nullable: true
+        garHashParceiro:
+          type: string
+          nullable: true
         garHashTabela:
           type: string
           nullable: true
@@ -3651,6 +3654,8 @@ components:
         garDocumento:
           type: string
         garHashVendedor:
+          type: string
+        garHashParceiro:
           type: string
         garHashTabela:
           type: string
