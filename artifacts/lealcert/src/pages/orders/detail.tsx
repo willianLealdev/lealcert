@@ -1573,6 +1573,9 @@ export default function OrderDetail() {
                 </button>
                 {representanteOpen && (
                   <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-0 pb-4 border-t">
+                    <InfoRow label="Nome" value={order.customerName} />
+                    <InfoRow label="Telefone" value={order.customerPhone} />
+                    <InfoRow label="E-mail" value={order.customerEmail} />
                     <InfoRow label="CPF do Representante" value={order.representanteCpf} />
                     <InfoRow label="Data de Nascimento" value={order.representanteNascimento} />
                     <InfoRow
