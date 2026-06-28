@@ -327,11 +327,16 @@ function ChatWidget() {
             };
             if (ev.content) {
               assistantContent += ev.content;
-              const display = assistantContent
-                .split("\n")
-                .filter(l => !l.startsWith("ACAO:"))
-                .join("\n")
-                .trim();
+              const lines = assistantContent.split("\n");
+              const filtered: string[] = [];
+              let skipNextJson = false;
+              for (const line of lines) {
+                if (line.startsWith("ACAO:")) { skipNextJson = true; continue; }
+                if (skipNextJson && line.trim().startsWith("{")) { skipNextJson = false; continue; }
+                skipNextJson = false;
+                filtered.push(line);
+              }
+              const display = filtered.join("\n").trim();
               setMessages(prev => {
                 const copy = [...prev];
                 copy[copy.length - 1] = { role: "assistant", content: display };
