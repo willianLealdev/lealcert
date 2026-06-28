@@ -709,16 +709,30 @@ router.get("/gestaoar/parceiro-vendas", requireAdmin, async (req, res): Promise<
     return;
   }
   try {
-    const hashParaRelatorio = s.garHashParceiro || s.garHashVendedor;
-    const items = await garParceiroVendas(s.garApiKey, hashParaRelatorio, dataInicial, dataFinal);
-    const pedidoNums = items.map(i => i.Protocolo).filter((v): v is string => Boolean(v));
+    const allItems = await garParceiroVendas(s.garApiKey, s.garHashVendedor, dataInicial, dataFinal);
+
+    // Filtra apenas pedidos reais (Id > 0, sem Observacao de erro)
+    const realItems = allItems.filter(i => (i.Id ?? 0) > 0 && !i.Observacao);
+
+    // Filtro de parceiro: prioridade ao garHashParceiro (HashVendedor no pedido),
+    // depois ao garDocumento (CNPJ da AR como CNPJCPFVendedor).
+    // Sem filtro configurado → retorna todos.
+    const filterHash = s.garHashParceiro?.trim() ?? "";
+    const filterCnpj = (s.garDocumento ?? "").replace(/\D/g, "");
+    const filtered = filterHash
+      ? realItems.filter(i => i.HashVendedor === filterHash)
+      : filterCnpj
+        ? realItems.filter(i => (i.CNPJCPFVendedor ?? "").replace(/\D/g, "") === filterCnpj)
+        : realItems;
+
+    const pedidoNums = filtered.map(i => i.Protocolo).filter((v): v is string => Boolean(v));
     const localOrders = pedidoNums.length > 0
       ? await db.select({ id: ordersTable.id, garPedido: ordersTable.garPedido })
           .from(ordersTable)
           .where(inArray(ordersTable.garPedido, pedidoNums))
       : [];
     const localMap = new Map(localOrders.map(o => [o.garPedido, o.id]));
-    const enriched = items.map(item => ({
+    const enriched = filtered.map(item => ({
       ...item,
       localOrderId: item.Protocolo ? (localMap.get(item.Protocolo) ?? null) : null,
     }));
