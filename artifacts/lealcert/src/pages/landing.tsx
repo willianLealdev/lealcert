@@ -111,7 +111,7 @@ function ChatWidget() {
   const [uploading, setUploading] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const [awaitingEmail, setAwaitingEmail] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -122,7 +122,7 @@ function ChatWidget() {
   const pendingSendRef = useRef(false);
   const directSentRef = useRef(false);
   const voiceModeRef = useRef(false);
-  const audioEnabledRef = useRef(true);
+  const audioEnabledRef = useRef(false);
   const toggleMicRef = useRef<() => void>(() => {});
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const iosAudioUnlockedRef = useRef(false);
