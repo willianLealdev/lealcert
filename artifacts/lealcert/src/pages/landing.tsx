@@ -146,7 +146,7 @@ function ChatWidget() {
       const text = pendingGreetingRef.current;
       pendingGreetingRef.current = null;
       setTimeout(() => {
-        speakTextRef.current(text, () => setTimeout(() => toggleMicRef.current(), 400));
+        speakTextRef.current(text);
       }, 200);
     }
   }, []);
@@ -256,18 +256,11 @@ function ChatWidget() {
         content: `Olá! 👋 Sou ${ASSISTANT_ARTICLE} **${ASSISTANT_NAME}**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:`,
       }]);
       setShowMenuOptions(true);
-      // Auto-ativar modo voz: fala saudação e depois abre mic
-      if (micSupported) {
-        setVoiceMode(true);
-        voiceModeRef.current = true;
-        if (IS_IOS) {
-          // iOS: speechSynthesis exige gesto do usuário — guarda saudação para falar após o 1º toque
-          pendingGreetingRef.current = greetingText;
-        } else {
-          setTimeout(() => {
-            speakText(greetingText, () => setTimeout(() => toggleMicRef.current(), 400));
-          }, 300);
-        }
+      // Falar saudação via TTS (sem ativar modo voz)
+      if (IS_IOS) {
+        pendingGreetingRef.current = greetingText;
+      } else {
+        setTimeout(() => { speakText(greetingText); }, 300);
       }
     } catch {
       setSessionError(true);
@@ -374,10 +367,7 @@ function ChatWidget() {
         && !/confirmação|enviado|enviada|cadastrado|enviamos/i.test(assistantContent);
       if (isAskingEmail) setAwaitingEmail(true);
       if (assistantContent) {
-        speakText(assistantContent, () => {
-          // Não abre o mic se estiver esperando e-mail por digitação
-          if (voiceModeRef.current && !isAskingEmail) setTimeout(() => toggleMicRef.current(), 400);
-        });
+        speakText(assistantContent);
       }
       setTimeout(() => inputRef.current?.focus(), 100);
     }
@@ -589,7 +579,7 @@ function ChatWidget() {
               <div className="font-semibold text-sm">{ASSISTANT_NAME} — LealCert Certificados Digital</div>
               <div className="flex items-center gap-1.5 text-xs text-green-400">
                 <span className={`h-1.5 w-1.5 rounded-full ${isSpeaking ? "bg-yellow-400 animate-pulse" : "bg-green-400"}`} />
-                {isSpeaking ? "Falando…" : isListening ? "Ouvindo…" : voiceMode ? "Modo voz ativo" : "Online agora"}
+                {isSpeaking ? "Falando…" : "Online agora"}
               </div>
             </div>
             <button
