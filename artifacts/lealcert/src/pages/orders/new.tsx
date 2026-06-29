@@ -270,6 +270,7 @@ export default function NewOrder() {
     nfNeighborhood: "",
     nfCity: "",
     nfState: "",
+    nfIbge: "",
   });
   const [nfCepLoading, setNfCepLoading] = useState(false);
   const [nfCepFilled, setNfCepFilled] = useState(false);
@@ -593,7 +594,7 @@ export default function NewOrder() {
       const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
       const data = await res.json();
       if (!data.erro) {
-        setNfForm(prev => ({ ...prev, nfStreet: data.logradouro || prev.nfStreet, nfNeighborhood: data.bairro || prev.nfNeighborhood, nfCity: data.localidade || prev.nfCity, nfState: data.uf || prev.nfState }));
+        setNfForm(prev => ({ ...prev, nfStreet: data.logradouro || prev.nfStreet, nfNeighborhood: data.bairro || prev.nfNeighborhood, nfCity: data.localidade || prev.nfCity, nfState: data.uf || prev.nfState, nfIbge: data.ibge || prev.nfIbge }));
         setNfCepFilled(true);
         toast({ title: "CEP encontrado!", description: `${data.localidade} — ${data.uf}` });
       } else {
@@ -1270,6 +1271,10 @@ export default function NewOrder() {
                         <Label className="flex items-center gap-1">UF{repCepFilled && form.representanteAddressState && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
                         <Input value={form.representanteAddressState} onChange={e => set("representanteAddressState", e.target.value)} maxLength={2} placeholder="SP" className={repCepFilled && form.representanteAddressState ? "bg-emerald-50 border-emerald-200" : ""} />
                       </div>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1">IBGE{form.addressIbge && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                        <Input value={form.addressIbge} readOnly placeholder="—" className={form.addressIbge ? "bg-emerald-50 border-emerald-200 text-muted-foreground" : "text-muted-foreground"} />
+                      </div>
                     </div>
                   </div>
 
@@ -1354,6 +1359,10 @@ export default function NewOrder() {
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1">UF{repCepFilled && form.representanteAddressState && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
                     <Input value={form.representanteAddressState} onChange={e => set("representanteAddressState", e.target.value)} maxLength={2} placeholder="SP" className={repCepFilled && form.representanteAddressState ? "bg-emerald-50 border-emerald-200" : ""} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">IBGE{form.addressIbge && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                    <Input value={form.addressIbge} readOnly placeholder="—" className={form.addressIbge ? "bg-emerald-50 border-emerald-200 text-muted-foreground" : "text-muted-foreground"} />
                   </div>
                 </div>
               </CardContent>
@@ -1515,6 +1524,10 @@ export default function NewOrder() {
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1">UF{nfCepFilled && nfForm.nfState && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
                     <Input value={nfForm.nfState} onChange={e => setNf("nfState", e.target.value)} maxLength={2} placeholder="SP" className={nfCepFilled && nfForm.nfState ? "bg-emerald-50 border-emerald-200" : ""} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">IBGE{nfForm.nfIbge && <span className="text-xs text-emerald-500 font-normal">(auto)</span>}</Label>
+                    <Input value={nfForm.nfIbge} readOnly placeholder="—" className={nfForm.nfIbge ? "bg-emerald-50 border-emerald-200 text-muted-foreground" : "text-muted-foreground"} />
                   </div>
                 </div>
               </div>
