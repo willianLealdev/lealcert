@@ -48,6 +48,7 @@ export const ordersTable = pgTable("orders", {
   addressNeighborhood: text("address_neighborhood"),
   addressCity: text("address_city"),
   addressState: text("address_state"),
+  addressIbge: text("address_ibge"),
   // Endereço do representante legal / titular (obrigatório para Safeweb Titular_*)
   representanteAddressZipcode: text("representante_address_zipcode"),
   representanteAddressStreet: text("representante_address_street"),

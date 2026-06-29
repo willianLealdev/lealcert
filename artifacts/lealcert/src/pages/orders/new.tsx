@@ -256,6 +256,7 @@ export default function NewOrder() {
     representanteAddressNeighborhood: "",
     representanteAddressCity: "",
     representanteAddressState: "",
+    addressIbge: "",
   });
 
   // ── Nota Fiscal (etapa 3) ──
@@ -576,7 +577,7 @@ export default function NewOrder() {
       const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
       const data = await res.json();
       if (!data.erro) {
-        setForm(prev => ({ ...prev, representanteAddressStreet: data.logradouro || prev.representanteAddressStreet, representanteAddressNeighborhood: data.bairro || prev.representanteAddressNeighborhood, representanteAddressCity: data.localidade || prev.representanteAddressCity, representanteAddressState: data.uf || prev.representanteAddressState }));
+        setForm(prev => ({ ...prev, representanteAddressStreet: data.logradouro || prev.representanteAddressStreet, representanteAddressNeighborhood: data.bairro || prev.representanteAddressNeighborhood, representanteAddressCity: data.localidade || prev.representanteAddressCity, representanteAddressState: data.uf || prev.representanteAddressState, addressIbge: data.ibge || prev.addressIbge }));
         setRepCepFilled(true);
         toast({ title: "CEP do representante encontrado!", description: `${data.localidade} — ${data.uf}` });
       } else { setRepCepFilled(false); }
@@ -697,6 +698,7 @@ export default function NewOrder() {
         addressNeighborhood: form.representanteAddressNeighborhood || form.addressNeighborhood || undefined,
         addressCity: form.representanteAddressCity || form.addressCity || undefined,
         addressState: form.representanteAddressState || form.addressState || undefined,
+        addressIbge: form.addressIbge || undefined,
         representanteCpf: form.repCpf || undefined,
         representanteAddressZipcode: form.representanteAddressZipcode || undefined,
         representanteAddressStreet: form.representanteAddressStreet || undefined,

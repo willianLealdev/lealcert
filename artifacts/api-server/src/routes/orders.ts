@@ -274,7 +274,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   const {
     certificateId, clientType, customerName, customerCpfCnpj, customerEmail,
     customerPhone, customerBirthDate, hasPsbio, companyName, inssNumber, extendedWarranty,
-    addressZipcode, addressStreet, addressNumber, addressNeighborhood, addressCity, addressState,
+    addressZipcode, addressStreet, addressNumber, addressNeighborhood, addressCity, addressState, addressIbge,
     customerCei, customerNis,
     representanteCpf, representanteNascimento,
     representanteDocTipo, representanteDocNumero, representanteDocEmissor,
@@ -330,6 +330,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     addressNeighborhood: addressNeighborhood || null,
     addressCity: addressCity || null,
     addressState: addressState || null,
+    addressIbge: addressIbge || null,
     representanteAddressZipcode: representanteAddressZipcode || null,
     representanteAddressStreet: representanteAddressStreet || null,
     representanteAddressNumber: representanteAddressNumber || null,

@@ -41,6 +41,7 @@ export interface Order {
   addressNeighborhood?: string | null;
   addressCity?: string | null;
   addressState?: string | null;
+  addressIbge?: string | null;
   representanteAddressZipcode?: string | null;
   representanteAddressStreet?: string | null;
   representanteAddressNumber?: string | null;

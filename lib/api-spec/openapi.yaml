@@ -3058,6 +3058,9 @@ components:
         addressState:
           type: string
           nullable: true
+        addressIbge:
+          type: string
+          nullable: true
         representanteAddressZipcode:
           type: string
           nullable: true
@@ -3198,6 +3201,8 @@ components:
         addressCity:
           type: string
         addressState:
+          type: string
+        addressIbge:
           type: string
         representanteAddressZipcode:
           type: string

@@ -74,7 +74,7 @@ export async function garAutoComprar(orderId: number): Promise<void> {
   const isCnpj = order.clientType === "cnpj";
 
   const cep = (order.addressZipcode ?? "").replace(/\D/g, "");
-  const codigoIBGE = await getIbgeCode(cep);
+  const codigoIBGE = order.addressIbge || await getIbgeCode(cep);
   if (!codigoIBGE) {
     logger.warn({ orderId, cep }, "garAutoComprar: código IBGE não encontrado para o CEP — verifique o endereço do pedido");
   }
