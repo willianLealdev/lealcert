@@ -487,19 +487,31 @@ router.post("/orders/:id/gar-comprar", requireAuth, async (req, res): Promise<vo
   const ddd = phone.slice(0, 2);
   const tel = phone.slice(2);
 
+  const cepClean = (order.addressZipcode ?? "").replace(/\D/g, "");
+  let codigoIBGE = "";
+  try {
+    if (cepClean.length === 8) {
+      const vr = await fetch(`https://viacep.com.br/ws/${cepClean}/json/`, { signal: AbortSignal.timeout(5000) });
+      if (vr.ok) {
+        const vd = await vr.json() as { ibge?: string };
+        codigoIBGE = vd.ibge ?? "";
+      }
+    }
+  } catch { /* ignora — segue sem IBGE */ }
+
   const cliente = {
     CNPJCPF: order.customerCpfCnpj,
     NomeRazaoSocial: order.companyName ?? order.customerName,
     NomeFantasia: order.companyName ? order.customerName : "",
     Email: order.customerEmail ?? "",
-    CEP: (order.addressZipcode ?? "").replace(/\D/g, ""),
+    CEP: cepClean,
     Logradouro: order.addressStreet ?? "",
     Numero: order.addressNumber ?? "",
     Complemento: "",
     Bairro: order.addressNeighborhood ?? "",
     Cidade: order.addressCity ?? "",
     UF: order.addressState ?? "",
-    CodigoIBGE: "",
+    CodigoIBGE: codigoIBGE,
     DDD: ddd,
     Telefone: tel,
   };

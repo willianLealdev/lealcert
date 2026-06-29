@@ -9,6 +9,19 @@ import { garComprar, garEmitirProtocolo } from "./gestaoar";
 import { logger } from "./logger";
 import { logEvent } from "./order-events";
 
+async function getIbgeCode(cep: string): Promise<string> {
+  try {
+    const clean = cep.replace(/\D/g, "");
+    if (clean.length !== 8) return "";
+    const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return "";
+    const data = await res.json() as { ibge?: string };
+    return data.ibge ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export async function garAutoComprar(orderId: number): Promise<void> {
   // 1. Buscar pedido + certificado
   const [row] = await db
@@ -60,19 +73,25 @@ export async function garAutoComprar(orderId: number): Promise<void> {
 
   const isCnpj = order.clientType === "cnpj";
 
+  const cep = (order.addressZipcode ?? "").replace(/\D/g, "");
+  const codigoIBGE = await getIbgeCode(cep);
+  if (!codigoIBGE) {
+    logger.warn({ orderId, cep }, "garAutoComprar: código IBGE não encontrado para o CEP — verifique o endereço do pedido");
+  }
+
   const cliente = {
     CNPJCPF: order.customerCpfCnpj,
     NomeRazaoSocial: isCnpj ? (order.companyName ?? order.customerName) : order.customerName,
     NomeFantasia: isCnpj ? (order.customerName ?? "") : "",
     Email: order.customerEmail ?? "",
-    CEP: (order.addressZipcode ?? "").replace(/\D/g, ""),
+    CEP: cep,
     Logradouro: order.addressStreet ?? "",
     Numero: order.addressNumber ?? "",
     Complemento: order.addressComplement ?? "",
     Bairro: order.addressNeighborhood ?? "",
     Cidade: order.addressCity ?? "",
     UF: order.addressState ?? "",
-    CodigoIBGE: "",
+    CodigoIBGE: codigoIBGE,
     DDD: ddd,
     Telefone: tel,
   };
