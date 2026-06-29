@@ -374,16 +374,19 @@ export interface GarAgendarResult {
   NomeLocalAgendamento?: string;
   LinkAgenda?: string;
   Erros?: { Ocorrencia: string }[];
+  ErrorCode?: string;
+  ErrorDescription?: string;
 }
 
+// A API retorna [] (array vazio) em caso de sucesso, ou array de erros, ou objeto GarAgendarResult
 export async function garAgendar(
   apiKey: string,
   hashVenda: string,
   hashLocal: string,
   dataInicial: string,
   dataFinal: string,
-): Promise<GarAgendarResult> {
-  return garPost<GarAgendarResult>("Agendamento", {
+): Promise<GarAgendarResult | GarAgendarResult[]> {
+  return garPost<GarAgendarResult | GarAgendarResult[]>("Agendamento", {
     apiKey,
     HashVenda: hashVenda,
     HashLocal: hashLocal,

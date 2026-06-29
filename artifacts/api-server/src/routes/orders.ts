@@ -726,13 +726,19 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
     const result = await garAgendar(settings.garApiKey, hashVenda, hashLocal, dataInicial, dataFinal);
     req.log.info({ orderId: id, result }, "agendar-gar: resposta da API");
 
-    if (result.Erros?.length) {
-      req.log.warn({ orderId: id, erros: result.Erros }, "agendar-gar: erros retornados pela GAR");
-      res.status(400).json({ error: result.Erros.map(e => e.Ocorrencia).join("; ") }); return;
+    // API retorna [] em sucesso, ou array/objeto de erros
+    const erros = Array.isArray(result)
+      ? (result as Array<{ Ocorrencia?: string; ErrorDescription?: string }>).filter(e => e.Ocorrencia || e.ErrorDescription)
+      : (result.Erros ?? []);
+    if (erros.length) {
+      const msg = erros.map((e: { Ocorrencia?: string; ErrorDescription?: string }) => e.Ocorrencia ?? e.ErrorDescription ?? "Erro").join("; ");
+      req.log.warn({ orderId: id, erros }, "agendar-gar: erros retornados pela GAR");
+      res.status(400).json({ error: msg }); return;
     }
 
-    const nomeLocal = localNome || result.NomeLocalAgendamento || "Videoconferência";
-    const dataHoraStr = result.DataHoraAgendamento || dataInicial;
+    const garResult = Array.isArray(result) ? null : result;
+    const nomeLocal = localNome || garResult?.NomeLocalAgendamento || "Videoconferência";
+    const dataHoraStr = garResult?.DataHoraAgendamento || dataInicial;
     const scheduledDate = (() => { try { return new Date(dataInicial.replace(" ", "T") + ":00"); } catch { return new Date(); } })();
 
     await db.update(ordersTable).set({

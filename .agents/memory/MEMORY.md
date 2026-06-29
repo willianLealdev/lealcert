@@ -10,3 +10,4 @@
 - [PSBio no chat](safeweb-psbio-chat-pattern.md) — VERIFICAR_BIO deve espelhar orders.ts: activeProvider decide; Safeweb usa safewebUrl (nunca homologação); GAR usa garPsBio.
 - [Production database access](prod-db.md) — EasyPanel VPS; container `lealcert_cert-db-1`; banco `lealcert`; user `postgres`; padrão: `docker exec lealcert_cert-db-1 psql -U postgres -d lealcert -c "SQL"`.
 - [Global router.use without path is a footgun](global-router-use.md) — router.use(middleware) without a path in a router mounted without prefix intercepts ALL requests app-wide, not just that router's own paths.
+- [GAR Agendamento flow](gar-agendamento-flow.md) — correct flow and what each endpoint returns; garAgendar params order was wrong; API returns [] on success.

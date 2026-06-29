@@ -26,6 +26,7 @@ import {
   garDiasSemana,
   garFamilias,
   garAgendar,
+  garDisponibilidadeAgenda,
   garParceiroVendas,
 } from "../lib/gestaoar";
 
@@ -636,6 +637,38 @@ router.get("/orders/:id/gar-slots/:hashLocal", requireAuth, async (req, res): Pr
   }
 });
 
+// ── GET /orders/:id/gar-disponibilidade — horários disponíveis ───────────────
+router.get("/orders/:id/gar-disponibilidade", requireAuth, async (req, res): Promise<void> => {
+  const s = await getGarSettings();
+  if (!requireGarKey(s?.garApiKey, res)) return;
+
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const userId = req.session.userId as number;
+  const role = req.session.role as string;
+
+  const [row] = await db.select({ order: ordersTable })
+    .from(ordersTable)
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
+  if (role !== "admin" && row.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+
+  const { hashLocal, hashSlot, dataInicial, dataFinal } = req.query as Record<string, string>;
+  if (!hashLocal || !dataInicial || !dataFinal) {
+    res.status(400).json({ error: "hashLocal, dataInicial e dataFinal são obrigatórios." });
+    return;
+  }
+
+  try {
+    const result = await garDisponibilidadeAgenda(s.garApiKey!, dataInicial, dataFinal, hashLocal, hashSlot);
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "GAR ObterDisponibilidadeAgenda error");
+    res.status(502).json({ error: "Erro ao consultar disponibilidade na Gestão AR." });
+  }
+});
+
 // ── POST /orders/:id/agendar — confirma agendamento e envia e-mail ────────────
 router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> => {
   const s = await getGarSettings();
@@ -656,33 +689,44 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
 
   const order = row.order;
 
-  if (!order.garPedido || !order.garProtocolo) {
-    res.status(400).json({ error: "Pedido ainda não tem protocolo emitido na Gestão AR." });
+  if (!order.garPedido) {
+    res.status(400).json({ error: "Pedido ainda não registrado na Gestão AR." });
     return;
   }
 
-  const { hashLocal, hashSlot, localNome, slotNome } = req.body ?? {};
-  if (!hashLocal || !hashSlot) {
-    res.status(400).json({ error: "hashLocal e hashSlot são obrigatórios." });
+  // hashLocal, dataInicial e dataFinal são obrigatórios conforme docs GAR endpoint /Agendamento
+  // DataInicial e DataFinal devem ser strings no formato "YYYY-MM-DD HH:mm"
+  const { hashLocal, dataInicial, dataFinal, localNome } = req.body ?? {};
+  if (!hashLocal || !dataInicial || !dataFinal) {
+    res.status(400).json({ error: "hashLocal, dataInicial e dataFinal são obrigatórios." });
     return;
   }
 
   try {
-    const result = await garAgendar(s.garApiKey!, order.garPedido, order.garProtocolo, hashLocal, hashSlot);
+    const result = await garAgendar(s.garApiKey!, order.garPedido, hashLocal, dataInicial, dataFinal);
 
-    if (result.Status !== 0 && result.Erros?.length) {
-      res.status(400).json({ error: result.Erros.map((e: { Ocorrencia: string }) => e.Ocorrencia).join("; ") });
+    // A API retorna [] em caso de sucesso e array de erros em caso de falha
+    const erros = Array.isArray(result)
+      ? (result as Array<{ Ocorrencia?: string; ErrorDescription?: string }>)
+      : result.Erros;
+    if (erros && (erros as unknown[]).length > 0) {
+      const msg = (erros as Array<{ Ocorrencia?: string; ErrorDescription?: string }>)
+        .map(e => e.Ocorrencia ?? e.ErrorDescription ?? "Erro desconhecido").join("; ");
+      res.status(400).json({ error: msg });
       return;
     }
 
-    const dataHora = result.DataHoraAgendamento ?? slotNome ?? "A confirmar";
-    const nomeLocal = result.NomeLocalAgendamento ?? localNome ?? "A confirmar";
+    const dataHora = Array.isArray(result)
+      ? `${dataInicial} – ${dataFinal}`
+      : (result.DataHoraAgendamento ?? `${dataInicial} – ${dataFinal}`);
+    const nomeLocal = Array.isArray(result)
+      ? (localNome ?? "A confirmar")
+      : (result.NomeLocalAgendamento ?? localNome ?? "A confirmar");
 
     // Salvar agendamento no pedido
     await db.update(ordersTable).set({
       garAgendamentoLocalNome: nomeLocal,
       garAgendamentoLocalHash: hashLocal,
-      garAgendamentoSlotHash: hashSlot,
       garAgendamentoDataHora: dataHora,
       garStatus: "Agendado",
       scheduledAt: new Date(),
