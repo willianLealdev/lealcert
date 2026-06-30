@@ -320,11 +320,20 @@ export default function NewOrder() {
   const [repCepLoading, setRepCepLoading] = useState(false);
   const [repCepFilled, setRepCepFilled] = useState(false);
 
+  // ── Terms ──
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
   // ── Files ──
   const [cnhFile, setCnhFile] = useState<File | null>(null);
   const [cnhUploading, setCnhUploading] = useState(false);
   const [cnhKey, setCnhKey] = useState<string | null>(null);
   const cnhInputRef = useRef<HTMLInputElement>(null);
+
+  const [cnhVersoFile, setCnhVersoFile] = useState<File | null>(null);
+  const [cnhVersoUploading, setCnhVersoUploading] = useState(false);
+  const [cnhVersoKey, setCnhVersoKey] = useState<string | null>(null);
+  const cnhVersoInputRef = useRef<HTMLInputElement>(null);
 
   const [cartaoFile, setCartaoFile] = useState<File | null>(null);
   const [cartaoUploading, setCartaoUploading] = useState(false);
@@ -606,7 +615,7 @@ export default function NewOrder() {
   }
 
   // ── Upload helper ──
-  async function uploadDoc(file: File, tipo: "cnh" | "cartao-cnpj" | "ficha-cadastral" | "outros", setUploading: (v: boolean) => void, setKey: (k: string) => void, label: string): Promise<string | null> {
+  async function uploadDoc(file: File, tipo: "cnh" | "cnh-verso" | "cartao-cnpj" | "ficha-cadastral" | "outros", setUploading: (v: boolean) => void, setKey: (k: string) => void, label: string): Promise<string | null> {
     setUploading(true);
     try {
       const fd = new FormData();
@@ -631,6 +640,10 @@ export default function NewOrder() {
       toast({ title: "Atenção", description: "Selecione um modelo de certificado.", variant: "destructive" });
       return;
     }
+    if (!termsAccepted) {
+      setShowTermsModal(true);
+      return;
+    }
     setStep(2);
     window.scrollTo(0, 0);
   }
@@ -638,7 +651,8 @@ export default function NewOrder() {
   function goToStep3() {
     if (!form.customerEmail) { toast({ title: "Atenção", description: "E-mail é obrigatório.", variant: "destructive" }); return; }
     if (!form.customerPhone) { toast({ title: "Atenção", description: "Telefone é obrigatório.", variant: "destructive" }); return; }
-    if (!cnhFile && !cnhKey) { toast({ title: "Atenção", description: "Envie uma foto ou cópia da CNH / RG.", variant: "destructive" }); return; }
+    if (!cnhFile && !cnhKey) { toast({ title: "Atenção", description: "Envie o documento de identificação (frente).", variant: "destructive" }); return; }
+    if (!cnhVersoFile && !cnhVersoKey) { toast({ title: "Atenção", description: "Envie o verso do documento (com QR Code).", variant: "destructive" }); return; }
     if (isCnpjCert) {
       if (form.repDocTipo === "0") { toast({ title: "Atenção", description: "Selecione o tipo de documento do representante legal.", variant: "destructive" }); return; }
       if (!form.repDocNumero) { toast({ title: "Atenção", description: "Informe o número do documento do representante legal.", variant: "destructive" }); return; }
@@ -661,8 +675,13 @@ export default function NewOrder() {
   async function handleSubmit() {
     let uploadedKey = cnhKey;
     if (cnhFile && !cnhKey) {
-      uploadedKey = await uploadDoc(cnhFile, "cnh", setCnhUploading, setCnhKey, "CNH/RG");
+      uploadedKey = await uploadDoc(cnhFile, "cnh", setCnhUploading, setCnhKey, "CNH/RG (frente)");
       if (!uploadedKey) return;
+    }
+    let uploadedVersoKey = cnhVersoKey;
+    if (cnhVersoFile && !cnhVersoKey) {
+      uploadedVersoKey = await uploadDoc(cnhVersoFile, "cnh-verso", setCnhVersoUploading, setCnhVersoKey, "CNH/RG (verso)");
+      if (!uploadedVersoKey) return;
     }
     if (isCnpjCert) {
       if (cartaoFile && !cartaoKey) {
@@ -710,6 +729,8 @@ export default function NewOrder() {
         representanteAddressState: form.representanteAddressState || undefined,
         representanteNascimento: form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
         cnhPath: uploadedKey || undefined,
+        cnhVersoPath: uploadedVersoKey || undefined,
+        termsAccepted: termsAccepted,
         cartaoCnpjPath: cartaoKey || undefined,
         fichaCadastralPath: fichaKey || undefined,
         customerCei: form.customerCei || undefined,
@@ -834,6 +855,48 @@ export default function NewOrder() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Terms Modal */}
+      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Termos de Coleta de Dados Pessoais</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground space-y-3 leading-relaxed">
+            <p>Para a emissão do seu Certificado Digital, coletamos os seguintes dados pessoais:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Nome completo, CPF/CNPJ, data de nascimento e contato (e-mail e telefone)</li>
+              <li>Endereço e informações complementares para faturamento</li>
+              <li>Cópia do documento de identificação (RG ou CNH — frente e verso)</li>
+              <li>Documentos da empresa, quando aplicável (Cartão CNPJ, Ficha Cadastral)</li>
+            </ul>
+            <p>Esses dados são utilizados exclusivamente para validação de identidade perante as Autoridades Certificadoras (ICP-Brasil) e para emissão do certificado solicitado. Não compartilhamos seus dados com terceiros, salvo obrigação legal ou exigência das Autoridades Certificadoras.</p>
+            <p>O armazenamento é feito de forma segura e os dados serão mantidos pelo período exigido pela regulamentação vigente.</p>
+            <p>Ao clicar em <strong>Aceitar e Continuar</strong>, você declara que leu, compreendeu e concorda com a coleta e uso dos seus dados pessoais conforme descrito acima, nos termos da Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).</p>
+          </div>
+          <div className="flex gap-3 mt-2">
+            <button
+              type="button"
+              onClick={() => setShowTermsModal(false)}
+              className="flex-1 px-4 py-2 rounded-md border text-sm text-muted-foreground hover:bg-muted transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTermsAccepted(true);
+                setShowTermsModal(false);
+                setStep(2);
+                window.scrollTo(0, 0);
+              }}
+              className="flex-1 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Aceitar e Continuar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex items-center gap-4">
         {step === 1 ? (
@@ -1375,16 +1438,35 @@ export default function NewOrder() {
               <CardTitle className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />Documentos *</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed">
+                <p className="font-semibold mb-1">Documento de Identificação — Instruções</p>
+                <p>RG ou CNH Física: Aberta, fora do plástico e bem enquadrada. A foto deve ser feita a partir do documento original. Enviar também o verso com QR Code.</p>
+                <p className="mt-1">CNH ou RG Digital: Exportada do aplicativo, com o QR Code, em PDF.</p>
+              </div>
+
               <div>
-                <Label className="mb-2 block">CNH ou RG *</Label>
-                <p className="text-xs text-muted-foreground mb-2">Foto ou cópia da CNH ou RG (PDF, JPG ou PNG, máx. 5 MB).</p>
+                <Label className="mb-2 block">CNH ou RG — Frente *</Label>
+                <p className="text-xs text-muted-foreground mb-2">Foto ou cópia da frente da CNH ou RG (PDF, JPG ou PNG, máx. 5 MB).</p>
                 <UploadWidget
                   label="Clique para selecionar arquivo" hint="PDF, JPG, JPEG ou PNG — máx. 5 MB"
                   file={cnhFile} fileKey={cnhKey} uploading={cnhUploading}
                   inputRef={cnhInputRef}
                   onChange={f => { if (f && f.size > 5 * 1024 * 1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setCnhFile(f); setCnhKey(null); }}
-                  onUpload={() => cnhFile && uploadDoc(cnhFile, "cnh", setCnhUploading, setCnhKey, "CNH/RG")}
+                  onUpload={() => cnhFile && uploadDoc(cnhFile, "cnh", setCnhUploading, setCnhKey, "CNH/RG (frente)")}
                   onClear={() => { setCnhFile(null); setCnhKey(null); if (cnhInputRef.current) cnhInputRef.current.value = ""; }}
+                />
+              </div>
+
+              <div>
+                <Label className="mb-2 block">CNH ou RG — Verso * <span className="text-xs font-normal text-muted-foreground">(com QR Code)</span></Label>
+                <p className="text-xs text-muted-foreground mb-2">Foto ou cópia do verso da CNH ou RG com o QR Code (PDF, JPG ou PNG, máx. 5 MB).</p>
+                <UploadWidget
+                  label="Clique para selecionar arquivo" hint="PDF, JPG, JPEG ou PNG — máx. 5 MB"
+                  file={cnhVersoFile} fileKey={cnhVersoKey} uploading={cnhVersoUploading}
+                  inputRef={cnhVersoInputRef}
+                  onChange={f => { if (f && f.size > 5 * 1024 * 1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setCnhVersoFile(f); setCnhVersoKey(null); }}
+                  onUpload={() => cnhVersoFile && uploadDoc(cnhVersoFile, "cnh-verso", setCnhVersoUploading, setCnhVersoKey, "CNH/RG (verso)")}
+                  onClear={() => { setCnhVersoFile(null); setCnhVersoKey(null); if (cnhVersoInputRef.current) cnhVersoInputRef.current.value = ""; }}
                 />
               </div>
 

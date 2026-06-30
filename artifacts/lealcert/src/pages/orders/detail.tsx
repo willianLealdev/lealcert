@@ -1826,7 +1826,14 @@ export default function OrderDetail() {
             </CardContent>
           </Card>
 
-          {(order.cnhPath || order.cartaoCnpjPath || order.fichaCadastralPath) && (
+          {order.termsAcceptedAt && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>Termos de privacidade aceitos em {new Date(order.termsAcceptedAt).toLocaleString("pt-BR")}</span>
+            </div>
+          )}
+
+          {(order.cnhPath || order.cnhVersoPath || order.cartaoCnpjPath || order.fichaCadastralPath) && (
             <Card>
               <CardHeader><CardTitle>Documentos Anexados</CardTitle></CardHeader>
               <CardContent className="space-y-2">
@@ -1838,7 +1845,19 @@ export default function OrderDetail() {
                     className="flex items-center gap-2 text-sm text-primary hover:underline"
                   >
                     <FileText className="h-4 w-4 shrink-0" />
-                    <span className="flex-1">CNH / RG do Titular</span>
+                    <span className="flex-1">CNH / RG — Frente</span>
+                    <Download className="h-4 w-4 shrink-0" />
+                  </a>
+                )}
+                {order.cnhVersoPath && (
+                  <a
+                    href={`/api/${order.cnhVersoPath}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-primary hover:underline"
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">CNH / RG — Verso (QR Code)</span>
                     <Download className="h-4 w-4 shrink-0" />
                   </a>
                 )}

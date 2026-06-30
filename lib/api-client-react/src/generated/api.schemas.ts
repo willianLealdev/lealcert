@@ -349,9 +349,11 @@ export interface Order {
   companyName?: string | null;
   inssNumber?: string | null;
   cnhPath?: string | null;
+  cnhVersoPath?: string | null;
   cartaoCnpjPath?: string | null;
   fichaCadastralPath?: string | null;
   outrosPath?: string | null;
+  termsAcceptedAt?: string | null;
   chatDocuments?: string | null;
   scheduledAt?: string | null;
   protocolNumber?: string | null;
@@ -454,9 +456,11 @@ export interface OrderInput {
   representanteDocNumero?: string;
   representanteDocEmissor?: string;
   cnhPath?: string;
+  cnhVersoPath?: string;
   cartaoCnpjPath?: string;
   fichaCadastralPath?: string;
   outrosPath?: string;
+  termsAccepted?: boolean;
   nfCnpj?: string;
   nfNome?: string;
   nfZipcode?: string;

@@ -35,8 +35,8 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 type PixQrInfo = { qrCodeDataUrl: string | null; pixPayload: string | null; pixKey: string | null; total: number; orderNumber: string };
 
 function getDocList(tipo: "cpf" | "cnpj" | "outros"): string[] {
-  if (tipo === "cpf") return ["RG ou CNH — frente", "RG ou CNH — verso", "Comprovante de residência"];
-  if (tipo === "cnpj") return ["RG ou CNH do responsável", "Cartão CNPJ (emitido pela Receita Federal)", "Ficha Cadastral (Contrato Social ou Requerimento de Empresário)", "Comprovante de endereço da empresa"];
+  if (tipo === "cpf") return ["RG ou CNH — frente", "RG ou CNH — verso (com QR Code)"];
+  if (tipo === "cnpj") return ["RG ou CNH do responsável — frente", "RG ou CNH do responsável — verso (com QR Code)", "Cartão CNPJ (emitido pela Receita Federal)", "Ficha Cadastral (Contrato Social ou Requerimento de Empresário)"];
   return ["Documento comprobatório do CEI, PIS ou NIS"];
 }
 

@@ -3017,6 +3017,9 @@ components:
         cnhPath:
           type: string
           nullable: true
+        cnhVersoPath:
+          type: string
+          nullable: true
         cartaoCnpjPath:
           type: string
           nullable: true
@@ -3024,6 +3027,9 @@ components:
           type: string
           nullable: true
         outrosPath:
+          type: string
+          nullable: true
+        termsAcceptedAt:
           type: string
           nullable: true
         chatDocuments:
@@ -3235,12 +3241,16 @@ components:
           type: string
         cnhPath:
           type: string
+        cnhVersoPath:
+          type: string
         cartaoCnpjPath:
           type: string
         fichaCadastralPath:
           type: string
         outrosPath:
           type: string
+        termsAccepted:
+          type: boolean
         nfCnpj:
           type: string
         nfNome:
