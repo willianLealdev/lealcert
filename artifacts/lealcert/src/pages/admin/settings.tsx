@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useGetSettings, useUpdateSettings, useSendTestEmail } from "@workspace/api-client-react";
+import { useGetSettings, useUpdateSettings, useSendTestEmail, useGetGarFormasPagamento } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +48,7 @@ const PRESET_COLORS = [
 export default function AdminSettings() {
   const { toast } = useToast();
   const { data: settings, isLoading, refetch } = useGetSettings();
+  const { data: garFormasPagamento } = useGetGarFormasPagamento();
   const [testingAuth, setTestingAuth] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState("");
 
@@ -82,7 +83,7 @@ export default function AdminSettings() {
     garHashVendedor: "",
     garHashParceiro: "",
     garHashTabela: "",
-    garFormaPagamento: "11",
+    garFormaPagamento: "8",
     garPreferirVideoconferencia: "1",
     safewebUrl: "",
     safewebUrlHomologacao: "",
@@ -148,7 +149,7 @@ export default function AdminSettings() {
         garHashVendedor: s.garHashVendedor ?? "",
         garHashParceiro: s.garHashParceiro ?? "",
         garHashTabela: s.garHashTabela ?? "",
-        garFormaPagamento: s.garFormaPagamento ?? "11",
+        garFormaPagamento: s.garFormaPagamento ?? "8",
         garPreferirVideoconferencia: s.garPreferirVideoconferencia ?? "1",
         safewebUrl: s.safewebUrl ?? "",
         safewebUrlHomologacao: s.safewebUrlHomologacao ?? "",
@@ -702,10 +703,18 @@ export default function AdminSettings() {
                     <Select value={form.garFormaPagamento} onValueChange={v => set("garFormaPagamento", v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="11">11 — Pagamento no Local</SelectItem>
-                        <SelectItem value="1">1 — Boleto Bancário</SelectItem>
-                        <SelectItem value="2">2 — Cartão de Crédito</SelectItem>
-                        <SelectItem value="3">3 — Transferência/PIX</SelectItem>
+                        {garFormasPagamento && garFormasPagamento.length > 0
+                          ? garFormasPagamento.map(fp => (
+                              <SelectItem key={fp.Id} value={String(fp.Id)}>{fp.Id} — {fp.Nome}</SelectItem>
+                            ))
+                          : (
+                              <>
+                                <SelectItem value="8">8 — Boleto Bancário</SelectItem>
+                                <SelectItem value="9">9 — Cartão Crédito</SelectItem>
+                                <SelectItem value="19">19 — Pix</SelectItem>
+                              </>
+                            )
+                        }
                       </SelectContent>
                     </Select>
                   </div>

@@ -21,7 +21,7 @@ export const settingsTable = pgTable("settings", {
   garHashVendedor: text("gar_hash_vendedor"),
   garHashParceiro: text("gar_hash_parceiro"),
   garHashTabela: text("gar_hash_tabela"),
-  garFormaPagamento: text("gar_forma_pagamento").default("11"),
+  garFormaPagamento: text("gar_forma_pagamento").default("8"),
   garPreferirVideoconferencia: text("gar_preferir_videoconferencia").default("1"),
   // Safeweb integration
   safewebUrl: text("safeweb_url"),

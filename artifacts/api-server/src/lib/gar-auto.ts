@@ -64,7 +64,7 @@ export async function garAutoComprar(orderId: number): Promise<void> {
     return;
   }
 
-  const formaPagamento = parseInt(settings.garFormaPagamento ?? "11", 10);
+  const formaPagamento = parseInt(settings.garFormaPagamento ?? "8", 10);
 
   // 5. Montar dados do cliente
   const phone = (order.customerPhone ?? "").replace(/\D/g, "");

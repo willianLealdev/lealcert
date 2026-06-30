@@ -481,7 +481,7 @@ router.post("/orders/:id/gar-comprar", requireAuth, async (req, res): Promise<vo
   }
 
   // Prefer videoconference (tipoEmissao=3) as default
-  const formaPagamento = parseInt(s.garFormaPagamento ?? "11", 10);
+  const formaPagamento = parseInt(s.garFormaPagamento ?? "8", 10);
 
   // Extract DDD + phone
   const phone = (order.customerPhone ?? "").replace(/\D/g, "");

@@ -49,7 +49,7 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     scheduleStepMin: s.scheduleStepMin ?? "60",
     scheduleClosedDates: s.scheduleClosedDates ?? "",
     garDocumento: s.garDocumento,
-    garFormaPagamento: s.garFormaPagamento ?? "11",
+    garFormaPagamento: s.garFormaPagamento ?? "8",
     garPreferirVideoconferencia: s.garPreferirVideoconferencia ?? "1",
     safewebUrl: s.safewebUrl,
     safewebUrlHomologacao: s.safewebUrlHomologacao,
