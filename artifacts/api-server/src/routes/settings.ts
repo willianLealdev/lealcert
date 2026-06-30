@@ -25,9 +25,9 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     mpPublicKey: s.mpPublicKey,                           // public key — safe to expose
     webhookSecret: mask(s.webhookSecret),
     garApiKey: mask(s.garApiKey),
-    garHashVendedor: mask(s.garHashVendedor),
-    garHashParceiro: mask(s.garHashParceiro),
-    garHashTabela: mask(s.garHashTabela),
+    garHashVendedor: s.garHashVendedor ?? "",   // UUID de config — não é segredo
+    garHashParceiro: s.garHashParceiro ?? "",   // UUID de config — não é segredo
+    garHashTabela: s.garHashTabela ?? "",       // UUID de config — não é segredo
     safewebPassword: mask(s.safewebPassword),
     safewebPasswordHomologacao: mask(s.safewebPasswordHomologacao),
     evolutionApiKey: mask(s.evolutionApiKey),

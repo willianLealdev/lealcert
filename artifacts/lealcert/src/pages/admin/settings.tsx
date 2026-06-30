@@ -691,13 +691,13 @@ export default function AdminSettings() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2"><Label>API Key</Label><MaskedInput value={form.garApiKey} onChange={v => set("garApiKey", v)} placeholder="Chave de API fornecida pela Gestão AR" /></div>
                   <div className="space-y-2"><Label>CNPJ da AR (Documento)</Label><Input value={form.garDocumento ?? ""} onChange={e => set("garDocumento", e.target.value)} placeholder="Ex: 62233985000152" /></div>
-                  <div className="space-y-2"><Label>Hash do Vendedor (AR)</Label><MaskedInput value={form.garHashVendedor} onChange={v => set("garHashVendedor", v)} placeholder="Hash da AR — usado para importar catálogo" /></div>
+                  <div className="space-y-2"><Label>Hash do Vendedor (AR)</Label><Input value={form.garHashVendedor} onChange={e => set("garHashVendedor", e.target.value)} placeholder="Hash da AR — usado para importar catálogo" /></div>
                   <div className="space-y-2">
                     <Label>Hash do Parceiro (Relatório)</Label>
-                    <MaskedInput value={form.garHashParceiro} onChange={v => set("garHashParceiro", v)} placeholder="Hash do parceiro — usado no Relatório GAR" />
+                    <Input value={form.garHashParceiro} onChange={e => set("garHashParceiro", e.target.value)} placeholder="Hash do parceiro — usado no Relatório GAR" />
                     <p className="text-xs text-muted-foreground">Hash específico do parceiro para filtrar apenas os pedidos dele no relatório. Se vazio, usa o Hash do Vendedor.</p>
                   </div>
-                  <div className="space-y-2"><Label>Hash da Tabela de Preços</Label><MaskedInput value={form.garHashTabela} onChange={v => set("garHashTabela", v)} placeholder="Hash da tabela configurada no GAR" /></div>
+                  <div className="space-y-2"><Label>Hash da Tabela de Preços</Label><Input value={form.garHashTabela} onChange={e => set("garHashTabela", e.target.value)} placeholder="Hash da tabela configurada no GAR" /></div>
                   <div className="space-y-2">
                     <Label>Forma de Pagamento Padrão</Label>
                     <Select value={form.garFormaPagamento} onValueChange={v => set("garFormaPagamento", v)}>
