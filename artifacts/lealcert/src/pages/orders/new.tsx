@@ -706,6 +706,7 @@ export default function NewOrder() {
       representanteAddressCity: rep.addressCity || prev.representanteAddressCity,
       representanteAddressState: rep.addressState || prev.representanteAddressState,
     }));
+    if (rep.addressZipcode) fetchRepCep(rep.addressZipcode);
   }
 
   function applyEmpresaFields(emp: PreFillEmpresa) {
@@ -1760,6 +1761,7 @@ export default function NewOrder() {
                       nfCity: nf.city || prev.nfCity,
                       nfState: nf.state || prev.nfState,
                     }));
+                    if (nf.zipcode) fetchNfCep(nf.zipcode);
                     setPreFillNfOffered(true);
                   }}>Sim, usar estes dados</Button>
                   <Button size="sm" variant="outline" onClick={() => setPreFillNfOffered(true)}>Não, preencher manualmente</Button>

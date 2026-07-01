@@ -1209,7 +1209,7 @@ export default function OrderDetail() {
         description: "Carregando dados do pedido...",
       });
       // Recarrega a página para buscar dados do provedor (Safeweb/agenda) atualizados
-      setTimeout(() => { window.location.reload(); }, 1500);
+      setTimeout(() => { window.location.reload(); }, 5000);
     }
     prevStatusRef.current = order.status;
   }, [order?.status]);
