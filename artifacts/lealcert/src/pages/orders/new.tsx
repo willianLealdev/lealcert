@@ -978,7 +978,7 @@ export default function NewOrder() {
 
       {/* Pre-fill Modal */}
       <Dialog open={showPreFillModal} onOpenChange={() => {}}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />Dados encontrados no sistema
@@ -1029,12 +1029,12 @@ export default function NewOrder() {
                     <p className="text-xs text-muted-foreground">{maskCnpj(emp.cnpj)}</p>
                   </div>
                   <p className="text-sm text-muted-foreground">Deseja comprar o certificado para esta empresa?</p>
-                  <div className="flex gap-3">
-                    <Button className="flex-1" onClick={() => { if (rep) applyRepFields(rep); applyEmpresaFields(emp); confirmPreFill(); }}>
-                      Sim, esta empresa
+                  <div className="flex flex-col gap-2">
+                    <Button className="w-full" onClick={() => { if (rep) applyRepFields(rep); applyEmpresaFields(emp); confirmPreFill(); }}>
+                      Sim, usar esta empresa
                     </Button>
-                    <Button variant="outline" className="flex-1" onClick={() => { if (rep) applyRepFields(rep); confirmPreFill(); }}>
-                      Não, outra empresa
+                    <Button variant="outline" className="w-full" onClick={() => { if (rep) applyRepFields(rep); confirmPreFill(); }}>
+                      Não, é outra empresa
                     </Button>
                   </div>
                 </div>
@@ -1054,9 +1054,9 @@ export default function NewOrder() {
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">Identificamos dados do responsável em pedidos anteriores. Deseja pré-preencher os campos do representante legal?</p>
-                  <div className="flex gap-3">
-                    <Button className="flex-1" onClick={() => { applyRepFields(rep); confirmPreFill(); }}>Sim, usar dados</Button>
-                    <Button variant="outline" className="flex-1" onClick={confirmPreFill}>Preencher manualmente</Button>
+                  <div className="flex flex-col gap-2">
+                    <Button className="w-full" onClick={() => { applyRepFields(rep); confirmPreFill(); }}>Sim, usar dados do responsável</Button>
+                    <Button variant="outline" className="w-full" onClick={confirmPreFill}>Não, preencher manualmente</Button>
                   </div>
                 </div>
               );
@@ -1075,8 +1075,8 @@ export default function NewOrder() {
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">Identificamos um cadastro anterior para este CPF. Deseja usar os dados já registrados?</p>
-                  <div className="flex gap-3">
-                    <Button className="flex-1" onClick={() => {
+                  <div className="flex flex-col gap-2">
+                    <Button className="w-full" onClick={() => {
                       applyRepFields(rep);
                       setForm(prev => ({
                         ...prev,
@@ -1086,7 +1086,7 @@ export default function NewOrder() {
                       }));
                       confirmPreFill();
                     }}>Sim, usar dados anteriores</Button>
-                    <Button variant="outline" className="flex-1" onClick={confirmPreFill}>Não, preencher manualmente</Button>
+                    <Button variant="outline" className="w-full" onClick={confirmPreFill}>Não, preencher manualmente</Button>
                   </div>
                 </div>
               );
