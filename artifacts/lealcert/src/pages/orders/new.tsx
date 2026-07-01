@@ -1726,7 +1726,8 @@ export default function NewOrder() {
             </CardContent>
           </Card>
 
-          <Button className="w-full h-12 text-base" onClick={goToStep3}>
+          <Button className="w-full h-12 text-base" onClick={goToStep3}
+            disabled={isCnpjCert && !(cnpjRfbState && cnpjRfbState !== "loading" && (cnpjRfbState as { ok: boolean }).ok)}>
             Avançar para Nota Fiscal <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </div>
