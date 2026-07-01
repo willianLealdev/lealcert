@@ -442,9 +442,13 @@ router.patch("/orders/:id", requireAdmin, async (req, res): Promise<void> => {
   }
 
   if (status !== undefined) {
+    const responsiblePhone = order.userId
+      ? await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, order.userId)).limit(1).then(r => r[0]?.phone ?? null)
+      : null;
     notifyOrderStatus({
       to: order.customerEmail,
       phone: order.customerPhone,
+      responsiblePhone,
       customerName: order.customerName,
       orderNumber: order.orderNumber,
       status: order.status,
@@ -594,9 +598,13 @@ router.post("/orders/:id/sync-payment", requireAuth, async (req, res): Promise<v
   await logPaidEv(id, "payment_confirmed", `Pagamento confirmado via MercadoPago — R$ ${parseFloat(order.total).toFixed(2).replace(".", ",")}`, { mpPaymentId: order.mpPaymentId });
 
   const { notifyOrderStatus } = await import("../lib/notify");
+  const syncResponsiblePhone = order.userId
+    ? await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, order.userId)).limit(1).then(r => r[0]?.phone ?? null)
+    : null;
   notifyOrderStatus({
     to: order.customerEmail,
     phone: order.customerPhone,
+    responsiblePhone: syncResponsiblePhone,
     customerName: order.customerName,
     orderNumber: order.orderNumber,
     status: "paid",

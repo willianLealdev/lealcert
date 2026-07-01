@@ -6,6 +6,7 @@ import { db, usersTable, ipVerificationsTable, settingsTable } from "@workspace/
 import { swConsultaCPF } from "../lib/safeweb";
 import { logger } from "../lib/logger";
 import { sendVerificationEmail, sendWelcomeEmail, sendTempPasswordEmail, sendIpVerificationEmail } from "../lib/email";
+import { sendWaText } from "../lib/notify";
 import {
   getClientIp, checkIpStatus, recordLoginAttempt, recordRegisterIp,
   handleFailedLogin, clearFailedAttempts, isIpTrusted, addTrustedIp,
@@ -371,6 +372,9 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Failed to send verification email");
   }
+  if (phone) {
+    sendWaText(phone, `*LealCert — Ative sua conta* 🔐\n\nOlá, ${name.trim()}!\n\nSeu código de ativação é: *${code}*\n\nEle expira em 30 minutos. Insira-o na tela de verificação para liberar seu acesso.`).catch(() => {});
+  }
   res.status(201).json({ message: "Conta criada! Verifique seu e-mail para ativar o acesso." });
 });
 
@@ -409,6 +413,13 @@ router.post("/auth/verify-email", async (req, res): Promise<void> => {
     await sendWelcomeEmail(user.email ?? email, user.name, user.userType);
   } catch (err) {
     logger.error({ err }, "Failed to send welcome email");
+  }
+  if (user.phone) {
+    const isCliente = user.userType === "cliente";
+    const waMsg = isCliente
+      ? `*Bem-vindo à LealCert!* 🎉\n\nOlá, ${user.name}! Sua conta foi ativada com sucesso.\n\n🎁 *Presente especial:* use o cupom *BEMVINDO* no seu primeiro pedido e ganhe *10% de desconto*!\n\nAcesse o painel e solicite seu certificado digital.`
+      : `*Bem-vindo à LealCert!* 🎉\n\nOlá, ${user.name}! Sua conta de contador foi ativada com sucesso.\n\nJá pode acessar o painel e gerenciar certificados digitais para seus clientes.`;
+    sendWaText(user.phone, waMsg).catch(() => {});
   }
 
   // Regenerate session to prevent session fixation
@@ -455,6 +466,9 @@ router.post("/auth/resend-verification", async (req, res): Promise<void> => {
     await sendVerificationEmail(email, user.name, code);
   } catch (err) {
     logger.error({ err }, "Failed to resend verification email");
+  }
+  if (user.phone) {
+    sendWaText(user.phone, `*LealCert — Código de ativação* 🔐\n\nSeu novo código é: *${code}*\n\nEle expira em 30 minutos.`).catch(() => {});
   }
   res.json({ message: "Código reenviado. Verifique seu e-mail." });
 });
@@ -552,6 +566,9 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       await sendIpVerificationEmail(user.email, user.name, code);
     } catch (err) {
       logger.error({ err }, "Falha ao enviar e-mail de verificação de IP");
+    }
+    if (user.phone) {
+      sendWaText(user.phone, `*LealCert — Acesso de novo dispositivo* 🛡️\n\nOlá, ${user.name}!\n\nDetectamos um acesso de um novo endereço IP. Seu código de verificação é: *${code}*\n\nEle expira em 15 minutos. Se não foi você, ignore esta mensagem.`).catch(() => {});
     }
     res.status(202).json({ requiresIpVerification: true });
     return;
@@ -676,6 +693,9 @@ router.post("/auth/resend-ip-verification", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Falha ao reenviar e-mail de verificação de IP");
   }
+  if (user.phone) {
+    sendWaText(user.phone, `*LealCert — Código de verificação* 🛡️\n\nSeu novo código é: *${code}*\n\nEle expira em 15 minutos.`).catch(() => {});
+  }
   res.json({ message: "Código reenviado." });
 });
 
@@ -710,6 +730,9 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     await sendTempPasswordEmail(user.email, user.name, tempPassword);
   } catch (err) {
     logger.error({ err }, "Failed to send temp password email");
+  }
+  if (user.phone) {
+    sendWaText(user.phone, `*LealCert — Senha temporária* 🔑\n\nOlá, ${user.name}!\n\nSua senha temporária é: *${tempPassword}*\n\nAcesse o sistema e troque a senha assim que possível.`).catch(() => {});
   }
   res.json({ message: "Se o CPF/CNPJ estiver cadastrado, você receberá um e-mail com a senha temporária." });
 });

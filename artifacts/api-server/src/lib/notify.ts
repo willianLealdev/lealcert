@@ -7,6 +7,23 @@ import { sendOrderStatusEmail, sendSchedulingEmail } from "./email";
 import { sendWhatsApp } from "./evolution";
 import { logger } from "./logger";
 
+/**
+ * Envia uma mensagem WhatsApp avulsa para qualquer número.
+ * Busca as configurações do banco internamente.
+ * Fire-and-forget — não lança exceção se Evolution não estiver configurada.
+ */
+export async function sendWaText(phone: string | null | undefined, message: string): Promise<void> {
+  if (!phone) return;
+  try {
+    const [s] = await db.select().from(settingsTable).limit(1);
+    const evo = evolutionSettingsFrom(s);
+    if (!evo) return;
+    await sendWhatsApp(evo, phone, message);
+  } catch (err) {
+    logger.error({ err, phone }, "sendWaText: erro ao enviar WhatsApp");
+  }
+}
+
 async function getSettings() {
   const [s] = await db.select().from(settingsTable).limit(1);
   return s ?? null;
@@ -54,6 +71,7 @@ function buildStatusWhatsApp(opts: {
 export async function notifyOrderStatus(opts: {
   to?: string | null;
   phone?: string | null;
+  responsiblePhone?: string | null;
   customerName: string;
   orderNumber: string;
   status: string;
@@ -79,7 +97,22 @@ export async function notifyOrderStatus(opts: {
   if (opts.phone && evo) {
     const msg = buildStatusWhatsApp(opts);
     sendWhatsApp(evo, opts.phone, msg).catch((err: unknown) =>
-      logger.error({ err }, "Erro ao enviar WhatsApp de status"),
+      logger.error({ err }, "notifyOrderStatus: erro ao enviar WhatsApp ao cliente"),
+    );
+  }
+
+  // Notificar o responsável pela conta (usuário que criou o pedido) nos eventos críticos
+  const notifyResponsible = ["completed", "aguardando_validacao", "pending_docs"].includes(opts.status);
+  if (notifyResponsible && opts.responsiblePhone && evo) {
+    const certLabel = opts.certName ? ` — ${opts.certName}` : "";
+    let responsibleMsg = "";
+    if (opts.status === "completed") {
+      responsibleMsg = `*LealCert — Certificado emitido* ✅\n\nO certificado de *${opts.customerName}*${certLabel} (Pedido #${opts.orderNumber}) foi *emitido com sucesso*!\n\nAcesse o painel para mais detalhes.`;
+    } else {
+      responsibleMsg = `*LealCert — Pendência no pedido* ⚠️\n\nO pedido de *${opts.customerName}*${certLabel} (#${opts.orderNumber}) requer atenção.\n\nAcesse o painel para verificar a pendência e regularizar a situação.`;
+    }
+    sendWhatsApp(evo, opts.responsiblePhone, responsibleMsg).catch((err: unknown) =>
+      logger.error({ err }, "notifyOrderStatus: erro ao enviar WhatsApp ao responsável"),
     );
   }
 }

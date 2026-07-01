@@ -9,7 +9,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { createHmac, timingSafeEqual } from "crypto";
-import { db, ordersTable, settingsTable, certificatesTable } from "@workspace/db";
+import { db, ordersTable, settingsTable, certificatesTable, usersTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { garAutoComprar } from "../lib/gar-auto";
 import { swAutoComprar } from "../lib/sw-auto";
@@ -144,10 +144,14 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
       url: `/admin/orders/${order.id}`,
     }).catch((err: unknown) => logger.error({ err }, "mp/webhook: erro ao enviar push aos admins"));
 
-    // 2c. Notificar cliente
+    // 2c. Notificar cliente (+ responsável)
+    const responsiblePhone = order.userId
+      ? await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, order.userId)).limit(1).then(r => r[0]?.phone ?? null)
+      : null;
     notifyOrderStatus({
       to: order.customerEmail,
       phone: order.customerPhone,
+      responsiblePhone,
       customerName: order.customerName,
       orderNumber: order.orderNumber,
       status: "paid",

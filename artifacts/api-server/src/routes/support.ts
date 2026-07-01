@@ -4,6 +4,7 @@ import { db, ticketsTable, messagesTable, usersTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { sendPushToAdmins, sendPushToUser } from "../lib/push";
 import { sendSupportReplyEmail } from "../lib/email";
+import { sendWaText } from "../lib/notify";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -45,14 +46,17 @@ router.post("/support", requireAuth, async (req, res): Promise<void> => {
   const [ticket] = await db.insert(ticketsTable).values({ userId, subject }).returning();
   await db.insert(messagesTable).values({ ticketId: ticket.id, userId, content: message });
 
-  // Push para todos os admins
-  const [user] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
+  // Push + WhatsApp para admins e cliente
+  const [user] = await db.select({ name: usersTable.name, phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, userId));
   sendPushToAdmins({
     title: "🎫 Novo chamado de suporte",
     body: `${user?.name ?? "Cliente"}: ${subject}`,
     tag: `ticket-${ticket.id}`,
     url: `/admin/support/${ticket.id}`,
   }).catch((err: unknown) => logger.error({ err }, "support: erro ao enviar push aos admins"));
+  if (user?.phone) {
+    sendWaText(user.phone, `*LealCert — Chamado aberto* 🎫\n\nOlá, ${user.name}!\n\nSeu chamado foi aberto com sucesso.\n📋 *Assunto:* ${subject}\n🔢 *Chamado #${ticket.id}*\n\nResponderemos em breve. Acompanhe pelo painel.`).catch((err: unknown) => logger.error({ err }, "support: erro ao enviar WhatsApp de abertura"));
+  }
 
   res.status(201).json({
     id: ticket.id,
@@ -137,7 +141,7 @@ router.post("/support/:id/messages", requireAuth, async (req, res): Promise<void
 
   // Fetch ticket info for notifications
   const [ticketRow] = await db
-    .select({ ticket: ticketsTable, ownerName: usersTable.name, ownerEmail: usersTable.email, ownerUserId: usersTable.id })
+    .select({ ticket: ticketsTable, ownerName: usersTable.name, ownerEmail: usersTable.email, ownerUserId: usersTable.id, ownerPhone: usersTable.phone })
     .from(ticketsTable)
     .leftJoin(usersTable, eq(ticketsTable.userId, usersTable.id))
     .where(eq(ticketsTable.id, id))
@@ -147,7 +151,7 @@ router.post("/support/:id/messages", requireAuth, async (req, res): Promise<void
   if (role === "admin") {
     await db.update(ticketsTable).set({ unreadClient: true, status: "in_progress", updatedAt: new Date() }).where(eq(ticketsTable.id, id));
 
-    // Notify the client: push + e-mail
+    // Notify the client: push + e-mail + WhatsApp
     if (ticketRow?.ownerUserId) {
       sendPushToUser(ticketRow.ownerUserId, {
         title: "💬 Resposta no seu chamado",
@@ -164,6 +168,9 @@ router.post("/support/:id/messages", requireAuth, async (req, res): Promise<void
         messageContent: content,
         ticketId: id,
       }).catch((err: unknown) => logger.error({ err }, "support: erro ao enviar e-mail ao cliente"));
+    }
+    if (ticketRow?.ownerPhone) {
+      sendWaText(ticketRow.ownerPhone, `*LealCert — Nova resposta no seu chamado* 💬\n\nOlá, ${ticketRow.ownerName ?? "cliente"}!\n\n📋 *Assunto:* ${ticketRow.ticket.subject}\n\nNossa equipe respondeu ao seu chamado #${id}. Acesse o painel para visualizar a resposta.\n\n🌐 lealcert.com.br`).catch((err: unknown) => logger.error({ err }, "support: erro ao enviar WhatsApp ao cliente (resposta admin)"));
     }
   } else {
     await db.update(ticketsTable).set({ unreadAdmin: true, updatedAt: new Date() }).where(eq(ticketsTable.id, id));
@@ -192,6 +199,15 @@ router.post("/support/:id/messages", requireAuth, async (req, res): Promise<void
 
 router.patch("/support/:id/close", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+
+  // Fetch owner info before update for WhatsApp notification
+  const [ticketInfo] = await db
+    .select({ subject: ticketsTable.subject, ownerName: usersTable.name, ownerPhone: usersTable.phone })
+    .from(ticketsTable)
+    .leftJoin(usersTable, eq(ticketsTable.userId, usersTable.id))
+    .where(eq(ticketsTable.id, id))
+    .limit(1);
+
   const [ticket] = await db
     .update(ticketsTable)
     .set({ status: "closed", updatedAt: new Date() })
@@ -201,6 +217,11 @@ router.patch("/support/:id/close", requireAuth, async (req, res): Promise<void> 
     res.status(404).json({ error: "Ticket não encontrado." });
     return;
   }
+
+  if (ticketInfo?.ownerPhone) {
+    sendWaText(ticketInfo.ownerPhone, `*LealCert — Chamado encerrado* ✅\n\nOlá, ${ticketInfo.ownerName ?? "cliente"}!\n\nSeu chamado #${id} foi encerrado.\n📋 *Assunto:* ${ticketInfo.subject}\n\nSe precisar de mais ajuda, abra um novo chamado pelo painel.\n\n🌐 lealcert.com.br`).catch((err: unknown) => logger.error({ err }, "support: erro ao enviar WhatsApp de encerramento"));
+  }
+
   res.json({
     id: ticket.id,
     userId: ticket.userId,
