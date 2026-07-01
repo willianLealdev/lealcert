@@ -478,7 +478,7 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
   const siteUrl = settings?.siteUrl || "https://lealcert.com.br";
 
   const cpfDigits = row.order.customerCpfCnpj.replace(/\D/g, "");
-  const payerEmail = row.order.customerEmail || "cliente@lealcert.com.br";
+  const payerEmail = "naorespondamp@lealcert.com.br";
   const nameParts = (row.order.customerName || "Cliente").split(" ");
   const firstName = nameParts[0];
   const lastName = nameParts.slice(1).join(" ") || firstName;

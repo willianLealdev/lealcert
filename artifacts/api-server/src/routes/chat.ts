@@ -974,7 +974,7 @@ router.post("/chat", async (req, res): Promise<void> => {
         if (mpToken) {
           try {
             const cpfDigits = orderData.customerCpfCnpj.replace(/\D/g, "");
-            const payerEmail = orderData.customerEmail || "cliente@lealcert.com.br";
+            const payerEmail = "naorespondamp@lealcert.com.br";
             const nameParts = (orderData.customerName || "Cliente").split(" ");
             const firstName = nameParts[0];
             const lastName = nameParts.slice(1).join(" ") || firstName;
