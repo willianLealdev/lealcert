@@ -176,6 +176,59 @@ async function sendDailySalesReportJob() {
   }
 }
 
+// ── WhatsApp Connection Monitor ──────────────────────────────────────────────
+const WA_ALERT_NUMBER = "14076751467";
+let lastWaStatus: "open" | "closed" | "unknown" = "unknown";
+let waAlertCooldown = false;
+
+async function checkWhatsAppConnection() {
+  try {
+    const [settings] = await db.select().from(settingsTable).limit(1);
+    const url = settings?.evolutionUrl;
+    const apiKey = settings?.evolutionApiKey;
+    const instance = settings?.evolutionInstance;
+    if (!url || !apiKey || !instance) return;
+
+    const resp = await fetch(`${url.replace(/\/$/, "")}/instance/fetchInstances`, {
+      headers: { apikey: apiKey },
+    });
+    if (!resp.ok) return;
+
+    const data = await resp.json() as Array<{ connectionStatus?: string }>;
+    const inst = Array.isArray(data) ? data[0] : data;
+    const status = (inst?.connectionStatus ?? "").toLowerCase();
+    const isOpen = status === "open";
+
+    if (!isOpen && lastWaStatus === "open" && !waAlertCooldown) {
+      waAlertCooldown = true;
+      setTimeout(() => { waAlertCooldown = false; }, 30 * 60_000); // cooldown 30 min
+
+      const { sendWhatsApp } = await import("./evolution");
+      await sendWhatsApp(
+        { evolutionUrl: url, evolutionApiKey: apiKey, evolutionInstance: instance },
+        WA_ALERT_NUMBER,
+        `⚠️ *LealCert — Alerta WhatsApp*\n\nA instância *${instance}* está DESCONECTADA (status: ${status || "desconhecido"}).\n\nAcesse o painel da Evolution API e escaneie o QR Code para reconectar:\n${url}`,
+      ).catch(err => logger.error({ err }, "WA monitor: falha ao enviar alerta"));
+
+      logger.warn({ instance, status }, "WA monitor: instância desconectada — alerta enviado");
+    } else if (isOpen && lastWaStatus !== "open") {
+      logger.info({ instance }, "WA monitor: instância reconectada");
+      if (lastWaStatus !== "unknown") {
+        const { sendWhatsApp } = await import("./evolution");
+        await sendWhatsApp(
+          { evolutionUrl: url, evolutionApiKey: apiKey, evolutionInstance: instance },
+          WA_ALERT_NUMBER,
+          `✅ *LealCert — WhatsApp Reconectado*\n\nA instância *${instance}* está ONLINE novamente.`,
+        ).catch(() => {/* silencioso */});
+      }
+    }
+
+    lastWaStatus = isOpen ? "open" : "closed";
+  } catch (err) {
+    logger.error({ err }, "WA monitor: erro ao verificar conexão");
+  }
+}
+
 /** Calcula ms até a próxima 08:00 horário de Brasília (UTC-3). */
 function msUntilNext8amBrt(): number {
   const nowUtc = Date.now();
@@ -201,6 +254,11 @@ export function startScheduler() {
   const runAutoUnblock = () => import("./ip-security").then(m => m.autoUnblockExpiredIps()).catch(err => logger.error({ err }, "ip-security: auto-unblock error"));
   setInterval(runAutoUnblock, 10 * 60_000);
   setTimeout(runAutoUnblock, 60_000);
+
+  // Monitor de conexão WhatsApp — verifica a cada 5 minutos
+  setInterval(checkWhatsAppConnection, 5 * 60_000);
+  setTimeout(() => checkWhatsAppConnection().catch(err => logger.error({ err }, "WA monitor: erro inicial")), 10_000);
+  logger.info("WhatsApp connection monitor started (5min interval)");
 
   // E-mail de vendas do dia — dispara às 08:00 BRT, depois a cada 24h
   const msFirst = msUntilNext8amBrt();
