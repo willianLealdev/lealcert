@@ -386,6 +386,76 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   res.status(201).json(orderRow(order, null, cert.name));
 });
 
+router.get("/orders/pre-fill", requireAuth, async (req, res): Promise<void> => {
+  const cpf = String(req.query.cpf ?? "").replace(/\D/g, "");
+  if (cpf.length !== 11) {
+    res.status(400).json({ error: "CPF inválido." });
+    return;
+  }
+
+  const rows = await db
+    .select({ order: ordersTable })
+    .from(ordersTable)
+    .where(eq(ordersTable.representanteCpf, cpf))
+    .orderBy(desc(ordersTable.createdAt));
+
+  if (rows.length === 0) {
+    res.json({ responsavel: null, cpfPessoal: null, empresas: [], notaFiscal: null });
+    return;
+  }
+
+  const withAddr = rows.find(r => r.order.representanteAddressStreet) ?? rows[0];
+  const responsavel = withAddr.order.representanteNascimento ? {
+    nome: withAddr.order.customerName,
+    nascimento: withAddr.order.representanteNascimento,
+    docTipo: withAddr.order.representanteDocTipo,
+    docNumero: withAddr.order.representanteDocNumero,
+    addressZipcode: withAddr.order.representanteAddressZipcode,
+    addressStreet: withAddr.order.representanteAddressStreet,
+    addressNumber: withAddr.order.representanteAddressNumber,
+    addressComplement: withAddr.order.representanteAddressComplement,
+    addressNeighborhood: withAddr.order.representanteAddressNeighborhood,
+    addressCity: withAddr.order.representanteAddressCity,
+    addressState: withAddr.order.representanteAddressState,
+  } : null;
+
+  const seen = new Set<string>();
+  const empresas = rows
+    .filter(r => r.order.clientType === "cnpj" && r.order.companyName)
+    .filter(r => {
+      const k = r.order.customerCpfCnpj;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .map(r => ({
+      cnpj: r.order.customerCpfCnpj,
+      nome: r.order.companyName!,
+      email: r.order.customerEmail,
+      phone: r.order.customerPhone,
+    }));
+
+  const cpfRow = rows.find(r => r.order.clientType === "cpf");
+  const cpfPessoal = cpfRow
+    ? { email: cpfRow.order.customerEmail, phone: cpfRow.order.customerPhone }
+    : null;
+
+  const nfRow = rows.find(r => r.order.nfNome);
+  const notaFiscal = nfRow ? {
+    cpfCnpj: nfRow.order.nfCnpj,
+    nome: nfRow.order.nfNome,
+    zipcode: nfRow.order.nfZipcode,
+    street: nfRow.order.nfStreet,
+    number: nfRow.order.nfNumber,
+    complement: nfRow.order.nfComplement,
+    neighborhood: nfRow.order.nfNeighborhood,
+    city: nfRow.order.nfCity,
+    state: nfRow.order.nfState,
+  } : null;
+
+  res.json({ responsavel, cpfPessoal, empresas, notaFiscal });
+});
+
 router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   const session = req.session;

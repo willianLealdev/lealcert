@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, Building2, User, Tag, CheckCircle, XCircle, CreditCard, BadgeCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, Building2, User, Tag, CheckCircle, XCircle, CreditCard, BadgeCheck, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Link } from "wouter";
@@ -201,6 +201,30 @@ export default function NewOrder() {
   const gateBirthDateRef = useRef("");
   const gateNameRef = useRef("");
   const gateHasPsbioRef = useRef(false);
+
+  // ── Pre-fill from previous orders ──────────────────────────────────────────
+  type PreFillEmpresa = { cnpj: string; nome: string; email: string | null; phone: string | null };
+  type PreFillResponsavel = {
+    nome: string; nascimento: string;
+    docTipo: string | null; docNumero: string | null;
+    addressZipcode: string | null; addressStreet: string | null; addressNumber: string | null;
+    addressComplement: string | null; addressNeighborhood: string | null;
+    addressCity: string | null; addressState: string | null;
+  };
+  type PreFillResult = {
+    responsavel: PreFillResponsavel | null;
+    cpfPessoal: { email: string | null; phone: string | null } | null;
+    empresas: PreFillEmpresa[];
+    notaFiscal: {
+      cpfCnpj: string | null; nome: string | null; zipcode: string | null;
+      street: string | null; number: string | null; complement: string | null;
+      neighborhood: string | null; city: string | null; state: string | null;
+    } | null;
+  };
+  const [preFillData, setPreFillData] = useState<PreFillResult | null>(null);
+  const [showPreFillModal, setShowPreFillModal] = useState(false);
+  const [preFillNfOffered, setPreFillNfOffered] = useState(false);
+
   const consultaCpfAbortRef = useRef<AbortController | null>(null);
   const repConsultaCpfAbortRef = useRef<AbortController | null>(null);
 
@@ -539,6 +563,15 @@ export default function NewOrder() {
         gateHasPsbioRef.current = data.hasPsbio;
         if (data.customerName) gateNameRef.current = data.customerName;
         setGateStatus({ ok: true, hasPsbio: data.hasPsbio, mensagem: data.mensagem });
+        const cpfDigits = gateCpfRef.current;
+        if (cpfDigits.length === 11) {
+          fetch(`/api/orders/pre-fill?cpf=${cpfDigits}`, { credentials: "include" })
+            .then(r => r.ok ? r.json() as Promise<PreFillResult> : null)
+            .then(d => {
+              if (d && (d.responsavel || d.empresas.length > 0 || d.notaFiscal)) setPreFillData(d);
+            })
+            .catch(() => {});
+        }
       },
       onError: (err: unknown) => {
         const raw = (err as { message?: string })?.message ?? "";
@@ -635,6 +668,11 @@ export default function NewOrder() {
   }
 
   // ── Step navigation ──
+  function proceedToStep2() {
+    setStep(2);
+    window.scrollTo(0, 0);
+  }
+
   function goToStep2() {
     if (!form.certificateId) {
       toast({ title: "Atenção", description: "Selecione um modelo de certificado.", variant: "destructive" });
@@ -644,8 +682,45 @@ export default function NewOrder() {
       setShowTermsModal(true);
       return;
     }
-    setStep(2);
-    window.scrollTo(0, 0);
+    if (preFillData && (preFillData.responsavel || preFillData.empresas.length > 0)) {
+      setShowPreFillModal(true);
+      return;
+    }
+    proceedToStep2();
+  }
+
+  // ── Pre-fill helpers ──
+  function applyRepFields(rep: NonNullable<PreFillResult["responsavel"]>) {
+    const brDate = rep.nascimento ? rep.nascimento.split("-").reverse().join("/") : "";
+    setForm(prev => ({
+      ...prev,
+      repName: rep.nome || prev.repName,
+      repBirthDate: brDate || prev.repBirthDate,
+      repDocTipo: rep.docTipo || prev.repDocTipo,
+      repDocNumero: rep.docNumero || prev.repDocNumero,
+      representanteAddressZipcode: rep.addressZipcode ? maskCepFn(rep.addressZipcode) : prev.representanteAddressZipcode,
+      representanteAddressStreet: rep.addressStreet || prev.representanteAddressStreet,
+      representanteAddressNumber: rep.addressNumber || prev.representanteAddressNumber,
+      representanteAddressComplement: rep.addressComplement || prev.representanteAddressComplement,
+      representanteAddressNeighborhood: rep.addressNeighborhood || prev.representanteAddressNeighborhood,
+      representanteAddressCity: rep.addressCity || prev.representanteAddressCity,
+      representanteAddressState: rep.addressState || prev.representanteAddressState,
+    }));
+  }
+
+  function applyEmpresaFields(emp: PreFillEmpresa) {
+    setForm(prev => ({
+      ...prev,
+      customerCpfCnpj: maskCnpj(emp.cnpj),
+      companyName: emp.nome || prev.companyName,
+      customerEmail: emp.email || prev.customerEmail,
+      customerPhone: emp.phone ? maskPhone(emp.phone) : prev.customerPhone,
+    }));
+  }
+
+  function confirmPreFill() {
+    setShowPreFillModal(false);
+    proceedToStep2();
   }
 
   function goToStep3() {
@@ -886,6 +961,10 @@ export default function NewOrder() {
               onClick={() => {
                 setTermsAccepted(true);
                 setShowTermsModal(false);
+                if (preFillData && (preFillData.responsavel || preFillData.empresas.length > 0)) {
+                  setShowPreFillModal(true);
+                  return;
+                }
                 setStep(2);
                 window.scrollTo(0, 0);
               }}
@@ -894,6 +973,129 @@ export default function NewOrder() {
               Aceitar e Continuar
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pre-fill Modal */}
+      <Dialog open={showPreFillModal} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />Dados encontrados no sistema
+            </DialogTitle>
+          </DialogHeader>
+          {(() => {
+            const rep = preFillData?.responsavel;
+            const empresas = preFillData?.empresas ?? [];
+            const cpfPessoal = preFillData?.cpfPessoal;
+
+            // e-CNPJ: múltiplas empresas
+            if (isCnpjCert && empresas.length > 1) {
+              return (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Encontramos empresas anteriores vinculadas a este responsável. Selecione uma ou cadastre uma nova:</p>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {empresas.map(emp => (
+                      <div key={emp.cnpj} className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-muted/30">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">{emp.nome}</p>
+                          <p className="text-xs text-muted-foreground">{maskCnpj(emp.cnpj)}</p>
+                        </div>
+                        <Button size="sm" onClick={() => { if (rep) applyRepFields(rep); applyEmpresaFields(emp); confirmPreFill(); }}>
+                          Usar esta
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  {rep && (
+                    <Button variant="outline" className="w-full" onClick={() => { applyRepFields(rep); confirmPreFill(); }}>
+                      Nova empresa (usar só dados do responsável)
+                    </Button>
+                  )}
+                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={confirmPreFill}>
+                    Preencher tudo manualmente
+                  </Button>
+                </div>
+              );
+            }
+
+            // e-CNPJ: 1 empresa
+            if (isCnpjCert && empresas.length === 1) {
+              const emp = empresas[0];
+              return (
+                <div className="space-y-4">
+                  <div className="rounded-xl bg-muted/50 border p-4 space-y-1">
+                    <p className="text-sm font-semibold">{emp.nome}</p>
+                    <p className="text-xs text-muted-foreground">{maskCnpj(emp.cnpj)}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Deseja comprar o certificado para esta empresa?</p>
+                  <div className="flex gap-3">
+                    <Button className="flex-1" onClick={() => { if (rep) applyRepFields(rep); applyEmpresaFields(emp); confirmPreFill(); }}>
+                      Sim, esta empresa
+                    </Button>
+                    <Button variant="outline" className="flex-1" onClick={() => { if (rep) applyRepFields(rep); confirmPreFill(); }}>
+                      Não, outra empresa
+                    </Button>
+                  </div>
+                </div>
+              );
+            }
+
+            // e-CNPJ: 0 empresas, mas tem responsável
+            if (isCnpjCert && rep) {
+              return (
+                <div className="space-y-4">
+                  <div className="rounded-xl bg-muted/50 border p-4 space-y-2">
+                    <p className="text-sm font-semibold">{rep.nome}</p>
+                    {rep.addressCity && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />{rep.addressCity}{rep.addressState ? ` — ${rep.addressState}` : ""}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Identificamos dados do responsável em pedidos anteriores. Deseja pré-preencher os campos do representante legal?</p>
+                  <div className="flex gap-3">
+                    <Button className="flex-1" onClick={() => { applyRepFields(rep); confirmPreFill(); }}>Sim, usar dados</Button>
+                    <Button variant="outline" className="flex-1" onClick={confirmPreFill}>Preencher manualmente</Button>
+                  </div>
+                </div>
+              );
+            }
+
+            // e-CPF/e-PF com responsável encontrado
+            if (!isCnpjCert && rep) {
+              return (
+                <div className="space-y-4">
+                  <div className="rounded-xl bg-muted/50 border p-4 space-y-2">
+                    <p className="text-sm font-semibold">{rep.nome}</p>
+                    {rep.addressCity && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />{rep.addressCity}{rep.addressState ? ` — ${rep.addressState}` : ""}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Identificamos um cadastro anterior para este CPF. Deseja usar os dados já registrados?</p>
+                  <div className="flex gap-3">
+                    <Button className="flex-1" onClick={() => {
+                      applyRepFields(rep);
+                      setForm(prev => ({
+                        ...prev,
+                        customerName: rep.nome || prev.customerName,
+                        customerEmail: cpfPessoal?.email || prev.customerEmail,
+                        customerPhone: cpfPessoal?.phone ? maskPhone(cpfPessoal.phone) : prev.customerPhone,
+                      }));
+                      confirmPreFill();
+                    }}>Sim, usar dados anteriores</Button>
+                    <Button variant="outline" className="flex-1" onClick={confirmPreFill}>Não, preencher manualmente</Button>
+                  </div>
+                </div>
+              );
+            }
+
+            // Nenhum dado relevante → prosseguir direto
+            confirmPreFill();
+            return null;
+          })()}
         </DialogContent>
       </Dialog>
 
@@ -1534,6 +1736,35 @@ export default function NewOrder() {
                 <p className="text-sm font-semibold text-primary">{selectedCert.name}</p>
               </div>
               <span className="font-bold text-primary">{formatBRL(certPrice(selectedCert))}</span>
+            </div>
+          )}
+
+          {preFillData?.notaFiscal && !preFillNfOffered && !nfForm.nfCpfCnpj && (
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200">
+              <Sparkles className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-blue-800">Dados de nota fiscal anteriores encontrados</p>
+                <p className="text-xs text-blue-700/80 mt-0.5">Emitido para <strong>{preFillData.notaFiscal.nome}</strong>. Deseja usar os mesmos dados?</p>
+                <div className="flex gap-2 mt-3">
+                  <Button size="sm" onClick={() => {
+                    const nf = preFillData.notaFiscal!;
+                    setNfForm(prev => ({
+                      ...prev,
+                      nfCpfCnpj: nf.cpfCnpj ? maskCpfCnpj(nf.cpfCnpj) : prev.nfCpfCnpj,
+                      nfNome: nf.nome || prev.nfNome,
+                      nfZipcode: nf.zipcode ? maskCepFn(nf.zipcode) : prev.nfZipcode,
+                      nfStreet: nf.street || prev.nfStreet,
+                      nfNumber: nf.number || prev.nfNumber,
+                      nfComplement: nf.complement || prev.nfComplement,
+                      nfNeighborhood: nf.neighborhood || prev.nfNeighborhood,
+                      nfCity: nf.city || prev.nfCity,
+                      nfState: nf.state || prev.nfState,
+                    }));
+                    setPreFillNfOffered(true);
+                  }}>Sim, usar estes dados</Button>
+                  <Button size="sm" variant="outline" onClick={() => setPreFillNfOffered(true)}>Não, preencher manualmente</Button>
+                </div>
+              </div>
             </div>
           )}
 
