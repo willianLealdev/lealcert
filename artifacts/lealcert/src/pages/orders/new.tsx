@@ -542,6 +542,17 @@ export default function NewOrder() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.certificateId]);
 
+  // Fallback: se o PreFill Modal abrir sem nenhum branch aplicável, confirma automaticamente
+  // (evita chamar setState durante o render no IIFE do DialogContent)
+  useEffect(() => {
+    if (!showPreFillModal || !preFillData) return;
+    const rep = preFillData.responsavel;
+    const empresas = preFillData.empresas ?? [];
+    const hasBranch = (isCnpjCert && (empresas.length > 0 || rep)) || (!isCnpjCert && rep);
+    if (!hasBranch) confirmPreFill();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPreFillModal]);
+
   // ── Mutations ──
   const createOrder = useCreateOrder({
     mutation: {
@@ -678,7 +689,12 @@ export default function NewOrder() {
       toast({ title: "Atenção", description: "Selecione um modelo de certificado.", variant: "destructive" });
       return;
     }
-    if (preFillData && (preFillData.responsavel || preFillData.empresas.length > 0)) {
+    const rep = preFillData?.responsavel;
+    const empresas = preFillData?.empresas ?? [];
+    const hasRelevantPrefill = isCnpjCert
+      ? (empresas.length > 0 || !!rep)
+      : !!rep;
+    if (preFillData && hasRelevantPrefill) {
       setShowPreFillModal(true);
       return;
     }
@@ -1095,8 +1111,7 @@ export default function NewOrder() {
               );
             }
 
-            // Nenhum dado relevante → prosseguir direto
-            confirmPreFill();
+            // Nenhum dado relevante — useEffect cuida do auto-confirmPreFill (evita setState durante render)
             return null;
           })()}
         </DialogContent>
