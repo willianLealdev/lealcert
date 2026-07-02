@@ -907,11 +907,20 @@ router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res
   const [settings] = await db.select().from(settingsTable).limit(1);
   if (!settings?.garApiKey) { res.status(503).json({ error: "GAR API Key não configurada" }); return; }
 
+  // Tenta cancelar na GAR — best-effort: se a API rejeitar (ex: permissão),
+  // o agendamento é removido do nosso sistema mesmo assim e um aviso é retornado.
+  let garWarning: string | undefined;
   try {
     const { garExcluirAgendamento } = await import("../lib/gestaoar");
     const garResult = await garExcluirAgendamento(settings.garApiKey, hashVenda);
-    req.log.info({ orderId: id, hashVenda, garResult }, "gar-cancelar-agendamento: resposta da GAR");
+    req.log.info({ orderId: id, hashVenda, garResult }, "gar-cancelar-agendamento: cancelado na GAR");
+  } catch (garErr) {
+    const garMsg = (garErr as Error).message ?? "";
+    req.log.warn({ err: garErr, orderId: id, hashVenda }, "gar-cancelar-agendamento: GAR rejeitou (removendo localmente mesmo assim)");
+    garWarning = `O agendamento foi removido do sistema, mas não foi possível cancelar automaticamente na Gestão AR (${garMsg}). Cancele manualmente no portal da AR se necessário.`;
+  }
 
+  try {
     await db.update(ordersTable).set({
       garAgendamentoDataHora: null,
       garAgendamentoLocalNome: null,
@@ -921,14 +930,17 @@ router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res
     }).where(eq(ordersTable.id, id));
 
     const { logEvent } = await import("../lib/order-events");
-    await logEvent(id, "scheduling_confirmed", "Agendamento GAR cancelado com sucesso", { garResult });
+    const logMsg = garWarning
+      ? "Agendamento removido do sistema (cancelamento na GAR requer ação manual)"
+      : "Agendamento GAR cancelado com sucesso";
+    await logEvent(id, "scheduling_confirmed", logMsg, { garWarning });
 
-    req.log.info({ orderId: id }, "gar-cancelar-agendamento: agendamento cancelado com sucesso");
-    res.json({ ok: true });
+    req.log.info({ orderId: id, garWarning }, "gar-cancelar-agendamento: concluído");
+    res.json({ ok: true, ...(garWarning ? { warning: garWarning } : {}) });
   } catch (err) {
     const msg = (err as Error).message ?? "";
-    req.log.error({ err, orderId: id, hashVenda }, "gar-cancelar-agendamento: erro ao cancelar na GAR");
-    res.status(502).json({ error: `Erro ao cancelar agendamento na GAR: ${msg}` });
+    req.log.error({ err, orderId: id }, "gar-cancelar-agendamento: erro ao atualizar banco");
+    res.status(500).json({ error: `Erro interno ao cancelar agendamento: ${msg}` });
   }
 });
 

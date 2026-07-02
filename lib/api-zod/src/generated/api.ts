@@ -1744,7 +1744,8 @@ export const GarCancelarAgendamentoParams = zod.object({
 })
 
 export const GarCancelarAgendamentoResponse = zod.object({
-  "ok": zod.boolean().optional()
+  "ok": zod.boolean().optional(),
+  "warning": zod.string().optional().describe('Aviso quando a GAR rejeitou o cancelamento — ação manual necessária no portal da AR')
 })
 
 

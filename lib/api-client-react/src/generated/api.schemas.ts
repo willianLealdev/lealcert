@@ -1673,6 +1673,8 @@ dataFinal: string;
 
 export type GarCancelarAgendamento200 = {
   ok?: boolean;
+  /** Aviso quando a GAR rejeitou o cancelamento — ação manual necessária no portal da AR */
+  warning?: string;
 };
 
 export type HopeCreateSolicitation200 = {

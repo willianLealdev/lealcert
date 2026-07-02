@@ -1675,6 +1675,7 @@ paths:
                 type: object
                 properties:
                   ok: { type: boolean }
+                  warning: { type: string, description: "Aviso quando a GAR rejeitou o cancelamento — ação manual necessária no portal da AR" }
 
   /orders/{id}/hope-solicitation:
     post:

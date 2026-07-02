@@ -247,8 +247,17 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
 
   const cancelarAgendamento = useGarCancelarAgendamento({
     mutation: {
-      onSuccess: () => {
-        toast({ title: "Agendamento cancelado." });
+      onSuccess: (data) => {
+        if (data?.warning) {
+          toast({
+            title: "Agendamento removido do sistema",
+            description: data.warning,
+            variant: "destructive",
+            duration: 10000,
+          });
+        } else {
+          toast({ title: "Agendamento cancelado com sucesso." });
+        }
         onSuccess();
       },
       onError: (err: unknown) => {
