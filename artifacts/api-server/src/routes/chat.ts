@@ -820,7 +820,17 @@ router.post("/chat", async (req, res): Promise<void> => {
       res.write(`data: ${JSON.stringify({ content: "\n\n❌ Não é possível criar pedidos sem validação de cadastro. Informe seu CPF ou CNPJ para continuar." })}\n\n`);
     } else {
       try {
-        const jsonStr = fullResponse.split("ACAO:CRIAR_PEDIDO:")[1].trim();
+        // Extrai apenas o objeto JSON (ignora texto que a IA pode adicionar após o bloco)
+        const afterAcao = fullResponse.slice(
+          fullResponse.indexOf("ACAO:CRIAR_PEDIDO:") + "ACAO:CRIAR_PEDIDO:".length
+        ).trim();
+        let depth = 0;
+        let jsonEnd = -1;
+        for (let ci = 0; ci < afterAcao.length; ci++) {
+          if (afterAcao[ci] === "{") depth++;
+          else if (afterAcao[ci] === "}") { depth--; if (depth === 0) { jsonEnd = ci; break; } }
+        }
+        const jsonStr = jsonEnd >= 0 ? afterAcao.slice(0, jsonEnd + 1) : afterAcao;
         const orderData = JSON.parse(jsonStr) as {
           certificateId: number;
           clientType: "cpf" | "cnpj";
@@ -1170,7 +1180,15 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Ação: criar cadastro
   if (fullResponse.includes("ACAO:CRIAR_CADASTRO:")) {
     try {
-      const jsonStr = fullResponse.split("ACAO:CRIAR_CADASTRO:")[1].trim();
+      const afterCadastro = fullResponse.slice(
+        fullResponse.indexOf("ACAO:CRIAR_CADASTRO:") + "ACAO:CRIAR_CADASTRO:".length
+      ).trim();
+      let cadDepth = 0; let cadEnd = -1;
+      for (let ci = 0; ci < afterCadastro.length; ci++) {
+        if (afterCadastro[ci] === "{") cadDepth++;
+        else if (afterCadastro[ci] === "}") { cadDepth--; if (cadDepth === 0) { cadEnd = ci; break; } }
+      }
+      const jsonStr = cadEnd >= 0 ? afterCadastro.slice(0, cadEnd + 1) : afterCadastro;
       const cadastroData = JSON.parse(jsonStr) as {
         userType: "cliente" | "contador";
         personType: "fisica" | "juridica";
@@ -1443,7 +1461,15 @@ router.post("/chat", async (req, res): Promise<void> => {
   // Ação: criar chamado de suporte
   if (fullResponse.includes("ACAO:CRIAR_CHAMADO:")) {
     try {
-      const jsonStr = fullResponse.split("ACAO:CRIAR_CHAMADO:")[1].trim();
+      const afterChamado = fullResponse.slice(
+        fullResponse.indexOf("ACAO:CRIAR_CHAMADO:") + "ACAO:CRIAR_CHAMADO:".length
+      ).trim();
+      let chamDepth = 0; let chamEnd = -1;
+      for (let ci = 0; ci < afterChamado.length; ci++) {
+        if (afterChamado[ci] === "{") chamDepth++;
+        else if (afterChamado[ci] === "}") { chamDepth--; if (chamDepth === 0) { chamEnd = ci; break; } }
+      }
+      const jsonStr = chamEnd >= 0 ? afterChamado.slice(0, chamEnd + 1) : afterChamado;
       const ticketData = JSON.parse(jsonStr) as {
         subject: string;
         message: string;

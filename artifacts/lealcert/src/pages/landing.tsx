@@ -121,6 +121,9 @@ function ChatWidget() {
   const pendingGreetingRef = useRef<string | null>(null);
   const [micDenied, setMicDenied] = useState(false);
   const [iosAudioLocked, setIosAudioLocked] = useState(IS_IOS);
+  const [termsAccepted, setTermsAccepted] = useState<boolean>(() => {
+    try { return localStorage.getItem("lealcert_terms_v1") === "1"; } catch { return false; }
+  });
 
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
@@ -256,8 +259,13 @@ function ChatWidget() {
   }
 
   useEffect(() => {
-    startSession();
-  }, []);
+    if (termsAccepted) startSession();
+  }, [termsAccepted]);
+
+  async function acceptTerms() {
+    try { localStorage.setItem("lealcert_terms_v1", "1"); } catch { /* ignore */ }
+    setTermsAccepted(true);
+  }
 
   useEffect(() => {
     if (open) { setTimeout(() => inputRef.current?.focus(), 300); }
@@ -568,7 +576,33 @@ function ChatWidget() {
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
-            {starting && (
+            {!termsAccepted && (
+              <div className="flex justify-start gap-2">
+                <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="max-w-[92%] bg-white border border-blue-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-4 text-sm">
+                  <p className="font-semibold text-gray-800 mb-2">🔒 Política de Privacidade e LGPD</p>
+                  <p className="text-xs text-gray-600 leading-relaxed mb-3">
+                    Antes de iniciarmos, é necessário que você concorde com o tratamento dos seus dados pessoais conforme a <strong>Lei Geral de Proteção de Dados (LGPD — Lei 13.709/2018)</strong>.
+                  </p>
+                  <p className="text-xs text-gray-600 leading-relaxed mb-3">
+                    A <strong>LealCert Certificados Digital</strong> coleta os dados informados neste chat (nome, CPF/CNPJ, e-mail, telefone e endereço) com a <strong>finalidade exclusiva</strong> de processar sua solicitação de certificado digital ICP-Brasil. Suas informações são armazenadas com segurança e <strong>nunca serão compartilhadas com terceiros</strong> sem sua autorização, exceto quando exigido por lei.
+                  </p>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Ao continuar, você autoriza o tratamento dos seus dados conforme nossa política de privacidade.
+                  </p>
+                  <button
+                    onClick={acceptTerms}
+                    className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-semibold shadow-sm"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Aceitar e iniciar conversa
+                  </button>
+                </div>
+              </div>
+            )}
+            {termsAccepted && starting && (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-[#2563eb]" />
               </div>
@@ -757,13 +791,13 @@ function ChatWidget() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={awaitingEmail ? "Digite seu e-mail aqui…" : isSpeaking ? `${ASSISTANT_NAME} está falando…` : starting ? "Conectando…" : "Digite sua mensagem…"}
-                disabled={loading || starting || (isSpeaking && !awaitingEmail)}
+                placeholder={!termsAccepted ? "Aceite os termos acima para iniciar…" : awaitingEmail ? "Digite seu e-mail aqui…" : isSpeaking ? `${ASSISTANT_NAME} está falando…` : starting ? "Conectando…" : "Digite sua mensagem…"}
+                disabled={!termsAccepted || loading || starting || (isSpeaking && !awaitingEmail)}
                 className="flex-1 text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] placeholder:text-gray-400 disabled:opacity-50 transition-all"
               />
               <button
                 onClick={() => send()}
-                disabled={!input.trim() || loading || starting || isSpeaking}
+                disabled={!termsAccepted || !input.trim() || loading || starting || isSpeaking}
                 className="h-10 w-10 flex items-center justify-center bg-[#2563eb] text-white rounded-xl disabled:opacity-40 hover:bg-blue-700 transition-colors shrink-0"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
