@@ -260,8 +260,6 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
   const locaisFiltrados = useMemo(() => {
     if (!locais) return [];
     return locais.filter(l => {
-      // Somente videoconferência — presencial nunca é exibido
-      if (!isVideo(l.NomeLocalAgendamento)) return false;
       const ufOk = !ufFiltro || l.UF?.toLowerCase() === ufFiltro.toLowerCase();
       const munOk = !municipioFiltro || l.NomeCidadeLocalAgendamento?.toLowerCase().includes(municipioFiltro.toLowerCase());
       return ufOk && munOk;
@@ -425,8 +423,8 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
           Seu protocolo foi emitido! Agora é só escolher o local e horário mais convenientes para você.
         </p>
         <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-100 px-3 py-2 rounded-md">
-          <Video className="h-4 w-4 shrink-0" />
-          <span>Videoconferência disponível — atendimento no conforto da sua casa.</span>
+          <Calendar className="h-4 w-4 shrink-0" />
+          <span>Escolha o local e horário de atendimento mais conveniente para você.</span>
         </div>
         <Button onClick={handleOpenModal} className="w-full sm:w-auto">
           <Calendar className="h-4 w-4 mr-2" />
