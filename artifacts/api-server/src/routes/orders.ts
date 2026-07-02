@@ -805,7 +805,18 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
   const isReagendar = !!order.garAgendamentoDataHora;
 
   try {
-    const { garAgendar } = await import("../lib/gestaoar");
+    const { garAgendar, garExcluirAgendamento } = await import("../lib/gestaoar");
+
+    // Se já existe agendamento ativo, cancela na GAR antes de criar o novo
+    if (isReagendar) {
+      try {
+        await garExcluirAgendamento(settings.garApiKey, hashVenda);
+        req.log.info({ orderId: id }, "agendar-gar: agendamento anterior cancelado na GAR antes de reagendar");
+      } catch (cancelErr) {
+        req.log.warn({ err: cancelErr, orderId: id }, "agendar-gar: não foi possível cancelar agendamento anterior (continuando mesmo assim)");
+      }
+    }
+
     const result = await garAgendar(settings.garApiKey, hashVenda, hashLocal, dataInicial, dataFinal);
     req.log.info({ orderId: id, result }, "agendar-gar: resposta da API");
 
