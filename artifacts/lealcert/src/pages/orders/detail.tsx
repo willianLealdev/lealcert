@@ -120,14 +120,24 @@ const EVENT_LABELS: Record<string, string> = {
   sync_performed:       "Sincronização",
 };
 
-function OrderTimeline({ orderId, isPendingPayment }: { orderId: number; isPendingPayment: boolean }) {
+function OrderTimeline({ orderId, onEventsChange }: { orderId: number; onEventsChange?: () => void }) {
   const { data: events, isLoading, refetch: refetchEvents } = useGetOrderEvents(orderId);
 
+  // Polling sempre ativo a cada 5 s (independente do status)
   useEffect(() => {
-    if (!isPendingPayment) return;
-    const timer = setInterval(() => { refetchEvents(); }, 5000);
+    const timer = setInterval(() => { void refetchEvents(); }, 5000);
     return () => clearInterval(timer);
-  }, [isPendingPayment]);
+  }, []);
+
+  // Avisa o pai quando o número de eventos muda (novo evento registrado)
+  const prevCountRef = useRef<number>(0);
+  useEffect(() => {
+    if (!events) return;
+    if (events.length !== prevCountRef.current) {
+      if (prevCountRef.current > 0) onEventsChange?.();
+      prevCountRef.current = events.length;
+    }
+  }, [events?.length]);
 
   if (isLoading) {
     return (
@@ -1290,10 +1300,10 @@ export default function OrderDetail() {
       setPixData(null);
       toast({
         title: "✅ Pagamento confirmado!",
-        description: "Carregando dados do pedido...",
+        description: "Atualizando dados do pedido...",
       });
-      // Recarrega a página para buscar dados do provedor (Safeweb/agenda) atualizados
-      setTimeout(() => { window.location.reload(); }, 5000);
+      // Recarrega após 3 s para mostrar protocolo e opções de documento
+      setTimeout(() => { refetch(); }, 3000);
     }
     prevStatusRef.current = order.status;
   }, [order?.status]);
@@ -2289,7 +2299,7 @@ export default function OrderDetail() {
             </Card>
           )}
 
-          <OrderTimeline orderId={Number(id)} isPendingPayment={order.status === "pending_payment" || order.status === "created"} />
+          <OrderTimeline orderId={Number(id)} onEventsChange={() => { void refetch(); }} />
         </div>
       </div>
     </div>
