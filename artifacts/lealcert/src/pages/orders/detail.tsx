@@ -1817,6 +1817,48 @@ export default function OrderDetail() {
             </CardContent>
           </Card>
 
+          {/* Admin — Cancelar Pedido */}
+          {isAdmin && !["cancelled", "emitido", "completed", "revogado"].includes(order.status) && (
+            <Card className="border-red-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-red-700 flex items-center gap-2">
+                  <Ban className="h-4 w-4" />
+                  Ações administrativas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={updateOrder.isPending}>
+                      {updateOrder.isPending
+                        ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        : <Ban className="h-4 w-4 mr-2" />}
+                      Cancelar Pedido
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Cancelar pedido?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        O pedido será marcado como <strong>Cancelado</strong> no sistema. Esta ação não pode ser desfeita.
+                        {hasGar && " O protocolo GAR não possui cancelamento via API — o cancelamento é apenas no sistema."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Voltar</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => updateOrder.mutate({ id: Number(id), data: { status: "cancelled" } })}
+                      >
+                        Confirmar Cancelamento
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
+          )}
+
           {order.termsAcceptedAt && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
