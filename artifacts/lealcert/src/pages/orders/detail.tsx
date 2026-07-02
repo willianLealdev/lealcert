@@ -343,23 +343,12 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
             <p className="text-sm text-amber-800">
               Antes de agendar seu atendimento, você precisa enviar os documentos solicitados pelo portal de documentação.
             </p>
-            <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-100 px-3 py-2 rounded-md">
-              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>
-                Clique em <strong>"Acessar Portal de Documentos"</strong>, faça o envio de todos os documentos necessários e depois retorne aqui para confirmar e agendar seu atendimento.
-              </span>
-            </div>
             <div className="flex flex-col sm:flex-row gap-2">
-              <a
-                href={garHopeUploadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Acessar Portal de Documentos
-              </a>
-              <Button variant="outline" className="border-green-400 text-green-800 hover:bg-green-50" onClick={() => setDocsModalOpen(true)}>
+              <Button className="flex-1" onClick={() => setDocsModalOpen(true)}>
+                <FileText className="h-4 w-4 mr-2" />
+                Enviar Documentos
+              </Button>
+              <Button variant="outline" className="border-green-400 text-green-800 hover:bg-green-50" onClick={handleDocsConfirmar}>
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Já enviei os documentos
               </Button>
@@ -368,20 +357,37 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
         </Card>
 
         <Dialog open={docsModalOpen} onOpenChange={setDocsModalOpen}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Confirmar envio de documentos</DialogTitle>
+          <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0 gap-0">
+            <DialogHeader className="px-4 py-3 border-b shrink-0 flex flex-row items-center justify-between">
+              <DialogTitle className="text-base">Portal de Envio de Documentos</DialogTitle>
+              <a
+                href={garHopeUploadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                title="Abrir em nova aba"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Abrir em nova aba
+              </a>
             </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              Confirme que você já enviou todos os documentos solicitados no portal. Após confirmar, você poderá escolher a data e horário do seu atendimento.
-            </p>
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setDocsModalOpen(false)}>Cancelar</Button>
-              <Button onClick={handleDocsConfirmar}>
+            <div className="flex-1 min-h-0">
+              <iframe
+                src={garHopeUploadUrl}
+                className="w-full h-full border-0"
+                title="Portal de Envio de Documentos"
+                allow="camera; microphone"
+              />
+            </div>
+            <div className="px-4 py-3 border-t shrink-0 flex items-center justify-between gap-3 bg-muted/30">
+              <p className="text-xs text-muted-foreground">
+                Após enviar todos os documentos no portal acima, clique em "Concluir Envio".
+              </p>
+              <Button onClick={handleDocsConfirmar} className="shrink-0">
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                Confirmar e Agendar
+                Concluir Envio
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       </>
