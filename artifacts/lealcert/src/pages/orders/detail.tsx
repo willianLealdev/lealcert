@@ -1506,7 +1506,8 @@ export default function OrderDetail() {
 
   const statusOk = order.status === "protocol_assigned" || order.status === "paid" || order.status === "completed";
   // Card de agendamento GAR: precisa de protocolo GAR
-  const canScheduleGar = !!garProtocolo && statusOk;
+  // Card de agendamento GAR: aguardando_validacao é o status pós-agendamento, também deve permitir reagendar/cancelar
+  const canScheduleGar = !!garProtocolo && (statusOk || order.status === "aguardando_validacao") && order.status !== "cancelled";
   // Card de agendamento Safeweb: precisa de solicitacaoId; aguardando_validacao é o status pós-agendamento, também deve permitir reagendar
   const canScheduleSafeweb = !!safewebSolicitacaoId && (statusOk || order.status === "aguardando_validacao") && order.status !== "cancelled";
 
