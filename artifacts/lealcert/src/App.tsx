@@ -1,5 +1,31 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Component } from "react";
+import type { ReactNode, ErrorInfo } from "react";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error("App error:", error, info); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-8 bg-background">
+          <div className="max-w-lg w-full rounded-lg border border-destructive/40 bg-destructive/5 p-6 space-y-3">
+            <h2 className="text-lg font-semibold text-destructive">Erro na aplicação</h2>
+            <p className="text-sm text-muted-foreground font-mono break-all">{this.state.error.message}</p>
+            <button className="text-sm underline text-primary" onClick={() => { this.setState({ error: null }); window.location.reload(); }}>
+              Recarregar página
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -122,20 +148,24 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <BrandingProvider>
-            <AuthProvider>
-              <Router />
-            </AuthProvider>
-          </BrandingProvider>
-        </WouterRouter>
-        <Toaster />
-        <InstallPrompt />
-        <PwaUpdateBanner />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <BrandingProvider>
+              <AuthProvider>
+                <ErrorBoundary>
+                  <Router />
+                </ErrorBoundary>
+              </AuthProvider>
+            </BrandingProvider>
+          </WouterRouter>
+          <Toaster />
+          <InstallPrompt />
+          <PwaUpdateBanner />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

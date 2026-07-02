@@ -511,7 +511,7 @@ function GarSchedulingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl h-[85vh] max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
@@ -531,11 +531,9 @@ function GarSchedulingDialog({
           ))}
         </div>
 
-        <div className="flex-1 overflow-hidden">
-
           {/* PASSO 1 — Escolher local */}
           {step === "locais" && (
-            <div className="flex flex-col h-full gap-3">
+            <div className="space-y-3">
               <div className="flex gap-2 flex-wrap">
                 <Select value={ufFiltro} onValueChange={setUfFiltro}>
                   <SelectTrigger className="w-28">
@@ -565,52 +563,50 @@ function GarSchedulingDialog({
                   Nenhum local encontrado com esse filtro.
                 </div>
               ) : (
-                <ScrollArea className="flex-1 -mx-1 px-1">
-                  <div className="space-y-2 pb-2">
-                    {locais.map((local) => {
-                      const video = isVideo(local.NomeLocalAgendamento);
-                      return (
-                        <button
-                          key={local.HashLocal}
-                          className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary ${video ? "border-blue-200 bg-blue-50 hover:bg-blue-100" : "bg-background hover:bg-muted"}`}
-                          onClick={() => onSelecionarLocal(local)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className={`mt-0.5 rounded-full p-1.5 ${video ? "bg-blue-100 text-blue-700" : "bg-muted text-muted-foreground"}`}>
-                              {video ? <Video className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="text-sm font-semibold">{local.NomeLocalAgendamento}</p>
-                                {video && (
-                                  <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">
-                                    Videoconferência
-                                  </Badge>
-                                )}
-                              </div>
-                              {(local.NomeCidadeLocalAgendamento || local.UF) && (
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {[local.NomeCidadeLocalAgendamento, local.UF].filter(Boolean).join(" — ")}
-                                </p>
-                              )}
-                              {local.Endereco && !video && (
-                                <p className="text-xs text-muted-foreground mt-0.5 truncate">{local.Endereco}</p>
-                              )}
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                  {locais.map((local) => {
+                    const video = isVideo(local.NomeLocalAgendamento);
+                    return (
+                      <button
+                        key={local.HashLocal}
+                        className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary ${video ? "border-blue-200 bg-blue-50 hover:bg-blue-100" : "bg-background hover:bg-muted"}`}
+                        onClick={() => onSelecionarLocal(local)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-0.5 rounded-full p-1.5 ${video ? "bg-blue-100 text-blue-700" : "bg-muted text-muted-foreground"}`}>
+                            {video ? <Video className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
                           </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold">{local.NomeLocalAgendamento}</p>
+                              {video && (
+                                <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">
+                                  Videoconferência
+                                </Badge>
+                              )}
+                            </div>
+                            {(local.NomeCidadeLocalAgendamento || local.UF) && (
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {[local.NomeCidadeLocalAgendamento, local.UF].filter(Boolean).join(" — ")}
+                              </p>
+                            )}
+                            {local.Endereco && !video && (
+                              <p className="text-xs text-muted-foreground mt-0.5 truncate">{local.Endereco}</p>
+                            )}
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
 
           {/* PASSO 2 — Escolher data e horário */}
           {step === "data" && (
-            <div className="flex flex-col h-full gap-3">
+            <div className="space-y-3">
               {localSelecionado && (
                 <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${localSelecionado.isVideo ? "bg-blue-50 text-blue-800" : "bg-muted"}`}>
                   {localSelecionado.isVideo
@@ -650,25 +646,23 @@ function GarSchedulingDialog({
                     Nenhum horário disponível para esta data. Tente outra data.
                   </div>
                 ) : (
-                  <ScrollArea className="flex-1 -mx-1 px-1">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-2">
-                      {horarios.map((h) => (
-                        <button
-                          key={`${h.HoraInicial}-${h.HoraFinal}`}
-                          className={`rounded-lg border p-3 text-center transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
-                            horarioSelecionado?.HoraInicial === h.HoraInicial
-                              ? "border-primary bg-primary/10 ring-1 ring-primary"
-                              : "hover:bg-accent"
-                          }`}
-                          onClick={() => onSelecionarHorario(h)}
-                        >
-                          <Clock className="h-4 w-4 text-primary mx-auto mb-1" />
-                          <p className="text-sm font-semibold">{h.HoraInicial}</p>
-                          {h.HoraFinal && <p className="text-xs text-muted-foreground">até {h.HoraFinal}</p>}
-                        </button>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[40vh] overflow-y-auto pb-1">
+                    {horarios.map((h) => (
+                      <button
+                        key={`${h.HoraInicial}-${h.HoraFinal}`}
+                        className={`rounded-lg border p-3 text-center transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
+                          horarioSelecionado?.HoraInicial === h.HoraInicial
+                            ? "border-primary bg-primary/10 ring-1 ring-primary"
+                            : "hover:bg-accent"
+                        }`}
+                        onClick={() => onSelecionarHorario(h)}
+                      >
+                        <Clock className="h-4 w-4 text-primary mx-auto mb-1" />
+                        <p className="text-sm font-semibold">{h.HoraInicial}</p>
+                        {h.HoraFinal && <p className="text-xs text-muted-foreground">até {h.HoraFinal}</p>}
+                      </button>
+                    ))}
+                  </div>
                 )
               )}
             </div>
@@ -713,7 +707,6 @@ function GarSchedulingDialog({
               </p>
             </div>
           )}
-        </div>
 
         <DialogFooter className="gap-2">
           {step !== "locais" && (
