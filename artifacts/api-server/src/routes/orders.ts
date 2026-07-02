@@ -954,16 +954,33 @@ router.post("/orders/:id/gar-cancelar-protocolo", requireAdmin, async (req, res)
     const result = await swCancelarSolicitacao(sw, order.garProtocolo);
     req.log.info({ orderId: id, protocolo: order.garProtocolo, result }, "gar-cancelar-protocolo: resposta da Safeweb");
 
+    // Tenta cancelar o agendamento GAR se houver um ativo
+    const hasAgendamento = !!(order.garAgendamentoDataHora || order.garAgendamentoLocalHash);
+    if (hasAgendamento && order.garHashVenda && s?.garApiKey) {
+      try {
+        const { garExcluirAgendamento } = await import("../lib/gestaoar");
+        await garExcluirAgendamento(s.garApiKey, order.garHashVenda);
+        req.log.info({ orderId: id }, "gar-cancelar-protocolo: agendamento GAR cancelado junto");
+      } catch (agendErr) {
+        req.log.warn({ err: agendErr, orderId: id }, "gar-cancelar-protocolo: não foi possível cancelar agendamento GAR (continuando)");
+      }
+    }
+
     await db.update(ordersTable).set({
       status: "cancelled",
       garStatus: "Cancelado",
       garSyncedAt: new Date(),
+      garAgendamentoDataHora: null,
+      garAgendamentoLocalNome: null,
+      garAgendamentoLocalHash: null,
+      garAgendamentoSlotHash: null,
+      scheduledAt: null,
     }).where(eq(ordersTable.id, id));
 
     const { logEvent } = await import("../lib/order-events");
-    await logEvent(id, "order_cancelled", `Protocolo GAR cancelado via Safeweb. Motivo: ${motivo ?? "Cancelado pelo administrador"}`, { result });
+    await logEvent(id, "order_cancelled", `Protocolo GAR cancelado via Safeweb. Agendamento removido. Motivo: ${motivo ?? "Cancelado pelo administrador"}`, { result });
 
-    res.json({ ok: true, message: "Protocolo cancelado com sucesso na Safeweb" });
+    res.json({ ok: true, message: "Protocolo e agendamento cancelados com sucesso" });
   } catch (err) {
     const msg = (err as Error).message ?? "";
     req.log.error({ err, orderId: id }, "gar-cancelar-protocolo: erro");
