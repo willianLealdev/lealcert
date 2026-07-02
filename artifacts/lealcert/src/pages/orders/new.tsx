@@ -723,14 +723,8 @@ export default function NewOrder() {
   function goToStep3() {
     if (!form.customerEmail) { toast({ title: "Atenção", description: "E-mail é obrigatório.", variant: "destructive" }); return; }
     if (!form.customerPhone) { toast({ title: "Atenção", description: "Telefone é obrigatório.", variant: "destructive" }); return; }
-    if (!cnhFile && !cnhKey) { toast({ title: "Atenção", description: "Envie o documento de identificação (frente).", variant: "destructive" }); return; }
-    if (!cnhVersoFile && !cnhVersoKey) { toast({ title: "Atenção", description: "Envie o verso do documento (com QR Code).", variant: "destructive" }); return; }
     if (form.repDocTipo === "0") { toast({ title: "Atenção", description: "Selecione o tipo de documento de identificação.", variant: "destructive" }); return; }
     if (!form.repDocNumero) { toast({ title: "Atenção", description: "Informe o número do documento de identificação.", variant: "destructive" }); return; }
-    if (isCnpjCert) {
-      if (!cartaoFile && !cartaoKey) { toast({ title: "Atenção", description: "Envie o Cartão CNPJ.", variant: "destructive" }); return; }
-      if (!fichaFile && !fichaKey) { toast({ title: "Atenção", description: "Envie a Ficha Cadastral.", variant: "destructive" }); return; }
-    }
     setStep(3);
     window.scrollTo(0, 0);
   }
@@ -745,27 +739,6 @@ export default function NewOrder() {
 
   // ── Submit ──
   async function handleSubmit() {
-    let uploadedKey = cnhKey;
-    if (cnhFile && !cnhKey) {
-      uploadedKey = await uploadDoc(cnhFile, "cnh", setCnhUploading, setCnhKey, "CNH/RG (frente)");
-      if (!uploadedKey) return;
-    }
-    let uploadedVersoKey = cnhVersoKey;
-    if (cnhVersoFile && !cnhVersoKey) {
-      uploadedVersoKey = await uploadDoc(cnhVersoFile, "cnh-verso", setCnhVersoUploading, setCnhVersoKey, "CNH/RG (verso)");
-      if (!uploadedVersoKey) return;
-    }
-    if (isCnpjCert) {
-      if (cartaoFile && !cartaoKey) {
-        const k = await uploadDoc(cartaoFile, "cartao-cnpj", setCartaoUploading, setCartaoKey, "Cartão CNPJ");
-        if (!k) return;
-      }
-      if (fichaFile && !fichaKey) {
-        const k = await uploadDoc(fichaFile, "ficha-cadastral", setFichaUploading, setFichaKey, "Ficha Cadastral");
-        if (!k) return;
-      }
-    }
-
     const hasPsbioValue = gateHasPsbioRef.current;
     const nfDigits = nfForm.nfCpfCnpj.replace(/\D/g, "");
 
@@ -800,8 +773,8 @@ export default function NewOrder() {
         representanteAddressCity: form.representanteAddressCity || undefined,
         representanteAddressState: form.representanteAddressState || undefined,
         representanteNascimento: form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
-        cnhPath: uploadedKey || undefined,
-        cnhVersoPath: uploadedVersoKey || undefined,
+        cnhPath: undefined,
+        cnhVersoPath: undefined,
         termsAccepted: termsAccepted,
         cartaoCnpjPath: cartaoKey || undefined,
         fichaCadastralPath: fichaKey || undefined,
@@ -1665,90 +1638,6 @@ export default function NewOrder() {
                         ))}
                       </select>
                     </div>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* ── Documentos ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />Documentos *</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed">
-                <p className="font-semibold mb-1">Documento de Identificação — Instruções</p>
-                <p>RG ou CNH Física: Aberta, fora do plástico e bem enquadrada. A foto deve ser feita a partir do documento original. Enviar também o verso com QR Code.</p>
-                <p className="mt-1">CNH ou RG Digital: Exportada do aplicativo, com o QR Code, em PDF.</p>
-              </div>
-
-              <div>
-                <Label className="mb-2 block">CNH ou RG — Frente *</Label>
-                <p className="text-xs text-muted-foreground mb-2">Foto ou cópia da frente da CNH ou RG (PDF, JPG ou PNG, máx. 5 MB).</p>
-                <UploadWidget
-                  label="Clique para selecionar arquivo" hint="PDF, JPG, JPEG ou PNG — máx. 5 MB"
-                  file={cnhFile} fileKey={cnhKey} uploading={cnhUploading}
-                  inputRef={cnhInputRef}
-                  onChange={f => { if (f && f.size > 5 * 1024 * 1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setCnhFile(f); setCnhKey(null); }}
-                  onUpload={() => cnhFile && uploadDoc(cnhFile, "cnh", setCnhUploading, setCnhKey, "CNH/RG (frente)")}
-                  onClear={() => { setCnhFile(null); setCnhKey(null); if (cnhInputRef.current) cnhInputRef.current.value = ""; }}
-                />
-              </div>
-
-              <div>
-                <Label className="mb-2 block">CNH ou RG — Verso * <span className="text-xs font-normal text-muted-foreground">(com QR Code)</span></Label>
-                <p className="text-xs text-muted-foreground mb-2">Foto ou cópia do verso da CNH ou RG com o QR Code (PDF, JPG ou PNG, máx. 5 MB).</p>
-                <UploadWidget
-                  label="Clique para selecionar arquivo" hint="PDF, JPG, JPEG ou PNG — máx. 5 MB"
-                  file={cnhVersoFile} fileKey={cnhVersoKey} uploading={cnhVersoUploading}
-                  inputRef={cnhVersoInputRef}
-                  onChange={f => { if (f && f.size > 5 * 1024 * 1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setCnhVersoFile(f); setCnhVersoKey(null); }}
-                  onUpload={() => cnhVersoFile && uploadDoc(cnhVersoFile, "cnh-verso", setCnhVersoUploading, setCnhVersoKey, "CNH/RG (verso)")}
-                  onClear={() => { setCnhVersoFile(null); setCnhVersoKey(null); if (cnhVersoInputRef.current) cnhVersoInputRef.current.value = ""; }}
-                />
-              </div>
-
-              {form.repNumeroTipo && (
-                <div>
-                  <Label className="mb-2 block">Documento comprobatório ({form.repNumeroTipo === "pis" ? "PIS" : form.repNumeroTipo.toUpperCase()})</Label>
-                  <p className="text-xs text-muted-foreground mb-2">Documento que comprove o {form.repNumeroTipo === "pis" ? "PIS" : form.repNumeroTipo.toUpperCase()} informado.</p>
-                  <UploadWidget
-                    label="Clique para selecionar arquivo" hint="PDF, JPG, JPEG ou PNG — máx. 5 MB"
-                    file={outrosFile} fileKey={outrosKey} uploading={outrosUploading}
-                    inputRef={outrosInputRef}
-                    onChange={f => { if (f && f.size > 5 * 1024 * 1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setOutrosFile(f); setOutrosKey(null); }}
-                    onUpload={() => outrosFile && uploadDoc(outrosFile, "outros", setOutrosUploading, setOutrosKey, "Documento comprobatório")}
-                    onClear={() => { setOutrosFile(null); setOutrosKey(null); if (outrosInputRef.current) outrosInputRef.current.value = ""; }}
-                  />
-                </div>
-              )}
-
-              {isCnpjCert && (
-                <>
-                  <div>
-                    <Label className="mb-2 block">Cartão CNPJ *</Label>
-                    <p className="text-xs text-muted-foreground mb-2">Cartão CNPJ emitido pela Receita Federal (PDF, JPG ou PNG, máx. 5 MB).</p>
-                    <UploadWidget
-                      label="Clique para selecionar arquivo" hint="PDF, JPG, JPEG ou PNG — máx. 5 MB"
-                      file={cartaoFile} fileKey={cartaoKey} uploading={cartaoUploading}
-                      inputRef={cartaoInputRef}
-                      onChange={f => { if (f && f.size > 5 * 1024 * 1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setCartaoFile(f); setCartaoKey(null); }}
-                      onUpload={() => cartaoFile && uploadDoc(cartaoFile, "cartao-cnpj", setCartaoUploading, setCartaoKey, "Cartão CNPJ")}
-                      onClear={() => { setCartaoFile(null); setCartaoKey(null); if (cartaoInputRef.current) cartaoInputRef.current.value = ""; }}
-                    />
-                  </div>
-                  <div>
-                    <Label className="mb-2 block">Ficha Cadastral Completa *</Label>
-                    <p className="text-xs text-muted-foreground mb-2">Ficha cadastral completa da empresa (PDF, JPG ou PNG, máx. 5 MB).</p>
-                    <UploadWidget
-                      label="Clique para selecionar arquivo" hint="PDF, JPG, JPEG ou PNG — máx. 5 MB"
-                      file={fichaFile} fileKey={fichaKey} uploading={fichaUploading}
-                      inputRef={fichaInputRef}
-                      onChange={f => { if (f && f.size > 5 * 1024 * 1024) { toast({ title: "Arquivo muito grande", description: "Máx. 5 MB.", variant: "destructive" }); return; } setFichaFile(f); setFichaKey(null); }}
-                      onUpload={() => fichaFile && uploadDoc(fichaFile, "ficha-cadastral", setFichaUploading, setFichaKey, "Ficha Cadastral")}
-                      onClear={() => { setFichaFile(null); setFichaKey(null); if (fichaInputRef.current) fichaInputRef.current.value = ""; }}
-                    />
                   </div>
                 </>
               )}
