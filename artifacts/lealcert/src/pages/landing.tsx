@@ -5,7 +5,7 @@ import {
   Shield, CheckCircle2, Clock, Award, Users, FileText,
   ChevronRight, MessageCircle, X, Send, Loader2, Bot,
   Star, Lock, Zap, Phone, Mail, MapPin, Menu,
-  Volume2, VolumeX, Upload, Paperclip
+  Volume2, VolumeX, ExternalLink
 } from "lucide-react";
 
 const CERTS = [
@@ -33,12 +33,6 @@ const BENEFITS = [
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 type PixQrInfo = { qrCodeDataUrl: string | null; pixPayload: string | null; pixKey: string | null; total: number; orderNumber: string };
-
-function getDocList(tipo: "cpf" | "cnpj" | "outros"): string[] {
-  if (tipo === "cpf") return ["RG ou CNH — frente", "RG ou CNH — verso (com QR Code)"];
-  if (tipo === "cnpj") return ["RG ou CNH do responsável — frente", "RG ou CNH do responsável — verso (com QR Code)", "Cartão CNPJ (emitido pela Receita Federal)", "Ficha Cadastral (Contrato Social ou Requerimento de Empresário)"];
-  return ["Documento comprobatório do CEI, PIS ou NIS"];
-}
 
 function normalizeVoiceText(text: string): string {
   let t = text;
@@ -104,18 +98,16 @@ function ChatWidget() {
   const [showMenuOptions, setShowMenuOptions] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [micSupported] = useState(() => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window));
-  const [docRequest, setDocRequest] = useState<{ tipo: "cpf" | "cnpj" | "outros" } | null>(null);
+  const [hopeUrl, setHopeUrl] = useState<string | null>(null);
+  const [docsConfirmed, setDocsConfirmed] = useState(false);
   const [pixQrInfo, setPixQrInfo] = useState<PixQrInfo | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
-  const [docFiles, setDocFiles] = useState<(File | null)[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [awaitingEmail, setAwaitingEmail] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const docFileInputsRef = useRef<(HTMLInputElement | null)[]>([]);
   const recognitionRef = useRef<{ start(): void; stop(): void; abort(): void; onresult: ((e: SpeechRecognitionEvent) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; lang: string; continuous: boolean; interimResults: boolean } | null>(null);
   const sendRef = useRef<(msg?: string) => Promise<void>>(() => Promise.resolve());
   const transcriptRef = useRef("");
@@ -234,12 +226,6 @@ function ChatWidget() {
   useEffect(() => { sendRef.current = send; });
   useEffect(() => { speakTextRef.current = speakText; });
 
-  useEffect(() => {
-    if (docRequest) {
-      setDocFiles(new Array(getDocList(docRequest.tipo).length).fill(null) as (File | null)[]);
-      docFileInputsRef.current = [];
-    }
-  }, [docRequest]);
 
   async function startSession() {
     if (sessionId) return;
@@ -318,6 +304,7 @@ function ChatWidget() {
               done?: boolean;
               action?: string;
               tipo?: string;
+              hopeUrl?: string;
               orderId?: number;
               orderNumber?: string;
               total?: number;
@@ -343,8 +330,9 @@ function ChatWidget() {
                 return copy;
               });
             }
-            if (ev.action === "solicitar_docs" && ev.tipo) {
-              setDocRequest({ tipo: ev.tipo as "cpf" | "cnpj" | "outros" });
+            if (ev.action === "mostrar_link_docs" && ev.hopeUrl) {
+              setHopeUrl(ev.hopeUrl);
+              setDocsConfirmed(false);
             }
             if (ev.action === "order_created" && ev.orderNumber) {
               if (ev.orderId) setCreatedOrderId(ev.orderId);
@@ -378,30 +366,10 @@ function ChatWidget() {
     }
   }
 
-  async function uploadDocs() {
-    const files = docFiles.filter((f): f is File => f !== null);
-    if (!files.length || !sessionId) return;
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      files.forEach(f => formData.append("files", f));
-      formData.append("sessionId", String(sessionId));
-      const res = await fetch("/api/chat/upload-docs", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json() as { files: string[] };
-      setDocRequest(null);
-      setDocFiles([]);
-      const names = data.files.join(", ");
-      await sendRef.current(`[DOCUMENTOS_ENVIADOS] Arquivos enviados: ${names}. Por favor, prossiga com a criação do pedido.`);
-    } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "❌ Erro ao enviar os documentos. Por favor, tente novamente." }]);
-    } finally {
-      setUploading(false);
-    }
+  async function confirmDocsUploaded() {
+    if (!sessionId) return;
+    setDocsConfirmed(true);
+    await sendRef.current("[DOCS_CONFIRMADOS] Confirmei o envio dos documentos no portal Hope. Pode prosseguir com o agendamento da videoconferência.");
   }
 
   async function toggleMic() {
@@ -650,67 +618,46 @@ function ChatWidget() {
               </div>
             )}
             {loading && messages[messages.length - 1]?.content === "" && null}
-            {docRequest && (() => {
-              const docList = getDocList(docRequest.tipo);
-              const allSelected = docFiles.every(f => f !== null) && docFiles.length === docList.length;
-              const anySelected = docFiles.some(f => f !== null);
-              return (
-                <div className="flex justify-start gap-2">
-                  <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
-                    <Bot className="h-3.5 w-3.5 text-white" />
-                  </div>
-                  <div className="max-w-[92%] bg-white border border-blue-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm">
-                    <p className="font-semibold text-gray-800 mb-3">
-                      📎 {docRequest.tipo === "cpf" ? "Documentos necessários — e-CPF" : docRequest.tipo === "cnpj" ? "Documentos necessários — e-CNPJ" : "Documento comprobatório (CEI / PIS / NIS)"}
-                    </p>
-                    <div className="space-y-2 mb-3">
-                      {docList.map((doc, i) => (
-                        <div key={doc} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-gray-700 font-medium truncate">{doc}</p>
-                            {docFiles[i] ? (
-                              <p className="text-xs text-green-600 truncate mt-0.5 flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3 shrink-0" />
-                                {docFiles[i]!.name}
-                              </p>
-                            ) : (
-                              <p className="text-xs text-gray-400 mt-0.5">Nenhum arquivo selecionado</p>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => docFileInputsRef.current[i]?.click()}
-                            className="shrink-0 flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md bg-white border border-gray-300 hover:bg-blue-50 hover:border-blue-400 text-gray-600 hover:text-blue-600 transition-colors"
-                          >
-                            <Paperclip className="h-3 w-3" />
-                            {docFiles[i] ? "Trocar" : "Selecionar"}
-                          </button>
-                          <input
-                            type="file"
-                            accept="image/*,.pdf"
-                            className="hidden"
-                            ref={el => { docFileInputsRef.current[i] = el; }}
-                            onChange={e => {
-                              const file = e.target.files?.[0] ?? null;
-                              setDocFiles(prev => { const c = [...prev]; c[i] = file; return c; });
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    {anySelected && (
-                      <button
-                        onClick={uploadDocs}
-                        disabled={uploading}
-                        className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
-                      >
-                        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                        {uploading ? "Enviando…" : allSelected ? "Enviar todos os documentos" : `Enviar ${docFiles.filter(Boolean).length} de ${docList.length} documentos`}
-                      </button>
-                    )}
-                  </div>
+            {hopeUrl && !docsConfirmed && (
+              <div className="flex justify-start gap-2">
+                <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-white" />
                 </div>
-              );
-            })()}
+                <div className="max-w-[92%] bg-white border border-amber-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm">
+                  <p className="font-semibold text-gray-800 mb-1">📄 Envio de Documentos</p>
+                  <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+                    Clique no botão abaixo para acessar o portal seguro e fazer o upload dos seus documentos. Quando concluir, confirme aqui para prosseguir com o agendamento.
+                  </p>
+                  <a
+                    href={hopeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-medium mb-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Abrir Portal de Documentos
+                  </a>
+                  <button
+                    onClick={confirmDocsUploaded}
+                    className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors font-medium"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    ✅ Já enviei os documentos
+                  </button>
+                </div>
+              </div>
+            )}
+            {hopeUrl && docsConfirmed && (
+              <div className="flex justify-start gap-2">
+                <div className="h-7 w-7 rounded-full bg-green-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="max-w-[92%] bg-green-50 border border-green-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm">
+                  <p className="font-semibold text-green-800">✅ Documentos confirmados!</p>
+                  <p className="text-xs text-green-700 mt-0.5">Seu envio foi registrado. Aguarde a confirmação do assistente para prosseguir.</p>
+                </div>
+              </div>
+            )}
             {pixQrInfo && (
               <div className="flex justify-start gap-2">
                 <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">

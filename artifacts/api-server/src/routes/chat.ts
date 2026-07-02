@@ -106,10 +106,21 @@ Diga EXATAMENTE esta frase ao solicitar o e-mail: "Por favor, **digite** seu e-m
 Aguarde o cliente digitar e confirmar antes de prosseguir.
 
 ════════════════════════════════════════════════════════════
-🚫 PROIBIÇÃO ABSOLUTA — ENVIO DE DOCUMENTOS:
-NUNCA peça ao cliente para enviar documentos por e-mail, WhatsApp, link externo, site da Safeweb ou qualquer outro canal.
-O envio de documentos ocorre EXCLUSIVAMENTE pelo botão de upload que aparece automaticamente na tela quando você emite ACAO:SOLICITAR_DOCS.
-NUNCA mencione safeweb.com.br/upload, links externos ou qualquer outra URL para envio de arquivos.
+📄 DOCUMENTOS — REGRA ABSOLUTA:
+O envio de documentos ocorre EXCLUSIVAMENTE pelo portal Hope, cujo link/botão aparece AUTOMATICAMENTE na tela após o pagamento ser confirmado.
+NUNCA peça ao cliente para enviar documentos por e-mail, WhatsApp ou qualquer outro canal.
+NUNCA emita ACAO:SOLICITAR_DOCS. Esse mecanismo não existe mais.
+Após [PAGAMENTO_CONFIRMADO], informe: "Um botão com o link para enviar seus documentos apareceu na tela abaixo. Clique em **Abrir Portal de Documentos**, faça o upload e depois clique em **✅ Já enviei os documentos** para prosseguir."
+Aguarde [DOCS_CONFIRMADOS] antes de oferecer o agendamento.
+════════════════════════════════════════════════════════════
+
+════════════════════════════════════════════════════════════
+💰 PREÇOS — REGRA INVIOLÁVEL (LEI MÁXIMA):
+O [CATALOGO_PRECOS] já está filtrado para o PERFIL EXATO do cliente (cliente ou contador).
+NUNCA calcule, estime ou mencione valores fora do catálogo.
+NUNCA mostre preços de contador para um cliente comum, nem preços de cliente para um contador.
+Se o catálogo tiver uma tag [PERFIL:CONTADOR] — use SOMENTE esses valores. Idem [PERFIL:CLIENTE].
+ESSA REGRA NUNCA PODE SER VIOLADA.
 ════════════════════════════════════════════════════════════
 
 ════════════════════════════════════════════════════════════
@@ -313,11 +324,8 @@ REGRA e-CPF: Para e-CPF, o titular É o representante. No ACAO:CRIAR_PEDIDO pree
   • representanteDocTipo / representanteDocNumero / representanteDocEmissor = dados coletados no item 6
   • representanteAddress* = mesmo endereço do titular (addressZipcode, addressStreet, etc.)
 
-Após coletar os dados acima, solicite os documentos:
-→ Emita na linha seguinte (sem nada depois): ACAO:SOLICITAR_DOCS:{"tipo":"cpf"}
-  Documentos obrigatórios: RG ou CNH do titular (frente e verso)
-  Se o titular tiver CEI/PIS/NIS: inclua também o documento comprobatório.
-Aguarde [DOCUMENTOS_ENVIADOS] antes de continuar para o PASSO 7.
+Informe ao cliente: "Perfeito! Após o pagamento, um botão aparecerá na tela para você enviar seus documentos (RG ou CNH frente e verso) pelo portal seguro. Agora vamos continuar com os dados da nota fiscal."
+Prossiga IMEDIATAMENTE para o PASSO 7 (não aguarde documentos agora).
 
 ═══ e-CNPJ ═══
 (Só após [CNPJ_RESPONSAVEL_OK])
@@ -337,16 +345,13 @@ Colete na ordem:
      • Se sim: registre o número e informe que precisará enviar o documento comprobatório.
      • Se não: prossiga normalmente.
 
-Após coletar os dados acima, solicite os documentos:
-→ Emita na linha seguinte (sem nada depois): ACAO:SOLICITAR_DOCS:{"tipo":"cnpj"}
-  Documentos obrigatórios: RG ou CNH do representante + Cartão CNPJ + Ficha Cadastral (Contrato Social / Requerimento de Empresário)
-  Se o representante tiver CEI/PIS/NIS: inclua também o documento comprobatório.
-Aguarde [DOCUMENTOS_ENVIADOS] antes de continuar para o PASSO 7.
+Informe ao cliente: "Perfeito! Após o pagamento, um botão aparecerá na tela para você enviar os documentos (RG/CNH do responsável, Cartão CNPJ e Ficha Cadastral) pelo portal seguro. Agora vamos continuar com a nota fiscal."
+Prossiga IMEDIATAMENTE para o PASSO 7 (não aguarde documentos agora).
 
 Se o cliente tem [USUARIO_VERIFICADO], confirme os dados cadastrados em vez de pedir novamente do zero.
 
 ▶ PASSO 7 — NOTA FISCAL
-(Só após [DOCUMENTOS_ENVIADOS])
+(Só após coletar todos os dados do PASSO 6)
 Colete os dados para emissão da nota fiscal do certificado. Pergunte UMA VEZ:
 "A nota fiscal será emitida em **CPF** (seu nome) ou **CNPJ** (empresa)?"
 
@@ -384,7 +389,6 @@ Pergunta: "Os dados acima estão corretos? Confirme para gerar o QR Code PIX de 
 ▶ PASSO 9 — CRIAR PEDIDO
 Execute SOMENTE após:
 ✅ Confirmação explícita do cliente ("sim", "confirmo", "correto", "pode prosseguir" etc.)
-✅ [DOCUMENTOS_ENVIADOS] no histórico
 
 Emita EXATAMENTE neste formato na linha seguinte (sem nada depois):
 ACAO:CRIAR_PEDIDO:{"certificateId":<id_inteiro_de_CATALOGO_PRECOS>,"clientType":"cpf|cnpj","customerName":"<nome completo>","customerCpfCnpj":"<somente_digitos>","customerBirthDate":"<DD/MM/AAAA ou null>","customerEmail":"<email>","customerPhone":"<somente_digitos>","companyName":"<razao_social_ou_null>","addressZipcode":"<8digitos>","addressStreet":"<rua>","addressNumber":"<numero>","addressComplement":"<complemento_ou_null>","addressNeighborhood":"<bairro>","addressCity":"<cidade>","addressState":"<UF>","extendedWarranty":<true|false>,"customerCei":"<numero_cei_ou_null>","customerNis":"<numero_pis_nis_ou_null>","representanteCpf":"<cpf_do_representante_somente_digitos_ou_null>","representanteNascimento":"<DD/MM/AAAA_ou_null>","representanteDocTipo":"<1=RG|2=RNE|3=Passaporte|4=CNH|0=NaoInformado>","representanteDocNumero":"<numero_doc_ou_null>","representanteDocEmissor":"<orgao_emissor_ou_null>","representanteAddressZipcode":"<8digitos_ou_null>","representanteAddressStreet":"<rua_ou_null>","representanteAddressNumber":"<numero_ou_null>","representanteAddressComplement":"<complemento_ou_null>","representanteAddressNeighborhood":"<bairro_ou_null>","representanteAddressCity":"<cidade_ou_null>","representanteAddressState":"<UF_ou_null>","nfCnpj":"<cnpj_nota_fiscal_14digitos_ou_null>","nfNome":"<nome_ou_razao_social_para_nf>","nfZipcode":"<8digitos_cep_cobranca>","nfStreet":"<rua_cobranca>","nfNumber":"<numero_cobranca>","nfComplement":"<complemento_cobranca_ou_null>","nfNeighborhood":"<bairro_cobranca>","nfCity":"<cidade_cobranca>","nfState":"<UF_cobranca>"}
@@ -409,9 +413,16 @@ Se [PAGAMENTO_PENDENTE]:
 
 Se [PAGAMENTO_CONFIRMADO]:
   Exiba: "✅ Pagamento confirmado! Protocolo: **[protocolo]**. Guarde este número — você precisará dele em qualquer atendimento de suporte."
+  Informe: "📄 Um botão com o link para enviar seus documentos apareceu na tela abaixo. Clique em **Abrir Portal de Documentos**, faça o upload e depois clique em **✅ Já enviei os documentos** para prosseguir com o agendamento."
+  Aguarde o cliente confirmar o envio dos documentos ([DOCS_CONFIRMADOS]) antes de oferecer o agendamento.
+
+▶ PASSO 11.5 — CONFIRMAÇÃO DOS DOCUMENTOS
+Se [DOCS_CONFIRMADOS] aparecer no histórico (cliente confirmou envio dos docs):
+  Informe: "✅ Documentos recebidos! Agora podemos agendar sua videoconferência."
   Pergunte: "Deseja agendar agora a videoconferência para a emissão do certificado?"
 
 ▶ PASSO 12 — AGENDAMENTO DA VIDEOCONFERÊNCIA
+(Só após [DOCS_CONFIRMADOS])
 Se o cliente disser SIM, emita:
 ACAO:BUSCAR_HORARIOS:{}
 O sistema injetará [HORARIOS_DISPONIVEIS:{"slots":[{"id":N,"dataHora":"DD/MM/AAAA HH:MM"},...]}].
@@ -580,13 +591,15 @@ router.post("/chat", async (req, res): Promise<void> => {
       await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: sysMsg });
       chatHistory.push({ role: "user" as const, content: sysMsg });
 
-      // Injeta catálogo se verificado
-      if (verifiedCpfCnpj) {
+      // Injeta catálogo com preço correto para o perfil do usuário
+      if (verifiedCpfCnpj && user) {
+        const isContador = user.userType === "contador";
         const certs = await db
-          .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price, product: certificatesTable.product, model: certificatesTable.model, validityMonths: certificatesTable.validityMonths, issuanceType: certificatesTable.issuanceType })
+          .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price, priceContador: certificatesTable.priceContador, product: certificatesTable.product, model: certificatesTable.model, validityMonths: certificatesTable.validityMonths, issuanceType: certificatesTable.issuanceType })
           .from(certificatesTable)
           .where(eq(certificatesTable.active, true));
 
+        const perfilTag = isContador ? "[PERFIL:CONTADOR]" : "[PERFIL:CLIENTE]";
         let catalogMsg: string;
         if (certs.length === 0) {
           catalogMsg = `[CATALOGO_VAZIO] Nenhum certificado disponível no momento. Informe ao cliente que o catálogo está temporariamente indisponível.`;
@@ -594,10 +607,14 @@ router.post("/chat", async (req, res): Promise<void> => {
           const lines = certs.map(c => {
             const valYears = c.validityMonths ? Math.round(c.validityMonths / 12) : 1;
             const modelo = c.model ?? "A1";
-            const tipo = c.product ?? "";
-            return `  - ID:${c.id} | ${c.name} | Produto:${tipo} | Modelo:${modelo} | Validade:${valYears}ano(s) | Emissão:${c.issuanceType ?? ""} — R$ ${parseFloat(c.price).toFixed(2)}`;
+            const prodTipo = c.product ?? "";
+            // ⚠️ REGRA: contador usa priceContador se disponível; cliente usa SEMPRE price
+            const priceToUse = isContador && c.priceContador && parseFloat(c.priceContador) > 0
+              ? parseFloat(c.priceContador)
+              : parseFloat(c.price);
+            return `  - ID:${c.id} | ${c.name} | Produto:${prodTipo} | Modelo:${modelo} | Validade:${valYears}ano(s) | Emissão:${c.issuanceType ?? ""} — R$ ${priceToUse.toFixed(2)}`;
           }).join("\n");
-          catalogMsg = `[CATALOGO_PRECOS] Catálogo completo (use somente estes IDs e valores — filtre pelo produto e modelo escolhido pelo cliente):\n${lines}`;
+          catalogMsg = `[CATALOGO_PRECOS] ${perfilTag} Catálogo exclusivo para este perfil (PROIBIDO usar outros valores — filtre pelo produto e modelo escolhido):\n${lines}`;
         }
 
         await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: catalogMsg });
@@ -792,12 +809,6 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
 
   // ── 7. Processar ações da IA ───────────────────────────────────────────────
-
-  // Ação: solicitar documentos
-  if (fullResponse.includes("ACAO:SOLICITAR_DOCS:")) {
-    const match = fullResponse.match(/ACAO:SOLICITAR_DOCS:\{"tipo":"(cpf|cnpj)"\}/);
-    if (match) res.write(`data: ${JSON.stringify({ action: "solicitar_docs", tipo: match[1] })}\n\n`);
-  }
 
   // Ação: criar pedido
   if (fullResponse.includes("ACAO:CRIAR_PEDIDO:")) {
@@ -1239,22 +1250,27 @@ router.post("/chat", async (req, res): Promise<void> => {
       await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: cadastroMsg });
       await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: verificadoMsg });
 
-      // Injetar catálogo
-      const certs = await db
-        .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price, product: certificatesTable.product, model: certificatesTable.model, validityMonths: certificatesTable.validityMonths, issuanceType: certificatesTable.issuanceType })
+      // Injetar catálogo com preço correto para o perfil recém-criado
+      const isContadorNovo = cadastroData.userType === "contador";
+      const certsNovo = await db
+        .select({ id: certificatesTable.id, name: certificatesTable.name, price: certificatesTable.price, priceContador: certificatesTable.priceContador, product: certificatesTable.product, model: certificatesTable.model, validityMonths: certificatesTable.validityMonths, issuanceType: certificatesTable.issuanceType })
         .from(certificatesTable)
         .where(eq(certificatesTable.active, true));
 
+      const perfilTagNovo = isContadorNovo ? "[PERFIL:CONTADOR]" : "[PERFIL:CLIENTE]";
       let catalogMsg: string;
-      if (certs.length === 0) {
+      if (certsNovo.length === 0) {
         catalogMsg = `[CATALOGO_VAZIO] Nenhum certificado disponível no momento.`;
       } else {
-        const lines = certs.map(c => {
+        const lines = certsNovo.map(c => {
           const valYears = c.validityMonths ? Math.round(c.validityMonths / 12) : 1;
           const modelo = c.model ?? "A1";
-          return `  - ID:${c.id} | ${c.name} | Produto:${c.product ?? ""} | Modelo:${modelo} | Validade:${valYears}ano(s) | Emissão:${c.issuanceType ?? ""} — R$ ${parseFloat(c.price).toFixed(2)}`;
+          const priceToUse = isContadorNovo && c.priceContador && parseFloat(c.priceContador) > 0
+            ? parseFloat(c.priceContador)
+            : parseFloat(c.price);
+          return `  - ID:${c.id} | ${c.name} | Produto:${c.product ?? ""} | Modelo:${modelo} | Validade:${valYears}ano(s) | Emissão:${c.issuanceType ?? ""} — R$ ${priceToUse.toFixed(2)}`;
         }).join("\n");
-        catalogMsg = `[CATALOGO_PRECOS] Catálogo completo (filtre pelo produto e modelo escolhido pelo cliente):\n${lines}`;
+        catalogMsg = `[CATALOGO_PRECOS] ${perfilTagNovo} Catálogo exclusivo para este perfil (PROIBIDO usar outros valores — filtre pelo produto e modelo escolhido):\n${lines}`;
       }
       await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: catalogMsg });
 
@@ -1323,6 +1339,7 @@ router.post("/chat", async (req, res): Promise<void> => {
         id: ordersTable.id, orderNumber: ordersTable.orderNumber,
         status: ordersTable.status, garPedido: ordersTable.garPedido,
         safewebSolicitacaoId: ordersTable.safewebSolicitacaoId,
+        garHopeUploadUrl: ordersTable.garHopeUploadUrl,
       }).from(ordersTable).where(eq(ordersTable.id, vpOrderId)).limit(1);
 
       const paidStatuses = ["paid", "protocol_assigned", "aguardando_validacao", "emitido", "completed"];
@@ -1332,10 +1349,29 @@ router.post("/chat", async (req, res): Promise<void> => {
         await streamFollowUp([{ role: "user" as const, content: injMsg }]);
       } else {
         const protocolo = orderRow.garPedido ?? orderRow.safewebSolicitacaoId ?? orderRow.orderNumber;
-        const injMsg = `[PAGAMENTO_CONFIRMADO:{"protocolo":"${protocolo}","orderId":${vpOrderId}}]`;
+        const hopeUrl = orderRow.garHopeUploadUrl ?? null;
+
+        // Injeta confirmação de pagamento com Hope URL se disponível
+        const hopeInfo = hopeUrl ? ` | HOPE_URL:${hopeUrl}` : "";
+        const injMsg = `[PAGAMENTO_CONFIRMADO:{"protocolo":"${protocolo}","orderId":${vpOrderId}${hopeInfo ? ',"hopeUrl":"' + hopeUrl + '"' : ''}}]`;
         await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: injMsg });
+
+        // Emite evento de pagamento confirmado
         res.write(`data: ${JSON.stringify({ action: "payment_confirmed", protocolo, orderId: vpOrderId })}\n\n`);
-        await streamFollowUp([{ role: "user" as const, content: injMsg }]);
+
+        // Emite Hope URL para o frontend mostrar o card de documentos
+        if (hopeUrl) {
+          res.write(`data: ${JSON.stringify({ action: "mostrar_link_docs", hopeUrl, orderId: vpOrderId })}\n\n`);
+          // Injeta no histórico para o AI saber que o link foi exibido
+          const hopeSysMsg = `[HOPE_LINK_EXIBIDO] URL do portal de documentos exibida na tela do cliente. Instrua-o a clicar no botão "Abrir Portal de Documentos" e depois em "✅ Já enviei os documentos".`;
+          await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: hopeSysMsg });
+          await streamFollowUp([{ role: "user" as const, content: injMsg }, { role: "user" as const, content: hopeSysMsg }]);
+        } else {
+          // Hope URL ainda não disponível (GAR ainda processando)
+          const hopePendMsg = `[HOPE_LINK_PENDENTE] O link para upload de documentos ainda está sendo gerado (processamento GAR em andamento). Informe o cliente que o link aparecerá em breve; ele pode aguardar e verificar novamente.`;
+          await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: hopePendMsg });
+          await streamFollowUp([{ role: "user" as const, content: injMsg }, { role: "user" as const, content: hopePendMsg }]);
+        }
       }
     } catch (vpErr) {
       logger.error({ err: vpErr }, "Failed to process VERIFICAR_PAGAMENTO action");
