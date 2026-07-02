@@ -11,6 +11,7 @@ import {
   useGetOrderGarLocais,
   useGetOrderGarDisponibilidade,
   useGarCancelarAgendamento,
+  useGarCancelarProtocolo,
   useAgendarOrder,
   useAgendarSafewebOrder,
   useCancelarSafewebOrder,
@@ -1268,6 +1269,21 @@ export default function OrderDetail() {
     },
   });
 
+  const [garCancelMotivo, setGarCancelMotivo] = useState("");
+  const cancelarGarProtocolo = useGarCancelarProtocolo({
+    mutation: {
+      onSuccess: () => {
+        setGarCancelMotivo("");
+        toast({ title: "Protocolo cancelado", description: "O protocolo foi cancelado com sucesso na Safeweb." });
+        refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao cancelar protocolo.";
+        toast({ title: "Erro ao cancelar protocolo", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
   const syncProvider = useSyncProviderOrder({
     mutation: {
       onSuccess: (data) => {
@@ -1827,34 +1843,75 @@ export default function OrderDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" disabled={updateOrder.isPending}>
-                      {updateOrder.isPending
-                        ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        : <Ban className="h-4 w-4 mr-2" />}
-                      Cancelar Pedido
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Cancelar pedido?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        O pedido será marcado como <strong>Cancelado</strong> no sistema. Esta ação não pode ser desfeita.
-                        {hasGar && " O protocolo GAR não possui cancelamento via API — o cancelamento é apenas no sistema."}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Voltar</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={() => updateOrder.mutate({ id: Number(id), data: { status: "cancelled" } })}
-                      >
-                        Confirmar Cancelamento
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {/* GAR com protocolo → cancela via API Safeweb */}
+                {hasGar && garProtocolo ? (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" disabled={cancelarGarProtocolo.isPending}>
+                        {cancelarGarProtocolo.isPending
+                          ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          : <Ban className="h-4 w-4 mr-2" />}
+                        Cancelar Protocolo
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancelar protocolo GAR?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          O protocolo <strong>{garProtocolo}</strong> será cancelado via API Safeweb e o pedido marcado como Cancelado. Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="px-1 py-2 space-y-2">
+                        <Label htmlFor="gar-cancel-motivo">Motivo do cancelamento</Label>
+                        <Textarea
+                          id="gar-cancel-motivo"
+                          placeholder="Ex: Cliente desistiu da compra..."
+                          value={garCancelMotivo}
+                          onChange={e => setGarCancelMotivo(e.target.value)}
+                          rows={3}
+                        />
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setGarCancelMotivo("")}>Voltar</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => cancelarGarProtocolo.mutate({ id: Number(id), data: { motivo: garCancelMotivo.trim() || "Cancelado pelo administrador" } })}
+                        >
+                          Confirmar Cancelamento
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : (
+                  /* Sem protocolo GAR → cancela apenas no sistema */
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" disabled={updateOrder.isPending}>
+                        {updateOrder.isPending
+                          ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          : <Ban className="h-4 w-4 mr-2" />}
+                        Cancelar Pedido
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancelar pedido?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          O pedido será marcado como <strong>Cancelado</strong> no sistema. Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Voltar</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => updateOrder.mutate({ id: Number(id), data: { status: "cancelled" } })}
+                        >
+                          Confirmar Cancelamento
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </CardContent>
             </Card>
           )}

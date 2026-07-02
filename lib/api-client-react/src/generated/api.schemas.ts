@@ -1674,6 +1674,15 @@ export type GarCancelarAgendamento200 = {
   ok?: boolean;
 };
 
+export type GarCancelarProtocoloBody = {
+  motivo?: string;
+};
+
+export type GarCancelarProtocolo200 = {
+  ok?: boolean;
+  message?: string;
+};
+
 export type SubscribePush200 = {
   ok?: boolean;
 };

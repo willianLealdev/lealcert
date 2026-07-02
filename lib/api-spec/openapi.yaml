@@ -1676,6 +1676,31 @@ paths:
                 properties:
                   ok: { type: boolean }
 
+  /orders/{id}/gar-cancelar-protocolo:
+    post:
+      operationId: garCancelarProtocolo
+      tags: [gestaoar]
+      summary: Cancela o protocolo GAR via API Safeweb e marca o pedido como cancelado
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo: { type: string }
+      responses:
+        "200":
+          description: Protocolo cancelado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  message: { type: string }
+
   /orders/{id}/gar-comprar:
     post:
       operationId: garComprarOrder

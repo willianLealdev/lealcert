@@ -57,6 +57,7 @@ export * from './emailValidationResult';
 export * from './errorResponse';
 export * from './forgotPasswordInput';
 export * from './garCancelarAgendamento200';
+export * from './garCancelarProtocolo200';
 export * from './garComprarInput';
 export * from './garComprarResult';
 export * from './garComprarResultGarResult';

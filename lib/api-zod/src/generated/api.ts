@@ -1746,6 +1746,23 @@ export const GarCancelarAgendamentoResponse = zod.object({
 
 
 /**
+ * @summary Cancela o protocolo GAR via API Safeweb e marca o pedido como cancelado
+ */
+export const GarCancelarProtocoloParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GarCancelarProtocoloBody = zod.object({
+  "motivo": zod.string().optional()
+})
+
+export const GarCancelarProtocoloResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "message": zod.string().optional()
+})
+
+
+/**
  * @summary Registra a venda de um pedido na Gestão AR e emite protocolo
  */
 export const GarComprarOrderParams = zod.object({

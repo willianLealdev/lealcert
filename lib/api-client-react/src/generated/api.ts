@@ -57,6 +57,8 @@ import type {
   ErrorResponse,
   ForgotPasswordInput,
   GarCancelarAgendamento200,
+  GarCancelarProtocolo200,
+  GarCancelarProtocoloBody,
   GarComprarInput,
   GarComprarResult,
   GarDisponibilidadeResult,
@@ -6431,6 +6433,78 @@ export const useGarCancelarAgendamento = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getGarCancelarAgendamentoMutationOptions(options));
+    }
+
+export const getGarCancelarProtocoloUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/gar-cancelar-protocolo`
+}
+
+/**
+ * @summary Cancela o protocolo GAR via API Safeweb e marca o pedido como cancelado
+ */
+export const garCancelarProtocolo = async (id: number,
+    garCancelarProtocoloBody?: GarCancelarProtocoloBody, options?: RequestInit): Promise<GarCancelarProtocolo200> => {
+
+  return customFetch<GarCancelarProtocolo200>(getGarCancelarProtocoloUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      garCancelarProtocoloBody,)
+  }
+);}
+
+
+
+
+export const getGarCancelarProtocoloMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof garCancelarProtocolo>>, TError,{id: number;data?: BodyType<GarCancelarProtocoloBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof garCancelarProtocolo>>, TError,{id: number;data?: BodyType<GarCancelarProtocoloBody>}, TContext> => {
+
+const mutationKey = ['garCancelarProtocolo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof garCancelarProtocolo>>, {id: number;data?: BodyType<GarCancelarProtocoloBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  garCancelarProtocolo(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GarCancelarProtocoloMutationResult = NonNullable<Awaited<ReturnType<typeof garCancelarProtocolo>>>
+    export type GarCancelarProtocoloMutationBody = BodyType<GarCancelarProtocoloBody> | undefined
+    export type GarCancelarProtocoloMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Cancela o protocolo GAR via API Safeweb e marca o pedido como cancelado
+ */
+export const useGarCancelarProtocolo = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof garCancelarProtocolo>>, TError,{id: number;data?: BodyType<GarCancelarProtocoloBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof garCancelarProtocolo>>,
+        TError,
+        {id: number;data?: BodyType<GarCancelarProtocoloBody>},
+        TContext
+      > => {
+      return useMutation(getGarCancelarProtocoloMutationOptions(options));
     }
 
 export const getGarComprarOrderUrl = (id: number,) => {
