@@ -37,7 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, QrCode, Loader2, FileText, Download, RefreshCw,
   ShoppingBag, CheckCircle2, Calendar, MapPin, Video, Clock, ChevronRight, Check,
-  Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag, Copy, Ban,
+  Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag, Copy, Ban, ExternalLink,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -185,11 +185,12 @@ function OrderTimeline({ orderId, isPendingPayment }: { orderId: number; isPendi
 }
 
 // ── Componente de Agendamento ─────────────────────────────────────────────────
-function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgendamentoLocalNome, onSuccess }: {
+function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgendamentoLocalNome, garAgendamentoLink, onSuccess }: {
   orderId: number;
   garProtocolo: string;
   garAgendamentoDataHora?: string;
   garAgendamentoLocalNome?: string;
+  garAgendamentoLink?: string;
   onSuccess: () => void;
 }) {
   const { toast } = useToast();
@@ -346,6 +347,17 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
               </div>
             </div>
           </div>
+          {garAgendamentoLink && (
+            <a
+              href={garAgendamentoLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Acessar Portal de Envio de Documentos
+            </a>
+          )}
           <p className="text-xs text-green-700">
             Um e-mail de confirmação foi enviado com os detalhes do atendimento.
           </p>
@@ -1332,6 +1344,7 @@ export default function OrderDetail() {
     garSyncedAt?: string | null;
     garAgendamentoDataHora?: string | null;
     garAgendamentoLocalNome?: string | null;
+    garAgendamentoLink?: string | null;
     safewebSolicitacaoId?: string | null;
     safewebStatus?: string | null;
     safewebSyncedAt?: string | null;
@@ -1346,6 +1359,7 @@ export default function OrderDetail() {
   const garSyncedAt = orderExt.garSyncedAt ?? undefined;
   const garAgendamentoDataHora = orderExt.garAgendamentoDataHora ?? undefined;
   const garAgendamentoLocalNome = orderExt.garAgendamentoLocalNome ?? undefined;
+  const garAgendamentoLink = orderExt.garAgendamentoLink ?? undefined;
 
   const hasSafeweb = !!orderExt.safewebSolicitacaoId;
   const safewebSolicitacaoId = orderExt.safewebSolicitacaoId ?? undefined;
@@ -1614,6 +1628,7 @@ export default function OrderDetail() {
               garProtocolo={garProtocolo!}
               garAgendamentoDataHora={garAgendamentoDataHora}
               garAgendamentoLocalNome={garAgendamentoLocalNome}
+              garAgendamentoLink={garAgendamentoLink}
               onSuccess={refetch}
             />
           )}
