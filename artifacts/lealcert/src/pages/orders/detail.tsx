@@ -703,7 +703,7 @@ function GarSchedulingDialog({
                 <strong>Importante:</strong> apresente documento de identificação original (RG ou CNH). Compareça com 10 minutos de antecedência.
               </div>
               <p className="text-sm text-muted-foreground">
-                Após confirmar, você receberá um e-mail com os detalhes do agendamento.
+                Após confirmar, um atendente entrará em contato pelo número cadastrado no sistema para iniciar o atendimento.
               </p>
             </div>
           )}
