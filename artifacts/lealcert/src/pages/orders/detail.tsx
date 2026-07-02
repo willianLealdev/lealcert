@@ -437,17 +437,6 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
               </div>
             </div>
           </div>
-          {garAgendamentoLink && (
-            <a
-              href={garAgendamentoLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Acessar Portal de Envio de Documentos
-            </a>
-          )}
           <p className="text-xs text-green-700">
             Um e-mail de confirmação foi enviado com os detalhes do atendimento.
           </p>
