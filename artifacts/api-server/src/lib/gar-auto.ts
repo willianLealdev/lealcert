@@ -5,7 +5,7 @@
  */
 import { eq } from "drizzle-orm";
 import { db, ordersTable, certificatesTable, settingsTable } from "@workspace/db";
-import { garComprar, garEmitirProtocolo } from "./gestaoar";
+import { garComprar, garConsultarStatus, garEmitirProtocolo } from "./gestaoar";
 import { logger } from "./logger";
 import { logEvent } from "./order-events";
 
@@ -156,14 +156,22 @@ export async function garAutoComprar(orderId: number): Promise<void> {
 
         const success = protoResult[0]?.ErrorCode === "000";
         if (success) {
-          const protocolo = protoResult[0]?.ErrorDescription;
+          // Buscar o número real do protocolo via ConsultaPedidoProtocolo
+          let protocolo: string | undefined;
+          try {
+            const statusResult = await garConsultarStatus(settings.garApiKey!, String(garPedidoNumero));
+            protocolo = statusResult.Protocolo ?? undefined;
+          } catch {
+            // fallback: sem protocolo — admin pode buscar manualmente
+          }
+
           await db.update(ordersTable).set({
-            garProtocolo: protocolo,
+            garProtocolo: protocolo ?? null,
             garStatus: "Protocolo emitido",
             status: "protocol_assigned",
           }).where(eq(ordersTable.id, orderId));
 
-          await logEvent(orderId, "gar_protocol_emitted", `Protocolo emitido na Gestão AR: ${protocolo}`, {
+          await logEvent(orderId, "gar_protocol_emitted", `Protocolo emitido na Gestão AR: ${protocolo ?? "(aguardando número)"}`, {
             protocolo,
             garPedido: garPedidoNumero,
           });
