@@ -472,10 +472,21 @@ export async function garExcluirAgendamento(
   apiKey: string,
   hashVenda: string,
 ): Promise<{ Status?: number; Erros?: { Ocorrencia: string }[] }> {
-  return garPost<{ Status?: number; Erros?: { Ocorrencia: string }[] }>("ExcluirAgendamento", {
-    apiKey,
-    HashVenda: hashVenda,
-  });
+  const result = await garPost<{ Status?: number; Erros?: { Ocorrencia: string }[] }>(
+    "ExcluirAgendamento",
+    { apiKey, HashVenda: hashVenda },
+  );
+
+  // Valida a resposta — Status !== 0 ou Erros preenchidos indicam falha na GAR
+  const erros = result.Erros ?? [];
+  const statusErr = typeof result.Status === "number" && result.Status !== 0;
+  if (statusErr || erros.length > 0) {
+    const msg = erros.map(e => e.Ocorrencia).filter(Boolean).join("; ")
+      || `Status GAR: ${result.Status ?? "desconhecido"}`;
+    throw new Error(`Gestão AR ExcluirAgendamento retornou erro: ${msg}`);
+  }
+
+  return result;
 }
 
 // ── Relatório de Vendas do Parceiro ─────────────────────────────────────────

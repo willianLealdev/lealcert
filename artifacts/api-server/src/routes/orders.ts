@@ -898,23 +898,25 @@ router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res
 
   try {
     const { garExcluirAgendamento } = await import("../lib/gestaoar");
-    await garExcluirAgendamento(settings.garApiKey, hashVenda);
+    const garResult = await garExcluirAgendamento(settings.garApiKey, hashVenda);
+    req.log.info({ orderId: id, hashVenda, garResult }, "gar-cancelar-agendamento: resposta da GAR");
 
     await db.update(ordersTable).set({
       garAgendamentoDataHora: null,
       garAgendamentoLocalNome: null,
       garAgendamentoLocalHash: null,
+      garAgendamentoSlotHash: null,
       scheduledAt: null,
     }).where(eq(ordersTable.id, id));
 
     const { logEvent } = await import("../lib/order-events");
-    await logEvent(id, "scheduling_confirmed", "Agendamento GAR cancelado", {});
+    await logEvent(id, "scheduling_confirmed", "Agendamento GAR cancelado com sucesso", { garResult });
 
     req.log.info({ orderId: id }, "gar-cancelar-agendamento: agendamento cancelado com sucesso");
     res.json({ ok: true });
   } catch (err) {
     const msg = (err as Error).message ?? "";
-    req.log.error({ err, orderId: id }, "gar-cancelar-agendamento: erro");
+    req.log.error({ err, orderId: id, hashVenda }, "gar-cancelar-agendamento: erro ao cancelar na GAR");
     res.status(502).json({ error: `Erro ao cancelar agendamento na GAR: ${msg}` });
   }
 });
