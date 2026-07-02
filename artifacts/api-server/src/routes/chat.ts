@@ -1040,7 +1040,10 @@ router.post("/chat", async (req, res): Promise<void> => {
               const txData = mpData.point_of_interaction?.transaction_data;
               pixPayload = txData?.qr_code ?? null;
 
-              if (pixPayload) {
+              // Use MP's own base64 QR image (same as orders.ts) — avoids QRCode library issues
+              if (txData?.qr_code_base64) {
+                qrCodeDataUrl = `data:image/png;base64,${txData.qr_code_base64}`;
+              } else if (pixPayload) {
                 try {
                   qrCodeDataUrl = await QRCode.toDataURL(pixPayload, {
                     width: 300, margin: 2,
