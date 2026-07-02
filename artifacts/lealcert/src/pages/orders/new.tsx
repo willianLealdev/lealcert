@@ -678,10 +678,6 @@ export default function NewOrder() {
       toast({ title: "Atenção", description: "Selecione um modelo de certificado.", variant: "destructive" });
       return;
     }
-    if (!termsAccepted) {
-      setShowTermsModal(true);
-      return;
-    }
     if (preFillData && (preFillData.responsavel || preFillData.empresas.length > 0)) {
       setShowPreFillModal(true);
       return;
@@ -897,7 +893,7 @@ export default function NewOrder() {
                 <ShieldCheck className="h-4 w-4 shrink-0" />
                 <span><strong>Biometria PSBio encontrada!</strong> Prossiga para escolher o certificado.</span>
               </div>
-              <Button type="button" className="w-full" onClick={() => { setPsbioGatePassed(true); window.scrollTo(0, 0); }}>
+              <Button type="button" className="w-full" onClick={() => setShowTermsModal(true)}>
                 Continuar <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </>)}
@@ -962,11 +958,7 @@ export default function NewOrder() {
               onClick={() => {
                 setTermsAccepted(true);
                 setShowTermsModal(false);
-                if (preFillData && (preFillData.responsavel || preFillData.empresas.length > 0)) {
-                  setShowPreFillModal(true);
-                  return;
-                }
-                setStep(2);
+                setPsbioGatePassed(true);
                 window.scrollTo(0, 0);
               }}
               className="flex-1 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
