@@ -921,13 +921,50 @@ export default function NewOrder() {
             )}
           </CardContent>
         </Card>
+
+        {/* Terms Modal — precisa estar aqui pois o gate faz early return */}
+        <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Termos de Coleta de Dados Pessoais</DialogTitle>
+            </DialogHeader>
+            <div className="text-sm text-muted-foreground space-y-3 leading-relaxed">
+              <p>Para a emissão do seu Certificado Digital, coletamos os seguintes dados pessoais:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Nome completo, CPF/CNPJ, data de nascimento e contato (e-mail e telefone)</li>
+                <li>Endereço e informações complementares para faturamento</li>
+                <li>Cópia do documento de identificação (RG ou CNH — frente e verso)</li>
+                <li>Documentos da empresa, quando aplicável (Cartão CNPJ, Ficha Cadastral)</li>
+              </ul>
+              <p>Esses dados são utilizados exclusivamente para validação de identidade perante as Autoridades Certificadoras (ICP-Brasil) e para emissão do certificado solicitado. Não compartilhamos seus dados com terceiros, salvo obrigação legal ou exigência das Autoridades Certificadoras.</p>
+              <p>O armazenamento é feito de forma segura e os dados serão mantidos pelo período exigido pela regulamentação vigente.</p>
+              <p>Ao clicar em <strong>Aceitar e Continuar</strong>, você declara que leu, compreendeu e concorda com a coleta e uso dos seus dados pessoais conforme descrito acima, nos termos da Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).</p>
+            </div>
+            <div className="flex gap-3 mt-2">
+              <button type="button" onClick={() => setShowTermsModal(false)}
+                className="flex-1 px-4 py-2 rounded-md border text-sm text-muted-foreground hover:bg-muted transition-colors">
+                Cancelar
+              </button>
+              <button type="button"
+                onClick={() => {
+                  setTermsAccepted(true);
+                  setShowTermsModal(false);
+                  setPsbioGatePassed(true);
+                  window.scrollTo(0, 0);
+                }}
+                className="flex-1 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                Aceitar e Continuar
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Terms Modal */}
+      {/* Terms Modal — mantido aqui para pedidos que voltam ao step 1 */}
       <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
