@@ -535,12 +535,12 @@ function GarSchedulingDialog({
           {step === "locais" && (
             <div className="space-y-3">
               <div className="flex gap-2 flex-wrap">
-                <Select value={ufFiltro} onValueChange={setUfFiltro}>
+                <Select value={ufFiltro || "__all__"} onValueChange={v => setUfFiltro(v === "__all__" ? "" : v)}>
                   <SelectTrigger className="w-28">
                     <SelectValue placeholder="UF" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="__all__">Todos</SelectItem>
                     {ufsDisponiveis.map(uf => (
                       <SelectItem key={uf} value={uf}>{uf}</SelectItem>
                     ))}
