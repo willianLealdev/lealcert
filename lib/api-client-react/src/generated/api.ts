@@ -25,6 +25,8 @@ import type {
   AgendarResult,
   AppSettings,
   AppSettingsUpdate,
+  ApprovePaymentManual200,
+  ApprovePaymentManualBody,
   AuthUser,
   BanIp200,
   BanIpBody,
@@ -157,6 +159,7 @@ import type {
   Ticket,
   TicketDetail,
   TicketInput,
+  TriggerProtocolManual200,
   UnbanIp200,
   UnblockIp200,
   UnsubscribePush200,
@@ -6648,6 +6651,148 @@ export const useGarComprarOrder = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getGarComprarOrderMutationOptions(options));
+    }
+
+export const getApprovePaymentManualUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/approve-payment`
+}
+
+/**
+ * @summary Aprova manualmente o pagamento de um pedido (admin)
+ */
+export const approvePaymentManual = async (id: number,
+    approvePaymentManualBody: ApprovePaymentManualBody, options?: RequestInit): Promise<ApprovePaymentManual200> => {
+
+  return customFetch<ApprovePaymentManual200>(getApprovePaymentManualUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      approvePaymentManualBody,)
+  }
+);}
+
+
+
+
+export const getApprovePaymentManualMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvePaymentManual>>, TError,{id: number;data: BodyType<ApprovePaymentManualBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approvePaymentManual>>, TError,{id: number;data: BodyType<ApprovePaymentManualBody>}, TContext> => {
+
+const mutationKey = ['approvePaymentManual'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approvePaymentManual>>, {id: number;data: BodyType<ApprovePaymentManualBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  approvePaymentManual(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApprovePaymentManualMutationResult = NonNullable<Awaited<ReturnType<typeof approvePaymentManual>>>
+    export type ApprovePaymentManualMutationBody = BodyType<ApprovePaymentManualBody>
+    export type ApprovePaymentManualMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Aprova manualmente o pagamento de um pedido (admin)
+ */
+export const useApprovePaymentManual = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvePaymentManual>>, TError,{id: number;data: BodyType<ApprovePaymentManualBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approvePaymentManual>>,
+        TError,
+        {id: number;data: BodyType<ApprovePaymentManualBody>},
+        TContext
+      > => {
+      return useMutation(getApprovePaymentManualMutationOptions(options));
+    }
+
+export const getTriggerProtocolManualUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/trigger-protocol`
+}
+
+/**
+ * @summary Dispara manualmente a geração de protocolo para um pedido pago (admin)
+ */
+export const triggerProtocolManual = async (id: number, options?: RequestInit): Promise<TriggerProtocolManual200> => {
+
+  return customFetch<TriggerProtocolManual200>(getTriggerProtocolManualUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getTriggerProtocolManualMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerProtocolManual>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof triggerProtocolManual>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['triggerProtocolManual'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerProtocolManual>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  triggerProtocolManual(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TriggerProtocolManualMutationResult = NonNullable<Awaited<ReturnType<typeof triggerProtocolManual>>>
+
+    export type TriggerProtocolManualMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Dispara manualmente a geração de protocolo para um pedido pago (admin)
+ */
+export const useTriggerProtocolManual = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerProtocolManual>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof triggerProtocolManual>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getTriggerProtocolManualMutationOptions(options));
     }
 
 export const getGetPushPublicKeyUrl = () => {

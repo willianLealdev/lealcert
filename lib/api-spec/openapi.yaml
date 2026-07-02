@@ -1739,6 +1739,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/GarComprarResult"
 
+  /orders/{id}/approve-payment:
+    post:
+      operationId: approvePaymentManual
+      tags: [orders]
+      summary: Aprova manualmente o pagamento de um pedido (admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: { type: string }
+      responses:
+        "200":
+          description: Pagamento aprovado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+
+  /orders/{id}/trigger-protocol:
+    post:
+      operationId: triggerProtocolManual
+      tags: [orders]
+      summary: Dispara manualmente a geração de protocolo para um pedido pago (admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Protocolo gerado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+
   /push/public-key:
     get:
       operationId: getPushPublicKey

@@ -947,6 +947,97 @@ router.post("/orders/:id/hope-solicitation", requireAuth, async (req, res): Prom
   }
 });
 
+// ── POST /orders/:id/approve-payment — aprovação manual de pagamento ─────────
+router.post("/orders/:id/approve-payment", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const { motivo } = req.body ?? {};
+  if (!motivo?.trim()) {
+    res.status(400).json({ error: "Motivo da aprovação é obrigatório." }); return;
+  }
+
+  const [row] = await db
+    .select({ order: ordersTable, certName: certificatesTable.name })
+    .from(ordersTable)
+    .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+  if (!row) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+  const order = row.order;
+
+  if (!["pending_payment", "created"].includes(order.status)) {
+    res.status(400).json({ error: `Aprovação manual não permitida: pedido está com status "${order.status}".` }); return;
+  }
+
+  await db.update(ordersTable).set({ status: "paid" }).where(eq(ordersTable.id, id));
+
+  const { logEvent: logApproveEv } = await import("../lib/order-events");
+  await logApproveEv(id, "payment_confirmed", `Pagamento aprovado manualmente pelo admin. Motivo: ${motivo.trim()}`, { motivo: motivo.trim(), adminId: req.session.userId });
+
+  const { notifyOrderStatus: notifyApprove } = await import("../lib/notify");
+  const approveResponsiblePhone = order.userId
+    ? await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, order.userId)).limit(1).then(r => r[0]?.phone ?? null)
+    : null;
+  notifyApprove({
+    to: order.customerEmail,
+    phone: order.customerPhone,
+    responsiblePhone: approveResponsiblePhone,
+    customerName: order.customerName,
+    orderNumber: order.orderNumber,
+    status: "paid",
+    total: parseFloat(order.total),
+    certName: row.certName ?? undefined,
+  }).catch((err: unknown) => req.log.error({ err }, "approve-payment: erro ao notificar"));
+
+  const [approveSettings] = await db.select().from(settingsTable).limit(1);
+  const approveProvider = approveSettings?.activeProvider ?? "gestaoar";
+  if (approveProvider === "safeweb") {
+    const { swAutoComprar } = await import("../lib/sw-auto");
+    swAutoComprar(id).catch((err: unknown) => req.log.error({ err }, "approve-payment: erro sw-auto"));
+  } else {
+    const { garAutoComprar } = await import("../lib/gar-auto");
+    garAutoComprar(id).catch((err: unknown) => req.log.error({ err }, "approve-payment: erro gar-auto"));
+  }
+
+  res.json({ ok: true });
+});
+
+// ── POST /orders/:id/trigger-protocol — geração manual de protocolo ───────────
+router.post("/orders/:id/trigger-protocol", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+
+  if (order.status !== "paid") {
+    res.status(400).json({ error: `Geração de protocolo disponível apenas para pedidos pagos. Status atual: "${order.status}".` }); return;
+  }
+
+  const [triggerSettings] = await db.select().from(settingsTable).limit(1);
+  const triggerProvider = triggerSettings?.activeProvider ?? "gestaoar";
+
+  try {
+    if (triggerProvider === "safeweb") {
+      const { swAutoComprar } = await import("../lib/sw-auto");
+      await swAutoComprar(id);
+    } else {
+      const { garAutoComprar } = await import("../lib/gar-auto");
+      await garAutoComprar(id);
+    }
+
+    const { logEvent: logTriggerEv } = await import("../lib/order-events");
+    await logTriggerEv(id, "admin_action", "Geração de protocolo disparada manualmente pelo admin.", { adminId: req.session.userId });
+
+    res.json({ ok: true });
+  } catch (err) {
+    const msg = (err as Error).message ?? "Erro ao gerar protocolo";
+    req.log.error({ err, orderId: id }, "trigger-protocol: erro");
+    res.status(502).json({ ok: false, error: msg });
+  }
+});
+
 // ── POST /orders/:id/gar-cancelar-protocolo — cancela protocolo GAR via Safeweb
 router.post("/orders/:id/gar-cancelar-protocolo", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);

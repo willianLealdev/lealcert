@@ -22,6 +22,8 @@ import {
   getGetSafewebConfigQueryKey,
   useGetOrderEvents,
   useHopeCreateSolicitation,
+  useApprovePaymentManual,
+  useTriggerProtocolManual,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -1357,6 +1359,36 @@ export default function OrderDetail() {
     },
   });
 
+  const [approvePaymentOpen, setApprovePaymentOpen] = useState(false);
+  const [approveMotivo, setApproveMotivo] = useState("");
+  const approvePayment = useApprovePaymentManual({
+    mutation: {
+      onSuccess: () => {
+        setApproveMotivo("");
+        setApprovePaymentOpen(false);
+        toast({ title: "✅ Pagamento aprovado!", description: "Status atualizado e protocolo sendo gerado." });
+        refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao aprovar pagamento.";
+        toast({ title: "Erro", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
+  const triggerProtocol = useTriggerProtocolManual({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Protocolo sendo gerado!", description: "O processo foi disparado. Aguarde alguns instantes." });
+        refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao gerar protocolo.";
+        toast({ title: "Erro ao gerar protocolo", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
   const [cancelMotivo, setCancelMotivo] = useState("");
   const cancelarSafeweb = useCancelarSafewebOrder({
     mutation: {
@@ -1986,6 +2018,52 @@ export default function OrderDetail() {
                   <span className="text-xl font-bold text-primary">{formatBRL(order.total)}</span>
                 </div>
               </div>
+
+              {/* Admin — Aprovar Pagamento Manualmente */}
+              {isAdmin && (order.status === "pending_payment" || order.status === "created") && (
+                <div className="border-t pt-3">
+                  <AlertDialog open={approvePaymentOpen} onOpenChange={setApprovePaymentOpen}>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-full border-green-300 text-green-700 hover:bg-green-50">
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Aprovar Pagamento Manualmente
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Aprovar pagamento manualmente?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          O pedido será marcado como <strong>Pago</strong> e o protocolo será gerado automaticamente. Informe o motivo da aprovação manual.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="px-1 py-2 space-y-2">
+                        <Label htmlFor="approve-motivo">Motivo da aprovação <span className="text-destructive">*</span></Label>
+                        <Textarea
+                          id="approve-motivo"
+                          placeholder="Ex: Pagamento confirmado via transferência bancária, comprovante recebido via WhatsApp..."
+                          value={approveMotivo}
+                          onChange={e => setApproveMotivo(e.target.value)}
+                          rows={3}
+                        />
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setApproveMotivo("")}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-green-600 text-white hover:bg-green-700"
+                          disabled={!approveMotivo.trim() || approvePayment.isPending}
+                          onClick={() => {
+                            if (!approveMotivo.trim()) return;
+                            approvePayment.mutate({ id: Number(id), data: { motivo: approveMotivo.trim() } });
+                          }}
+                        >
+                          {approvePayment.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                          Confirmar Aprovação
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1998,7 +2076,39 @@ export default function OrderDetail() {
                   Ações administrativas
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
+                {/* Gerar Protocolo Manualmente — visível quando pago mas sem protocolo ainda */}
+                {order.status === "paid" && !garProtocolo && !safewebSolicitacaoId && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-full border-blue-300 text-blue-700 hover:bg-blue-50">
+                        {triggerProtocol.isPending
+                          ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          : <RefreshCw className="h-4 w-4 mr-2" />}
+                        Gerar Protocolo Manualmente
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Gerar protocolo manualmente?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Isso irá disparar novamente o processo de geração de protocolo junto ao provedor (GAR / Safeweb). Use quando a geração automática falhou após o pagamento.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => triggerProtocol.mutate({ id: Number(id) })}
+                          disabled={triggerProtocol.isPending}
+                        >
+                          {triggerProtocol.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                          Confirmar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+
                 {/* GAR com protocolo → cancela via API Safeweb */}
                 {hasGar && garProtocolo ? (
                   <AlertDialog>

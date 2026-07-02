@@ -1688,6 +1688,18 @@ export type GarCancelarProtocolo200 = {
   message?: string;
 };
 
+export type ApprovePaymentManualBody = {
+  motivo: string;
+};
+
+export type ApprovePaymentManual200 = {
+  ok?: boolean;
+};
+
+export type TriggerProtocolManual200 = {
+  ok?: boolean;
+};
+
 export type SubscribePush200 = {
   ok?: boolean;
 };

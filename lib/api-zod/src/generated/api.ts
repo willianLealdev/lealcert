@@ -1805,6 +1805,34 @@ export const GarComprarOrderResponse = zod.object({
 
 
 /**
+ * @summary Aprova manualmente o pagamento de um pedido (admin)
+ */
+export const ApprovePaymentManualParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ApprovePaymentManualBody = zod.object({
+  "motivo": zod.string()
+})
+
+export const ApprovePaymentManualResponse = zod.object({
+  "ok": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Dispara manualmente a geração de protocolo para um pedido pago (admin)
+ */
+export const TriggerProtocolManualParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const TriggerProtocolManualResponse = zod.object({
+  "ok": zod.boolean().optional()
+})
+
+
+/**
  * @summary Get VAPID public key for push subscription
  */
 export const GetPushPublicKeyResponse = zod.object({
