@@ -472,12 +472,29 @@ export async function garExcluirAgendamento(
   apiKey: string,
   hashVenda: string,
 ): Promise<{ Status?: number; Erros?: { Ocorrencia: string }[] }> {
-  const result = await garPost<{ Status?: number; Erros?: { Ocorrencia: string }[] }>(
+  // A API às vezes retorna array de erros ({ErrorCode, ErrorDescription})
+  // em vez do formato objeto ({Status, Erros}) — precisamos lidar com os dois
+  const raw = await garPost<
+    { Status?: number; Erros?: { Ocorrencia: string }[] } |
+    { ErrorCode?: string; ErrorDescription?: string }[]
+  >(
     "ExcluirAgendamento",
-    { apiKey, HashVenda: hashVenda },
+    { apiKey, HashVenda: hashVenda, IsCliente: "1" },
   );
 
-  // Valida a resposta — Status !== 0 ou Erros preenchidos indicam falha na GAR
+  // Formato array: [{ ErrorCode, ErrorDescription }] — array vazio = sucesso
+  if (Array.isArray(raw)) {
+    const errs = (raw as { ErrorCode?: string; ErrorDescription?: string }[])
+      .filter(e => e.ErrorCode || e.ErrorDescription);
+    if (errs.length > 0) {
+      const msg = errs.map(e => e.ErrorDescription ?? `Code ${e.ErrorCode}`).join("; ");
+      throw new Error(`Gestão AR ExcluirAgendamento retornou erro: ${msg}`);
+    }
+    return {};
+  }
+
+  // Formato objeto: { Status, Erros }
+  const result = raw as { Status?: number; Erros?: { Ocorrencia: string }[] };
   const erros = result.Erros ?? [];
   const statusErr = typeof result.Status === "number" && result.Status !== 0;
   if (statusErr || erros.length > 0) {
