@@ -101,6 +101,7 @@ export * from './getGarValidadesParams';
 export * from './getMeStatsParams';
 export * from './getMeStatsRange';
 export * from './healthStatus';
+export * from './hopeCreateSolicitation200';
 export * from './importContactsResult';
 export * from './importGarCertificates200';
 export * from './importSafewebCertificates200';

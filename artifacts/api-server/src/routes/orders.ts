@@ -4,7 +4,7 @@ import { db, ordersTable, usersTable, certificatesTable, settingsTable } from "@
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { notifyOrderStatus } from "../lib/notify";
 import { logger } from "../lib/logger";
-import { swConsultaCPF, swConsultaCNPJ, swBiometriaPSBioGlobal, type SafewebSettings } from "../lib/safeweb";
+import { swConsultaCPF, swConsultaCNPJ, swBiometriaPSBioGlobal, swHopeSolicitation, type SafewebSettings } from "../lib/safeweb";
 import { garPsBio } from "../lib/gestaoar";
 
 const router = Router();
@@ -61,6 +61,7 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     garHashVenda: o.garHashVenda,
     garStatus: o.garStatus,
     garAgendamentoLink: o.garAgendamentoLink,
+    garHopeUploadUrl: o.garHopeUploadUrl,
     garSyncedAt: o.garSyncedAt,
     garAgendamentoLocalNome: o.garAgendamentoLocalNome,
     garAgendamentoLocalHash: o.garAgendamentoLocalHash,
@@ -915,6 +916,34 @@ router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res
     const msg = (err as Error).message ?? "";
     req.log.error({ err, orderId: id }, "gar-cancelar-agendamento: erro");
     res.status(502).json({ error: `Erro ao cancelar agendamento na GAR: ${msg}` });
+  }
+});
+
+// ── POST /orders/:id/hope-solicitation — gera URL de envio de documentos via Hope ──
+router.post("/orders/:id/hope-solicitation", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+  if (!order.garProtocolo) { res.status(400).json({ error: "Pedido não possui protocolo GAR" }); return; }
+
+  const [s] = await db.select().from(settingsTable).limit(1);
+  if (!s?.safewebUrl || !s?.safewebUsername || !s?.safewebPassword) {
+    res.status(400).json({ error: "Configurações Safeweb não encontradas" }); return;
+  }
+  const swSettings = { url: s.safewebUrl, username: s.safewebUsername, password: s.safewebPassword };
+
+  try {
+    const result = await swHopeSolicitation(swSettings, order.garProtocolo);
+    const url = result.url ?? null;
+    await db.update(ordersTable).set({ garHopeUploadUrl: url }).where(eq(ordersTable.id, id));
+    req.log.info({ orderId: id, url }, "hope-solicitation: URL gerada com sucesso");
+    res.json({ url });
+  } catch (err) {
+    const msg = (err as Error).message ?? "";
+    req.log.error({ err, orderId: id }, "hope-solicitation: erro");
+    res.status(502).json({ error: `Erro ao criar solicitação Hope: ${msg}` });
   }
 });
 

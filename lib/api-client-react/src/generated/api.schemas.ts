@@ -379,6 +379,7 @@ export interface Order {
   garHashVenda?: string | null;
   garStatus?: string | null;
   garAgendamentoLink?: string | null;
+  garHopeUploadUrl?: string | null;
   garSyncedAt?: string | null;
   garAgendamentoLocalNome?: string | null;
   garAgendamentoLocalHash?: string | null;
@@ -1672,6 +1673,10 @@ dataFinal: string;
 
 export type GarCancelarAgendamento200 = {
   ok?: boolean;
+};
+
+export type HopeCreateSolicitation200 = {
+  url?: string;
 };
 
 export type GarCancelarProtocoloBody = {

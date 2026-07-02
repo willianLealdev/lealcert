@@ -98,6 +98,7 @@ import type {
   GetSafewebConfigParams,
   GetSafewebSlotsParams,
   HealthStatus,
+  HopeCreateSolicitation200,
   ImportGarCertificates200,
   ImportSafewebCertificates200,
   InboundWebhookInput,
@@ -6433,6 +6434,76 @@ export const useGarCancelarAgendamento = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getGarCancelarAgendamentoMutationOptions(options));
+    }
+
+export const getHopeCreateSolicitationUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/hope-solicitation`
+}
+
+/**
+ * @summary Cria solicitação no Hope (Safeweb) e retorna URL de envio de documentos
+ */
+export const hopeCreateSolicitation = async (id: number, options?: RequestInit): Promise<HopeCreateSolicitation200> => {
+
+  return customFetch<HopeCreateSolicitation200>(getHopeCreateSolicitationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getHopeCreateSolicitationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hopeCreateSolicitation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof hopeCreateSolicitation>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['hopeCreateSolicitation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof hopeCreateSolicitation>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  hopeCreateSolicitation(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HopeCreateSolicitationMutationResult = NonNullable<Awaited<ReturnType<typeof hopeCreateSolicitation>>>
+
+    export type HopeCreateSolicitationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Cria solicitação no Hope (Safeweb) e retorna URL de envio de documentos
+ */
+export const useHopeCreateSolicitation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hopeCreateSolicitation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof hopeCreateSolicitation>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getHopeCreateSolicitationMutationOptions(options));
     }
 
 export const getGarCancelarProtocoloUrl = (id: number,) => {

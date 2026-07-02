@@ -21,6 +21,7 @@ import {
   useGetSafewebConfig,
   getGetSafewebConfigQueryKey,
   useGetOrderEvents,
+  useHopeCreateSolicitation,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -185,16 +186,21 @@ function OrderTimeline({ orderId, isPendingPayment }: { orderId: number; isPendi
 }
 
 // ── Componente de Agendamento ─────────────────────────────────────────────────
-function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgendamentoLocalNome, garAgendamentoLink, onSuccess }: {
+function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgendamentoLocalNome, garAgendamentoLink, garHopeUploadUrl, onSuccess }: {
   orderId: number;
   garProtocolo: string;
   garAgendamentoDataHora?: string;
   garAgendamentoLocalNome?: string;
   garAgendamentoLink?: string;
+  garHopeUploadUrl?: string;
   onSuccess: () => void;
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [docsConfirmed, setDocsConfirmed] = useState(() => {
+    try { return localStorage.getItem(`gar_docs_submitted_${orderId}`) === "1"; } catch { return false; }
+  });
   const [step, setStep] = useState<"locais" | "data" | "confirm">("locais");
   const [ufFiltro, setUfFiltro] = useState("");
   const [municipioFiltro, setMunicipioFiltro] = useState("");
@@ -314,6 +320,72 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
         dataFinal: `${dataSelecionada} ${horarioSelecionado.HoraFinal}`,
       },
     });
+  }
+
+  function handleDocsConfirmar() {
+    try { localStorage.setItem(`gar_docs_submitted_${orderId}`, "1"); } catch { /* ignore */ }
+    setDocsConfirmed(true);
+    setDocsModalOpen(false);
+  }
+
+  // Gate: se existe URL do Hope e docs ainda não confirmados, exibe step de envio de documentos
+  if (garHopeUploadUrl && !docsConfirmed) {
+    return (
+      <>
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-800">
+              <FileText className="h-5 w-5" />
+              Envio de Documentos Obrigatório
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-amber-800">
+              Antes de agendar seu atendimento, você precisa enviar os documentos solicitados pelo portal de documentação.
+            </p>
+            <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-100 px-3 py-2 rounded-md">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                Clique em <strong>"Acessar Portal de Documentos"</strong>, faça o envio de todos os documentos necessários e depois retorne aqui para confirmar e agendar seu atendimento.
+              </span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <a
+                href={garHopeUploadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Acessar Portal de Documentos
+              </a>
+              <Button variant="outline" className="border-green-400 text-green-800 hover:bg-green-50" onClick={() => setDocsModalOpen(true)}>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Já enviei os documentos
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Dialog open={docsModalOpen} onOpenChange={setDocsModalOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Confirmar envio de documentos</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Confirme que você já enviou todos os documentos solicitados no portal. Após confirmar, você poderá escolher a data e horário do seu atendimento.
+            </p>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setDocsModalOpen(false)}>Cancelar</Button>
+              <Button onClick={handleDocsConfirmar}>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Confirmar e Agendar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
   }
 
   // Já agendado — mostrar card de confirmação
@@ -1236,6 +1308,19 @@ export default function OrderDetail() {
     },
   });
 
+  const hopeGenerate = useHopeCreateSolicitation({
+    mutation: {
+      onSuccess: (data) => {
+        toast({ title: "URL de documentos gerada!", description: data.url ? "Link salvo no pedido." : "Resposta sem URL." });
+        refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao gerar URL.";
+        toast({ title: "Erro Hope", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
   const garComprar = useGarComprarOrder({
     mutation: {
       onSuccess: (data) => {
@@ -1345,6 +1430,7 @@ export default function OrderDetail() {
     garAgendamentoDataHora?: string | null;
     garAgendamentoLocalNome?: string | null;
     garAgendamentoLink?: string | null;
+    garHopeUploadUrl?: string | null;
     safewebSolicitacaoId?: string | null;
     safewebStatus?: string | null;
     safewebSyncedAt?: string | null;
@@ -1360,6 +1446,7 @@ export default function OrderDetail() {
   const garAgendamentoDataHora = orderExt.garAgendamentoDataHora ?? undefined;
   const garAgendamentoLocalNome = orderExt.garAgendamentoLocalNome ?? undefined;
   const garAgendamentoLink = orderExt.garAgendamentoLink ?? undefined;
+  const garHopeUploadUrl = orderExt.garHopeUploadUrl ?? undefined;
 
   const hasSafeweb = !!orderExt.safewebSolicitacaoId;
   const safewebSolicitacaoId = orderExt.safewebSolicitacaoId ?? undefined;
@@ -1621,6 +1708,53 @@ export default function OrderDetail() {
             );
           })()}
 
+          {/* Admin: gerar URL Hope quando protocolo existir mas URL ainda não foi gerada */}
+          {isAdmin && garProtocolo && !garHopeUploadUrl && (
+            <Card className="border-orange-200 bg-orange-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-orange-800 text-sm">
+                  <FileText className="h-4 w-4" />
+                  URL de Documentos Hope não gerada
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-orange-700 mb-3">
+                  O protocolo GAR foi emitido mas a URL de envio de documentos (Hope) não foi gerada automaticamente. Gere manualmente.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-orange-400 text-orange-800 hover:bg-orange-100"
+                  onClick={() => hopeGenerate.mutate({ id: Number(id) })}
+                  disabled={hopeGenerate.isPending}
+                >
+                  {hopeGenerate.isPending
+                    ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    : <ExternalLink className="h-4 w-4 mr-2" />}
+                  Gerar URL de Documentos
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Admin: mostrar URL Hope gerada com opção de regenerar */}
+          {isAdmin && garProtocolo && garHopeUploadUrl && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-md">
+              <FileText className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1 truncate">URL Hope: <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer" className="underline text-blue-600">{garHopeUploadUrl}</a></span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => hopeGenerate.mutate({ id: Number(id) })}
+                disabled={hopeGenerate.isPending}
+                title="Regenerar URL Hope"
+              >
+                {hopeGenerate.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              </Button>
+            </div>
+          )}
+
           {/* Card de agendamento GAR */}
           {canScheduleGar && (
             <SchedulingCard
@@ -1629,6 +1763,7 @@ export default function OrderDetail() {
               garAgendamentoDataHora={garAgendamentoDataHora}
               garAgendamentoLocalNome={garAgendamentoLocalNome}
               garAgendamentoLink={garAgendamentoLink}
+              garHopeUploadUrl={garHopeUploadUrl}
               onSuccess={refetch}
             />
           )}

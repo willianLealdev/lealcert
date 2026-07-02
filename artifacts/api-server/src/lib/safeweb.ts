@@ -34,6 +34,7 @@ const AGENDA_CANCEL_AGENDAMENTO_PATH = "/Service/MicroService/Agenda/Agendamento
 const AGENDA_CONFIG_PATH = "/Service/MicroService/Agenda/Agendamentos/api/Integracao/configuracao"; // GET /{localAtendimentoId}
 const AGENDA_INFO_PATH = "/Service/MicroService/Agenda/Agendamentos/api/Integracao/informacoes"; // GET /{protocolo}
 const HOPE_FIRST_EMISSION_PATH = "/Service/Microservice/Shared/Hope/api/FirstEmission"; // [INFERRED]
+const HOPE_SOLICITATION_PATH = "/Service/Microservice/Hope/Shared/api/integration/solicitation";
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 export interface SafewebSettings {
@@ -364,6 +365,22 @@ export async function swAgendaInformacoes(settings: SafewebSettings, protocolo: 
 export async function swHopePrimeiraEmissao(settings: SafewebSettings, data: Record<string, unknown>): Promise<SwResult> {
   if (!data.CnpjAR) data.CnpjAR = settings.cnpjAr ?? "";
   return swPost<SwResult>(settings, HOPE_FIRST_EMISSION_PATH, data);
+}
+
+export interface SwHopeSolicitationResult {
+  aciRemovalCandidate: boolean;
+  url?: string;
+  emailSend: boolean;
+  message?: string;
+}
+export async function swHopeSolicitation(
+  settings: SafewebSettings,
+  protocol: string,
+  attendancePlaceId?: number,
+): Promise<SwHopeSolicitationResult> {
+  const body: Record<string, unknown> = { protocol };
+  if (attendancePlaceId != null) body.attendancePlaceId = attendancePlaceId;
+  return swAgendaPostHttp<SwHopeSolicitationResult>(settings, HOPE_SOLICITATION_PATH, body);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

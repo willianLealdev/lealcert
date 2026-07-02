@@ -1676,6 +1676,23 @@ paths:
                 properties:
                   ok: { type: boolean }
 
+  /orders/{id}/hope-solicitation:
+    post:
+      operationId: hopeCreateSolicitation
+      tags: [gestaoar]
+      summary: Cria solicitação no Hope (Safeweb) e retorna URL de envio de documentos
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Solicitação criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+
   /orders/{id}/gar-cancelar-protocolo:
     post:
       operationId: garCancelarProtocolo
@@ -3129,6 +3146,9 @@ components:
           type: string
           nullable: true
         garAgendamentoLink:
+          type: string
+          nullable: true
+        garHopeUploadUrl:
           type: string
           nullable: true
         garSyncedAt:

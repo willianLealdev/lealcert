@@ -57,6 +57,7 @@ export interface Order {
   garHashVenda?: string | null;
   garStatus?: string | null;
   garAgendamentoLink?: string | null;
+  garHopeUploadUrl?: string | null;
   garSyncedAt?: string | null;
   garAgendamentoLocalNome?: string | null;
   garAgendamentoLocalHash?: string | null;

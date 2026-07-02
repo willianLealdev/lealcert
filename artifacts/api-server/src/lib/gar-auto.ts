@@ -6,6 +6,7 @@
 import { eq } from "drizzle-orm";
 import { db, ordersTable, certificatesTable, settingsTable } from "@workspace/db";
 import { garComprar, garConsultarStatus, garEmitirProtocolo } from "./gestaoar";
+import { swHopeSolicitation } from "./safeweb";
 import { logger } from "./logger";
 import { logEvent } from "./order-events";
 
@@ -165,8 +166,28 @@ export async function garAutoComprar(orderId: number): Promise<void> {
             // fallback: sem protocolo — admin pode buscar manualmente
           }
 
+          // Gerar URL de envio de documentos via Hope (Safeweb)
+          let garHopeUploadUrl: string | null = null;
+          if (protocolo) {
+            try {
+              const swSettings = {
+                url: settings.safewebUrl ?? "",
+                username: settings.safewebUsername ?? "",
+                password: settings.safewebPassword ?? "",
+              };
+              if (swSettings.url && swSettings.username && swSettings.password) {
+                const hopeResult = await swHopeSolicitation(swSettings, protocolo);
+                garHopeUploadUrl = hopeResult.url ?? null;
+                logger.info({ orderId, protocolo, url: garHopeUploadUrl }, "garAutoComprar: Hope solicitation criada");
+              }
+            } catch (hopeErr) {
+              logger.warn({ orderId, err: hopeErr }, "garAutoComprar: falha ao criar Hope solicitation — pode ser criada manualmente");
+            }
+          }
+
           await db.update(ordersTable).set({
             garProtocolo: protocolo ?? null,
+            garHopeUploadUrl,
             garStatus: "Protocolo emitido",
             status: "protocol_assigned",
           }).where(eq(ordersTable.id, orderId));
