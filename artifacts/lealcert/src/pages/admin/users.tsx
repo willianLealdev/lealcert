@@ -12,8 +12,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
-type UserForm = { name: string; email: string; cpfCnpj: string; phone: string; role: string; userType: string; password: string; isActive: boolean };
-const EMPTY: UserForm = { name: "", email: "", cpfCnpj: "", phone: "", role: "contador", userType: "cliente", password: "", isActive: true };
+// tipo = "cliente" | "contador" | "admin" — campo unificado para exibição
+type UserForm = { name: string; email: string; cpfCnpj: string; phone: string; tipo: string; password: string; isActive: boolean };
+const EMPTY: UserForm = { name: "", email: "", cpfCnpj: "", phone: "", tipo: "cliente", password: "", isActive: true };
+
+function tipoFromUser(u: { role: string; userType?: string | null }): string {
+  if (u.role === "admin") return "admin";
+  return (u as Record<string, unknown>).userType === "contador" ? "contador" : "cliente";
+}
+function roleFromTipo(tipo: string): "admin" | "contador" { return tipo === "admin" ? "admin" : "contador"; }
+function userTypeFromTipo(tipo: string): string { return tipo === "contador" ? "contador" : "cliente"; }
 
 function formatDate(d: string | Date | null) {
   if (!d) return "—";
@@ -34,7 +42,7 @@ export default function AdminUsers() {
 
   function openCreate() { setForm(EMPTY); setEditId(null); setOpen(true); }
   function openEdit(u: NonNullable<typeof users>[number]) {
-    setForm({ name: u.name, email: u.email ?? "", cpfCnpj: u.cpfCnpj, phone: u.phone ?? "", role: u.role, userType: (u as unknown as Record<string, unknown>).userType as string ?? "cliente", password: "", isActive: u.isActive ?? true });
+    setForm({ name: u.name, email: u.email ?? "", cpfCnpj: u.cpfCnpj, phone: u.phone ?? "", tipo: tipoFromUser(u as { role: string; userType?: string | null }), password: "", isActive: u.isActive ?? true });
     setEditId(u.id);
     setOpen(true);
   }
@@ -43,11 +51,11 @@ export default function AdminUsers() {
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (editId !== null) {
-      const data: Record<string, unknown> = { name: form.name, email: form.email, phone: form.phone, role: form.role, userType: form.userType, isActive: form.isActive };
+      const data: Record<string, unknown> = { name: form.name, email: form.email, phone: form.phone, role: roleFromTipo(form.tipo), userType: userTypeFromTipo(form.tipo), isActive: form.isActive };
       if (form.password) data.password = form.password;
       updateUser.mutate({ id: editId, data: data as Parameters<typeof updateUser.mutate>[0]["data"] });
     } else {
-      createUser.mutate({ data: { name: form.name, email: form.email, cpfCnpj: form.cpfCnpj, phone: form.phone, role: form.role as "admin" | "contador", password: form.password } });
+      createUser.mutate({ data: { name: form.name, email: form.email, cpfCnpj: form.cpfCnpj, phone: form.phone, role: roleFromTipo(form.tipo), password: form.password } });
     }
   }
 
@@ -93,7 +101,7 @@ export default function AdminUsers() {
                       <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{u.email ?? "—"}</td>
                       <td className="px-4 py-3">
                         <Badge variant={u.role === "admin" ? "default" : "secondary"}>
-                          {u.role === "admin" ? "Admin" : (u as unknown as Record<string, unknown>).userType === "cliente" ? "Cliente" : "Contador"}
+                          {tipoFromUser(u as { role: string; userType?: string | null }) === "admin" ? "Admin" : tipoFromUser(u as { role: string; userType?: string | null }) === "contador" ? "Contador" : "Cliente"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
@@ -137,21 +145,12 @@ export default function AdminUsers() {
                 <Input type="email" value={form.email} onChange={e => set("email", e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Tipo de Usuário *</Label>
-                <Select value={form.userType} onValueChange={v => set("userType", v)}>
+                <Label>Tipo *</Label>
+                <Select value={form.tipo} onValueChange={v => set("tipo", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="cliente">Cliente</SelectItem>
                     <SelectItem value="contador">Contador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Perfil de Acesso *</Label>
-                <Select value={form.role} onValueChange={v => set("role", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="contador">Padrão</SelectItem>
                     <SelectItem value="admin">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
