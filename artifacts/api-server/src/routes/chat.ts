@@ -727,6 +727,29 @@ router.post("/chat", async (req, res): Promise<void> => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
+  // ── Proativo: se usuário logado tem pedido com Hope URL pendente, emite o evento ──
+  // Garante que o botão de upload apareça mesmo em sessões retomadas
+  if (req.session.userId) {
+    const [pendingOrder] = await db.select({
+      id: ordersTable.id,
+      garHopeUploadUrl: ordersTable.garHopeUploadUrl,
+    }).from(ordersTable)
+      .where(and(
+        eq(ordersTable.userId, req.session.userId),
+        isNotNull(ordersTable.garHopeUploadUrl),
+        or(
+          eq(ordersTable.status, "paid"),
+          eq(ordersTable.status, "protocol_assigned"),
+          eq(ordersTable.status, "aguardando_validacao"),
+        ),
+      ))
+      .orderBy(desc(ordersTable.createdAt))
+      .limit(1);
+    if (pendingOrder?.garHopeUploadUrl) {
+      res.write(`data: ${JSON.stringify({ action: "mostrar_link_docs", hopeUrl: pendingOrder.garHopeUploadUrl, orderId: pendingOrder.id })}\n\n`);
+    }
+  }
+
   // ── BYPASS: Verificação direta de pagamento (botão "Já paguei!") ──────────
   // Contorna a IA — verifica o banco diretamente para garantir resultado preciso
   if (message.startsWith("__PAGUEI__:")) {

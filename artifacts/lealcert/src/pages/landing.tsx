@@ -283,7 +283,8 @@ function ChatWidget() {
           const pending = orders.find(o => ACTIVE.includes(o.status));
           if (pending) {
             setActiveOrderInfo(pending);
-            if (pending.status === "protocol_assigned" && pending.garHopeUploadUrl) {
+            // Mostrar Hope se docs ainda não confirmados — independente do status
+            if (pending.garHopeUploadUrl) {
               setHopeUrl(pending.garHopeUploadUrl);
             }
           }
@@ -697,7 +698,7 @@ function ChatWidget() {
                   <p className="font-semibold text-gray-800">📋 Pedido em andamento</p>
                   <p className="text-xs text-gray-500">#{activeOrderInfo.orderNumber}</p>
                   <div className="flex flex-col gap-2 pt-1">
-                    {activeOrderInfo.status === "protocol_assigned" && activeOrderInfo.garHopeUploadUrl && (
+                    {activeOrderInfo.garHopeUploadUrl && (
                       <button
                         onClick={() => setDocsModalOpen(true)}
                         className="text-left text-sm px-4 py-2 rounded-xl border-2 border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-500 hover:text-white transition-all duration-150 font-medium"
