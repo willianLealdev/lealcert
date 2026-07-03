@@ -1,8 +1,9 @@
 import { eq, lte, and, isNotNull, notInArray, gte, lt } from "drizzle-orm";
-import { db, marketingCampaignsTable, ordersTable, settingsTable, certificatesTable, type InsertOrder } from "@workspace/db";
+import { db, marketingCampaignsTable, ordersTable, settingsTable, certificatesTable, usersTable, type InsertOrder } from "@workspace/db";
 import { logger } from "./logger";
 import { dispatchCampaign } from "../routes/marketing";
 import { sendDailySalesReport } from "./email";
+import { notifyOrderStatus } from "./notify";
 
 let running = false;
 
@@ -126,6 +127,89 @@ async function syncSafewebStatuses() {
     logger.error({ err }, "Safeweb sync: erro geral");
   } finally {
     swSyncRunning = false;
+  }
+}
+
+// ── MercadoPago Payment Sync ──────────────────────────────────────────────────
+// Roda a cada 2 minutos, verificando todos os pedidos pending_payment com
+// mpPaymentId na API do MP e atualizando automaticamente quando aprovado.
+let mpSyncRunning = false;
+
+async function syncMercadoPagoPayments() {
+  if (mpSyncRunning) return;
+  mpSyncRunning = true;
+  try {
+    const [settings] = await db.select().from(settingsTable).limit(1);
+    const mpToken = settings?.mpAccessToken ?? "";
+    if (!mpToken) return;
+
+    // Busca pedidos com pagamento pendente que já tem mpPaymentId (PIX gerado)
+    const pending = await db
+      .select({ order: ordersTable, certName: certificatesTable.name })
+      .from(ordersTable)
+      .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
+      .where(and(
+        eq(ordersTable.status, "pending_payment"),
+        isNotNull(ordersTable.mpPaymentId),
+      ));
+
+    if (pending.length === 0) return;
+
+    logger.info({ count: pending.length }, "MP sync: verificando pagamentos pendentes");
+
+    for (const { order, certName } of pending) {
+      if (!order.mpPaymentId) continue;
+      try {
+        const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${order.mpPaymentId}`, {
+          headers: { Authorization: `Bearer ${mpToken}` },
+        });
+        if (!mpRes.ok) continue;
+
+        const payment = await mpRes.json() as { status: string };
+        if (payment.status !== "approved") continue;
+
+        // Pagamento aprovado — atualizar status no DB
+        await db.update(ordersTable)
+          .set({ status: "paid", mpPaymentId: order.mpPaymentId })
+          .where(eq(ordersTable.id, order.id));
+
+        logger.info({ orderId: order.id, orderNumber: order.orderNumber }, "MP sync: pedido marcado como PAGO");
+
+        // Notificar cliente
+        const responsiblePhone = order.userId
+          ? await db.select({ phone: usersTable.phone }).from(usersTable)
+              .where(eq(usersTable.id, order.userId)).limit(1)
+              .then(r => r[0]?.phone ?? null)
+          : null;
+
+        notifyOrderStatus({
+          to: order.customerEmail,
+          phone: order.customerPhone,
+          responsiblePhone,
+          customerName: order.customerName,
+          orderNumber: order.orderNumber,
+          status: "paid",
+          total: parseFloat(order.total),
+          certName: certName ?? undefined,
+        }).catch(err => logger.error({ err, orderId: order.id }, "MP sync: erro ao notificar"));
+
+        // Disparar registro automático no provedor ativo
+        const activeProvider = settings?.activeProvider ?? "gestaoar";
+        if (activeProvider === "gestaoar") {
+          const { garAutoComprar } = await import("./gar-auto");
+          garAutoComprar(order.id).catch(err => logger.error({ err, orderId: order.id }, "MP sync: erro garAutoComprar"));
+        } else {
+          const { swAutoComprar } = await import("./sw-auto");
+          swAutoComprar(order.id).catch(err => logger.error({ err, orderId: order.id }, "MP sync: erro swAutoComprar"));
+        }
+      } catch (err) {
+        logger.error({ err, orderId: order.id }, "MP sync: erro ao verificar pedido");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "MP sync: erro geral");
+  } finally {
+    mpSyncRunning = false;
   }
 }
 
@@ -254,6 +338,11 @@ export function startScheduler() {
   const runAutoUnblock = () => import("./ip-security").then(m => m.autoUnblockExpiredIps()).catch(err => logger.error({ err }, "ip-security: auto-unblock error"));
   setInterval(runAutoUnblock, 10 * 60_000);
   setTimeout(runAutoUnblock, 60_000);
+
+  // Sincronização automática de pagamentos MercadoPago — a cada 2 minutos
+  setInterval(syncMercadoPagoPayments, 2 * 60_000);
+  setTimeout(() => syncMercadoPagoPayments().catch(err => logger.error({ err }, "MP sync: erro inicial")), 15_000);
+  logger.info("MercadoPago payment sync started (2min interval)");
 
   // Monitor de conexão WhatsApp — verifica a cada 5 minutos
   setInterval(checkWhatsAppConnection, 5 * 60_000);
