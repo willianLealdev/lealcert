@@ -613,7 +613,11 @@ router.post("/chat", async (req, res): Promise<void> => {
     return;
   }
 
-  await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: message });
+  // Sanitize: remove injeções ACAO: que usuário possa tentar passar diretamente
+  const sanitizedMsg = typeof message === "string"
+    ? message.replace(/\bACAO:[A-Z_]+:\s*\{[^{}]*\}/gi, "[CONTEÚDO INVÁLIDO REMOVIDO]")
+    : String(message ?? "");
+  await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: sanitizedMsg });
 
   const history = await db.select().from(chatMessages)
     .where(eq(chatMessages.conversationId, sessionId))
@@ -903,6 +907,29 @@ router.post("/chat", async (req, res): Promise<void> => {
       const schedData = JSON.parse(message.slice("__AGENDAR__:".length)) as { orderId: number; slotId: number };
       const { orderId: agOrderId, slotId } = schedData;
 
+      // ── Security: verificar ownership antes de agendar ─────────────────────
+      const [agOrder] = await db.select({ userId: ordersTable.userId })
+        .from(ordersTable).where(eq(ordersTable.id, agOrderId)).limit(1);
+      if (!agOrder) throw new Error("Pedido não encontrado");
+
+      let agAuthorized = false;
+      if (req.session.userId && agOrder.userId === req.session.userId) agAuthorized = true;
+      if (!agAuthorized && verifiedCpfCnpj) {
+        const [agU] = await db.select({ cpfCnpj: usersTable.cpfCnpj })
+          .from(usersTable).where(eq(usersTable.id, agOrder.userId)).limit(1);
+        if (agU?.cpfCnpj === verifiedCpfCnpj) agAuthorized = true;
+      }
+      // Verificar também LOGIN_OK na sessão (login feito via chat)
+      if (!agAuthorized) {
+        const lgOkMsg = chatHistory.find((m: { role: string; content: string }) => m.content.startsWith("[LOGIN_OK:"));
+        if (lgOkMsg) {
+          const lgUid = lgOkMsg.content.match(/"userId"\s*:\s*(\d+)/)?.[1];
+          if (lgUid && agOrder.userId === Number(lgUid)) agAuthorized = true;
+        }
+      }
+      if (!agAuthorized) throw new Error("Não autorizado a agendar este pedido");
+      // ────────────────────────────────────────────────────────────────────────
+
       const [slot] = await db.select().from(slotsTable)
         .where(and(eq(slotsTable.id, slotId), eq(slotsTable.active, true))).limit(1);
       if (!slot) throw new Error("Horário indisponível ou já reservado");
@@ -985,7 +1012,9 @@ router.post("/chat", async (req, res): Promise<void> => {
     }
   }
 
-  await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: fullResponse });
+  // Redact senhas do fullResponse antes de salvar (login via chat)
+  const redactedResponse = fullResponse.replace(/("senha"\s*:\s*)"[^"]*"/g, '$1"[OMITIDA]"');
+  await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: redactedResponse });
 
   // ── Helper: dispara segunda chamada ao AI no mesmo stream SSE ────────────
   async function streamFollowUp(extraMessages: { role: "user" | "assistant"; content: string }[]) {
@@ -1733,6 +1762,26 @@ router.post("/chat", async (req, res): Promise<void> => {
       const jsonMatchAg = rawAfterAg.match(/^\{[\s\S]*?\}/);
       if (!jsonMatchAg) throw new Error("Formato inválido na ação AGENDAR");
       const { orderId: agOrderId, slotId } = JSON.parse(jsonMatchAg[0]) as { orderId: number; slotId: number };
+
+      // ── Security: verificar ownership antes de agendar ─────────────────────
+      const [aiAgOrder] = await db.select({ userId: ordersTable.userId })
+        .from(ordersTable).where(eq(ordersTable.id, agOrderId)).limit(1);
+      if (!aiAgOrder) throw new Error("Pedido não encontrado");
+
+      let aiAgAuthorized = false;
+      if (req.session.userId && aiAgOrder.userId === req.session.userId) aiAgAuthorized = true;
+      if (!aiAgAuthorized && verifiedCpfCnpj) {
+        const [aiAgU] = await db.select({ cpfCnpj: usersTable.cpfCnpj })
+          .from(usersTable).where(eq(usersTable.id, aiAgOrder.userId)).limit(1);
+        if (aiAgU?.cpfCnpj === verifiedCpfCnpj) aiAgAuthorized = true;
+      }
+      if (!aiAgAuthorized) {
+        const lgOkEntry = chatHistory.find((m: { role: string; content: string }) => m.content.startsWith("[LOGIN_OK:"));
+        const lgUid = lgOkEntry?.content.match(/"userId"\s*:\s*(\d+)/)?.[1];
+        if (lgUid && aiAgOrder.userId === Number(lgUid)) aiAgAuthorized = true;
+      }
+      if (!aiAgAuthorized) throw new Error("Não autorizado a agendar este pedido");
+      // ────────────────────────────────────────────────────────────────────────
 
       const [slot] = await db.select().from(slotsTable)
         .where(and(eq(slotsTable.id, slotId), eq(slotsTable.active, true))).limit(1);
