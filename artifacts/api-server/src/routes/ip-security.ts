@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, desc, and, gte, like, or, isNull } from "drizzle-orm";
-import { db, ipLogsTable, ipBlocksTable, usersTable } from "@workspace/db";
+import { db, ipLogsTable, ipBlocksTable, ipWhitelistTable, usersTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 
@@ -82,6 +82,88 @@ router.get("/admin/ip-blocks", requireAdmin, async (req, res): Promise<void> => 
     .orderBy(desc(ipBlocksTable.blockedAt));
 
   res.json(blocks);
+});
+
+// ── GET /admin/ip-whitelist — Listar IPs autorizados ───────────────────────
+router.get("/admin/ip-whitelist", requireAdmin, async (req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      id: ipWhitelistTable.id,
+      ip: ipWhitelistTable.ip,
+      addedAt: ipWhitelistTable.addedAt,
+      notes: ipWhitelistTable.notes,
+      country: ipWhitelistTable.country,
+      countryCode: ipWhitelistTable.countryCode,
+      city: ipWhitelistTable.city,
+      addedByName: usersTable.name,
+    })
+    .from(ipWhitelistTable)
+    .leftJoin(usersTable, eq(ipWhitelistTable.addedBy, usersTable.id))
+    .orderBy(desc(ipWhitelistTable.addedAt));
+  res.json(rows);
+});
+
+// ── POST /admin/ip-whitelist — Autorizar IP manualmente ────────────────────
+router.post("/admin/ip-whitelist", requireAdmin, async (req, res): Promise<void> => {
+  const { ip, notes } = req.body ?? {};
+  const adminId = req.session.userId as number;
+  if (!ip || typeof ip !== "string") { res.status(400).json({ error: "IP inválido." }); return; }
+
+  const { geolocate } = await import("../lib/ip-security");
+  const geo = await geolocate(ip);
+
+  await db.insert(ipWhitelistTable).values({
+    ip: ip.trim(),
+    addedBy: adminId,
+    notes: notes || null,
+    country: geo.country,
+    countryCode: geo.countryCode,
+    city: geo.city,
+  }).onConflictDoUpdate({
+    target: ipWhitelistTable.ip,
+    set: { notes: notes || null, addedBy: adminId },
+  });
+
+  logger.info({ ip, adminId }, "ip-whitelist: IP autorizado pelo admin");
+  res.json({ ok: true, message: `IP ${ip} autorizado com sucesso.` });
+});
+
+// ── DELETE /admin/ip-whitelist/:ip — Remover autorização de IP ─────────────
+router.delete("/admin/ip-whitelist/:ip", requireAdmin, async (req, res): Promise<void> => {
+  const ip = decodeURIComponent(req.params.ip as string);
+  const adminId = req.session.userId as number;
+  await db.delete(ipWhitelistTable).where(eq(ipWhitelistTable.ip, ip));
+  logger.info({ ip, adminId }, "ip-whitelist: IP removido da whitelist pelo admin");
+  res.json({ ok: true, message: `IP ${ip} removido da lista de autorizados.` });
+});
+
+// ── POST /admin/ip-blocks/:ip/allow — Desbloquear + autorizar IP ───────────
+router.post("/admin/ip-blocks/:ip/allow", requireAdmin, async (req, res): Promise<void> => {
+  const ip = decodeURIComponent(req.params.ip as string);
+  const adminId = req.session.userId as number;
+  const { notes } = req.body ?? {};
+
+  const { geolocate } = await import("../lib/ip-security");
+  const geo = await geolocate(ip);
+
+  // Remove qualquer bloqueio/banimento existente
+  await db.delete(ipBlocksTable).where(eq(ipBlocksTable.ip, ip));
+
+  // Adiciona à whitelist permanente
+  await db.insert(ipWhitelistTable).values({
+    ip,
+    addedBy: adminId,
+    notes: notes || null,
+    country: geo.country,
+    countryCode: geo.countryCode,
+    city: geo.city,
+  }).onConflictDoUpdate({
+    target: ipWhitelistTable.ip,
+    set: { notes: notes || null, addedBy: adminId },
+  });
+
+  logger.info({ ip, adminId }, "ip-whitelist: IP desbloqueado e autorizado permanentemente pelo admin");
+  res.json({ ok: true, message: `IP ${ip} autorizado permanentemente. Não será bloqueado novamente.` });
 });
 
 // ── POST /admin/ip-blocks/:ip/unblock — Desbloquear IP ─────────────────────

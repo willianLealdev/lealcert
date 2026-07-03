@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './addIpToWhitelist200';
 export * from './adminStats';
 export * from './adminStatsCards';
 export * from './adminStatsMeta';
@@ -14,6 +15,7 @@ export * from './adminStatsRevenue';
 export * from './adminStatsRevenue12';
 export * from './agendarInput';
 export * from './agendarResult';
+export * from './allowIp200';
 export * from './appointment';
 export * from './approvePaymentManual200';
 export * from './appSettings';
@@ -110,6 +112,7 @@ export * from './inboundWebhookInput';
 export * from './ipBlock';
 export * from './ipLog';
 export * from './ipLogsResponse';
+export * from './ipWhitelistEntry';
 export * from './labelSeries';
 export * from './listCertificatesParams';
 export * from './listIpBlocksParams';
@@ -162,6 +165,7 @@ export * from './pushVapidPublicKey';
 export * from './registerInput';
 export * from './registerInputPersonType';
 export * from './registerInputUserType';
+export * from './removeIpFromWhitelist200';
 export * from './resendVerificationInput';
 export * from './safewebAgendarInput';
 export * from './safewebAgendarResult';

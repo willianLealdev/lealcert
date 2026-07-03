@@ -2054,6 +2054,66 @@ export const UnbanIpResponse = zod.object({
 
 
 /**
+ * @summary Unblock + permanently whitelist an IP (admin only)
+ */
+export const AllowIpParams = zod.object({
+  "ip": zod.coerce.string()
+})
+
+export const AllowIpBody = zod.object({
+  "notes": zod.string().optional()
+})
+
+export const AllowIpResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary List permanently allowed IPs (admin only)
+ */
+export const ListIpWhitelistResponseItem = zod.object({
+  "id": zod.number(),
+  "ip": zod.string(),
+  "addedAt": zod.coerce.date(),
+  "notes": zod.string().nullish(),
+  "country": zod.string().nullish(),
+  "countryCode": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "addedByName": zod.string().nullish()
+})
+export const ListIpWhitelistResponse = zod.array(ListIpWhitelistResponseItem)
+
+
+/**
+ * @summary Manually add an IP to the permanent whitelist (admin only)
+ */
+export const AddIpToWhitelistBody = zod.object({
+  "ip": zod.string(),
+  "notes": zod.string().optional()
+})
+
+export const AddIpToWhitelistResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary Remove an IP from the permanent whitelist (admin only)
+ */
+export const RemoveIpFromWhitelistParams = zod.object({
+  "ip": zod.coerce.string()
+})
+
+export const RemoveIpFromWhitelistResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "message": zod.string().optional()
+})
+
+
+/**
  * @summary Send a test push notification (admin only)
  */
 export const SendTestPushBody = zod.object({

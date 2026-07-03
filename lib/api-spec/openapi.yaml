@@ -2005,6 +2005,100 @@ paths:
                   message:
                     type: string
 
+  /admin/ip-blocks/{ip}/allow:
+    post:
+      operationId: allowIp
+      tags: [admin]
+      summary: Unblock + permanently whitelist an IP (admin only)
+      parameters:
+        - in: path
+          name: ip
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+
+  /admin/ip-whitelist:
+    get:
+      operationId: listIpWhitelist
+      tags: [admin]
+      summary: List permanently allowed IPs (admin only)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IpWhitelistEntry"
+    post:
+      operationId: addIpToWhitelist
+      tags: [admin]
+      summary: Manually add an IP to the permanent whitelist (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddIpToWhitelistBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+
+  /admin/ip-whitelist/{ip}:
+    delete:
+      operationId: removeIpFromWhitelist
+      tags: [admin]
+      summary: Remove an IP from the permanent whitelist (admin only)
+      parameters:
+        - in: path
+          name: ip
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+
   /push/test:
     post:
       operationId: sendTestPush
@@ -5046,6 +5140,42 @@ components:
         unblockedByName:
           type: string
           nullable: true
+
+    IpWhitelistEntry:
+      type: object
+      required: [id, ip, addedAt]
+      properties:
+        id:
+          type: integer
+        ip:
+          type: string
+        addedAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        countryCode:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        addedByName:
+          type: string
+          nullable: true
+
+    AddIpToWhitelistBody:
+      type: object
+      required: [ip]
+      properties:
+        ip:
+          type: string
+        notes:
+          type: string
 
     IpLogsResponse:
       type: object

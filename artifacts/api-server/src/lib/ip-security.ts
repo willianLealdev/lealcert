@@ -4,7 +4,7 @@
  * logins de IPs diferentes do cadastro.
  */
 import { eq, desc, and, gte, lte, isNull, or } from "drizzle-orm";
-import { db, ipLogsTable, ipBlocksTable, usersTable } from "@workspace/db";
+import { db, ipLogsTable, ipBlocksTable, ipWhitelistTable, usersTable } from "@workspace/db";
 import { logger } from "./logger";
 
 const MAX_ATTEMPTS = 3;
@@ -56,8 +56,14 @@ export type IpStatus =
   | { status: "banned" }
   | { status: "blocked"; isForeign: boolean; unblockAt: Date | null };
 
+export async function isIpWhitelisted(ip: string): Promise<boolean> {
+  if (IP_WHITELIST.has(ip)) return true;
+  const [row] = await db.select({ id: ipWhitelistTable.id }).from(ipWhitelistTable).where(eq(ipWhitelistTable.ip, ip)).limit(1);
+  return !!row;
+}
+
 export async function checkIpStatus(ip: string): Promise<IpStatus> {
-  if (IP_WHITELIST.has(ip)) return { status: "ok" };
+  if (await isIpWhitelisted(ip)) return { status: "ok" };
   const [block] = await db
     .select()
     .from(ipBlocksTable)
@@ -126,7 +132,7 @@ export async function recordRegisterIp(ip: string, userId: number, cpfCnpj: stri
 // ── Processar falha de login — incrementa contagem e bloqueia se necessário ──
 
 export async function handleFailedLogin(ip: string, cpfCnpj?: string): Promise<boolean> {
-  if (IP_WHITELIST.has(ip)) return false;
+  if (await isIpWhitelisted(ip)) return false;
   const geo = await geolocate(ip);
 
   const [existing] = await db

@@ -20,9 +20,13 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AddIpToWhitelist200,
+  AddIpToWhitelistBody,
   AdminStats,
   AgendarInput,
   AgendarResult,
+  AllowIp200,
+  AllowIpBody,
   AppSettings,
   AppSettingsUpdate,
   ApprovePaymentManual200,
@@ -106,6 +110,7 @@ import type {
   InboundWebhookInput,
   IpBlock,
   IpLogsResponse,
+  IpWhitelistEntry,
   ListCertificatesParams,
   ListIpBlocksParams,
   ListIpLogsParams,
@@ -137,6 +142,7 @@ import type {
   PushUnsubscribeBody,
   PushVapidPublicKey,
   RegisterInput,
+  RemoveIpFromWhitelist200,
   ResendVerificationInput,
   SafewebAgendarInput,
   SafewebAgendarResult,
@@ -7463,6 +7469,296 @@ export const useUnbanIp = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUnbanIpMutationOptions(options));
+    }
+
+export const getAllowIpUrl = (ip: string,) => {
+
+
+
+
+  return `/api/admin/ip-blocks/${ip}/allow`
+}
+
+/**
+ * @summary Unblock + permanently whitelist an IP (admin only)
+ */
+export const allowIp = async (ip: string,
+    allowIpBody?: AllowIpBody, options?: RequestInit): Promise<AllowIp200> => {
+
+  return customFetch<AllowIp200>(getAllowIpUrl(ip),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      allowIpBody,)
+  }
+);}
+
+
+
+
+export const getAllowIpMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof allowIp>>, TError,{ip: string;data?: BodyType<AllowIpBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof allowIp>>, TError,{ip: string;data?: BodyType<AllowIpBody>}, TContext> => {
+
+const mutationKey = ['allowIp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof allowIp>>, {ip: string;data?: BodyType<AllowIpBody>}> = (props) => {
+          const {ip,data} = props ?? {};
+
+          return  allowIp(ip,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AllowIpMutationResult = NonNullable<Awaited<ReturnType<typeof allowIp>>>
+    export type AllowIpMutationBody = BodyType<AllowIpBody> | undefined
+    export type AllowIpMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Unblock + permanently whitelist an IP (admin only)
+ */
+export const useAllowIp = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof allowIp>>, TError,{ip: string;data?: BodyType<AllowIpBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof allowIp>>,
+        TError,
+        {ip: string;data?: BodyType<AllowIpBody>},
+        TContext
+      > => {
+      return useMutation(getAllowIpMutationOptions(options));
+    }
+
+export const getListIpWhitelistUrl = () => {
+
+
+
+
+  return `/api/admin/ip-whitelist`
+}
+
+/**
+ * @summary List permanently allowed IPs (admin only)
+ */
+export const listIpWhitelist = async ( options?: RequestInit): Promise<IpWhitelistEntry[]> => {
+
+  return customFetch<IpWhitelistEntry[]>(getListIpWhitelistUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListIpWhitelistQueryKey = () => {
+    return [
+    `/api/admin/ip-whitelist`
+    ] as const;
+    }
+
+
+export const getListIpWhitelistQueryOptions = <TData = Awaited<ReturnType<typeof listIpWhitelist>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIpWhitelist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListIpWhitelistQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listIpWhitelist>>> = ({ signal }) => listIpWhitelist({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listIpWhitelist>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListIpWhitelistQueryResult = NonNullable<Awaited<ReturnType<typeof listIpWhitelist>>>
+export type ListIpWhitelistQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List permanently allowed IPs (admin only)
+ */
+
+export function useListIpWhitelist<TData = Awaited<ReturnType<typeof listIpWhitelist>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIpWhitelist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListIpWhitelistQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAddIpToWhitelistUrl = () => {
+
+
+
+
+  return `/api/admin/ip-whitelist`
+}
+
+/**
+ * @summary Manually add an IP to the permanent whitelist (admin only)
+ */
+export const addIpToWhitelist = async (addIpToWhitelistBody: AddIpToWhitelistBody, options?: RequestInit): Promise<AddIpToWhitelist200> => {
+
+  return customFetch<AddIpToWhitelist200>(getAddIpToWhitelistUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      addIpToWhitelistBody,)
+  }
+);}
+
+
+
+
+export const getAddIpToWhitelistMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addIpToWhitelist>>, TError,{data: BodyType<AddIpToWhitelistBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addIpToWhitelist>>, TError,{data: BodyType<AddIpToWhitelistBody>}, TContext> => {
+
+const mutationKey = ['addIpToWhitelist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addIpToWhitelist>>, {data: BodyType<AddIpToWhitelistBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  addIpToWhitelist(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddIpToWhitelistMutationResult = NonNullable<Awaited<ReturnType<typeof addIpToWhitelist>>>
+    export type AddIpToWhitelistMutationBody = BodyType<AddIpToWhitelistBody>
+    export type AddIpToWhitelistMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Manually add an IP to the permanent whitelist (admin only)
+ */
+export const useAddIpToWhitelist = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addIpToWhitelist>>, TError,{data: BodyType<AddIpToWhitelistBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addIpToWhitelist>>,
+        TError,
+        {data: BodyType<AddIpToWhitelistBody>},
+        TContext
+      > => {
+      return useMutation(getAddIpToWhitelistMutationOptions(options));
+    }
+
+export const getRemoveIpFromWhitelistUrl = (ip: string,) => {
+
+
+
+
+  return `/api/admin/ip-whitelist/${ip}`
+}
+
+/**
+ * @summary Remove an IP from the permanent whitelist (admin only)
+ */
+export const removeIpFromWhitelist = async (ip: string, options?: RequestInit): Promise<RemoveIpFromWhitelist200> => {
+
+  return customFetch<RemoveIpFromWhitelist200>(getRemoveIpFromWhitelistUrl(ip),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveIpFromWhitelistMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeIpFromWhitelist>>, TError,{ip: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeIpFromWhitelist>>, TError,{ip: string}, TContext> => {
+
+const mutationKey = ['removeIpFromWhitelist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeIpFromWhitelist>>, {ip: string}> = (props) => {
+          const {ip} = props ?? {};
+
+          return  removeIpFromWhitelist(ip,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveIpFromWhitelistMutationResult = NonNullable<Awaited<ReturnType<typeof removeIpFromWhitelist>>>
+
+    export type RemoveIpFromWhitelistMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Remove an IP from the permanent whitelist (admin only)
+ */
+export const useRemoveIpFromWhitelist = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeIpFromWhitelist>>, TError,{ip: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeIpFromWhitelist>>,
+        TError,
+        {ip: string},
+        TContext
+      > => {
+      return useMutation(getRemoveIpFromWhitelistMutationOptions(options));
     }
 
 export const getSendTestPushUrl = () => {

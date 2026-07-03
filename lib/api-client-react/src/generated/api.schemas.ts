@@ -1539,6 +1539,22 @@ export interface IpBlock {
   unblockedByName?: string | null;
 }
 
+export interface IpWhitelistEntry {
+  id: number;
+  ip: string;
+  addedAt: string;
+  notes?: string | null;
+  country?: string | null;
+  countryCode?: string | null;
+  city?: string | null;
+  addedByName?: string | null;
+}
+
+export interface AddIpToWhitelistBody {
+  ip: string;
+  notes?: string;
+}
+
 export interface IpLogsResponse {
   logs: IpLog[];
   total: number;
@@ -1761,6 +1777,25 @@ export type BanIp200 = {
 };
 
 export type UnbanIp200 = {
+  ok?: boolean;
+  message?: string;
+};
+
+export type AllowIpBody = {
+  notes?: string;
+};
+
+export type AllowIp200 = {
+  ok?: boolean;
+  message?: string;
+};
+
+export type AddIpToWhitelist200 = {
+  ok?: boolean;
+  message?: string;
+};
+
+export type RemoveIpFromWhitelist200 = {
   ok?: boolean;
   message?: string;
 };

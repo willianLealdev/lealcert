@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { useListIpLogs, useListIpBlocks, useUnblockIp, useBanIp, useUnbanIp } from "@workspace/api-client-react";
+import {
+  useListIpLogs, useListIpBlocks, useUnblockIp, useBanIp, useUnbanIp,
+  useAllowIp, useListIpWhitelist, useRemoveIpFromWhitelist, useAddIpToWhitelist,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ShieldAlert, ShieldCheck, Globe, MapPin, Clock, Ban, Unlock, ShieldOff,
   CheckCircle, XCircle, AlertTriangle, Search, RefreshCw, Loader2,
+  ShieldPlus, Trash2, Plus,
 } from "lucide-react";
 
 function actionBadge(action: string) {
@@ -34,6 +38,8 @@ export default function AdminIpSecurity() {
   const [actionFilter, setActionFilter] = useState("");
   const [page, setPage] = useState(1);
   const [bannedFilter, setBannedFilter] = useState<"all" | "blocked" | "banned">("all");
+  const [newIp, setNewIp] = useState("");
+  const [newIpNotes, setNewIpNotes] = useState("");
 
   const logsQuery = useListIpLogs({
     ip: ipFilter || undefined,
@@ -45,6 +51,8 @@ export default function AdminIpSecurity() {
   const blocksQuery = useListIpBlocks(
     bannedFilter === "all" ? {} : { banned: bannedFilter === "banned" ? "true" : "false" },
   );
+
+  const whitelistQuery = useListIpWhitelist();
 
   const unblockMutation = useUnblockIp({
     mutation: {
@@ -86,9 +94,52 @@ export default function AdminIpSecurity() {
     },
   });
 
+  const allowMutation = useAllowIp({
+    mutation: {
+      onSuccess: (_, vars) => {
+        toast({ title: "✅ IP autorizado", description: `${vars.ip} está na lista de permitidos e nunca será bloqueado.` });
+        blocksQuery.refetch();
+        whitelistQuery.refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? "Erro ao autorizar IP.";
+        toast({ title: "Erro", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
+  const addWhitelistMutation = useAddIpToWhitelist({
+    mutation: {
+      onSuccess: (_, vars) => {
+        toast({ title: "✅ IP autorizado", description: `${vars.data.ip} adicionado à lista de permitidos.` });
+        whitelistQuery.refetch();
+        setNewIp("");
+        setNewIpNotes("");
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? "Erro ao adicionar IP.";
+        toast({ title: "Erro", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
+  const removeWhitelistMutation = useRemoveIpFromWhitelist({
+    mutation: {
+      onSuccess: (_, vars) => {
+        toast({ title: "IP removido", description: `${vars.ip} removido da lista de permitidos.` });
+        whitelistQuery.refetch();
+      },
+      onError: (err: unknown) => {
+        const msg = (err as { data?: { error?: string } })?.data?.error ?? "Erro ao remover IP.";
+        toast({ title: "Erro", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
   const logs = logsQuery.data?.logs ?? [];
   const total = logsQuery.data?.total ?? 0;
   const blocks = blocksQuery.data ?? [];
+  const whitelist = whitelistQuery.data ?? [];
 
   const blockedCount = blocks.filter(b => !b.isBanned).length;
   const bannedCount = blocks.filter(b => b.isBanned).length;
@@ -105,7 +156,7 @@ export default function AdminIpSecurity() {
           <ShieldAlert className="h-6 w-6 text-blue-600" />
           Segurança de IP
         </h1>
-        <p className="text-slate-500 text-sm mt-1">Monitoramento de acessos, bloqueios e banimentos por endereço IP.</p>
+        <p className="text-slate-500 text-sm mt-1">Monitoramento de acessos, bloqueios, banimentos e IPs autorizados.</p>
       </div>
 
       {/* Stat cards */}
@@ -124,8 +175,8 @@ export default function AdminIpSecurity() {
         </Card>
         <Card>
           <CardContent className="pt-5">
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Falhas Hoje</p>
-            <p className="text-3xl font-bold text-slate-700 mt-1">{failedToday}</p>
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Autorizados</p>
+            <p className="text-3xl font-bold text-green-600 mt-1">{whitelist.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -141,6 +192,11 @@ export default function AdminIpSecurity() {
           <TabsTrigger value="blocks">
             IPs Bloqueados/Banidos
             {blocks.length > 0 && <span className="ml-1.5 bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded-full">{blocks.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="whitelist">
+            <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-green-600" />
+            IPs Autorizados
+            {whitelist.length > 0 && <span className="ml-1.5 bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded-full">{whitelist.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="logs">Histórico de Acessos</TabsTrigger>
         </TabsList>
@@ -211,6 +267,21 @@ export default function AdminIpSecurity() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex gap-1.5 justify-end">
+                              {/* Botão Permitir — disponível tanto em bloqueados quanto banidos */}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-blue-700 border-blue-300 hover:bg-blue-50"
+                                onClick={() => {
+                                  if (confirm(`Autorizar permanentemente o IP ${block.ip}?\n\nEste IP nunca será bloqueado novamente, mesmo após falhas de login.`))
+                                    allowMutation.mutate({ ip: block.ip });
+                                }}
+                                disabled={allowMutation.isPending}
+                                title="Autorizar permanentemente — nunca será bloqueado novamente"
+                              >
+                                <ShieldPlus className="h-3.5 w-3.5 mr-1" />Permitir
+                              </Button>
+
                               {block.isBanned ? (
                                 <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50"
                                   onClick={() => unbanMutation.mutate({ ip: block.ip })}
@@ -232,6 +303,121 @@ export default function AdminIpSecurity() {
                                 </>
                               )}
                             </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Tab: Whitelist ───────────────────────────────────── */}
+        <TabsContent value="whitelist" className="space-y-4 mt-4">
+          <Card className="border-green-200 bg-green-50/40">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-green-800">
+                <ShieldPlus className="h-4 w-4" />
+                Autorizar novo IP manualmente
+              </CardTitle>
+              <p className="text-xs text-green-700">IPs autorizados nunca serão bloqueados, mesmo após múltiplas falhas de login.</p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 flex-wrap">
+                <Input
+                  placeholder="Endereço IP (ex: 189.30.45.12)"
+                  value={newIp}
+                  onChange={e => setNewIp(e.target.value)}
+                  className="flex-1 min-w-48 font-mono"
+                />
+                <Input
+                  placeholder="Observação (opcional)"
+                  value={newIpNotes}
+                  onChange={e => setNewIpNotes(e.target.value)}
+                  className="flex-1 min-w-48"
+                />
+                <Button
+                  onClick={() => {
+                    if (!newIp.trim()) return;
+                    addWhitelistMutation.mutate({ data: { ip: newIp.trim(), notes: newIpNotes || undefined } });
+                  }}
+                  disabled={!newIp.trim() || addWhitelistMutation.isPending}
+                  className="bg-green-700 hover:bg-green-800"
+                >
+                  {addWhitelistMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Plus className="h-4 w-4 mr-1.5" />}
+                  Autorizar IP
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button size="sm" variant="ghost" onClick={() => whitelistQuery.refetch()} className="ml-auto flex">
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${whitelistQuery.isFetching ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+
+          {whitelistQuery.isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+          ) : whitelist.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-slate-400">
+                <ShieldCheck className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+                Nenhum IP autorizado manualmente ainda.
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                        <th className="text-left px-4 py-3">IP</th>
+                        <th className="text-left px-4 py-3">País</th>
+                        <th className="text-left px-4 py-3">Autorizado por</th>
+                        <th className="text-left px-4 py-3">Data</th>
+                        <th className="text-left px-4 py-3">Observação</th>
+                        <th className="text-right px-4 py-3">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {whitelist.map(entry => (
+                        <tr key={entry.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 font-mono font-medium text-slate-800">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="gap-1 border-green-300 text-green-700 bg-green-50">
+                                <ShieldCheck className="h-3 w-3" />Autorizado
+                              </Badge>
+                              {entry.ip}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              <CountryFlag code={entry.countryCode} />
+                              <span className="text-slate-600">{entry.country ?? "—"}</span>
+                              {entry.city && <span className="text-slate-400 text-xs">({entry.city})</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 text-xs">{entry.addedByName ?? "—"}</td>
+                          <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
+                            {new Date(entry.addedAt).toLocaleString("pt-BR")}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500 text-xs">{entry.notes ?? <span className="text-slate-300">—</span>}</td>
+                          <td className="px-4 py-3 text-right">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-600 hover:bg-red-50 h-7 px-2"
+                              onClick={() => {
+                                if (confirm(`Remover autorização do IP ${entry.ip}?\n\nEle voltará a ser bloqueado normalmente após erros de login.`))
+                                  removeWhitelistMutation.mutate({ ip: entry.ip });
+                              }}
+                              disabled={removeWhitelistMutation.isPending}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -286,7 +472,7 @@ export default function AdminIpSecurity() {
                         <th className="text-left px-4 py-3">Usuário</th>
                         <th className="text-left px-4 py-3">Ação</th>
                         <th className="text-center px-4 py-3">Status</th>
-                        <th className="text-right px-4 py-3">Banir IP</th>
+                        <th className="text-right px-4 py-3">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -314,13 +500,25 @@ export default function AdminIpSecurity() {
                               : <XCircle className="h-4 w-4 text-amber-500 mx-auto" />}
                           </td>
                           <td className="px-4 py-2.5 text-right">
-                            {!log.success && (
-                              <Button size="sm" variant="ghost" className="h-7 px-2 text-red-600 hover:bg-red-50"
-                                onClick={() => { if (confirm(`Banir permanentemente o IP ${log.ip}?`)) banMutation.mutate({ ip: log.ip }); }}
-                                disabled={banMutation.isPending}>
-                                <Ban className="h-3.5 w-3.5" />
+                            <div className="flex gap-1 justify-end">
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-blue-600 hover:bg-blue-50"
+                                onClick={() => {
+                                  if (confirm(`Autorizar permanentemente o IP ${log.ip}?\n\nEle nunca será bloqueado novamente.`))
+                                    allowMutation.mutate({ ip: log.ip });
+                                }}
+                                disabled={allowMutation.isPending}
+                                title="Autorizar permanentemente"
+                              >
+                                <ShieldPlus className="h-3.5 w-3.5" />
                               </Button>
-                            )}
+                              {!log.success && (
+                                <Button size="sm" variant="ghost" className="h-7 px-2 text-red-600 hover:bg-red-50"
+                                  onClick={() => { if (confirm(`Banir permanentemente o IP ${log.ip}?`)) banMutation.mutate({ ip: log.ip }); }}
+                                  disabled={banMutation.isPending}>
+                                  <Ban className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}

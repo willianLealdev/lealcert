@@ -14,3 +14,4 @@ export * from "./push-subscriptions";
 export * from "./ip-logs";
 export * from "./ip-blocks";
 export * from "./ip-verifications";
+export * from "./ip-whitelist";
