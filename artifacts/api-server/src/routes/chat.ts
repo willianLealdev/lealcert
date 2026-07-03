@@ -758,6 +758,56 @@ router.post("/chat", async (req, res): Promise<void> => {
               if (payment.status === "approved") {
                 await db.update(ordersTable).set({ status: "paid" }).where(eq(ordersTable.id, vpOrderId));
                 effectiveStatus = "paid";
+
+                // Disparar notificação + registro automático no provedor
+                const [fullOrder] = await db.select().from(ordersTable).where(eq(ordersTable.id, vpOrderId)).limit(1);
+                const [certRow] = fullOrder?.certificateId
+                  ? await db.select({ name: certificatesTable.name }).from(certificatesTable).where(eq(certificatesTable.id, fullOrder.certificateId)).limit(1)
+                  : [undefined];
+                const [userRow] = fullOrder?.userId
+                  ? await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, fullOrder.userId)).limit(1)
+                  : [undefined];
+
+                if (fullOrder) {
+                  const { notifyOrderStatus } = await import("../lib/notify");
+                  notifyOrderStatus({
+                    to: fullOrder.customerEmail,
+                    phone: fullOrder.customerPhone,
+                    responsiblePhone: userRow?.phone ?? null,
+                    customerName: fullOrder.customerName,
+                    orderNumber: fullOrder.orderNumber,
+                    status: "paid",
+                    total: parseFloat(fullOrder.total),
+                    certName: certRow?.name ?? undefined,
+                  }).catch(err => req.log.error({ err }, "__PAGUEI__ notify error"));
+
+                  const [s] = await db.select({ activeProvider: settingsTable.activeProvider }).from(settingsTable).limit(1);
+                  const activeProvider = s?.activeProvider ?? "gestaoar";
+                  if (activeProvider === "gestaoar") {
+                    const { garAutoComprar } = await import("../lib/gar-auto");
+                    // Aguarda até 8s para ter o garPedido/hopeUrl antes de responder
+                    await Promise.race([
+                      garAutoComprar(vpOrderId),
+                      new Promise(resolve => setTimeout(resolve, 8000)),
+                    ]).catch(err => req.log.error({ err }, "__PAGUEI__ garAutoComprar error"));
+                  } else {
+                    const { swAutoComprar } = await import("../lib/sw-auto");
+                    await Promise.race([
+                      swAutoComprar(vpOrderId),
+                      new Promise(resolve => setTimeout(resolve, 8000)),
+                    ]).catch(err => req.log.error({ err }, "__PAGUEI__ swAutoComprar error"));
+                  }
+                }
+
+                // Recarregar pedido para pegar garPedido/hopeUrl gerados
+                const [refreshed] = await db.select({
+                  id: ordersTable.id, orderNumber: ordersTable.orderNumber,
+                  status: ordersTable.status, garPedido: ordersTable.garPedido,
+                  safewebSolicitacaoId: ordersTable.safewebSolicitacaoId,
+                  garHopeUploadUrl: ordersTable.garHopeUploadUrl,
+                  mpPaymentId: ordersTable.mpPaymentId,
+                }).from(ordersTable).where(eq(ordersTable.id, vpOrderId)).limit(1);
+                if (refreshed) Object.assign(orderRow, refreshed);
               }
             }
           }
