@@ -1095,7 +1095,7 @@ export default function Landing() {
               className="flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-blue-600 text-white font-bold px-8 py-4 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-900/30"
             >
               <MessageCircle className="h-5 w-5" />
-              Comprar pelo Chat
+              Suporte pelo Chat
             </button>
             <Link href="/entrar">
               <button className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold px-8 py-4 rounded-xl transition-all w-full sm:w-auto">
