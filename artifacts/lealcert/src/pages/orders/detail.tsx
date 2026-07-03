@@ -1301,18 +1301,18 @@ export default function OrderDetail() {
       (order.status === "paid" || order.status === "protocol_assigned" || order.status === "completed")
     ) {
       setPixData(null);
-      // Se já tem protocolo, não precisa do modal
-      if (order.garPedido || order.safewebSolicitacaoId) {
-        toast({ title: "✅ Pagamento confirmado!", description: `Protocolo: ${order.garPedido ?? order.safewebSolicitacaoId}` });
+      // Só pula o modal se o protocolo final já está disponível
+      const alreadyHasProtocol = !!(order.garProtocolo || order.protocolNumber);
+      if (alreadyHasProtocol) {
+        toast({ title: "✅ Pagamento confirmado!", description: `Protocolo: ${order.garProtocolo ?? order.protocolNumber}` });
       } else {
+        // Começa no step correto conforme o que já existe no pedido
+        const initialStep = (order.garPedido || order.safewebSolicitacaoId) ? 2 : 0;
         setShowProtocolLoading(true);
-        setProtocolLoadingStep(0);
+        setProtocolLoadingStep(initialStep);
         setProtocolLoadingError(null);
-        // Avança step a cada 4s para dar feedback visual
-        let step = 0;
+        // Polling a cada 4s enquanto aguarda protocolo
         protocolLoadingIntervalRef.current = setInterval(() => {
-          step = Math.min(step + 1, 2);
-          setProtocolLoadingStep(step);
           refetch();
         }, 4000);
         // Timeout de 90s — mostra erro se protocolo não chegar
@@ -1325,19 +1325,28 @@ export default function OrderDetail() {
     prevStatusRef.current = order.status;
   }, [order?.status]);
 
-  // Fecha modal quando protocolo chegar
+  // Avança para step 2 ("Emitindo protocolo…") quando venda é registrada no provedor
   useEffect(() => {
     if (!showProtocolLoading) return;
     if (!order) return;
-    const hasProtocol = !!(order.garPedido || order.safewebSolicitacaoId);
+    if (order.garPedido || order.safewebSolicitacaoId) {
+      setProtocolLoadingStep(prev => Math.max(prev, 2));
+    }
+  }, [order?.garPedido, order?.safewebSolicitacaoId, showProtocolLoading]);
+
+  // Fecha modal apenas quando o protocolo final for emitido
+  useEffect(() => {
+    if (!showProtocolLoading) return;
+    if (!order) return;
+    const hasProtocol = !!(order.garProtocolo || order.protocolNumber);
     if (hasProtocol) {
       if (protocolLoadingIntervalRef.current) clearInterval(protocolLoadingIntervalRef.current);
       if (protocolLoadingTimeoutRef.current) clearTimeout(protocolLoadingTimeoutRef.current);
       setProtocolLoadingStep(3);
       // Fecha com pequena pausa para o usuário ver o checkmark
-      setTimeout(() => setShowProtocolLoading(false), 1800);
+      setTimeout(() => setShowProtocolLoading(false), 2200);
     }
-  }, [order?.garPedido, order?.safewebSolicitacaoId, showProtocolLoading]);
+  }, [order?.garProtocolo, order?.protocolNumber, showProtocolLoading]);
 
   const updateOrder = useUpdateOrder({
     mutation: {
@@ -1710,8 +1719,8 @@ export default function OrderDetail() {
             {!protocolLoadingError && protocolLoadingStep < 3 && (() => {
               const steps = [
                 "Confirmando pagamento…",
-                "Registrando no sistema GAR…",
-                "Gerando protocolo do certificado…",
+                "Registrando venda no sistema GAR…",
+                "Emitindo protocolo do certificado…",
               ];
               return (
                 <div className="space-y-3">
