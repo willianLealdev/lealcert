@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -109,8 +109,10 @@ function ChatWidget() {
     garHopeUploadUrl?: string | null; garAgendamentoDataHora?: string | null;
   } | null>(null);
   const [pixQrInfo, setPixQrInfo] = useState<PixQrInfo | null>(null);
+  const [pixAfterMessageIdx, setPixAfterMessageIdx] = useState<number | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const [qrBlobUrl, setQrBlobUrl] = useState<string | null>(null);
+  const messagesLengthRef = useRef(0);
   const [voiceMode, setVoiceMode] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
@@ -157,6 +159,8 @@ function ChatWidget() {
     }
     return () => { if (url) URL.revokeObjectURL(url); };
   }, [pixQrInfo?.qrCodeDataUrl]);
+
+  useEffect(() => { messagesLengthRef.current = messages.length; }, [messages]);
 
   const unlockIOSAudio = useCallback(() => {
     if (!IS_IOS || iosAudioUnlockedRef.current || !("speechSynthesis" in window)) return;
@@ -327,6 +331,9 @@ function ChatWidget() {
       setActiveOrderInfo(null);
       setHopeUrl(null);
       setDocsConfirmed(false);
+      setPixQrInfo(null);
+      setPixAfterMessageIdx(null);
+      setCreatedOrderId(null);
     }
   }, [open]);
 
@@ -426,6 +433,7 @@ function ChatWidget() {
             }
             if (ev.action === "order_created" && ev.orderNumber) {
               if (ev.orderId) setCreatedOrderId(ev.orderId);
+              setPixAfterMessageIdx(messagesLengthRef.current - 1);
               setPixQrInfo({
                 qrCodeDataUrl: ev.qrCodeDataUrl ?? null,
                 pixPayload: ev.pixPayload ?? null,
@@ -693,7 +701,8 @@ function ChatWidget() {
               </div>
             )}
             {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
+              <Fragment key={i}>
+              <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
                 {m.role === "assistant" && (
                   <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
                     <Bot className="h-3.5 w-3.5 text-white" />
@@ -713,6 +722,71 @@ function ChatWidget() {
                   )}
                 </div>
               </div>
+              {pixQrInfo && pixAfterMessageIdx === i && (
+                <div className="flex justify-start gap-2">
+                  <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <div className="max-w-[90%] bg-white border border-green-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-4 text-sm">
+                    <p className="font-bold text-gray-800 mb-1">✅ Pedido #{pixQrInfo.orderNumber} criado!</p>
+                    <p className="text-green-700 font-semibold mb-3 text-base">Total: R$ {pixQrInfo.total.toFixed(2).replace(".", ",")}</p>
+                    {pixQrInfo.qrCodeDataUrl ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <p className="text-xs text-gray-600 font-medium self-start">📲 Pague via PIX:</p>
+                        <img
+                          src={qrBlobUrl ?? pixQrInfo.qrCodeDataUrl}
+                          alt="QR Code PIX"
+                          className="w-48 h-48 rounded-lg border border-gray-200 shadow-sm"
+                          loading="eager"
+                          decoding="async"
+                        />
+                        <p className="text-xs text-gray-500 text-center">
+                          Aponte a câmera do celular para o QR Code ou use o botão abaixo
+                        </p>
+                        {pixQrInfo.pixPayload && (
+                          <button
+                            onClick={() => { void navigator.clipboard.writeText(pixQrInfo!.pixPayload!); }}
+                            className="w-full text-xs px-3 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-medium"
+                          >
+                            📋 Copiar código PIX (Copia e Cola)
+                          </button>
+                        )}
+                      </div>
+                    ) : pixQrInfo.pixKey ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-600 font-medium">📲 Pague via PIX:</p>
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1 font-medium">Chave PIX:</p>
+                          <p className="font-mono text-sm text-gray-900 break-all select-all">{pixQrInfo.pixKey}</p>
+                        </div>
+                        <p className="text-xs text-gray-500">Valor: <span className="font-semibold text-gray-800">R$ {pixQrInfo.total.toFixed(2).replace(".", ",")}</span></p>
+                        {pixQrInfo.pixPayload && (
+                          <button
+                            onClick={() => { void navigator.clipboard.writeText(pixQrInfo!.pixPayload!); }}
+                            className="w-full text-xs px-3 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-medium"
+                          >
+                            📋 Copiar código PIX (Copia e Cola)
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <p className="text-xs text-amber-800 font-medium">⏳ Nossa equipe entrará em contato com os dados de pagamento em breve.</p>
+                      </div>
+                    )}
+                    <div className="mt-4 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 text-center mb-2">Após efetuar o pagamento, clique no botão abaixo:</p>
+                      <button
+                        onClick={() => void send(`__PAGUEI__:${createdOrderId ?? ""}`)}
+                        className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors font-semibold shadow-sm"
+                      >
+                        ✅ Já paguei!
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              </Fragment>
             ))}
             {showMenuOptions && !loading && activeOrderInfo && (
               <div className="flex justify-start gap-2">
@@ -874,70 +948,6 @@ function ChatWidget() {
                 <div className="max-w-[92%] bg-green-50 border border-green-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm">
                   <p className="font-semibold text-green-800">✅ Documentos confirmados!</p>
                   <p className="text-xs text-green-700 mt-0.5">Seu envio foi registrado. Aguarde a confirmação do assistente para prosseguir.</p>
-                </div>
-              </div>
-            )}
-            {pixQrInfo && (
-              <div className="flex justify-start gap-2">
-                <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3.5 w-3.5 text-white" />
-                </div>
-                <div className="max-w-[90%] bg-white border border-green-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-4 text-sm">
-                  <p className="font-bold text-gray-800 mb-1">✅ Pedido #{pixQrInfo.orderNumber} criado!</p>
-                  <p className="text-green-700 font-semibold mb-3 text-base">Total: R$ {pixQrInfo.total.toFixed(2).replace(".", ",")}</p>
-                  {pixQrInfo.qrCodeDataUrl ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <p className="text-xs text-gray-600 font-medium self-start">📲 Pague via PIX:</p>
-                      <img
-                        src={qrBlobUrl ?? pixQrInfo.qrCodeDataUrl}
-                        alt="QR Code PIX"
-                        className="w-48 h-48 rounded-lg border border-gray-200 shadow-sm"
-                        loading="eager"
-                        decoding="async"
-                      />
-                      <p className="text-xs text-gray-500 text-center">
-                        Aponte a câmera do celular para o QR Code ou use o botão abaixo
-                      </p>
-                      {pixQrInfo.pixPayload && (
-                        <button
-                          onClick={() => { void navigator.clipboard.writeText(pixQrInfo.pixPayload!); }}
-                          className="w-full text-xs px-3 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-medium"
-                        >
-                          📋 Copiar código PIX (Copia e Cola)
-                        </button>
-                      )}
-                    </div>
-                  ) : pixQrInfo.pixKey ? (
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-600 font-medium">📲 Pague via PIX:</p>
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                        <p className="text-xs text-gray-500 mb-1 font-medium">Chave PIX:</p>
-                        <p className="font-mono text-sm text-gray-900 break-all select-all">{pixQrInfo.pixKey}</p>
-                      </div>
-                      <p className="text-xs text-gray-500">Valor: <span className="font-semibold text-gray-800">R$ {pixQrInfo.total.toFixed(2).replace(".", ",")}</span></p>
-                      {pixQrInfo.pixPayload && (
-                        <button
-                          onClick={() => { void navigator.clipboard.writeText(pixQrInfo.pixPayload!); }}
-                          className="w-full text-xs px-3 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-medium"
-                        >
-                          📋 Copiar código PIX (Copia e Cola)
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                      <p className="text-xs text-amber-800 font-medium">⏳ Nossa equipe entrará em contato com os dados de pagamento em breve.</p>
-                    </div>
-                  )}
-                  <div className="mt-4 pt-3 border-t border-gray-100">
-                    <p className="text-xs text-gray-500 text-center mb-2">Após efetuar o pagamento, clique no botão abaixo:</p>
-                    <button
-                      onClick={() => void send(`__PAGUEI__:${createdOrderId ?? ""}`)}
-                      className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors font-semibold shadow-sm"
-                    >
-                      ✅ Já paguei!
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
