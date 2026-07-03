@@ -130,6 +130,84 @@ async function syncSafewebStatuses() {
   }
 }
 
+// ── GAR Protocol Sync ─────────────────────────────────────────────────────────
+// Roda a cada 5 minutos. Para pedidos que têm garPedido mas ainda não têm
+// garProtocolo, tenta (re)emitir o protocolo ou puxa do ConsultaPedidoProtocolo
+// o protocolo gerado manualmente no portal GAR.
+let garProtocolSyncRunning = false;
+
+async function syncGarProtocols() {
+  if (garProtocolSyncRunning) return;
+  garProtocolSyncRunning = true;
+  try {
+    const [settings] = await db.select().from(settingsTable).limit(1);
+    if (!settings?.garApiKey) return;
+    if ((settings.activeProvider ?? "gestaoar") !== "gestaoar") return;
+
+    // Pedidos com garPedido mas sem protocolo e em status não-final
+    const stuck = await db
+      .select()
+      .from(ordersTable)
+      .where(and(
+        isNotNull(ordersTable.garPedido),
+        notInArray(ordersTable.status, ["cancelled", "completed", "revogado"]),
+      ));
+
+    const stuckWithoutProtocol = stuck.filter(o => !o.garProtocolo);
+    if (stuckWithoutProtocol.length === 0) return;
+
+    logger.info({ count: stuckWithoutProtocol.length }, "GAR protocol sync: pedidos sem protocolo encontrados");
+
+    const { garConsultarStatus } = await import("./gestaoar");
+    const { emitirProtocoloEHope } = await import("./gar-auto");
+    const { logEvent } = await import("../lib/order-events");
+
+    for (const order of stuckWithoutProtocol) {
+      if (!order.garPedido) continue;
+      try {
+        // 1) Consultar GAR: se o admin gerou o protocolo manualmente no portal
+        const statusResult = await garConsultarStatus(settings.garApiKey!, order.garPedido);
+        const protocolo = statusResult.Protocolo ?? null;
+
+        if (protocolo) {
+          // Protocolo já existe no GAR — salvar no sistema e gerar Hope
+          logger.info({ orderId: order.id, protocolo }, "GAR protocol sync: protocolo encontrado no GAR, sincronizando");
+
+          let garHopeUploadUrl: string | null = null;
+          try {
+            const swSettings = { url: settings.safewebUrl ?? "", username: settings.safewebUsername ?? "", password: settings.safewebPassword ?? "" };
+            if (swSettings.url && swSettings.username && swSettings.password) {
+              const { swHopeSolicitation } = await import("./safeweb");
+              const hopeResult = await swHopeSolicitation(swSettings, protocolo);
+              garHopeUploadUrl = hopeResult.url ?? null;
+            }
+          } catch (hopeErr) {
+            logger.warn({ err: hopeErr, orderId: order.id }, "GAR protocol sync: falha ao criar Hope solicitation");
+          }
+
+          await db.update(ordersTable).set({
+            garProtocolo: protocolo,
+            garHopeUploadUrl,
+            garStatus: "Protocolo emitido",
+            status: "protocol_assigned",
+          }).where(eq(ordersTable.id, order.id));
+
+          await logEvent(order.id, "gar_protocol_emitted", `Protocolo sincronizado do GAR: ${protocolo}`, { protocolo, garPedido: order.garPedido });
+        } else {
+          // 2) Protocolo ainda não gerado no GAR — tentar emitir automaticamente
+          await emitirProtocoloEHope(order.id, order, settings);
+        }
+      } catch (err) {
+        logger.error({ err, orderId: order.id }, "GAR protocol sync: erro ao sincronizar pedido");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "GAR protocol sync: erro geral");
+  } finally {
+    garProtocolSyncRunning = false;
+  }
+}
+
 // ── MercadoPago Payment Sync ──────────────────────────────────────────────────
 // Roda a cada 2 minutos, verificando todos os pedidos pending_payment com
 // mpPaymentId na API do MP e atualizando automaticamente quando aprovado.
@@ -338,6 +416,11 @@ export function startScheduler() {
   const runAutoUnblock = () => import("./ip-security").then(m => m.autoUnblockExpiredIps()).catch(err => logger.error({ err }, "ip-security: auto-unblock error"));
   setInterval(runAutoUnblock, 10 * 60_000);
   setTimeout(runAutoUnblock, 60_000);
+
+  // Sincronização de protocolos GAR — a cada 5 minutos
+  setInterval(syncGarProtocols, 5 * 60_000);
+  setTimeout(() => syncGarProtocols().catch(err => logger.error({ err }, "GAR protocol sync: erro inicial")), 5_000);
+  logger.info("GAR protocol sync started (5min interval)");
 
   // Sincronização automática de pagamentos MercadoPago — a cada 2 minutos
   setInterval(syncMercadoPagoPayments, 2 * 60_000);
