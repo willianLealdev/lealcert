@@ -16,10 +16,10 @@ const CERTS = [
 ];
 
 const STEPS = [
-  { n: "01", title: "Fale com nossa IA", desc: "Informe o que precisa no chat. A assistente vai recomendar o certificado ideal para o seu caso." },
-  { n: "02", title: "Forneça seus dados", desc: "Nome, CPF/CNPJ e endereço. Tudo direto no chat, sem formulários complicados." },
+  { n: "01", title: "Faça seu cadastro", desc: "Acesse o sistema, crie seu cadastro e escolha o certificado ideal para o seu caso." },
+  { n: "02", title: "Forneça seus dados", desc: "Nome, CPF/CNPJ e endereço. Tudo de forma simples e segura, sem complicações." },
   { n: "03", title: "Pague via PIX", desc: "QR Code e chave PIX gerados na hora. Pagamento instantâneo e confirmação automática." },
-  { n: "04", title: "Emissão agendada", desc: "Nossa equipe entra em contato para agendar. Você acompanha tudo por e-mail." },
+  { n: "04", title: "Emissão agendada", desc: "Faça seu agendamento após o pagamento. Um Agente irá entrar em contato com você na data e horário agendado." },
 ];
 
 const BENEFITS = [
@@ -897,7 +897,7 @@ export default function Landing() {
             <span className="text-[#2563eb]">100% online</span>
           </h1>
           <p className="text-lg sm:text-xl text-blue-100/80 max-w-2xl mx-auto mb-10">
-            e-CPF e e-CNPJ emitidos com rapidez e segurança. Nossa assistente virtual te guia pelo processo completo — do pedido ao certificado.
+            e-CPF e e-CNPJ emitidos com rapidez e segurança. Se você precisar de ajuda, nossa assistente virtual te guia pelo processo completo — do pedido ao certificado.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
@@ -978,13 +978,12 @@ export default function Landing() {
             ))}
           </div>
           <div className="text-center mt-12">
-            <button
-              onClick={() => document.querySelector<HTMLButtonElement>("[aria-label='Abrir chat de vendas']")?.click()}
-              className="inline-flex items-center gap-2 bg-[#2563eb] text-white font-bold px-8 py-4 rounded-xl hover:bg-blue-700 transition-all hover:scale-105 active:scale-95"
-            >
-              <MessageCircle className="h-5 w-5" />
-              Iniciar agora no chat
-            </button>
+            <Link href="/entrar">
+              <button className="inline-flex items-center gap-2 bg-[#2563eb] text-white font-bold px-8 py-4 rounded-xl hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">
+                Começar agora
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </Link>
           </div>
         </div>
       </section>
