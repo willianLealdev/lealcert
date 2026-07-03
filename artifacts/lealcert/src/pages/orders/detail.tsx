@@ -1254,6 +1254,11 @@ export default function OrderDetail() {
   const [garHashProduto, setGarHashProduto] = useState("");
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
+  const [showProtocolLoading, setShowProtocolLoading] = useState(false);
+  const [protocolLoadingStep, setProtocolLoadingStep] = useState(0);
+  const [protocolLoadingError, setProtocolLoadingError] = useState<string | null>(null);
+  const protocolLoadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const protocolLoadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [safewebAgendarOpen, setSafewebAgendarOpen] = useState(false);
   const [representanteOpen, setRepresentanteOpen] = useState(false);
 
@@ -1287,7 +1292,7 @@ export default function OrderDetail() {
     return () => clearInterval(timer);
   }, [order?.status, mpPaymentId, id]);
 
-  // Detecta transição de pendente → pago e notifica o usuário
+  // Detecta transição de pendente → pago: abre modal de loading protocolo
   useEffect(() => {
     if (!order) return;
     const prev = prevStatusRef.current;
@@ -1296,15 +1301,43 @@ export default function OrderDetail() {
       (order.status === "paid" || order.status === "protocol_assigned" || order.status === "completed")
     ) {
       setPixData(null);
-      toast({
-        title: "✅ Pagamento confirmado!",
-        description: "Atualizando dados do pedido...",
-      });
-      // Recarrega após 3 s para mostrar protocolo e opções de documento
-      setTimeout(() => { refetch(); }, 3000);
+      // Se já tem protocolo, não precisa do modal
+      if (order.garPedido || order.safewebSolicitacaoId) {
+        toast({ title: "✅ Pagamento confirmado!", description: `Protocolo: ${order.garPedido ?? order.safewebSolicitacaoId}` });
+      } else {
+        setShowProtocolLoading(true);
+        setProtocolLoadingStep(0);
+        setProtocolLoadingError(null);
+        // Avança step a cada 4s para dar feedback visual
+        let step = 0;
+        protocolLoadingIntervalRef.current = setInterval(() => {
+          step = Math.min(step + 1, 2);
+          setProtocolLoadingStep(step);
+          refetch();
+        }, 4000);
+        // Timeout de 90s — mostra erro se protocolo não chegar
+        protocolLoadingTimeoutRef.current = setTimeout(() => {
+          if (protocolLoadingIntervalRef.current) clearInterval(protocolLoadingIntervalRef.current);
+          setProtocolLoadingError("O protocolo está demorando mais que o esperado. Tente atualizar a página ou entre em contato com o suporte.");
+        }, 90_000);
+      }
     }
     prevStatusRef.current = order.status;
   }, [order?.status]);
+
+  // Fecha modal quando protocolo chegar
+  useEffect(() => {
+    if (!showProtocolLoading) return;
+    if (!order) return;
+    const hasProtocol = !!(order.garPedido || order.safewebSolicitacaoId);
+    if (hasProtocol) {
+      if (protocolLoadingIntervalRef.current) clearInterval(protocolLoadingIntervalRef.current);
+      if (protocolLoadingTimeoutRef.current) clearTimeout(protocolLoadingTimeoutRef.current);
+      setProtocolLoadingStep(3);
+      // Fecha com pequena pausa para o usuário ver o checkmark
+      setTimeout(() => setShowProtocolLoading(false), 1800);
+    }
+  }, [order?.garPedido, order?.safewebSolicitacaoId, showProtocolLoading]);
 
   const updateOrder = useUpdateOrder({
     mutation: {
@@ -1588,6 +1621,140 @@ export default function OrderDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de carregamento do protocolo GAR */}
+      {showProtocolLoading && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0f172a]/90 backdrop-blur-sm">
+          <style>{`
+            @keyframes card-insert {
+              0%   { transform: translateY(-48px); opacity: 0; }
+              30%  { opacity: 1; }
+              60%  { transform: translateY(0px); }
+              75%  { transform: translateY(-6px); }
+              90%  { transform: translateY(2px); }
+              100% { transform: translateY(0px); }
+            }
+            @keyframes reader-glow {
+              0%, 100% { filter: drop-shadow(0 0 4px #2563eb88); }
+              50%       { filter: drop-shadow(0 0 14px #2563ebcc); }
+            }
+            @keyframes scan-line {
+              0%   { top: 20%; opacity: 0.8; }
+              100% { top: 80%; opacity: 0.2; }
+            }
+            @keyframes fade-slide-up {
+              from { opacity: 0; transform: translateY(10px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+            .card-anim  { animation: card-insert 1.4s ease-in-out infinite; }
+            .reader-glow { animation: reader-glow 2s ease-in-out infinite; }
+            .scan-line  { animation: scan-line 1.5s linear infinite alternate; }
+            .fade-up    { animation: fade-slide-up 0.4s ease both; }
+          `}</style>
+
+          <div className="flex flex-col items-center gap-6 px-8 py-10 max-w-sm w-full text-center">
+
+            {/* Logo */}
+            <img src="/logo.png" alt="LealCert" className="h-12 object-contain drop-shadow-lg" />
+
+            {/* Ilustração certificado + leitora */}
+            {protocolLoadingStep < 3 && !protocolLoadingError && (
+              <div className="relative flex flex-col items-center gap-1 select-none">
+                {/* Certificado (cartão) descendo */}
+                <div className="card-anim">
+                  <svg width="72" height="48" viewBox="0 0 72 48" fill="none">
+                    <rect x="1" y="1" width="70" height="46" rx="6" fill="#1e3a5f" stroke="#2563eb" strokeWidth="1.5"/>
+                    <rect x="8" y="10" width="20" height="14" rx="2" fill="#f59e0b" opacity="0.9"/>
+                    <rect x="34" y="12" width="28" height="3" rx="1.5" fill="#94a3b8"/>
+                    <rect x="34" y="18" width="20" height="3" rx="1.5" fill="#64748b"/>
+                    <rect x="8" y="30" width="56" height="2" rx="1" fill="#2563eb" opacity="0.5"/>
+                    <rect x="8" y="35" width="40" height="2" rx="1" fill="#334155"/>
+                    <circle cx="62" cy="10" r="5" fill="#2563eb" opacity="0.4"/>
+                    <text x="36" y="46" fontSize="5" fill="#2563eb" textAnchor="middle" fontFamily="monospace" opacity="0.6">CERTIFICADO DIGITAL</text>
+                  </svg>
+                </div>
+
+                {/* Leitora / token USB */}
+                <div className="reader-glow">
+                  <svg width="88" height="52" viewBox="0 0 88 52" fill="none">
+                    {/* corpo da leitora */}
+                    <rect x="4" y="14" width="80" height="34" rx="8" fill="#1e293b" stroke="#2563eb" strokeWidth="1.5"/>
+                    {/* slot do cartão */}
+                    <rect x="16" y="6" width="56" height="18" rx="4" fill="#0f172a" stroke="#334155" strokeWidth="1"/>
+                    {/* LEDs */}
+                    <circle cx="68" cy="31" r="4" fill="#2563eb" opacity="0.9" className="animate-pulse"/>
+                    <circle cx="78" cy="31" r="4" fill="#f59e0b" opacity="0.6" className="animate-pulse" style={{ animationDelay: "0.5s" }}/>
+                    {/* cabo USB */}
+                    <rect x="38" y="46" width="12" height="6" rx="2" fill="#334155"/>
+                    <rect x="42" y="49" width="4" height="3" rx="1" fill="#475569"/>
+                    {/* linha de scan dentro do slot */}
+                    <rect x="18" y="14" width="52" height="2" rx="1" fill="#2563eb" opacity="0.7" className="scan-line" style={{ position: "relative" }}/>
+                    {/* texto */}
+                    <text x="44" y="37" fontSize="5.5" fill="#64748b" textAnchor="middle" fontFamily="monospace">LEALCERT READER</text>
+                  </svg>
+                </div>
+              </div>
+            )}
+
+            {/* Estado: sucesso */}
+            {protocolLoadingStep === 3 && (
+              <div className="fade-up flex flex-col items-center gap-2">
+                <div className="h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <CheckCircle2 className="h-9 w-9 text-green-400" />
+                </div>
+                <p className="text-green-400 font-semibold text-base">Protocolo gerado!</p>
+              </div>
+            )}
+
+            {/* Mensagens de progresso */}
+            {!protocolLoadingError && protocolLoadingStep < 3 && (() => {
+              const steps = [
+                "Confirmando pagamento…",
+                "Registrando no sistema GAR…",
+                "Gerando protocolo do certificado…",
+              ];
+              return (
+                <div className="space-y-3">
+                  {steps.map((s, i) => (
+                    <div key={i} className={`flex items-center gap-2.5 text-sm transition-all duration-300 ${i < protocolLoadingStep ? "text-green-400" : i === protocolLoadingStep ? "text-white font-medium" : "text-slate-500"}`}>
+                      {i < protocolLoadingStep
+                        ? <CheckCircle2 className="h-4 w-4 shrink-0 text-green-400" />
+                        : i === protocolLoadingStep
+                          ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#2563eb]" />
+                          : <div className="h-4 w-4 shrink-0 rounded-full border border-slate-600" />}
+                      {s}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Erro */}
+            {protocolLoadingError && (
+              <div className="fade-up space-y-4">
+                <div className="h-14 w-14 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto">
+                  <AlertCircle className="h-8 w-8 text-amber-400" />
+                </div>
+                <p className="text-amber-300 text-sm leading-relaxed">{protocolLoadingError}</p>
+                <Button
+                  variant="outline"
+                  className="w-full border-slate-600 text-slate-200 hover:bg-slate-800"
+                  onClick={() => {
+                    setShowProtocolLoading(false);
+                    refetch();
+                  }}
+                >
+                  Fechar e recarregar
+                </Button>
+              </div>
+            )}
+
+            {!protocolLoadingError && protocolLoadingStep < 3 && (
+              <p className="text-slate-500 text-xs">Aguarde, isso pode levar alguns segundos…</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Barra de pagamento fixa no rodapé — só mobile */}
       {isPayable && (
