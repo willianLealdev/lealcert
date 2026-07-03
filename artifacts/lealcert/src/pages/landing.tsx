@@ -639,7 +639,7 @@ function ChatWidget() {
         aria-label="Abrir chat de vendas"
       >
         <MessageCircle className="h-5 w-5" />
-        <span className="font-semibold text-sm">Comprar certificado</span>
+        <span className="font-semibold text-sm">Falar com o assistente</span>
         <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />
       </button>
 
@@ -844,8 +844,8 @@ function ChatWidget() {
                       setShowMenuOptions(false);
                     }}
                   >
-                    🛒 Comprar certificado digital
-                    <span className="ml-2 text-xs text-gray-400">(acesse o sistema)</span>
+                    💬 Falar com o assistente
+                    <span className="ml-2 text-xs text-gray-400">(suporte e dúvidas)</span>
                   </button>
                   {[
                     { label: "🎫 Abrir chamado de suporte", msg: "2" },
@@ -1204,15 +1204,15 @@ export default function Landing() {
       <section className="py-16 sm:py-20 bg-gradient-to-r from-[#2563eb] to-blue-700 text-white">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <h2 className="text-3xl sm:text-4xl font-black mb-4">Pronto para começar?</h2>
-          <p className="text-blue-100/80 text-lg mb-8">Nossa assistente virtual está disponível agora para te ajudar a escolher e adquirir o certificado certo.</p>
+          <p className="text-blue-100/80 text-lg mb-8">Nosso assistente virtual está disponível agora para te ajudar com dúvidas e suporte sobre certificados digitais.</p>
           <button
             onClick={() => document.querySelector<HTMLButtonElement>("[aria-label='Abrir chat de vendas']")?.click()}
             className="inline-flex items-center gap-3 bg-white text-[#2563eb] font-bold px-10 py-4 rounded-xl hover:bg-blue-50 transition-all hover:scale-105 active:scale-95 shadow-xl"
           >
             <MessageCircle className="h-5 w-5" />
-            Falar com a assistente agora
+            Falar com o assistente agora
           </button>
-          <p className="text-blue-200/60 text-sm mt-4">Sem cadastro obrigatório · Pagamento via PIX · Confirmação imediata</p>
+          <p className="text-blue-200/60 text-sm mt-4">Atendimento rápido · Tire suas dúvidas · Suporte especializado</p>
         </div>
       </section>
 
