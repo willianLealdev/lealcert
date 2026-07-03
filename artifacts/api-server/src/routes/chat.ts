@@ -1293,8 +1293,47 @@ router.post("/chat", async (req, res): Promise<void> => {
           ? "❌ Biometria não encontrada no sistema PSBio nacional."
           : "⚠️ Sistema PSBio indisponível no momento.";
       res.write(`data: ${JSON.stringify({ content: "\n\n" + bioLabel })}\n\n`);
+
+      // ── Após BIO_OK: buscar dados cadastrais pelo CPF da biometria ──────────
+      // Usa o CPF do cliente verificado (não o CPF/CNPJ de login do contador)
+      const extraFollowMsgs: { role: "user"; content: string }[] = [];
+      if (encontrado) {
+        const dadosJaInjetados = chatHistory.some(m => m.content.startsWith("[DADOS_ANTERIORES]"));
+        if (!dadosJaInjetados && cpfDigits) {
+          // 1) Buscar pedido mais recente desse CPF com endereço preenchido
+          const [prevOrder] = await db.select().from(ordersTable)
+            .where(and(eq(ordersTable.customerCpfCnpj, cpfDigits), isNotNull(ordersTable.addressZipcode)))
+            .orderBy(desc(ordersTable.createdAt))
+            .limit(1);
+          if (prevOrder?.customerName) {
+            const parts: string[] = [];
+            if (prevOrder.customerName)       parts.push(`Nome: ${prevOrder.customerName}`);
+            if (prevOrder.customerBirthDate)  parts.push(`Nascimento: ${prevOrder.customerBirthDate}`);
+            if (prevOrder.customerEmail)      parts.push(`Email: ${prevOrder.customerEmail}`);
+            if (prevOrder.customerPhone)      parts.push(`Telefone: ${prevOrder.customerPhone}`);
+            if (prevOrder.addressZipcode)     parts.push(`CEP: ${prevOrder.addressZipcode}`);
+            if (prevOrder.addressStreet)      parts.push(`Rua: ${prevOrder.addressStreet}`);
+            if (prevOrder.addressNumber)      parts.push(`Número: ${prevOrder.addressNumber}`);
+            if (prevOrder.addressComplement)  parts.push(`Complemento: ${prevOrder.addressComplement}`);
+            if (prevOrder.addressNeighborhood) parts.push(`Bairro: ${prevOrder.addressNeighborhood}`);
+            if (prevOrder.addressCity)        parts.push(`Cidade: ${prevOrder.addressCity}`);
+            if (prevOrder.addressState)       parts.push(`Estado: ${prevOrder.addressState}`);
+            if (prevOrder.representanteCpf)   parts.push(`RepCPF: ${prevOrder.representanteCpf}`);
+            if (prevOrder.representanteNascimento) parts.push(`RepNascimento: ${prevOrder.representanteNascimento}`);
+            if (prevOrder.representanteDocTipo)   parts.push(`RepDocTipo: ${prevOrder.representanteDocTipo}`);
+            if (prevOrder.representanteDocNumero) parts.push(`RepDocNumero: ${prevOrder.representanteDocNumero}`);
+            if (prevOrder.representanteDocEmissor) parts.push(`RepDocEmissor: ${prevOrder.representanteDocEmissor}`);
+            if (prevOrder.nfCnpj) parts.push(`NF_CNPJ: ${prevOrder.nfCnpj}`);
+            if (prevOrder.nfNome) parts.push(`NF_Nome: ${prevOrder.nfNome}`);
+            const dadosMsg = `[DADOS_ANTERIORES] Dados do último pedido deste cliente (encontrado pelo CPF da biometria):\n${parts.join(" | ")}`;
+            await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: dadosMsg });
+            extraFollowMsgs.push({ role: "user", content: dadosMsg });
+          }
+        }
+      }
+
       // Continua automaticamente: AI responde ao resultado da biometria
-      await streamFollowUp([{ role: "user", content: bioMsg }]);
+      await streamFollowUp([{ role: "user", content: bioMsg }, ...extraFollowMsgs]);
     } catch (bioActionErr) {
       logger.error({ err: bioActionErr }, "Failed to process VERIFICAR_BIO action");
       res.write(`data: ${JSON.stringify({ content: "\n\n❌ Erro ao verificar biometria: " + ((bioActionErr as Error).message ?? "falha inesperada") })}\n\n`);
