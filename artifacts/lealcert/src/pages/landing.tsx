@@ -334,13 +334,14 @@ function ChatWidget() {
     const userMsg = (directMsg ?? input).trim();
     if (!userMsg || loading) return;
     if (!sessionId) { await startSession(); return; }
+    const wasPassword = awaitingPassword;
     setInput("");
     setAwaitingEmail(false);
     setAwaitingPassword(false);
     setShowMenuOptions(false);
     const isInternalCmd = userMsg.startsWith("__PAGUEI__:") || userMsg.startsWith("__AGENDAR__:");
     if (!isInternalCmd) {
-      setMessages(prev => [...prev, { role: "user", content: userMsg }]);
+      setMessages(prev => [...prev, { role: "user", content: wasPassword ? "••••••••" : userMsg }]);
     }
     setLoading(true);
 
