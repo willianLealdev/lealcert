@@ -305,7 +305,10 @@ function ChatWidget() {
     setInput("");
     setAwaitingEmail(false);
     setShowMenuOptions(false);
-    setMessages(prev => [...prev, { role: "user", content: userMsg }]);
+    const isInternalCmd = userMsg.startsWith("__PAGUEI__:");
+    if (!isInternalCmd) {
+      setMessages(prev => [...prev, { role: "user", content: userMsg }]);
+    }
     setLoading(true);
 
     let assistantContent = "";

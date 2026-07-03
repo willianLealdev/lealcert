@@ -736,10 +736,36 @@ router.post("/chat", async (req, res): Promise<void> => {
         status: ordersTable.status, garPedido: ordersTable.garPedido,
         safewebSolicitacaoId: ordersTable.safewebSolicitacaoId,
         garHopeUploadUrl: ordersTable.garHopeUploadUrl,
+        mpPaymentId: ordersTable.mpPaymentId,
       }).from(ordersTable).where(eq(ordersTable.id, vpOrderId)).limit(1);
 
       const paidStatuses = ["paid", "protocol_assigned", "aguardando_validacao", "emitido", "completed"];
-      if (!orderRow || !paidStatuses.includes(orderRow.status)) {
+      let effectiveStatus = orderRow?.status ?? "";
+
+      // Se ainda pending_payment mas temos mpPaymentId → consultar MP diretamente
+      if (orderRow && !paidStatuses.includes(effectiveStatus) && orderRow.mpPaymentId) {
+        try {
+          const [settings] = await db.select({ mpAccessToken: settingsTable.mpAccessToken }).from(settingsTable).limit(1);
+          const mpToken = settings?.mpAccessToken ?? "";
+          if (mpToken) {
+            const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${orderRow.mpPaymentId}`, {
+              headers: { Authorization: `Bearer ${mpToken}` },
+            });
+            if (mpRes.ok) {
+              const payment = await mpRes.json() as { status: string };
+              req.log.info({ mpPaymentId: orderRow.mpPaymentId, mpStatus: payment.status }, "__PAGUEI__ consulta MP direta");
+              if (payment.status === "approved") {
+                await db.update(ordersTable).set({ status: "paid" }).where(eq(ordersTable.id, vpOrderId));
+                effectiveStatus = "paid";
+              }
+            }
+          }
+        } catch (mpCheckErr) {
+          req.log.warn({ err: mpCheckErr }, "__PAGUEI__ consulta MP falhou — usando status do DB");
+        }
+      }
+
+      if (!orderRow || !paidStatuses.includes(effectiveStatus)) {
         const msg = "⏳ Ainda não identificamos seu pagamento. O PIX pode levar alguns minutos para ser confirmado. Aguarde e clique em **Já paguei!** novamente.";
         res.write(`data: ${JSON.stringify({ content: msg })}\n\n`);
         await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: msg });
