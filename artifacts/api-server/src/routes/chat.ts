@@ -359,8 +359,9 @@ Assim que receber [BIO_OK] E [DADOS_ANTERIORES] estiver no histórico, pergunte 
 Se o cliente responder SIM (ou confirmar):
 → Use automaticamente todos os campos disponíveis em [DADOS_ANTERIORES] sem perguntar novamente.
 → Informe quais dados serão reaproveitados: "Ótimo! Vou usar: Nome: [X], E-mail: [Y], Endereço: [Z]..."
-→ Pergunte APENAS os dados que estiverem faltando.
+→ Pergunte APENAS os dados que estiverem faltando (ex: endereço, documento, se não estiverem em [DADOS_ANTERIORES]).
 → Nos passos seguintes, NÃO repita perguntas para dados já confirmados.
+→ OBRIGATÓRIO: sempre use RepCPF e RepNascimento do [DADOS_ANTERIORES] no ACAO:CRIAR_PEDIDO — esses campos são obrigatórios para emissão do certificado e já estão validados pela biometria.
 
 Se o cliente responder NÃO:
 → Colete todos os dados normalmente a partir do PASSO 6.
@@ -1024,7 +1025,29 @@ router.post("/chat", async (req, res): Promise<void> => {
           if (!existing) break;
         }
 
-        const repCpf = orderData.representanteCpf ? orderData.representanteCpf.replace(/\D/g, "") || null : null;
+        // ── Safety net: preenche campos obrigatórios que a IA esqueceu ──────────
+        // Para e-CPF: o titular É o representante — CPF e nascimento são sempre obrigatórios.
+        const custCpfDigits = orderData.customerCpfCnpj.replace(/\D/g, "");
+        let repCpf = orderData.representanteCpf ? orderData.representanteCpf.replace(/\D/g, "") || null : null;
+        if (!repCpf && orderData.clientType === "cpf") repCpf = custCpfDigits || null;
+
+        let repNascimento = orderData.representanteNascimento || null;
+        if (!repNascimento && orderData.clientType === "cpf") repNascimento = orderData.customerBirthDate || null;
+
+        // Endereço: se a IA não preencheu, tenta recuperar do [DADOS_ANTERIORES] no histórico
+        const dadosAntMsg = allMsgs.find(m => m.content.startsWith("[DADOS_ANTERIORES]"))?.content ?? "";
+        function extractField(msg: string, key: string): string | null {
+          const match = msg.match(new RegExp(`${key}:\\s*([^|\\n]+)`));
+          return match ? match[1].trim() : null;
+        }
+        const addrZipcode    = orderData.addressZipcode    || extractField(dadosAntMsg, "CEP");
+        const addrStreet     = orderData.addressStreet     || extractField(dadosAntMsg, "Rua");
+        const addrNumber     = orderData.addressNumber     || extractField(dadosAntMsg, "Número");
+        const addrComplement = orderData.addressComplement || extractField(dadosAntMsg, "Complemento");
+        const addrNeighborhood = orderData.addressNeighborhood || extractField(dadosAntMsg, "Bairro");
+        const addrCity       = orderData.addressCity       || extractField(dadosAntMsg, "Cidade");
+        const addrState      = orderData.addressState      || extractField(dadosAntMsg, "Estado");
+
         const repDocTipo = orderData.representanteDocTipo ? String(orderData.representanteDocTipo).replace(/\D/g, "") || null : null;
 
         const [order] = await db.insert(ordersTable).values({
@@ -1049,19 +1072,19 @@ router.post("/chat", async (req, res): Promise<void> => {
           nfNeighborhood: orderData.nfNeighborhood || null,
           nfCity: orderData.nfCity || null,
           nfState: orderData.nfState || null,
-          addressZipcode: orderData.addressZipcode || null,
-          addressStreet: orderData.addressStreet || null,
-          addressNumber: orderData.addressNumber || null,
-          addressComplement: orderData.addressComplement || null,
-          addressNeighborhood: orderData.addressNeighborhood || null,
-          addressCity: orderData.addressCity || null,
-          addressState: orderData.addressState || null,
+          addressZipcode: addrZipcode ? addrZipcode.replace(/\D/g, "") || null : null,
+          addressStreet: addrStreet || null,
+          addressNumber: addrNumber || null,
+          addressComplement: addrComplement || null,
+          addressNeighborhood: addrNeighborhood || null,
+          addressCity: addrCity || null,
+          addressState: addrState || null,
           extendedWarranty: orderData.extendedWarranty,
           chatDocuments,
           customerCei: orderData.customerCei || null,
           customerNis: orderData.customerNis || null,
           representanteCpf: repCpf,
-          representanteNascimento: orderData.representanteNascimento || null,
+          representanteNascimento: repNascimento,
           representanteDocTipo: repDocTipo,
           representanteDocNumero: orderData.representanteDocNumero || null,
           representanteDocEmissor: orderData.representanteDocEmissor || null,
@@ -1270,35 +1293,41 @@ router.post("/chat", async (req, res): Promise<void> => {
       if (encontrado) {
         const dadosJaInjetados = chatHistory.some(m => m.content.startsWith("[DADOS_ANTERIORES]"));
         if (!dadosJaInjetados && cpfDigits) {
-          // 1) Buscar pedido mais recente desse CPF com endereço preenchido
+          // 1) Buscar pedido mais recente desse CPF (com ou sem endereço)
           const [prevOrder] = await db.select().from(ordersTable)
-            .where(and(eq(ordersTable.customerCpfCnpj, cpfDigits), isNotNull(ordersTable.addressZipcode)))
+            .where(eq(ordersTable.customerCpfCnpj, cpfDigits))
             .orderBy(desc(ordersTable.createdAt))
             .limit(1);
-          if (prevOrder?.customerName) {
-            const parts: string[] = [];
-            if (prevOrder.customerName)       parts.push(`Nome: ${prevOrder.customerName}`);
-            if (prevOrder.customerBirthDate)  parts.push(`Nascimento: ${prevOrder.customerBirthDate}`);
-            if (prevOrder.customerEmail)      parts.push(`Email: ${prevOrder.customerEmail}`);
-            if (prevOrder.customerPhone)      parts.push(`Telefone: ${prevOrder.customerPhone}`);
-            if (prevOrder.addressZipcode)     parts.push(`CEP: ${prevOrder.addressZipcode}`);
-            if (prevOrder.addressStreet)      parts.push(`Rua: ${prevOrder.addressStreet}`);
-            if (prevOrder.addressNumber)      parts.push(`Número: ${prevOrder.addressNumber}`);
-            if (prevOrder.addressComplement)  parts.push(`Complemento: ${prevOrder.addressComplement}`);
-            if (prevOrder.addressNeighborhood) parts.push(`Bairro: ${prevOrder.addressNeighborhood}`);
-            if (prevOrder.addressCity)        parts.push(`Cidade: ${prevOrder.addressCity}`);
-            if (prevOrder.addressState)       parts.push(`Estado: ${prevOrder.addressState}`);
-            if (prevOrder.representanteCpf)   parts.push(`RepCPF: ${prevOrder.representanteCpf}`);
-            if (prevOrder.representanteNascimento) parts.push(`RepNascimento: ${prevOrder.representanteNascimento}`);
-            if (prevOrder.representanteDocTipo)   parts.push(`RepDocTipo: ${prevOrder.representanteDocTipo}`);
-            if (prevOrder.representanteDocNumero) parts.push(`RepDocNumero: ${prevOrder.representanteDocNumero}`);
-            if (prevOrder.representanteDocEmissor) parts.push(`RepDocEmissor: ${prevOrder.representanteDocEmissor}`);
-            if (prevOrder.nfCnpj) parts.push(`NF_CNPJ: ${prevOrder.nfCnpj}`);
-            if (prevOrder.nfNome) parts.push(`NF_Nome: ${prevOrder.nfNome}`);
-            const dadosMsg = `[DADOS_ANTERIORES] Dados do último pedido deste cliente (encontrado pelo CPF da biometria):\n${parts.join(" | ")}`;
-            await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: dadosMsg });
-            extraFollowMsgs.push({ role: "user", content: dadosMsg });
-          }
+
+          const parts: string[] = [];
+
+          // Dados pessoais do pedido anterior (se existir)
+          if (prevOrder?.customerName)       parts.push(`Nome: ${prevOrder.customerName}`);
+          if (prevOrder?.customerBirthDate)  parts.push(`Nascimento: ${prevOrder.customerBirthDate}`);
+          if (prevOrder?.customerEmail)      parts.push(`Email: ${prevOrder.customerEmail}`);
+          if (prevOrder?.customerPhone)      parts.push(`Telefone: ${prevOrder.customerPhone}`);
+          if (prevOrder?.addressZipcode)     parts.push(`CEP: ${prevOrder.addressZipcode}`);
+          if (prevOrder?.addressStreet)      parts.push(`Rua: ${prevOrder.addressStreet}`);
+          if (prevOrder?.addressNumber)      parts.push(`Número: ${prevOrder.addressNumber}`);
+          if (prevOrder?.addressComplement)  parts.push(`Complemento: ${prevOrder.addressComplement}`);
+          if (prevOrder?.addressNeighborhood) parts.push(`Bairro: ${prevOrder.addressNeighborhood}`);
+          if (prevOrder?.addressCity)        parts.push(`Cidade: ${prevOrder.addressCity}`);
+          if (prevOrder?.addressState)       parts.push(`Estado: ${prevOrder.addressState}`);
+
+          // RepCPF e RepNascimento: SEMPRE vêm da biometria verificada (sobrepõem pedido anterior)
+          // Para e-CPF o titular É o representante — CPF e nascimento obrigatórios
+          parts.push(`RepCPF: ${cpfDigits}`);
+          if (dataNascimento) parts.push(`RepNascimento: ${dataNascimento}`);
+
+          if (prevOrder?.representanteDocTipo)   parts.push(`RepDocTipo: ${prevOrder.representanteDocTipo}`);
+          if (prevOrder?.representanteDocNumero) parts.push(`RepDocNumero: ${prevOrder.representanteDocNumero}`);
+          if (prevOrder?.representanteDocEmissor) parts.push(`RepDocEmissor: ${prevOrder.representanteDocEmissor}`);
+          if (prevOrder?.nfCnpj) parts.push(`NF_CNPJ: ${prevOrder.nfCnpj}`);
+          if (prevOrder?.nfNome) parts.push(`NF_Nome: ${prevOrder.nfNome}`);
+
+          const dadosMsg = `[DADOS_ANTERIORES] Dados do cliente identificado pela biometria (CPF ${cpfDigits}):\n${parts.join(" | ")}`;
+          await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: dadosMsg });
+          extraFollowMsgs.push({ role: "user", content: dadosMsg });
         }
       }
 
