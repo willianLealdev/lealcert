@@ -163,13 +163,15 @@ Como posso te ajudar hoje? Digite o número ou clique na opção:
 **1** 🛒 Comprar certificado digital
 **2** 🎫 Abrir chamado de suporte
 **3** ❓ Tirar dúvidas sobre certificados
+**4** 🔍 Consultar meu pedido
 
-⚠️ REGRA CRÍTICA: Após exibir esse menu UMA VEZ, NUNCA mais exiba essas 3 opções novamente durante a mesma conversa, mesmo que o cliente peça para recomeçar ou fique em silêncio.
+⚠️ REGRA CRÍTICA: Após exibir esse menu UMA VEZ, NUNCA mais exiba essas 4 opções novamente durante a mesma conversa, mesmo que o cliente peça para recomeçar ou fique em silêncio.
 
 Quando o cliente escolher:
 • **1** → Inicie IMEDIATAMENTE o PASSO 1 abaixo (peça o CPF/CNPJ). NÃO repita o menu.
 • **2** → Pergunte nome e contato (se não houver cadastro) e abra o chamado com ACAO:CRIAR_CHAMADO. NÃO repita o menu.
 • **3** → Pergunte qual a dúvida. Responda apenas sobre certificados digitais. NÃO repita o menu.
+• **4** → Peça o CPF ou CNPJ cadastrado e o número do pedido (ex: 20260703-1234). Depois emita ACAO:CONSULTAR_PEDIDO. NÃO repita o menu.
 ════════════════════════════════════════════════════════════
 
 ════════════════════════════════════════════════════════════
@@ -466,9 +468,13 @@ Se [PEDIDO_CRIADO] já aparecer no histórico desta conversa:
   Ofereça ajuda sobre o pedido existente (verificar pagamento, agendar, etc.).
 
 ═══════════════════════════════════════
-CONSULTA DE STATUS DE PEDIDO
+CONSULTA DE STATUS DE PEDIDO (opção 4)
 ═══════════════════════════════════════
-Peça CPF/CNPJ + número do pedido (ex: 20240101-1234). O sistema injetará [STATUS_PEDIDO] ou [PEDIDO_NAO_ENCONTRADO].
+Peça: CPF ou CNPJ (somente dígitos) + número do pedido (ex: 20260703-1234).
+Quando tiver os dois, emita EXATAMENTE:
+ACAO:CONSULTAR_PEDIDO:{"cpfCnpj":"<somente_digitos>","orderNumber":"<numero_pedido>"}
+O sistema responderá com [STATUS_PEDIDO:...] ou [PEDIDO_NAO_ENCONTRADO].
+Apresente o resultado de forma clara, indicando o próximo passo (enviar documentos, agendar, aguardar, etc).
 
 ═══════════════════════════════════════
 ABERTURA DE CHAMADO (ACAO:CRIAR_CHAMADO)
@@ -518,7 +524,7 @@ router.post("/chat/session", async (req, res): Promise<void> => {
   // Salvar a saudação inicial como mensagem do assistente no banco.
   // Sem isso, quando o usuário manda "1", o histórico da IA fica vazio (sem mensagem
   // prévia do assistente) e ela repete o menu de boas-vindas achando que é o primeiro contato.
-  const greeting = `Olá! 👋 Sou o Will, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:\n\n**1** 🛒 Comprar certificado digital\n**2** 🎫 Abrir chamado de suporte\n**3** ❓ Tirar dúvidas sobre certificados`;
+  const greeting = `Olá! 👋 Sou o Will, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:\n\n**1** 🛒 Comprar certificado digital\n**2** 🎫 Abrir chamado de suporte\n**3** ❓ Tirar dúvidas sobre certificados\n**4** 🔍 Consultar meu pedido`;
   await db.insert(chatMessages).values({ conversationId: conv.id, role: "assistant", content: greeting });
   res.status(201).json({ id: conv.id, title: conv.title, createdAt: conv.createdAt });
 });
@@ -1733,6 +1739,101 @@ router.post("/chat", async (req, res): Promise<void> => {
     } catch (ticketErr) {
       logger.error({ err: ticketErr }, "Failed to process CRIAR_CHAMADO action");
       res.write(`data: ${JSON.stringify({ content: "\n\n❌ Erro ao abrir o chamado. Tente novamente ou acesse lealcert.com.br/suporte." })}\n\n`);
+    }
+  }
+
+  // ── ACAO:CONSULTAR_PEDIDO ─────────────────────────────────────────────────
+  if (fullResponse.includes("ACAO:CONSULTAR_PEDIDO:")) {
+    try {
+      const afterCp = fullResponse.slice(
+        fullResponse.indexOf("ACAO:CONSULTAR_PEDIDO:") + "ACAO:CONSULTAR_PEDIDO:".length
+      ).trim();
+      let cpDepth = 0; let cpEnd = -1;
+      for (let ci = 0; ci < afterCp.length; ci++) {
+        if (afterCp[ci] === "{") cpDepth++;
+        else if (afterCp[ci] === "}") { cpDepth--; if (cpDepth === 0) { cpEnd = ci; break; } }
+      }
+      const cpJson = cpEnd >= 0 ? afterCp.slice(0, cpEnd + 1) : afterCp;
+      const cpData = JSON.parse(cpJson) as { cpfCnpj: string; orderNumber: string };
+      const cpfCnpjClean = (cpData.cpfCnpj ?? "").replace(/\D/g, "");
+      const orderNum = (cpData.orderNumber ?? "").trim();
+
+      if (!cpfCnpjClean || !orderNum) throw new Error("cpfCnpj e orderNumber são obrigatórios");
+
+      // Buscar usuário pelo CPF/CNPJ
+      const [cpUser] = await db.select({ id: usersTable.id, name: usersTable.name })
+        .from(usersTable).where(eq(usersTable.cpfCnpj, cpfCnpjClean)).limit(1);
+
+      if (!cpUser) {
+        const notFound = `[PEDIDO_NAO_ENCONTRADO:{"motivo":"CPF/CNPJ não cadastrado no sistema"}]`;
+        res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
+        res.write(`data: ${JSON.stringify({ content: notFound })}\n\n`);
+        await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: notFound });
+      } else {
+        // Buscar pedido pelo número + usuário
+        const [cpOrder] = await db.select({
+          id: ordersTable.id,
+          orderNumber: ordersTable.orderNumber,
+          status: ordersTable.status,
+          garHopeUploadUrl: ordersTable.garHopeUploadUrl,
+          garAgendamentoDataHora: ordersTable.garAgendamentoDataHora,
+          garProtocolo: ordersTable.garProtocolo,
+          createdAt: ordersTable.createdAt,
+        }).from(ordersTable)
+          .where(and(
+            eq(ordersTable.userId, cpUser.id),
+            eq(ordersTable.orderNumber, orderNum),
+          )).limit(1);
+
+        if (!cpOrder) {
+          const notFound = `[PEDIDO_NAO_ENCONTRADO:{"motivo":"Pedido ${orderNum} não encontrado para este CPF/CNPJ"}]`;
+          res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
+          res.write(`data: ${JSON.stringify({ content: notFound })}\n\n`);
+          await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: notFound });
+        } else {
+          const statusLabels: Record<string, string> = {
+            created: "Criado (aguardando pagamento)",
+            pending_payment: "Aguardando pagamento",
+            paid: "Pago — aguardando protocolo",
+            protocol_assigned: "Protocolo gerado — enviar documentos",
+            aguardando_validacao: "Agendado — aguardando videoconferência",
+            completed: "Concluído",
+            cancelled: "Cancelado",
+            emitido: "Certificado emitido",
+            revogado: "Revogado",
+          };
+          const statusLabel = statusLabels[cpOrder.status] ?? cpOrder.status;
+          const nextStep =
+            cpOrder.status === "protocol_assigned" ? "enviar_documentos" :
+            cpOrder.status === "aguardando_validacao" ? "aguardar_videoconferencia" :
+            cpOrder.status === "paid" ? "aguardar_protocolo" :
+            cpOrder.status === "created" || cpOrder.status === "pending_payment" ? "efetuar_pagamento" :
+            "nenhum";
+
+          const statusInfo = JSON.stringify({
+            pedido: cpOrder.orderNumber,
+            status: cpOrder.status,
+            statusDescricao: statusLabel,
+            protocolo: cpOrder.garProtocolo ?? null,
+            agendamento: cpOrder.garAgendamentoDataHora ?? null,
+            proximoPasso: nextStep,
+            temLinkDocumentos: !!cpOrder.garHopeUploadUrl,
+          });
+          const statusMsg = `[STATUS_PEDIDO:${statusInfo}]`;
+
+          res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
+          res.write(`data: ${JSON.stringify({ content: statusMsg })}\n\n`);
+          await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: statusMsg });
+
+          // Se há link de documentos, exibe o botão Hope no chat
+          if (cpOrder.garHopeUploadUrl) {
+            res.write(`data: ${JSON.stringify({ action: "mostrar_link_docs", hopeUrl: cpOrder.garHopeUploadUrl, orderId: cpOrder.id })}\n\n`);
+          }
+        }
+      }
+    } catch (cpErr) {
+      logger.error({ err: cpErr }, "Failed to process CONSULTAR_PEDIDO action");
+      res.write(`data: ${JSON.stringify({ content: "\n\n[PEDIDO_NAO_ENCONTRADO:{\"motivo\":\"Erro ao consultar pedido\"}]" })}\n\n`);
     }
   }
 

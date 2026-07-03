@@ -265,7 +265,7 @@ function ChatWidget() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { id: number };
       setSessionId(data.id);
-      const greetingText = `Olá! Sou ${ASSISTANT_ARTICLE} ${ASSISTANT_NAME}, assistente da LealCert Certificados Digital. Como posso te ajudar hoje? Diga o número da opção desejada: um para comprar certificado, dois para suporte, três para tirar dúvidas.`;
+      const greetingText = `Olá! Sou ${ASSISTANT_ARTICLE} ${ASSISTANT_NAME}, assistente da LealCert Certificados Digital. Como posso te ajudar hoje? Diga o número da opção desejada: um para comprar certificado, dois para suporte, três para tirar dúvidas, quatro para consultar meu pedido.`;
       setMessages([{
         role: "assistant",
         content: `Olá! 👋 Sou ${ASSISTANT_ARTICLE} **${ASSISTANT_NAME}**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:`,
@@ -734,6 +734,7 @@ function ChatWidget() {
                     { label: "🛒 Comprar certificado digital", msg: "1" },
                     { label: "🎫 Abrir chamado de suporte", msg: "2" },
                     { label: "❓ Tirar dúvidas sobre certificados", msg: "3" },
+                    { label: "🔍 Consultar meu pedido", msg: "4" },
                   ].map(opt => (
                     <button
                       key={opt.msg}
