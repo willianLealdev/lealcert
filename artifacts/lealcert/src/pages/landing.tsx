@@ -283,10 +283,8 @@ function ChatWidget() {
           const pending = orders.find(o => ACTIVE.includes(o.status));
           if (pending) {
             setActiveOrderInfo(pending);
-            // Mostrar Hope se docs ainda não confirmados — independente do status
-            if (pending.garHopeUploadUrl) {
-              setHopeUrl(pending.garHopeUploadUrl);
-            }
+            // NÃO seta hopeUrl aqui — o botão Hope na conversa só aparece
+            // quando a IA envia mostrar_link_docs via SSE
           }
         }
       } catch { /* usuário não logado ou erro — ignorar */ }
@@ -700,7 +698,10 @@ function ChatWidget() {
                   <div className="flex flex-col gap-2 pt-1">
                     {activeOrderInfo.garHopeUploadUrl && (
                       <button
-                        onClick={() => setDocsModalOpen(true)}
+                        onClick={() => {
+                          setHopeUrl(activeOrderInfo.garHopeUploadUrl!);
+                          setDocsModalOpen(true);
+                        }}
                         className="text-left text-sm px-4 py-2 rounded-xl border-2 border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-500 hover:text-white transition-all duration-150 font-medium"
                       >
                         📄 Enviar Documentos
@@ -736,7 +737,12 @@ function ChatWidget() {
                   ].map(opt => (
                     <button
                       key={opt.msg}
-                      onClick={() => send(opt.msg)}
+                      onClick={() => {
+                        // Limpa o card de pedido ao iniciar nova conversa
+                        setActiveOrderInfo(null);
+                        setHopeUrl(null);
+                        send(opt.msg);
+                      }}
                       className="text-left text-sm px-4 py-2 rounded-xl border-2 border-[#2563eb] text-[#2563eb] bg-white hover:bg-[#2563eb] hover:text-white transition-all duration-150 font-medium shadow-sm"
                     >
                       {opt.label}
