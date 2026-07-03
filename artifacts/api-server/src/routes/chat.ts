@@ -175,6 +175,20 @@ Quando o cliente escolher:
 ════════════════════════════════════════════════════════════
 
 ════════════════════════════════════════════════════════════
+⚠️ REGRAS DE SEGURANÇA — AUTENTICAÇÃO OBRIGATÓRIA
+════════════════════════════════════════════════════════════
+Para garantir a privacidade e proteção dos dados do cliente:
+
+• Opções **1** e **4** (compra e consulta de pedido): exigem login completo — CPF/CNPJ + SENHA
+• Opção **2** (suporte): apenas identificação por CPF/CNPJ, SEM senha
+• Opção **3** (dúvidas): sem identificação necessária
+
+Ao iniciar as opções 1 ou 4, avise SEMPRE:
+"Por motivos de segurança e privacidade de dados, é necessário verificar sua identidade antes de prosseguir."
+Nunca exponha ou discuta dados do cliente sem que o login tenha sido confirmado por [LOGIN_OK].
+════════════════════════════════════════════════════════════
+
+════════════════════════════════════════════════════════════
 ⚠️ IDENTIDADE LEALCERT — REGRA ABSOLUTA, NÃO NEGOCIÁVEL:
 - LealCert NÃO é uma AR. LealCert é PARCEIRA COMERCIAL da AR Juntos.
 - AR Juntos é a Autoridade de Registro credenciada ao ITI.
@@ -209,6 +223,17 @@ Sem cadastro, o cliente SÓ pode abrir chamado de suporte (opção 2 do menu).
 Se o cliente insistir em comprar sem cadastro, repita a instrução acima e ofereça abrir um chamado de suporte.
 
 Aguarde o cliente informar novamente o CPF/CNPJ após criar a conta.
+
+▶ PASSO 2.5 — AUTENTICAÇÃO (obrigatória antes de prosseguir)
+(Só após [USUARIO_VERIFICADO] — para opções 1 e 4)
+Informe: "Por segurança, preciso verificar sua identidade. Digite sua **senha** de acesso ao LealCert:"
+Aguarde o cliente digitar a senha e emita EXATAMENTE:
+ACAO:LOGIN_CHAT:{"cpfCnpj":"<cpf_cnpj_somente_digitos>","senha":"<senha_digitada>"}
+O sistema responderá com:
+• [LOGIN_OK:{"nome":"..."}] → Cumprimente pelo nome e continue para PASSO 3
+• [LOGIN_ERRO:{"motivo":"..."}] → Informe o erro, permita nova tentativa (máximo 3x)
+Após 3 falhas: encerre e sugira ligar para o suporte.
+⚠️ REGRA: NUNCA prossiga além deste passo sem [LOGIN_OK].
 
 ▶ PASSO 3 — VERIFICAÇÃO DE BIOMETRIA PSBio
 (Só após [USUARIO_VERIFICADO] ou [CADASTRO_CRIADO])
@@ -470,11 +495,30 @@ Se [PEDIDO_CRIADO] já aparecer no histórico desta conversa:
 ═══════════════════════════════════════
 CONSULTA DE STATUS DE PEDIDO (opção 4)
 ═══════════════════════════════════════
-Peça: CPF ou CNPJ (somente dígitos) + número do pedido (ex: 20260703-1234).
-Quando tiver os dois, emita EXATAMENTE:
+Fluxo OBRIGATÓRIO:
+1. Peça CPF/CNPJ → verifique cadastro (USUARIO_VERIFICADO)
+2. Peça a senha → ACAO:LOGIN_CHAT → aguarde [LOGIN_OK]
+3. Somente após [LOGIN_OK]: peça o número do pedido e emita:
 ACAO:CONSULTAR_PEDIDO:{"cpfCnpj":"<somente_digitos>","orderNumber":"<numero_pedido>"}
 O sistema responderá com [STATUS_PEDIDO:...] ou [PEDIDO_NAO_ENCONTRADO].
 Apresente o resultado de forma clara, indicando o próximo passo (enviar documentos, agendar, aguardar, etc).
+
+═══════════════════════════════════════
+AUTENTICAÇÃO NO CHAT (ACAO:LOGIN_CHAT)
+═══════════════════════════════════════
+Use após [USUARIO_VERIFICADO] para as opções 1 e 4.
+Peça a senha do cliente e emita:
+ACAO:LOGIN_CHAT:{"cpfCnpj":"<somente_digitos>","senha":"<senha_exata_digitada>"}
+Respostas do sistema:
+• [LOGIN_OK:{"nome":"..."}] → autenticado, cumprimente pelo nome e prossiga
+• [LOGIN_ERRO:{"motivo":"..."}] → informe o erro, permita nova tentativa (max 3x)
+
+═══════════════════════════════════════
+AGENDAMENTO INLINE (PASSO 12)
+═══════════════════════════════════════
+Quando ACAO:BUSCAR_HORARIOS for executado, o sistema exibirá os horários como BOTÕES CLICÁVEIS na tela do cliente.
+Informe: "Os horários disponíveis apareceram na tela abaixo. Clique no horário desejado para confirmar o agendamento automaticamente."
+NÃO liste os horários em texto — o cliente escolhe pelos botões.
 
 ═══════════════════════════════════════
 ABERTURA DE CHAMADO (ACAO:CRIAR_CHAMADO)
@@ -847,6 +891,36 @@ router.post("/chat", async (req, res): Promise<void> => {
     } catch (vpErr) {
       req.log.error({ err: vpErr }, "chat __PAGUEI__ bypass: erro ao verificar pagamento");
       res.write(`data: ${JSON.stringify({ content: "❌ Erro ao verificar pagamento. Tente novamente." })}\n\n`);
+    }
+    res.write("data: [DONE]\n\n");
+    res.end();
+    return;
+  }
+
+  // ── BYPASS: Agendamento inline (botões de horários no chat) ───────────────
+  if (message.startsWith("__AGENDAR__:")) {
+    try {
+      const schedData = JSON.parse(message.slice("__AGENDAR__:".length)) as { orderId: number; slotId: number };
+      const { orderId: agOrderId, slotId } = schedData;
+
+      const [slot] = await db.select().from(slotsTable)
+        .where(and(eq(slotsTable.id, slotId), eq(slotsTable.active, true))).limit(1);
+      if (!slot) throw new Error("Horário indisponível ou já reservado");
+
+      await db.update(slotsTable).set({ active: false }).where(eq(slotsTable.id, slotId));
+      await db.update(ordersTable).set({ scheduledAt: slot.slotDatetime }).where(eq(ordersTable.id, agOrderId));
+
+      const d = new Date(slot.slotDatetime);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const dataHora = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+      const confirmMsg = `✅ **Agendamento confirmado para ${dataHora}!**\n\nAnote a data e horário. Nossa equipe enviará o link da videoconferência próximo à data.`;
+      res.write(`data: ${JSON.stringify({ content: confirmMsg })}\n\n`);
+      res.write(`data: ${JSON.stringify({ action: "agendamento_confirmado", dataHora, orderId: agOrderId })}\n\n`);
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: confirmMsg });
+    } catch (agErr) {
+      const msg = (agErr as Error).message ?? "Erro ao agendar";
+      res.write(`data: ${JSON.stringify({ content: `❌ ${msg}. Tente outro horário ou contate o suporte.` })}\n\n`);
     }
     res.write("data: [DONE]\n\n");
     res.end();
@@ -1625,6 +1699,11 @@ router.post("/chat", async (req, res): Promise<void> => {
         .orderBy(asc(slotsTable.slotDatetime))
         .limit(10);
 
+      // Extrair orderId da conversa (pedido criado nesta sessão)
+      const pedidoCriadoEntry = chatHistory.find((m: { role: string; content: string }) => m.content.startsWith("[PEDIDO_CRIADO]"));
+      const schedOrderIdMatch = pedidoCriadoEntry?.content.match(/orderId:(\d+)/);
+      const schedOrderId = schedOrderIdMatch ? parseInt(schedOrderIdMatch[1], 10) : null;
+
       let injMsg: string;
       if (slots.length === 0) {
         injMsg = `[HORARIOS_INDISPONIVEIS] Nenhum horário disponível no momento.`;
@@ -1636,6 +1715,8 @@ router.post("/chat", async (req, res): Promise<void> => {
           return { id: s.id, dataHora };
         });
         injMsg = `[HORARIOS_DISPONIVEIS:${JSON.stringify({ slots: formatted })}]`;
+        // Emite SSE inline — frontend mostra botões clicáveis de horários
+        res.write(`data: ${JSON.stringify({ action: "mostrar_horarios", slots: formatted, orderId: schedOrderId })}\n\n`);
       }
       await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: injMsg });
       await streamFollowUp([{ role: "user" as const, content: injMsg }]);
@@ -1673,6 +1754,65 @@ router.post("/chat", async (req, res): Promise<void> => {
       logger.error({ err: agErr }, "Failed to process AGENDAR action");
       const msg = (agErr as Error).message ?? "Erro ao agendar";
       res.write(`data: ${JSON.stringify({ content: `\n\n❌ ${msg}. Tente outro horário ou entre em contato com o suporte.` })}\n\n`);
+    }
+  }
+
+  // ── ACAO:LOGIN_CHAT ────────────────────────────────────────────────────────
+  if (fullResponse.includes("ACAO:LOGIN_CHAT:")) {
+    try {
+      const afterLogin = fullResponse.slice(
+        fullResponse.indexOf("ACAO:LOGIN_CHAT:") + "ACAO:LOGIN_CHAT:".length
+      ).trim();
+      let lgDepth = 0; let lgEnd = -1;
+      for (let li = 0; li < afterLogin.length; li++) {
+        if (afterLogin[li] === "{") lgDepth++;
+        else if (afterLogin[li] === "}") { lgDepth--; if (lgDepth === 0) { lgEnd = li; break; } }
+      }
+      const lgJson = lgEnd >= 0 ? afterLogin.slice(0, lgEnd + 1) : afterLogin;
+      const lgData = JSON.parse(lgJson) as { cpfCnpj: string; senha: string };
+      const lgCpf = (lgData.cpfCnpj ?? "").replace(/\D/g, "");
+      const lgSenha = lgData.senha ?? "";
+
+      if (!lgCpf || !lgSenha) throw new Error("cpfCnpj e senha obrigatórios");
+
+      const [lgUser] = await db.select({ id: usersTable.id, name: usersTable.name, passwordHash: usersTable.passwordHash })
+        .from(usersTable).where(eq(usersTable.cpfCnpj, lgCpf)).limit(1);
+
+      let lgInjMsg: string;
+      if (!lgUser) {
+        lgInjMsg = `[LOGIN_ERRO:{"motivo":"Usuário não encontrado no sistema"}]`;
+        res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
+        res.write(`data: ${JSON.stringify({ content: lgInjMsg })}\n\n`);
+        await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: lgInjMsg });
+        await streamFollowUp([{ role: "user" as const, content: lgInjMsg }]);
+      } else {
+        const passwordOk = await bcrypt.compare(lgSenha, lgUser.passwordHash ?? "");
+        if (!passwordOk) {
+          lgInjMsg = `[LOGIN_ERRO:{"motivo":"Senha incorreta. Verifique e tente novamente."}]`;
+          res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
+          res.write(`data: ${JSON.stringify({ content: lgInjMsg })}\n\n`);
+          await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: lgInjMsg });
+          await streamFollowUp([{ role: "user" as const, content: lgInjMsg }]);
+        } else {
+          // Autenticar sessão HTTP
+          req.session.userId = lgUser.id;
+          await new Promise<void>((resolve, reject) =>
+            req.session.save(err => (err ? reject(err) : resolve()))
+          );
+          lgInjMsg = `[LOGIN_OK:{"nome":"${lgUser.name}","userId":${lgUser.id}}]`;
+          res.write(`data: ${JSON.stringify({ action: "login_ok", nome: lgUser.name })}\n\n`);
+          res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
+          res.write(`data: ${JSON.stringify({ content: lgInjMsg })}\n\n`);
+          await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: lgInjMsg });
+          await streamFollowUp([{ role: "user" as const, content: lgInjMsg }]);
+        }
+      }
+    } catch (lgErr) {
+      logger.error({ err: lgErr }, "Failed to process LOGIN_CHAT action");
+      const errMsg = `[LOGIN_ERRO:{"motivo":"Erro interno ao autenticar. Tente novamente."}]`;
+      res.write(`data: ${JSON.stringify({ content: "\n\n" })}\n\n`);
+      res.write(`data: ${JSON.stringify({ content: errMsg })}\n\n`);
+      await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: errMsg });
     }
   }
 

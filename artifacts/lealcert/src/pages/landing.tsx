@@ -115,6 +115,9 @@ function ChatWidget() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [awaitingEmail, setAwaitingEmail] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<Array<{ id: number; dataHora: string }> | null>(null);
+  const [schedulingOrderId, setSchedulingOrderId] = useState<number | null>(null);
+  const [chatLoggedIn, setChatLoggedIn] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<{ start(): void; stop(): void; abort(): void; onresult: ((e: SpeechRecognitionEvent) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; lang: string; continuous: boolean; interimResults: boolean } | null>(null);
@@ -377,6 +380,8 @@ function ChatWidget() {
               pixKey?: string | null;
               pixPayload?: string | null;
               qrCodeDataUrl?: string | null;
+              nome?: string;
+              slots?: Array<{ id: number; dataHora: string }>;
             };
             if (ev.content) {
               assistantContent += ev.content;
@@ -399,6 +404,17 @@ function ChatWidget() {
             if (ev.action === "mostrar_link_docs" && ev.hopeUrl) {
               setHopeUrl(ev.hopeUrl);
               setDocsConfirmed(false);
+            }
+            if (ev.action === "login_ok" && ev.nome) {
+              setChatLoggedIn(ev.nome as string);
+            }
+            if (ev.action === "mostrar_horarios" && ev.slots) {
+              setAvailableSlots(ev.slots as Array<{ id: number; dataHora: string }>);
+              if (ev.orderId) setSchedulingOrderId(ev.orderId as number);
+            }
+            if (ev.action === "agendamento_confirmado") {
+              setAvailableSlots(null);
+              setSchedulingOrderId(null);
             }
             if (ev.action === "order_created" && ev.orderNumber) {
               if (ev.orderId) setCreatedOrderId(ev.orderId);
@@ -739,9 +755,12 @@ function ChatWidget() {
                     <button
                       key={opt.msg}
                       onClick={() => {
-                        // Limpa o card de pedido ao iniciar nova conversa
+                        // Limpa estados ao iniciar nova conversa
                         setActiveOrderInfo(null);
                         setHopeUrl(null);
+                        setAvailableSlots(null);
+                        setSchedulingOrderId(null);
+                        setChatLoggedIn(null);
                         send(opt.msg);
                       }}
                       className="text-left text-sm px-4 py-2 rounded-xl border-2 border-[#2563eb] text-[#2563eb] bg-white hover:bg-[#2563eb] hover:text-white transition-all duration-150 font-medium shadow-sm"
@@ -808,6 +827,32 @@ function ChatWidget() {
                   </div>
                 </DialogContent>
               </Dialog>
+            )}
+            {availableSlots && availableSlots.length > 0 && (
+              <div className="flex justify-start gap-2">
+                <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="max-w-[92%] bg-white border border-blue-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm">
+                  <p className="font-semibold text-gray-800 mb-2">📅 Escolha um horário</p>
+                  <div className="flex flex-col gap-2">
+                    {availableSlots.map(slot => (
+                      <button
+                        key={slot.id}
+                        onClick={() => {
+                          const orderId = schedulingOrderId ?? createdOrderId ?? activeOrderInfo?.id;
+                          if (!orderId) return;
+                          setAvailableSlots(null);
+                          send(`__AGENDAR__:${JSON.stringify({ orderId, slotId: slot.id })}`);
+                        }}
+                        className="text-left text-sm px-4 py-2 rounded-xl border-2 border-[#2563eb] text-[#2563eb] bg-white hover:bg-[#2563eb] hover:text-white transition-all duration-150 font-medium"
+                      >
+                        🕐 {slot.dataHora}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
             {hopeUrl && docsConfirmed && (
               <div className="flex justify-start gap-2">
