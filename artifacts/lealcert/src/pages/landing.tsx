@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Shield, CheckCircle2, Clock, Award, Users, FileText,
   ChevronRight, MessageCircle, X, Send, Loader2, Bot,
   Star, Lock, Zap, Phone, Mail, MapPin, Menu,
@@ -100,6 +103,7 @@ function ChatWidget() {
   const [micSupported] = useState(() => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window));
   const [hopeUrl, setHopeUrl] = useState<string | null>(null);
   const [docsConfirmed, setDocsConfirmed] = useState(false);
+  const [docsModalOpen, setDocsModalOpen] = useState(false);
   const [pixQrInfo, setPixQrInfo] = useState<PixQrInfo | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const [qrBlobUrl, setQrBlobUrl] = useState<string | null>(null);
@@ -690,26 +694,53 @@ function ChatWidget() {
                 <div className="max-w-[92%] bg-white border border-amber-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm">
                   <p className="font-semibold text-gray-800 mb-1">📄 Envio de Documentos</p>
                   <p className="text-xs text-gray-600 mb-3 leading-relaxed">
-                    Clique no botão abaixo para acessar o portal seguro e fazer o upload dos seus documentos. Quando concluir, confirme aqui para prosseguir com o agendamento.
+                    Clique no botão abaixo para acessar o portal seguro e fazer o upload dos seus documentos. Quando concluir, clique em "Concluir Envio" para prosseguir com o agendamento.
                   </p>
-                  <a
-                    href={hopeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-medium mb-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Abrir Portal de Documentos
-                  </a>
                   <button
-                    onClick={confirmDocsUploaded}
-                    className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors font-medium"
+                    onClick={() => setDocsModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-lg bg-[#2563eb] text-white hover:bg-blue-700 transition-colors font-medium"
                   >
-                    <CheckCircle2 className="h-4 w-4" />
-                    ✅ Já enviei os documentos
+                    <FileText className="h-4 w-4" />
+                    Abrir Portal de Documentos
                   </button>
                 </div>
               </div>
+            )}
+            {hopeUrl && (
+              <Dialog open={docsModalOpen} onOpenChange={setDocsModalOpen}>
+                <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0 gap-0">
+                  <DialogHeader className="px-4 py-3 border-b shrink-0 flex flex-row items-center justify-between">
+                    <DialogTitle className="text-base">Portal de Envio de Documentos</DialogTitle>
+                    <a
+                      href={hopeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      title="Abrir em nova aba"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Abrir em nova aba
+                    </a>
+                  </DialogHeader>
+                  <div className="flex-1 min-h-0">
+                    <iframe
+                      src={hopeUrl}
+                      className="w-full h-full border-0"
+                      title="Portal de Envio de Documentos"
+                      allow="camera; microphone"
+                    />
+                  </div>
+                  <div className="px-4 py-3 border-t shrink-0 flex items-center justify-between gap-3 bg-muted/30">
+                    <p className="text-xs text-muted-foreground">
+                      Após enviar todos os documentos no portal acima, clique em "Concluir Envio".
+                    </p>
+                    <Button onClick={() => { setDocsModalOpen(false); confirmDocsUploaded(); }} className="shrink-0">
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Concluir Envio
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             )}
             {hopeUrl && docsConfirmed && (
               <div className="flex justify-start gap-2">
