@@ -115,6 +115,7 @@ function ChatWidget() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [awaitingEmail, setAwaitingEmail] = useState(false);
+  const [awaitingPassword, setAwaitingPassword] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<Array<{ id: number; dataHora: string }> | null>(null);
   const [schedulingOrderId, setSchedulingOrderId] = useState<number | null>(null);
   const [chatLoggedIn, setChatLoggedIn] = useState<string | null>(null);
@@ -335,8 +336,9 @@ function ChatWidget() {
     if (!sessionId) { await startSession(); return; }
     setInput("");
     setAwaitingEmail(false);
+    setAwaitingPassword(false);
     setShowMenuOptions(false);
-    const isInternalCmd = userMsg.startsWith("__PAGUEI__:");
+    const isInternalCmd = userMsg.startsWith("__PAGUEI__:") || userMsg.startsWith("__AGENDAR__:");
     if (!isInternalCmd) {
       setMessages(prev => [...prev, { role: "user", content: userMsg }]);
     }
@@ -394,7 +396,11 @@ function ChatWidget() {
                 skipNextJson = false;
                 filtered.push(line);
               }
-              const display = filtered.join("\n").trim();
+              // Remove tokens de sistema da exibição: [LOGIN_OK:{...}], [LOGIN_ERRO:{...}], etc.
+              const display = filtered.join("\n")
+                .replace(/\[[A-Z][A-Z_]*(?::[^\]]*)??\]/g, "")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
               setMessages(prev => {
                 const copy = [...prev];
                 copy[copy.length - 1] = { role: "assistant", content: display };
@@ -407,6 +413,7 @@ function ChatWidget() {
             }
             if (ev.action === "login_ok" && ev.nome) {
               setChatLoggedIn(ev.nome as string);
+              setAwaitingPassword(false);
             }
             if (ev.action === "mostrar_horarios" && ev.slots) {
               setAvailableSlots(ev.slots as Array<{ id: number; dataHora: string }>);
@@ -441,6 +448,9 @@ function ChatWidget() {
       const isAskingEmail = /digit.*e-?mail|e-?mail.*digit|campo.*e-?mail|e-?mail.*campo|por favor.*digit/i.test(assistantContent)
         && !/confirmação|enviado|enviada|cadastrado|enviamos/i.test(assistantContent);
       if (isAskingEmail) setAwaitingEmail(true);
+      const isAskingPassword = /digit.*senha|informe.*senha|sua senha|senha.*acesso|senha de acesso/i.test(assistantContent)
+        && !/incorret|inválid|erro|login.*ok|autenticad|bem.?vind/i.test(assistantContent);
+      if (isAskingPassword) setAwaitingPassword(true);
       if (assistantContent) {
         speakText(assistantContent);
       }
@@ -761,6 +771,7 @@ function ChatWidget() {
                         setAvailableSlots(null);
                         setSchedulingOrderId(null);
                         setChatLoggedIn(null);
+                        setAwaitingPassword(false);
                         send(opt.msg);
                       }}
                       className="text-left text-sm px-4 py-2 rounded-xl border-2 border-[#2563eb] text-[#2563eb] bg-white hover:bg-[#2563eb] hover:text-white transition-all duration-150 font-medium shadow-sm"
@@ -960,14 +971,21 @@ function ChatWidget() {
                 <span className="font-medium">Digite seu e-mail abaixo</span>
               </div>
             )}
+            {awaitingPassword && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-1.5">
+                <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                <span className="font-medium">Senha oculta por segurança — apenas você a vê</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <input
                 ref={inputRef}
+                type={awaitingPassword ? "password" : "text"}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                placeholder={!termsAccepted ? "Aceite os termos acima para iniciar…" : awaitingEmail ? "Digite seu e-mail aqui…" : isSpeaking ? `${ASSISTANT_NAME} está falando…` : starting ? "Conectando…" : "Digite sua mensagem…"}
-                disabled={!termsAccepted || loading || starting || (isSpeaking && !awaitingEmail)}
+                placeholder={!termsAccepted ? "Aceite os termos acima para iniciar…" : awaitingPassword ? "••••••••" : awaitingEmail ? "Digite seu e-mail aqui…" : isSpeaking ? `${ASSISTANT_NAME} está falando…` : starting ? "Conectando…" : "Digite sua mensagem…"}
+                disabled={!termsAccepted || loading || starting || (isSpeaking && !awaitingEmail && !awaitingPassword)}
                 className="flex-1 text-sm px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] placeholder:text-gray-400 disabled:opacity-50 transition-all"
               />
               <button
