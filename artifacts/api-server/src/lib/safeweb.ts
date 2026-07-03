@@ -4,6 +4,11 @@
 // NOTE: Paths marked [INFERRED] were not available in the Safeweb docs at integration time
 //       and follow the Safeweb Microservice URL pattern. Confirm with Safeweb if issues arise.
 
+// Remove HTML tags and collapse whitespace — evita vazar páginas de erro em mensagens ao usuário
+function stripHtml(text: string): string {
+  return text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+}
+
 // ── Base paths ────────────────────────────────────────────────────────────────
 const AUTH_PATH = "/Service/Microservice/Shared/HubAutenticacao/Autenticacoes/api/autorizacao/token";
 const PRODUCTS_PATH = "/Service/Microservice/Shared/Product/api/GetListProdutoByAR";
@@ -73,7 +78,7 @@ export async function swGetToken(settings: SafewebSettings): Promise<string> {
   });
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
-    throw new Error(`Safeweb auth HTTP ${resp.status}: ${text}`);
+    throw new Error(`Safeweb auth HTTP ${resp.status}: ${stripHtml(text)}`);
   }
   const data = await resp.json() as { tokenAcesso?: string; expiraEm?: number; sucesso?: boolean; mensagem?: string };
   if (!data.tokenAcesso) throw new Error(`Safeweb auth falhou: ${data.mensagem ?? "token não retornado"}`);
@@ -88,7 +93,7 @@ async function swGet<T>(settings: SafewebSettings, path: string): Promise<T> {
     method: "GET",
     headers: { "Authorization": token, "Content-Type": "application/json" },
   });
-  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb GET ${path} HTTP ${resp.status}: ${text}`); }
+  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb GET ${path} HTTP ${resp.status}: ${stripHtml(text)}`); }
   return resp.json() as Promise<T>;
 }
 
@@ -100,7 +105,7 @@ async function swPost<T>(settings: SafewebSettings, path: string, body: unknown)
     headers: { "Authorization": token, "Content-Type": "application/json" },
     body: bodyStr,
   });
-  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb POST ${path} HTTP ${resp.status}: ${text}`); }
+  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb POST ${path} HTTP ${resp.status}: ${stripHtml(text)}`); }
   return resp.json() as Promise<T>;
 }
 
@@ -111,7 +116,7 @@ async function swDelete<T>(settings: SafewebSettings, path: string, body?: unkno
     headers: { "Authorization": token, "Content-Type": "application/json" },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb DELETE ${path} HTTP ${resp.status}: ${text}`); }
+  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb DELETE ${path} HTTP ${resp.status}: ${stripHtml(text)}`); }
   return resp.json() as Promise<T>;
 }
 
@@ -124,7 +129,7 @@ async function swAgendaGetHttp<T>(settings: SafewebSettings, path: string): Prom
     method: "GET",
     headers: { "Authorization": token, "Content-Type": "application/json" },
   });
-  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb Agenda GET ${path} HTTP ${resp.status}: ${text}`); }
+  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb Agenda GET ${path} HTTP ${resp.status}: ${stripHtml(text)}`); }
   return resp.json() as Promise<T>;
 }
 async function swAgendaPostHttp<T>(settings: SafewebSettings, path: string, body: unknown): Promise<T> {
@@ -136,7 +141,7 @@ async function swAgendaPostHttp<T>(settings: SafewebSettings, path: string, body
     headers: { "Authorization": `bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb Agenda POST ${path} HTTP ${resp.status}: ${text}`); }
+  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb Agenda POST ${path} HTTP ${resp.status}: ${stripHtml(text)}`); }
   return resp.json() as Promise<T>;
 }
 async function swAgendaDeleteHttp<T>(settings: SafewebSettings, path: string): Promise<T> {
@@ -158,7 +163,11 @@ async function swPssPostHttp<T>(settings: SafewebSettings, path: string, body: u
     headers: { "Authorization": token, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb PSS POST ${path} HTTP ${resp.status}: ${text}`); }
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    const snippet = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+    throw new Error(`Safeweb PSS POST ${path} HTTP ${resp.status}${snippet ? ": " + snippet : ""}`);
+  }
   return resp.json() as Promise<T>;
 }
 

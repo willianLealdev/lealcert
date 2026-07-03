@@ -8,4 +8,6 @@
 
 export type GarCancelarProtocoloBody = {
   motivo?: string;
+  /** Se true, cancela apenas no sistema local sem chamar a Safeweb (usar quando já foi cancelado no Gestão AR) */
+  force?: boolean;
 };

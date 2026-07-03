@@ -1715,11 +1715,18 @@ export type HopeCreateSolicitation200 = {
 
 export type GarCancelarProtocoloBody = {
   motivo?: string;
+  /** Se true, cancela apenas no sistema local sem chamar a Safeweb (usar quando já foi cancelado no Gestão AR) */
+  force?: boolean;
 };
 
 export type GarCancelarProtocolo200 = {
   ok?: boolean;
   message?: string;
+};
+
+export type GarCancelarProtocolo422 = {
+  swError?: boolean;
+  error?: string;
 };
 
 export type ApprovePaymentManualBody = {

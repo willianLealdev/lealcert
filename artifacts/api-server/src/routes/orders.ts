@@ -1068,38 +1068,52 @@ router.post("/orders/:id/gar-cancelar-protocolo", requireAdmin, async (req, res)
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
 
-  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
-  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
-
-  if (!order.garProtocolo) {
-    res.status(400).json({ error: "Pedido não possui protocolo GAR registrado" }); return;
-  }
-
-  const nonCancellableStatuses = ["emitido", "completed", "cancelled", "revogado"];
-  if (nonCancellableStatuses.includes(order.status)) {
-    res.status(400).json({ error: `Cancelamento não permitido: o pedido está com status "${order.status}".` }); return;
-  }
-
-  const [s] = await db.select().from(settingsTable).limit(1);
-  const isHomol = s?.safewebAmbiente === "homologacao";
-  const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
-  const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
-  const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
-
-  if (!username || !password || !rawUrl) {
-    res.status(503).json({ error: "Credenciais Safeweb não configuradas" }); return;
-  }
-
-  const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
-  const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined };
-  const { motivo } = req.body ?? {};
-
   try {
-    const { swCancelarSolicitacao } = await import("../lib/safeweb");
-    const result = await swCancelarSolicitacao(sw, order.garProtocolo);
-    req.log.info({ orderId: id, protocolo: order.garProtocolo, result }, "gar-cancelar-protocolo: resposta da Safeweb");
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+    if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
-    // Tenta cancelar o agendamento GAR se houver um ativo
+    if (!order.garProtocolo) {
+      res.status(400).json({ error: "Pedido não possui protocolo GAR registrado" }); return;
+    }
+
+    const nonCancellableStatuses = ["emitido", "completed", "cancelled", "revogado"];
+    if (nonCancellableStatuses.includes(order.status)) {
+      res.status(400).json({ error: `Cancelamento não permitido: o pedido está com status "${order.status}".` }); return;
+    }
+
+    const [s] = await db.select().from(settingsTable).limit(1);
+    const isHomol = s?.safewebAmbiente === "homologacao";
+    const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
+    const password = isHomol ? (s?.safewebPasswordHomologacao ?? s?.safewebPassword) : s?.safewebPassword;
+    const rawUrl = (isHomol ? s?.safewebUrlHomologacao : s?.safewebUrl) ?? s?.safewebUrl;
+
+    if (!username || !password || !rawUrl) {
+      res.status(503).json({ error: "Credenciais Safeweb não configuradas" }); return;
+    }
+
+    const swUrl = (() => { try { return new URL(rawUrl).origin; } catch { return rawUrl.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); } })();
+    const sw = { url: swUrl, username, password, cnpjAr: s?.safewebCnpjAr ?? undefined };
+    const { motivo, force } = req.body ?? {};
+
+    // force=true: pula Safeweb (protocolo já foi cancelado diretamente no Gestão AR)
+    if (!force) {
+      try {
+        const { swCancelarSolicitacao } = await import("../lib/safeweb");
+        const result = await swCancelarSolicitacao(sw, order.garProtocolo);
+        req.log.info({ orderId: id, protocolo: order.garProtocolo, result }, "gar-cancelar-protocolo: resposta da Safeweb");
+      } catch (swErr) {
+        const swMsg = (swErr as Error).message ?? "";
+        req.log.warn({ err: swErr, orderId: id }, "gar-cancelar-protocolo: Safeweb retornou erro — protocolo pode já ter sido cancelado no Gestão AR");
+        // Retorna 422 para que o frontend pergunte se deseja cancelar só localmente
+        res.status(422).json({
+          swError: true,
+          error: `Não foi possível cancelar na Safeweb: ${swMsg}. O protocolo pode já ter sido cancelado diretamente no Gestão AR.`,
+        });
+        return;
+      }
+    }
+
+    // Cancela agendamento GAR ativo se houver
     const hasAgendamento = !!(order.garAgendamentoDataHora || order.garAgendamentoLocalHash);
     if (hasAgendamento && order.garHashVenda && s?.garApiKey) {
       try {
@@ -1123,13 +1137,16 @@ router.post("/orders/:id/gar-cancelar-protocolo", requireAdmin, async (req, res)
     }).where(eq(ordersTable.id, id));
 
     const { logEvent } = await import("../lib/order-events");
-    await logEvent(id, "order_cancelled", `Protocolo GAR cancelado via Safeweb. Agendamento removido. Motivo: ${motivo ?? "Cancelado pelo administrador"}`, { result });
+    const logMsg = force
+      ? `Pedido cancelado localmente (protocolo já cancelado diretamente no Gestão AR). Motivo: ${motivo ?? "Cancelado pelo administrador"}`
+      : `Protocolo GAR cancelado via Safeweb. Agendamento removido. Motivo: ${motivo ?? "Cancelado pelo administrador"}`;
+    await logEvent(id, "order_cancelled", logMsg, { force: !!force });
 
-    res.json({ ok: true, message: "Protocolo e agendamento cancelados com sucesso" });
+    res.json({ ok: true, message: force ? "Pedido cancelado no sistema." : "Protocolo e agendamento cancelados com sucesso." });
   } catch (err) {
     const msg = (err as Error).message ?? "";
     req.log.error({ err, orderId: id }, "gar-cancelar-protocolo: erro");
-    res.status(502).json({ error: `Erro ao cancelar protocolo na Safeweb: ${msg}` });
+    res.status(500).json({ error: `Erro ao cancelar pedido: ${msg}` });
   }
 });
 

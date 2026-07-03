@@ -1817,7 +1817,8 @@ export const GarCancelarProtocoloParams = zod.object({
 })
 
 export const GarCancelarProtocoloBody = zod.object({
-  "motivo": zod.string().optional()
+  "motivo": zod.string().optional(),
+  "force": zod.boolean().optional().describe('Se true, cancela apenas no sistema local sem chamar a Safeweb (usar quando já foi cancelado no Gestão AR)')
 })
 
 export const GarCancelarProtocoloResponse = zod.object({

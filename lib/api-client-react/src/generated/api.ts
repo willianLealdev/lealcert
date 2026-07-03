@@ -64,6 +64,7 @@ import type {
   ForgotPasswordInput,
   GarCancelarAgendamento200,
   GarCancelarProtocolo200,
+  GarCancelarProtocolo422,
   GarCancelarProtocoloBody,
   GarComprarInput,
   GarComprarResult,
@@ -6542,7 +6543,7 @@ export const garCancelarProtocolo = async (id: number,
 
 
 
-export const getGarCancelarProtocoloMutationOptions = <TError = ErrorType<unknown>,
+export const getGarCancelarProtocoloMutationOptions = <TError = ErrorType<GarCancelarProtocolo422>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof garCancelarProtocolo>>, TError,{id: number;data?: BodyType<GarCancelarProtocoloBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof garCancelarProtocolo>>, TError,{id: number;data?: BodyType<GarCancelarProtocoloBody>}, TContext> => {
 
@@ -6571,12 +6572,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type GarCancelarProtocoloMutationResult = NonNullable<Awaited<ReturnType<typeof garCancelarProtocolo>>>
     export type GarCancelarProtocoloMutationBody = BodyType<GarCancelarProtocoloBody> | undefined
-    export type GarCancelarProtocoloMutationError = ErrorType<unknown>
+    export type GarCancelarProtocoloMutationError = ErrorType<GarCancelarProtocolo422>
 
     /**
  * @summary Cancela o protocolo GAR via API Safeweb e marca o pedido como cancelado
  */
-export const useGarCancelarProtocolo = <TError = ErrorType<unknown>,
+export const useGarCancelarProtocolo = <TError = ErrorType<GarCancelarProtocolo422>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof garCancelarProtocolo>>, TError,{id: number;data?: BodyType<GarCancelarProtocoloBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof garCancelarProtocolo>>,

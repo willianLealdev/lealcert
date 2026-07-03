@@ -41,6 +41,7 @@ import {
   ArrowLeft, QrCode, Loader2, FileText, Download, RefreshCw,
   ShoppingBag, CheckCircle2, Calendar, MapPin, Video, Clock, ChevronRight, Check,
   Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag, Copy, Ban, ExternalLink,
+  AlertTriangle,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -1455,15 +1456,23 @@ export default function OrderDetail() {
   });
 
   const [garCancelMotivo, setGarCancelMotivo] = useState("");
+  const [forceLocalCancel, setForceLocalCancel] = useState<{ motivo: string } | null>(null);
   const cancelarGarProtocolo = useGarCancelarProtocolo({
     mutation: {
       onSuccess: () => {
         setGarCancelMotivo("");
-        toast({ title: "Protocolo cancelado", description: "O protocolo foi cancelado com sucesso na Safeweb." });
+        setForceLocalCancel(null);
+        toast({ title: "Protocolo cancelado", description: "O protocolo foi cancelado com sucesso." });
         refetch();
       },
       onError: (err: unknown) => {
-        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao cancelar protocolo.";
+        const data = (err as { data?: { swError?: boolean; error?: string } })?.data;
+        if (data?.swError) {
+          // Safeweb falhou — protocolo pode já ter sido cancelado no Gestão AR
+          setForceLocalCancel({ motivo: garCancelMotivo });
+          return;
+        }
+        const msg = data?.error ?? (err as Error)?.message ?? "Erro ao cancelar protocolo.";
         toast({ title: "Erro ao cancelar protocolo", description: msg, variant: "destructive" });
       },
     },
@@ -1571,6 +1580,7 @@ export default function OrderDetail() {
   }
 
   return (
+    <>
     <div className={`space-y-6 ${isPayable ? "pb-28 md:pb-0" : ""}`}>
 
       {/* Modal PIX */}
@@ -2451,5 +2461,40 @@ export default function OrderDetail() {
         </div>
       </div>
     </div>
+
+    {/* Diálogo: protocolo já cancelado no Gestão AR — confirmar cancelamento local */}
+    <AlertDialog open={!!forceLocalCancel} onOpenChange={open => { if (!open) setForceLocalCancel(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-amber-700">
+            <AlertTriangle className="h-5 w-5" />
+            Protocolo já cancelado no Gestão AR
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            A Safeweb indicou que este protocolo já foi cancelado diretamente no Gestão AR e não pode ser cancelado novamente por aqui.
+            <br /><br />
+            Deseja cancelar o pedido <strong>apenas no sistema LealCert</strong>, atualizando o status para <strong>Cancelado</strong>?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setForceLocalCancel(null)}>Não, deixar como está</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => {
+              if (!forceLocalCancel) return;
+              cancelarGarProtocolo.mutate({
+                id: Number(id),
+                data: { motivo: forceLocalCancel.motivo || "Cancelado pelo administrador (protocolo já cancelado no Gestão AR)", force: true },
+              });
+            }}
+            disabled={cancelarGarProtocolo.isPending}
+          >
+            {cancelarGarProtocolo.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+            Sim, cancelar no sistema
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

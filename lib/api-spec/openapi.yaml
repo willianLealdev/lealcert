@@ -1708,6 +1708,7 @@ paths:
               type: object
               properties:
                 motivo: { type: string }
+                force: { type: boolean, description: "Se true, cancela apenas no sistema local sem chamar a Safeweb (usar quando já foi cancelado no Gestão AR)" }
       responses:
         "200":
           description: Protocolo cancelado
@@ -1718,6 +1719,15 @@ paths:
                 properties:
                   ok: { type: boolean }
                   message: { type: string }
+        "422":
+          description: Safeweb retornou erro — protocolo pode já ter sido cancelado no Gestão AR
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  swError: { type: boolean }
+                  error: { type: string }
 
   /orders/{id}/gar-comprar:
     post:
