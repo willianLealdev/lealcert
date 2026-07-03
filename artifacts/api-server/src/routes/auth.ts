@@ -13,6 +13,42 @@ import {
   generateIpVerificationCode,
 } from "../lib/ip-security";
 
+// ── Validação de CPF e CNPJ (dígitos verificadores) ─────────────────────────
+function validarCpf(digits: string): boolean {
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false; // todos iguais (000...000)
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i);
+  let r = sum % 11;
+  const d1 = r < 2 ? 0 : 11 - r;
+  if (d1 !== parseInt(digits[9])) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i);
+  r = sum % 11;
+  const d2 = r < 2 ? 0 : 11 - r;
+  return d2 === parseInt(digits[10]);
+}
+
+function validarCnpj(digits: string): boolean {
+  if (digits.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(digits)) return false; // todos iguais
+  const calc = (n: number) => {
+    const weights = n === 12
+      ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+      : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const sum = weights.reduce((acc, w, i) => acc + parseInt(digits[i]) * w, 0);
+    const r = sum % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  return calc(12) === parseInt(digits[12]) && calc(13) === parseInt(digits[13]);
+}
+
+function validarCpfCnpj(digits: string): boolean {
+  if (digits.length === 11) return validarCpf(digits);
+  if (digits.length === 14) return validarCnpj(digits);
+  return false;
+}
+
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -324,6 +360,10 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   }
 
   const digits = cpfCnpj.replace(/\D/g, "");
+  if (!validarCpfCnpj(digits)) {
+    res.status(400).json({ error: "CPF ou CNPJ inválido. Verifique os dígitos digitados." });
+    return;
+  }
   const existing = await db
     .select({ id: usersTable.id })
     .from(usersTable)
@@ -520,7 +560,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
   if (!user.isActive) {
-    res.status(401).json({ error: "Conta desativada. Entre em contato com o administrador." });
+    await bcrypt.compare(password, "$2a$10$invalidhashfortimingprotection00000000000000000000000");
+    res.status(401).json({ error: "CPF/CNPJ ou senha inválidos." });
     return;
   }
   if (!user.emailVerified) {

@@ -45,11 +45,28 @@ app.use(
 // ── Security headers ─────────────────────────────────────────────────────────
 app.use(
   helmet({
-    contentSecurityPolicy: false,       // CSP handled by Vite on the frontend
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
     crossOriginEmbedderPolicy: false,   // Needed for embedded payment iframes
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   }),
 );
+
+// Permissions-Policy — disable browser features not used by the API
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()",
+  );
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  next();
+});
 
 // ── CORS — only allow known origins ──────────────────────────────────────────
 const allowedOrigins = new Set<string>(["http://localhost:80", "http://localhost:3000"]);

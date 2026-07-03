@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, sql, and, inArray } from "drizzle-orm";
 import { db, certificatesTable, settingsTable, ordersTable } from "@workspace/db";
-import { requireAdmin } from "../middlewares/auth";
+import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { swListarProdutos, type SafewebSettings } from "../lib/safeweb";
 import { garTabelaPrecos, garParceiroVendas, garTiposProduto, garTiposEmissao, type GarProduto } from "../lib/gestaoar";
 import { logger } from "../lib/logger";
@@ -25,7 +25,7 @@ function certRow(c: typeof certificatesTable.$inferSelect) {
   };
 }
 
-router.get("/certificates", async (req, res): Promise<void> => {
+router.get("/certificates", requireAuth, async (req, res): Promise<void> => {
   const { activeOnly } = req.query;
   const rows = await db.select().from(certificatesTable).orderBy(certificatesTable.id);
   const result = activeOnly === "true" ? rows.filter(r => r.active) : rows;

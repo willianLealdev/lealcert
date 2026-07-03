@@ -1,9 +1,2 @@
 User-agent: *
-Disallow: /dashboard
-Disallow: /admin
-Disallow: /pedidos
-Disallow: /suporte
-Disallow: /perfil
-Disallow: /change-password
-Disallow: /verify-email
-Allow: /
+Disallow:
