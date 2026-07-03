@@ -122,9 +122,7 @@ function ChatWidget() {
   const pendingGreetingRef = useRef<string | null>(null);
   const [micDenied, setMicDenied] = useState(false);
   const [iosAudioLocked, setIosAudioLocked] = useState(IS_IOS);
-  const [termsAccepted, setTermsAccepted] = useState<boolean>(() => {
-    try { return localStorage.getItem("lealcert_terms_v1") === "1"; } catch { return false; }
-  });
+  const [termsAccepted, setTermsAccepted] = useState<boolean>(false);
 
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
@@ -283,12 +281,21 @@ function ChatWidget() {
   }, [termsAccepted]);
 
   async function acceptTerms() {
-    try { localStorage.setItem("lealcert_terms_v1", "1"); } catch { /* ignore */ }
     setTermsAccepted(true);
   }
 
   useEffect(() => {
-    if (open) { setTimeout(() => inputRef.current?.focus(), 300); }
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 300);
+    } else {
+      setTermsAccepted(false);
+      setSessionId(null);
+      setMessages([]);
+      setStarting(false);
+      setShowMenuOptions(false);
+      setLoading(false);
+      setInput("");
+    }
   }, [open]);
 
   async function send(directMsg?: string) {

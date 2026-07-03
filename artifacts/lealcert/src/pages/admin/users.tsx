@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListUsers, useCreateUser, useUpdateUser, useDeleteUser } from "@workspace/api-client-react";
+import { useListUsers, useCreateUser, useUpdateUser, useDeleteUser, type User } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, Eye } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
-type UserRow = NonNullable<ReturnType<typeof useListUsers>["data"]>[number];
+type UserRow = User;
 
 // tipo = "cliente" | "contador" | "admin" — campo unificado para exibição
 type UserForm = { name: string; email: string; cpfCnpj: string; phone: string; tipo: string; password: string; isActive: boolean };

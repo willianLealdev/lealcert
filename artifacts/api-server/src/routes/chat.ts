@@ -692,8 +692,8 @@ router.post("/chat", async (req, res): Promise<void> => {
             if (prevOrder.nfCnpj) parts.push(`NF_CNPJ: ${prevOrder.nfCnpj}`);
             if (prevOrder.nfNome) parts.push(`NF_Nome: ${prevOrder.nfNome}`);
             const dadosMsg = `[DADOS_ANTERIORES] Dados do último pedido deste cliente:\n${parts.join(" | ")}`;
-            await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: dadosMsg });
-            chatHistory.push({ role: "system" as const, content: dadosMsg });
+            await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: dadosMsg });
+            chatHistory.push({ role: "user" as const, content: dadosMsg });
           }
         }
       }
