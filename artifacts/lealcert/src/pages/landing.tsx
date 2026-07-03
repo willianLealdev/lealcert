@@ -104,6 +104,10 @@ function ChatWidget() {
   const [hopeUrl, setHopeUrl] = useState<string | null>(null);
   const [docsConfirmed, setDocsConfirmed] = useState(false);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [activeOrderInfo, setActiveOrderInfo] = useState<{
+    id: number; orderNumber: string; status: string;
+    garHopeUploadUrl?: string | null; garAgendamentoDataHora?: string | null;
+  } | null>(null);
   const [pixQrInfo, setPixQrInfo] = useState<PixQrInfo | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const [qrBlobUrl, setQrBlobUrl] = useState<string | null>(null);
@@ -267,6 +271,24 @@ function ChatWidget() {
         content: `Olá! 👋 Sou ${ASSISTANT_ARTICLE} **${ASSISTANT_NAME}**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:`,
       }]);
       setShowMenuOptions(true);
+      // Verificar pedidos ativos do usuário para mostrar ações contextuais
+      try {
+        const ordersRes = await fetch("/api/orders", { credentials: "include" });
+        if (ordersRes.ok) {
+          const orders = await ordersRes.json() as Array<{
+            id: number; orderNumber: string; status: string;
+            garHopeUploadUrl?: string | null; garAgendamentoDataHora?: string | null;
+          }>;
+          const ACTIVE = ["paid", "protocol_assigned", "aguardando_validacao"];
+          const pending = orders.find(o => ACTIVE.includes(o.status));
+          if (pending) {
+            setActiveOrderInfo(pending);
+            if (pending.status === "protocol_assigned" && pending.garHopeUploadUrl) {
+              setHopeUrl(pending.garHopeUploadUrl);
+            }
+          }
+        }
+      } catch { /* usuário não logado ou erro — ignorar */ }
       // Falar saudação via TTS (sem ativar modo voz)
       if (IS_IOS) {
         pendingGreetingRef.current = greetingText;
@@ -299,6 +321,9 @@ function ChatWidget() {
       setShowMenuOptions(false);
       setLoading(false);
       setInput("");
+      setActiveOrderInfo(null);
+      setHopeUrl(null);
+      setDocsConfirmed(false);
     }
   }, [open]);
 
@@ -663,6 +688,40 @@ function ChatWidget() {
                 </div>
               </div>
             ))}
+            {showMenuOptions && !loading && activeOrderInfo && (
+              <div className="flex justify-start gap-2">
+                <div className="h-7 w-7 rounded-full bg-amber-500 flex items-center justify-center shrink-0 mt-0.5">
+                  <FileText className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="max-w-[92%] bg-white border border-amber-200 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 text-sm space-y-2">
+                  <p className="font-semibold text-gray-800">📋 Pedido em andamento</p>
+                  <p className="text-xs text-gray-500">#{activeOrderInfo.orderNumber}</p>
+                  <div className="flex flex-col gap-2 pt-1">
+                    {activeOrderInfo.status === "protocol_assigned" && activeOrderInfo.garHopeUploadUrl && (
+                      <button
+                        onClick={() => setDocsModalOpen(true)}
+                        className="text-left text-sm px-4 py-2 rounded-xl border-2 border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-500 hover:text-white transition-all duration-150 font-medium"
+                      >
+                        📄 Enviar Documentos
+                      </button>
+                    )}
+                    {(activeOrderInfo.status === "protocol_assigned" || activeOrderInfo.status === "aguardando_validacao") && (
+                      <a
+                        href={`/orders/${activeOrderInfo.id}`}
+                        className="text-left text-sm px-4 py-2 rounded-xl border-2 border-[#2563eb] text-[#2563eb] bg-white hover:bg-[#2563eb] hover:text-white transition-all duration-150 font-medium text-center"
+                      >
+                        📅 Agendar Atendimento
+                      </a>
+                    )}
+                    {activeOrderInfo.status === "aguardando_validacao" && activeOrderInfo.garAgendamentoDataHora && (
+                      <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">
+                        ✅ Agendado: {new Date(activeOrderInfo.garAgendamentoDataHora).toLocaleString("pt-BR")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             {showMenuOptions && !loading && (
               <div className="flex justify-start gap-2">
                 <div className="h-7 w-7 rounded-full bg-[#2563eb] flex items-center justify-center shrink-0 mt-0.5">
