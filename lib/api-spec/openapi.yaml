@@ -2918,6 +2918,9 @@ components:
         role:
           type: string
           enum: [admin, contador]
+        userType:
+          type: string
+          nullable: true
         phone:
           type: string
           nullable: true
@@ -2925,6 +2928,51 @@ components:
           type: boolean
         createdAt:
           type: string
+        personType:
+          type: string
+          nullable: true
+        crcNumber:
+          type: string
+          nullable: true
+        crcVerified:
+          type: boolean
+          nullable: true
+        companyCnpj:
+          type: string
+          nullable: true
+        companyName:
+          type: string
+          nullable: true
+        companyFantasyName:
+          type: string
+          nullable: true
+        responsibleCpf:
+          type: string
+          nullable: true
+        responsibleName:
+          type: string
+          nullable: true
+        zipCode:
+          type: string
+          nullable: true
+        street:
+          type: string
+          nullable: true
+        addressNumber:
+          type: string
+          nullable: true
+        complement:
+          type: string
+          nullable: true
+        neighborhood:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        addressState:
+          type: string
+          nullable: true
 
     UserInput:
       type: object

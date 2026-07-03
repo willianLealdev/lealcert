@@ -8,9 +8,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Eye } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
+
+type UserRow = NonNullable<ReturnType<typeof useListUsers>["data"]>[number];
 
 // tipo = "cliente" | "contador" | "admin" — campo unificado para exibição
 type UserForm = { name: string; email: string; cpfCnpj: string; phone: string; tipo: string; password: string; isActive: boolean };
@@ -18,14 +21,131 @@ const EMPTY: UserForm = { name: "", email: "", cpfCnpj: "", phone: "", tipo: "cl
 
 function tipoFromUser(u: { role: string; userType?: string | null }): string {
   if (u.role === "admin") return "admin";
-  return (u as Record<string, unknown>).userType === "contador" ? "contador" : "cliente";
+  return u.userType === "contador" ? "contador" : "cliente";
 }
 function roleFromTipo(tipo: string): "admin" | "contador" { return tipo === "admin" ? "admin" : "contador"; }
 function userTypeFromTipo(tipo: string): string { return tipo === "contador" ? "contador" : "cliente"; }
 
-function formatDate(d: string | Date | null) {
+function formatDate(d: string | Date | null | undefined) {
   if (!d) return "—";
   return new Intl.DateTimeFormat("pt-BR").format(new Date(d));
+}
+
+function Field({ label, value }: { label: string; value: string | null | undefined | boolean }) {
+  if (value === null || value === undefined || value === "") return null;
+  const display = typeof value === "boolean" ? (value ? "Sim" : "Não") : value;
+  return (
+    <div className="space-y-0.5">
+      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
+      <p className="text-sm font-medium break-all">{display}</p>
+    </div>
+  );
+}
+
+function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => void }) {
+  const tipo = tipoFromUser(user);
+  const tipoLabel = tipo === "admin" ? "Administrador" : tipo === "contador" ? "Contador" : "Cliente";
+
+  const hasAddress = user.zipCode || user.street || user.city;
+  const hasPJ = user.companyCnpj || user.companyName;
+  const hasResponsible = user.responsibleCpf || user.responsibleName;
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Dados do Usuário</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          {/* Identificação */}
+          <div>
+            <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Identificação</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Nome" value={user.name} />
+              <Field label="CPF/CNPJ" value={user.cpfCnpj} />
+              <Field label="E-mail" value={user.email} />
+              <Field label="Telefone" value={user.phone} />
+              <Field label="Tipo" value={tipoLabel} />
+              <Field label="Tipo de Pessoa" value={user.personType === "pf" ? "Pessoa Física" : user.personType === "pj" ? "Pessoa Jurídica" : user.personType} />
+              <Field label="Cadastro em" value={formatDate(user.createdAt)} />
+              <Field label="Status" value={user.isActive ? "Ativo" : "Inativo"} />
+            </div>
+          </div>
+
+          {/* CRC (contador) */}
+          {(user.crcNumber) && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Registro Profissional</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="CRC" value={user.crcNumber} />
+                  <Field label="CRC Verificado" value={user.crcVerified} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Dados PJ */}
+          {hasPJ && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Empresa</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="CNPJ da Empresa" value={user.companyCnpj} />
+                  <Field label="Razão Social" value={user.companyName} />
+                  <Field label="Nome Fantasia" value={user.companyFantasyName} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Responsável técnico */}
+          {hasResponsible && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Responsável Técnico</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="CPF do Responsável" value={user.responsibleCpf} />
+                  <Field label="Nome do Responsável" value={user.responsibleName} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Endereço */}
+          {hasAddress && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Endereço</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="CEP" value={user.zipCode} />
+                  <Field label="Logradouro" value={user.street} />
+                  <Field label="Número" value={user.addressNumber} />
+                  <Field label="Complemento" value={user.complement} />
+                  <Field label="Bairro" value={user.neighborhood} />
+                  <Field label="Cidade" value={user.city} />
+                  <Field label="Estado" value={user.addressState} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {!hasAddress && !hasPJ && !hasResponsible && !user.crcNumber && (
+            <p className="text-sm text-muted-foreground text-center py-2">Nenhum dado adicional de cadastro registrado.</p>
+          )}
+        </div>
+
+        <DialogFooter className="mt-2">
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default function AdminUsers() {
@@ -35,14 +155,15 @@ export default function AdminUsers() {
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<UserForm>(EMPTY);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [viewUser, setViewUser] = useState<UserRow | null>(null);
 
   const createUser = useCreateUser({ mutation: { onSuccess: () => { toast({ title: "Usuário criado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const updateUser = useUpdateUser({ mutation: { onSuccess: () => { toast({ title: "Usuário atualizado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const deleteUser = useDeleteUser({ mutation: { onSuccess: () => { toast({ title: "Usuário removido." }); setDeleteId(null); refetch(); } } });
 
   function openCreate() { setForm(EMPTY); setEditId(null); setOpen(true); }
-  function openEdit(u: NonNullable<typeof users>[number]) {
-    setForm({ name: u.name, email: u.email ?? "", cpfCnpj: u.cpfCnpj, phone: u.phone ?? "", tipo: tipoFromUser(u as { role: string; userType?: string | null }), password: "", isActive: u.isActive ?? true });
+  function openEdit(u: UserRow) {
+    setForm({ name: u.name, email: u.email ?? "", cpfCnpj: u.cpfCnpj, phone: u.phone ?? "", tipo: tipoFromUser(u), password: "", isActive: u.isActive ?? true });
     setEditId(u.id);
     setOpen(true);
   }
@@ -66,7 +187,7 @@ export default function AdminUsers() {
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Usuários</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">Gerencie os contadores e administradores.</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Gerencie os contadores, clientes e administradores.</p>
         </div>
         <Button className="shrink-0" onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
@@ -87,7 +208,7 @@ export default function AdminUsers() {
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">CPF/CNPJ</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">E-mail</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Perfil</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Tipo</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Cadastro</th>
                     <th className="px-4 py-3" />
@@ -101,7 +222,7 @@ export default function AdminUsers() {
                       <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{u.email ?? "—"}</td>
                       <td className="px-4 py-3">
                         <Badge variant={u.role === "admin" ? "default" : "secondary"}>
-                          {tipoFromUser(u as { role: string; userType?: string | null }) === "admin" ? "Admin" : tipoFromUser(u as { role: string; userType?: string | null }) === "contador" ? "Contador" : "Cliente"}
+                          {tipoFromUser(u) === "admin" ? "Admin" : tipoFromUser(u) === "contador" ? "Contador" : "Cliente"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
@@ -110,8 +231,9 @@ export default function AdminUsers() {
                       <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{formatDate(u.createdAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 justify-end">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(u.id)}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" title="Ver dados completos" onClick={() => setViewUser(u)}><Eye className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Remover" onClick={() => setDeleteId(u.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </td>
                     </tr>
@@ -123,6 +245,10 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
 
+      {/* Modal de detalhes completos */}
+      {viewUser && <UserDetailsModal user={viewUser} onClose={() => setViewUser(null)} />}
+
+      {/* Modal criar/editar */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{editId ? "Editar Usuário" : "Novo Usuário"}</DialogTitle></DialogHeader>

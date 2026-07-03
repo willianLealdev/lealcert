@@ -376,9 +376,25 @@ export const ListUsersResponseItem = zod.object({
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
+  "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "personType": zod.string().nullish(),
+  "crcNumber": zod.string().nullish(),
+  "crcVerified": zod.boolean().nullish(),
+  "companyCnpj": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "companyFantasyName": zod.string().nullish(),
+  "responsibleCpf": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "street": zod.string().nullish(),
+  "addressNumber": zod.string().nullish(),
+  "complement": zod.string().nullish(),
+  "neighborhood": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "addressState": zod.string().nullish()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
@@ -409,9 +425,25 @@ export const GetUserResponse = zod.object({
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
+  "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "personType": zod.string().nullish(),
+  "crcNumber": zod.string().nullish(),
+  "crcVerified": zod.boolean().nullish(),
+  "companyCnpj": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "companyFantasyName": zod.string().nullish(),
+  "responsibleCpf": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "street": zod.string().nullish(),
+  "addressNumber": zod.string().nullish(),
+  "complement": zod.string().nullish(),
+  "neighborhood": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "addressState": zod.string().nullish()
 })
 
 
@@ -437,9 +469,25 @@ export const UpdateUserResponse = zod.object({
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
+  "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "personType": zod.string().nullish(),
+  "crcNumber": zod.string().nullish(),
+  "crcVerified": zod.boolean().nullish(),
+  "companyCnpj": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "companyFantasyName": zod.string().nullish(),
+  "responsibleCpf": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "street": zod.string().nullish(),
+  "addressNumber": zod.string().nullish(),
+  "complement": zod.string().nullish(),
+  "neighborhood": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "addressState": zod.string().nullish()
 })
 
 
@@ -1883,9 +1931,25 @@ export const VerifyIpResponse = zod.object({
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
   "role": zod.enum(['admin', 'contador']),
+  "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "personType": zod.string().nullish(),
+  "crcNumber": zod.string().nullish(),
+  "crcVerified": zod.boolean().nullish(),
+  "companyCnpj": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "companyFantasyName": zod.string().nullish(),
+  "responsibleCpf": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "zipCode": zod.string().nullish(),
+  "street": zod.string().nullish(),
+  "addressNumber": zod.string().nullish(),
+  "complement": zod.string().nullish(),
+  "neighborhood": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "addressState": zod.string().nullish()
 })
 
 

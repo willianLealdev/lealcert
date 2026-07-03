@@ -218,9 +218,25 @@ export interface User {
   email?: string | null;
   cpfCnpj: string;
   role: UserRole;
+  userType?: string | null;
   phone?: string | null;
   isActive?: boolean;
   createdAt: string;
+  personType?: string | null;
+  crcNumber?: string | null;
+  crcVerified?: boolean | null;
+  companyCnpj?: string | null;
+  companyName?: string | null;
+  companyFantasyName?: string | null;
+  responsibleCpf?: string | null;
+  responsibleName?: string | null;
+  zipCode?: string | null;
+  street?: string | null;
+  addressNumber?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  addressState?: string | null;
 }
 
 export type UserInputRole = typeof UserInputRole[keyof typeof UserInputRole];
