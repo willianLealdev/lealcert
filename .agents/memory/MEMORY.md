@@ -11,3 +11,5 @@
 - [Production database access](prod-db.md) — EasyPanel VPS; container `lealcert_cert-db-1`; banco `lealcert`; user `postgres`; padrão: `docker exec lealcert_cert-db-1 psql -U postgres -d lealcert -c "SQL"`.
 - [Global router.use without path is a footgun](global-router-use.md) — router.use(middleware) without a path in a router mounted without prefix intercepts ALL requests app-wide, not just that router's own paths.
 - [GAR Agendamento flow](gar-agendamento-flow.md) — correct flow and what each endpoint returns; garAgendar params order was wrong; API returns [] on success.
+- [GAR protocol date fix + sync](gar-protocol-fix.md) — ErrorCode 888 = data em DD/MM/YYYY; normalizeDateForGar() converte; syncGarProtocols() scheduler a cada 5min recupera protocolos perdidos.
+- [Chat order flow — Hope modal + active order card](chat-order-flow.md) — Hope abre em modal iframe; ao abrir chat busca pedidos ativos e mostra botões Enviar Docs / Agendar no menu inicial.
