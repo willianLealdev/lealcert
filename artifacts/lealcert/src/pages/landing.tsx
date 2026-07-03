@@ -1086,7 +1086,7 @@ export default function Landing() {
             <span className="text-[#2563eb]">100% online</span>
           </h1>
           <p className="text-lg sm:text-xl text-blue-100/80 max-w-2xl mx-auto mb-10">
-            e-CPF e e-CNPJ emitidos com rapidez e segurança. Se você precisar de ajuda, nossa assistente virtual te guia pelo processo completo — do pedido ao certificado.
+            e-CPF e e-CNPJ emitidos com rapidez e segurança. Se você precisar de ajuda, nosso assistente virtual te guia pelo processo completo — do pedido ao certificado.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
@@ -1241,7 +1241,7 @@ export default function Landing() {
             <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
               <div className="text-4xl mb-4">🤖</div>
               <h3 className="font-bold text-lg mb-2">Atendimento Imediato</h3>
-              <p className="text-gray-500 text-sm mb-5">Nossa assistente de IA responde na hora, 24 horas por dia, 7 dias por semana.</p>
+              <p className="text-gray-500 text-sm mb-5">Nosso assistente de IA responde na hora, 24 horas por dia, 7 dias por semana.</p>
               <button
                 onClick={() => document.querySelector<HTMLButtonElement>("[aria-label='Abrir chat de vendas']")?.click()}
                 className="w-full bg-[#2563eb] text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors"
