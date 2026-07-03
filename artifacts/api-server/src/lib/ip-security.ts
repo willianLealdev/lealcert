@@ -22,20 +22,65 @@ export interface GeoInfo {
   isBrazil: boolean;
 }
 
+// Cache em memória para não exceder o rate-limit do ip-api.com (45 req/min)
+const geoCache = new Map<string, { result: GeoInfo; expiresAt: number }>();
+const GEO_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora
+
+/** Remove prefixo IPv4-mapeado-em-IPv6 (::ffff:1.2.3.4 → 1.2.3.4) */
+function normalizeIp(ip: string): string {
+  if (ip.startsWith("::ffff:")) return ip.slice(7);
+  // Formato raro: [::ffff:1.2.3.4]
+  const m = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  return m ? m[1] : ip;
+}
+
+/** Fallback via ip-api.com — suporta IPv6 completo, grátis, sem chave */
+async function geolocateRemote(ip: string): Promise<GeoInfo> {
+  const cached = geoCache.get(ip);
+  if (cached && cached.expiresAt > Date.now()) return cached.result;
+
+  try {
+    const resp = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,city`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!resp.ok) throw new Error(`ip-api HTTP ${resp.status}`);
+    const data = await resp.json() as { status: string; country?: string; countryCode?: string; city?: string };
+    if (data.status !== "success") throw new Error("ip-api: status=" + data.status);
+    const result: GeoInfo = {
+      country: data.countryCode === "BR" ? "Brasil" : (data.country ?? "Desconhecido"),
+      countryCode: data.countryCode ?? "",
+      city: data.city ?? "",
+      isBrazil: data.countryCode === "BR",
+    };
+    geoCache.set(ip, { result, expiresAt: Date.now() + GEO_CACHE_TTL_MS });
+    return result;
+  } catch {
+    const fallback: GeoInfo = { country: "Desconhecido", countryCode: "", city: "", isBrazil: false };
+    // Cache por menos tempo em caso de erro (5 min) para tentar de novo depois
+    geoCache.set(ip, { result: fallback, expiresAt: Date.now() + 5 * 60 * 1000 });
+    return fallback;
+  }
+}
+
 export async function geolocate(ip: string): Promise<GeoInfo> {
+  const normalizedIp = normalizeIp(ip);
+
+  // Tenta geoip-lite primeiro (banco local, bom para IPv4)
   try {
     const geoip = await import("geoip-lite");
-    const geo = geoip.default.lookup(ip);
-    if (!geo) return { country: "Desconhecido", countryCode: "", city: "", isBrazil: false };
-    return {
-      country: geo.country === "BR" ? "Brasil" : (geo.country ?? "Desconhecido"),
-      countryCode: geo.country ?? "",
-      city: Array.isArray(geo.city) ? geo.city[0] : (geo.city ?? ""),
-      isBrazil: geo.country === "BR",
-    };
-  } catch {
-    return { country: "Desconhecido", countryCode: "", city: "", isBrazil: false };
-  }
+    const geo = geoip.default.lookup(normalizedIp);
+    if (geo) {
+      return {
+        country: geo.country === "BR" ? "Brasil" : (geo.country ?? "Desconhecido"),
+        countryCode: geo.country ?? "",
+        city: Array.isArray(geo.city) ? geo.city[0] : (geo.city ?? ""),
+        isBrazil: geo.country === "BR",
+      };
+    }
+  } catch { /* continua para fallback */ }
+
+  // Fallback remoto para IPv6 e IPs não cobertos pelo banco local
+  return geolocateRemote(normalizedIp);
 }
 
 // ── Extrair IP real da requisição ─────────────────────────────────────────────
