@@ -350,20 +350,22 @@ Prossiga IMEDIATAMENTE para o PASSO 7 (não aguarde documentos agora).
 
 ════════════════════════════════════════════════════════════
 ♻️ REAPROVEITAMENTO DE DADOS ANTERIORES — REGRA IMPORTANTE:
-Se o histórico contiver [DADOS_ANTERIORES], o cliente já fez pedidos antes e seus dados estão disponíveis.
-Logo após o cliente ser verificado (PASSO 1), ANTES de iniciar o PASSO 3 (biometria), pergunte:
+[DADOS_ANTERIORES] só aparece no histórico DEPOIS que a biometria for confirmada ([BIO_OK]).
+Portanto: execute o PASSO 3 (biometria) normalmente PRIMEIRO. Não mencione dados anteriores antes disso.
+
+Assim que receber [BIO_OK] E [DADOS_ANTERIORES] estiver no histórico, pergunte IMEDIATAMENTE:
 "Vi aqui que você já fez um pedido conosco! 😊 Deseja usar os mesmos dados do seu pedido anterior? (nome, e-mail, telefone, endereço, etc.)"
 
 Se o cliente responder SIM (ou confirmar):
 → Use automaticamente todos os campos disponíveis em [DADOS_ANTERIORES] sem perguntar novamente.
 → Informe quais dados serão reaproveitados: "Ótimo! Vou usar: Nome: [X], E-mail: [Y], Endereço: [Z]..."
-→ Pergunte APENAS os dados que estiverem faltando (ex: se não tiver e-mail, peça o e-mail).
+→ Pergunte APENAS os dados que estiverem faltando.
 → Nos passos seguintes, NÃO repita perguntas para dados já confirmados.
 
 Se o cliente responder NÃO:
-→ Colete todos os dados normalmente a partir do PASSO 3.
+→ Colete todos os dados normalmente a partir do PASSO 6.
 
-Se [DADOS_ANTERIORES] NÃO estiver no histórico:
+Se [DADOS_ANTERIORES] NÃO estiver no histórico após o [BIO_OK]:
 → Colete todos os dados normalmente. NÃO mencione "dados anteriores".
 ════════════════════════════════════════════════════════════
 
@@ -638,64 +640,6 @@ router.post("/chat", async (req, res): Promise<void> => {
 
         await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: catalogMsg });
         chatHistory.push({ role: "user" as const, content: catalogMsg });
-
-        // Injeta dados do pedido anterior (para reaproveitamento) — apenas na primeira verificação
-        const alreadyInjected = chatHistory.some(m => m.content.startsWith("[DADOS_ANTERIORES]"));
-        if (!alreadyInjected) {
-          const [prevOrder] = await db
-            .select({
-              customerName: ordersTable.customerName,
-              customerBirthDate: ordersTable.customerBirthDate,
-              customerEmail: ordersTable.customerEmail,
-              customerPhone: ordersTable.customerPhone,
-              addressZipcode: ordersTable.addressZipcode,
-              addressStreet: ordersTable.addressStreet,
-              addressNumber: ordersTable.addressNumber,
-              addressComplement: ordersTable.addressComplement,
-              addressNeighborhood: ordersTable.addressNeighborhood,
-              addressCity: ordersTable.addressCity,
-              addressState: ordersTable.addressState,
-              representanteCpf: ordersTable.representanteCpf,
-              representanteNascimento: ordersTable.representanteNascimento,
-              representanteDocTipo: ordersTable.representanteDocTipo,
-              representanteDocNumero: ordersTable.representanteDocNumero,
-              representanteDocEmissor: ordersTable.representanteDocEmissor,
-              nfCnpj: ordersTable.nfCnpj,
-              nfNome: ordersTable.nfNome,
-            })
-            .from(ordersTable)
-            .where(and(
-              eq(ordersTable.customerCpfCnpj, cpfCnpj),
-              isNotNull(ordersTable.addressZipcode),
-            ))
-            .orderBy(desc(ordersTable.createdAt))
-            .limit(1);
-
-          if (prevOrder?.customerName) {
-            const parts: string[] = [];
-            if (prevOrder.customerName) parts.push(`Nome: ${prevOrder.customerName}`);
-            if (prevOrder.customerBirthDate) parts.push(`Nascimento: ${prevOrder.customerBirthDate}`);
-            if (prevOrder.customerEmail) parts.push(`Email: ${prevOrder.customerEmail}`);
-            if (prevOrder.customerPhone) parts.push(`Telefone: ${prevOrder.customerPhone}`);
-            if (prevOrder.addressZipcode) parts.push(`CEP: ${prevOrder.addressZipcode}`);
-            if (prevOrder.addressStreet) parts.push(`Rua: ${prevOrder.addressStreet}`);
-            if (prevOrder.addressNumber) parts.push(`Número: ${prevOrder.addressNumber}`);
-            if (prevOrder.addressComplement) parts.push(`Complemento: ${prevOrder.addressComplement}`);
-            if (prevOrder.addressNeighborhood) parts.push(`Bairro: ${prevOrder.addressNeighborhood}`);
-            if (prevOrder.addressCity) parts.push(`Cidade: ${prevOrder.addressCity}`);
-            if (prevOrder.addressState) parts.push(`UF: ${prevOrder.addressState}`);
-            if (prevOrder.representanteCpf) parts.push(`RepCPF: ${prevOrder.representanteCpf}`);
-            if (prevOrder.representanteNascimento) parts.push(`RepNascimento: ${prevOrder.representanteNascimento}`);
-            if (prevOrder.representanteDocTipo) parts.push(`RepDocTipo: ${prevOrder.representanteDocTipo}`);
-            if (prevOrder.representanteDocNumero) parts.push(`RepDocNumero: ${prevOrder.representanteDocNumero}`);
-            if (prevOrder.representanteDocEmissor) parts.push(`RepDocEmissor: ${prevOrder.representanteDocEmissor}`);
-            if (prevOrder.nfCnpj) parts.push(`NF_CNPJ: ${prevOrder.nfCnpj}`);
-            if (prevOrder.nfNome) parts.push(`NF_Nome: ${prevOrder.nfNome}`);
-            const dadosMsg = `[DADOS_ANTERIORES] Dados do último pedido deste cliente:\n${parts.join(" | ")}`;
-            await db.insert(chatMessages).values({ conversationId: sessionId, role: "user", content: dadosMsg });
-            chatHistory.push({ role: "user" as const, content: dadosMsg });
-          }
-        }
       }
 
     }
