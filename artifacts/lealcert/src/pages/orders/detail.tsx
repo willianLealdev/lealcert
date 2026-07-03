@@ -1634,33 +1634,6 @@ export default function OrderDetail() {
       {/* Modal de carregamento do protocolo GAR */}
       {showProtocolLoading && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0f172a]/90 backdrop-blur-sm">
-          <style>{`
-            @keyframes card-insert {
-              0%   { transform: translateY(-48px); opacity: 0; }
-              30%  { opacity: 1; }
-              60%  { transform: translateY(0px); }
-              75%  { transform: translateY(-6px); }
-              90%  { transform: translateY(2px); }
-              100% { transform: translateY(0px); }
-            }
-            @keyframes reader-glow {
-              0%, 100% { filter: drop-shadow(0 0 4px #2563eb88); }
-              50%       { filter: drop-shadow(0 0 14px #2563ebcc); }
-            }
-            @keyframes scan-line {
-              0%   { top: 20%; opacity: 0.8; }
-              100% { top: 80%; opacity: 0.2; }
-            }
-            @keyframes fade-slide-up {
-              from { opacity: 0; transform: translateY(10px); }
-              to   { opacity: 1; transform: translateY(0); }
-            }
-            .card-anim  { animation: card-insert 1.4s ease-in-out infinite; }
-            .reader-glow { animation: reader-glow 2s ease-in-out infinite; }
-            .scan-line  { animation: scan-line 1.5s linear infinite alternate; }
-            .fade-up    { animation: fade-slide-up 0.4s ease both; }
-          `}</style>
-
           <div className="flex flex-col items-center gap-6 px-8 py-10 max-w-sm w-full text-center">
 
             {/* Logo */}
@@ -1697,7 +1670,7 @@ export default function OrderDetail() {
                     <rect x="38" y="46" width="12" height="6" rx="2" fill="#334155"/>
                     <rect x="42" y="49" width="4" height="3" rx="1" fill="#475569"/>
                     {/* linha de scan dentro do slot */}
-                    <rect x="18" y="14" width="52" height="2" rx="1" fill="#2563eb" opacity="0.7" className="scan-line" style={{ position: "relative" }}/>
+                    <rect x="18" y="14" width="52" height="2" rx="1" fill="#2563eb" opacity="0.7"/>
                     {/* texto */}
                     <text x="44" y="37" fontSize="5.5" fill="#64748b" textAnchor="middle" fontFamily="monospace">LEALCERT READER</text>
                   </svg>

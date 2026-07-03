@@ -237,3 +237,24 @@ body {
   font-family: var(--app-font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── Protocol loading modal animations ── */
+@keyframes card-insert {
+  0%   { transform: translateY(-48px); opacity: 0; }
+  30%  { opacity: 1; }
+  60%  { transform: translateY(0px); }
+  75%  { transform: translateY(-6px); }
+  90%  { transform: translateY(2px); }
+  100% { transform: translateY(0px); }
+}
+@keyframes reader-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px #2563eb88); }
+  50%       { filter: drop-shadow(0 0 14px #2563ebcc); }
+}
+@keyframes fade-slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card-anim   { animation: card-insert 1.4s ease-in-out infinite; }
+.reader-glow { animation: reader-glow 2s ease-in-out infinite; }
+.fade-up     { animation: fade-slide-up 0.4s ease both; }
