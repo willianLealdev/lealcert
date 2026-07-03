@@ -83,12 +83,13 @@ router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
 
 router.patch("/users/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const { name, email, phone, role, isActive, password } = req.body ?? {};
+  const { name, email, phone, role, userType, isActive, password } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
   if (email !== undefined) updates.email = email;
   if (phone !== undefined) updates.phone = phone;
   if (role !== undefined) updates.role = role;
+  if (userType !== undefined) updates.userType = userType;
   if (isActive !== undefined) updates.isActive = isActive;
   if (password) updates.passwordHash = await bcrypt.hash(password, 10);
 

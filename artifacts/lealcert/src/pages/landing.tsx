@@ -88,7 +88,7 @@ const ASSISTANT_NAME    = "Will";
 const ASSISTANT_ARTICLE = "o";
 
 function ChatWidget() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");

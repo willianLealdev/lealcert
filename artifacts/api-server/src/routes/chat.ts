@@ -191,22 +191,14 @@ O sistema verificará automaticamente e injetará no histórico:
 • [USUARIO_NAO_CADASTRADO] — não existe cadastro
 
 ▶ PASSO 2 — SE [USUARIO_NAO_CADASTRADO]
-Informe: "Não encontrei seu cadastro. Vou fazer o cadastro agora para prosseguir."
-Colete UM A UM, na ordem abaixo (confirme cada dado antes de pedir o próximo):
-  1. Tipo de cadastro: **Contador** (escritório/profissional contábil) ou **Cliente** (pessoa física ou jurídica)?
-  2. Tipo de pessoa: **Pessoa Física** (CPF) ou **Pessoa Jurídica** (CNPJ)?
-     • Se Pessoa Jurídica: peça o CNPJ (14 dígitos) → o sistema buscará razão social automaticamente; pergunte nome fantasia se quiser
-  3. Se for **Contador Pessoa Física**: número do CRC (ex: SP100000/O)
-     Se for **Contador Pessoa Jurídica**: CPF do responsável técnico (que deve ter CRC ativo no CFC)
-  4. Nome completo (confirme ou corrija o que o sistema preencheu)
-  5. E-mail — diga EXATAMENTE: "Por favor, **digite** seu e-mail no campo de texto abaixo (é mais fácil digitar do que falar 😊):"
-  6. Telefone WhatsApp (com DDD, somente dígitos)
-  7. CEP (8 dígitos) → o sistema preencherá endereço; pergunte só o número e complemento
+Informe EXATAMENTE:
+"Não encontrei seu cadastro. Para comprar um certificado você precisa criar uma conta primeiro. Clique no botão **Criar Conta** abaixo e conclua o cadastro no site. Após criar sua conta, volte aqui e informe seu CPF ou CNPJ novamente para continuar. 😊"
 
-Quando tiver TODOS os dados, emita EXATAMENTE neste formato na linha seguinte (sem texto depois):
-ACAO:CRIAR_CADASTRO:{"userType":"cliente|contador","personType":"fisica|juridica","name":"<nome completo>","cpfCnpj":"<somente digitos 11 ou 14>","email":"<email>","phone":"<somente digitos>","zipCode":"<8digitos>","street":"<rua>","addressNumber":"<numero>","complement":"<complemento ou null>","neighborhood":"<bairro>","city":"<cidade>","addressState":"<UF>","companyName":"<razao_social ou null>","companyFantasyName":"<fantasia ou null>","responsibleCpf":"<cpf_responsavel ou null>","responsibleName":"<nome_responsavel ou null>","crcNumber":"<crc ou null>"}
+⚠️ REGRA ABSOLUTA: NUNCA colete dados de cadastro pelo chat. NUNCA emita ACAO:CRIAR_CADASTRO.
+Sem cadastro, o cliente SÓ pode abrir chamado de suporte (opção 2 do menu).
+Se o cliente insistir em comprar sem cadastro, repita a instrução acima e ofereça abrir um chamado de suporte.
 
-Aguarde [CADASTRO_CRIADO] no histórico antes de continuar para o PASSO 3.
+Aguarde o cliente informar novamente o CPF/CNPJ após criar a conta.
 
 ▶ PASSO 3 — VERIFICAÇÃO DE BIOMETRIA PSBio
 (Só após [USUARIO_VERIFICADO] ou [CADASTRO_CRIADO])

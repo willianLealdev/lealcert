@@ -12,8 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
-type UserForm = { name: string; email: string; cpfCnpj: string; phone: string; role: string; password: string; isActive: boolean };
-const EMPTY: UserForm = { name: "", email: "", cpfCnpj: "", phone: "", role: "contador", password: "", isActive: true };
+type UserForm = { name: string; email: string; cpfCnpj: string; phone: string; role: string; userType: string; password: string; isActive: boolean };
+const EMPTY: UserForm = { name: "", email: "", cpfCnpj: "", phone: "", role: "contador", userType: "cliente", password: "", isActive: true };
 
 function formatDate(d: string | Date | null) {
   if (!d) return "—";
@@ -34,7 +34,7 @@ export default function AdminUsers() {
 
   function openCreate() { setForm(EMPTY); setEditId(null); setOpen(true); }
   function openEdit(u: NonNullable<typeof users>[number]) {
-    setForm({ name: u.name, email: u.email ?? "", cpfCnpj: u.cpfCnpj, phone: u.phone ?? "", role: u.role, password: "", isActive: u.isActive ?? true });
+    setForm({ name: u.name, email: u.email ?? "", cpfCnpj: u.cpfCnpj, phone: u.phone ?? "", role: u.role, userType: (u as unknown as Record<string, unknown>).userType as string ?? "cliente", password: "", isActive: u.isActive ?? true });
     setEditId(u.id);
     setOpen(true);
   }
@@ -43,7 +43,7 @@ export default function AdminUsers() {
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (editId !== null) {
-      const data: Record<string, unknown> = { name: form.name, email: form.email, phone: form.phone, role: form.role, isActive: form.isActive };
+      const data: Record<string, unknown> = { name: form.name, email: form.email, phone: form.phone, role: form.role, userType: form.userType, isActive: form.isActive };
       if (form.password) data.password = form.password;
       updateUser.mutate({ id: editId, data: data as Parameters<typeof updateUser.mutate>[0]["data"] });
     } else {
@@ -92,7 +92,9 @@ export default function AdminUsers() {
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground hidden md:table-cell">{u.cpfCnpj}</td>
                       <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{u.email ?? "—"}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={u.role === "admin" ? "default" : "secondary"}>{u.role === "admin" ? "Admin" : "Contador"}</Badge>
+                        <Badge variant={u.role === "admin" ? "default" : "secondary"}>
+                          {u.role === "admin" ? "Admin" : (u as unknown as Record<string, unknown>).userType === "cliente" ? "Cliente" : "Contador"}
+                        </Badge>
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={u.isActive ? "default" : "destructive"}>{u.isActive ? "Ativo" : "Inativo"}</Badge>
@@ -135,11 +137,21 @@ export default function AdminUsers() {
                 <Input type="email" value={form.email} onChange={e => set("email", e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Perfil *</Label>
+                <Label>Tipo de Usuário *</Label>
+                <Select value={form.userType} onValueChange={v => set("userType", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cliente">Cliente</SelectItem>
+                    <SelectItem value="contador">Contador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Perfil de Acesso *</Label>
                 <Select value={form.role} onValueChange={v => set("role", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="contador">Contador</SelectItem>
+                    <SelectItem value="contador">Padrão</SelectItem>
                     <SelectItem value="admin">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
