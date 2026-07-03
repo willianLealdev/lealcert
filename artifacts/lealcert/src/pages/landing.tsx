@@ -102,6 +102,7 @@ function ChatWidget() {
   const [docsConfirmed, setDocsConfirmed] = useState(false);
   const [pixQrInfo, setPixQrInfo] = useState<PixQrInfo | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
+  const [qrBlobUrl, setQrBlobUrl] = useState<string | null>(null);
   const [voiceMode, setVoiceMode] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
@@ -127,6 +128,25 @@ function ChatWidget() {
 
   useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
+
+  // Converte data URL do QR Code em Blob URL — mais compatível com browsers mobile
+  useEffect(() => {
+    const dataUrl = pixQrInfo?.qrCodeDataUrl;
+    if (!dataUrl) { setQrBlobUrl(null); return; }
+    let url: string | null = null;
+    try {
+      const base64 = dataUrl.split(",")[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "image/png" });
+      url = URL.createObjectURL(blob);
+      setQrBlobUrl(url);
+    } catch {
+      setQrBlobUrl(dataUrl); // fallback para data URL original
+    }
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [pixQrInfo?.qrCodeDataUrl]);
 
   const unlockIOSAudio = useCallback(() => {
     if (!IS_IOS || iosAudioUnlockedRef.current || !("speechSynthesis" in window)) return;
@@ -704,9 +724,11 @@ function ChatWidget() {
                     <div className="flex flex-col items-center gap-3">
                       <p className="text-xs text-gray-600 font-medium self-start">📲 Pague via PIX:</p>
                       <img
-                        src={pixQrInfo.qrCodeDataUrl}
+                        src={qrBlobUrl ?? pixQrInfo.qrCodeDataUrl}
                         alt="QR Code PIX"
                         className="w-48 h-48 rounded-lg border border-gray-200 shadow-sm"
+                        loading="eager"
+                        decoding="async"
                       />
                       <p className="text-xs text-gray-500 text-center">
                         Aponte a câmera do celular para o QR Code ou use o botão abaixo
@@ -745,7 +767,7 @@ function ChatWidget() {
                   <div className="mt-4 pt-3 border-t border-gray-100">
                     <p className="text-xs text-gray-500 text-center mb-2">Após efetuar o pagamento, clique no botão abaixo:</p>
                     <button
-                      onClick={() => void send("Já paguei o PIX!")}
+                      onClick={() => void send(`__PAGUEI__:${createdOrderId ?? ""}`)}
                       className="w-full flex items-center justify-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors font-semibold shadow-sm"
                     >
                       ✅ Já paguei!

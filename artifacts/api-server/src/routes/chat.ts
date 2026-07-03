@@ -697,6 +697,50 @@ router.post("/chat", async (req, res): Promise<void> => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
+  // ── BYPASS: Verificação direta de pagamento (botão "Já paguei!") ──────────
+  // Contorna a IA — verifica o banco diretamente para garantir resultado preciso
+  if (message.startsWith("__PAGUEI__:")) {
+    const vpOrderId = parseInt(message.slice("__PAGUEI__:".length).trim(), 10);
+    try {
+      const [orderRow] = await db.select({
+        id: ordersTable.id, orderNumber: ordersTable.orderNumber,
+        status: ordersTable.status, garPedido: ordersTable.garPedido,
+        safewebSolicitacaoId: ordersTable.safewebSolicitacaoId,
+        garHopeUploadUrl: ordersTable.garHopeUploadUrl,
+      }).from(ordersTable).where(eq(ordersTable.id, vpOrderId)).limit(1);
+
+      const paidStatuses = ["paid", "protocol_assigned", "aguardando_validacao", "emitido", "completed"];
+      if (!orderRow || !paidStatuses.includes(orderRow.status)) {
+        const msg = "⏳ Ainda não identificamos seu pagamento. O PIX pode levar alguns minutos para ser confirmado. Aguarde e clique em **Já paguei!** novamente.";
+        res.write(`data: ${JSON.stringify({ content: msg })}\n\n`);
+        await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: msg });
+      } else {
+        const protocolo = orderRow.garPedido ?? orderRow.safewebSolicitacaoId ?? orderRow.orderNumber;
+        const hopeUrl = orderRow.garHopeUploadUrl ?? null;
+        let msg = `✅ **Pagamento confirmado!**\n\nProtocolo: **${protocolo}**\n\nGuarde este número — você precisará dele em qualquer atendimento de suporte.`;
+        if (hopeUrl) {
+          msg += `\n\n📄 Um botão com o link para enviar seus documentos apareceu na tela abaixo. Clique em **Abrir Portal de Documentos**, faça o upload e depois clique em **✅ Já enviei os documentos** para prosseguir com o agendamento.`;
+        } else {
+          msg += `\n\n⏳ O link para envio de documentos ainda está sendo gerado. Aguarde alguns instantes e tente novamente.`;
+        }
+        res.write(`data: ${JSON.stringify({ content: msg })}\n\n`);
+        res.write(`data: ${JSON.stringify({ action: "payment_confirmed", protocolo, orderId: vpOrderId })}\n\n`);
+        if (hopeUrl) {
+          res.write(`data: ${JSON.stringify({ action: "mostrar_link_docs", hopeUrl, orderId: vpOrderId })}\n\n`);
+        }
+        await db.insert(chatMessages).values({ conversationId: sessionId, role: "assistant", content: msg });
+        const injSys = `[PAGAMENTO_CONFIRMADO:{"protocolo":"${protocolo}","orderId":${vpOrderId}${hopeUrl ? `,"hopeUrl":"${hopeUrl}"` : ""}}]`;
+        await db.insert(chatMessages).values({ conversationId: sessionId, role: "system", content: injSys });
+      }
+    } catch (vpErr) {
+      req.log.error({ err: vpErr }, "chat __PAGUEI__ bypass: erro ao verificar pagamento");
+      res.write(`data: ${JSON.stringify({ content: "❌ Erro ao verificar pagamento. Tente novamente." })}\n\n`);
+    }
+    res.write("data: [DONE]\n\n");
+    res.end();
+    return;
+  }
+
   if (!providerKey) {
     const names: Record<string, string> = { openai: "OpenAI", deepseek: "DeepSeek", claude: "Claude (Anthropic)" };
     res.write(`data: ${JSON.stringify({ content: `⚠️ Assistente não configurado. Configure a chave ${names[provider] ?? provider} no painel Configurações → IA.` })}\n\n`);
