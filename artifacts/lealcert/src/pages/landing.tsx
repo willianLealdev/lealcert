@@ -273,10 +273,10 @@ function ChatWidget() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { id: number };
       setSessionId(data.id);
-      const greetingText = `Olá! Sou ${ASSISTANT_ARTICLE} ${ASSISTANT_NAME}, assistente da LealCert Certificados Digital. Como posso te ajudar hoje? Diga o número da opção desejada: um para comprar certificado, dois para suporte, três para tirar dúvidas, quatro para consultar meu pedido.`;
+      const greetingText = `Olá! Sou ${ASSISTANT_ARTICLE} ${ASSISTANT_NAME}, assistente da LealCert Certificados Digital. Como posso te ajudar hoje? Diga o número da opção desejada: dois para suporte, três para tirar dúvidas, quatro para consultar meu pedido.`;
       setMessages([{
         role: "assistant",
-        content: `Olá! 👋 Sou ${ASSISTANT_ARTICLE} **${ASSISTANT_NAME}**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Digite o número ou clique na opção:`,
+        content: `Olá! 👋 Sou ${ASSISTANT_ARTICLE} **${ASSISTANT_NAME}**, assistente da **LealCert Certificados Digital**.\n\nComo posso te ajudar hoje? Clique na opção desejada:`,
       }]);
       setShowMenuOptions(true);
       // Verificar pedidos ativos do usuário para mostrar ações contextuais
@@ -831,8 +831,23 @@ function ChatWidget() {
                   <Bot className="h-3.5 w-3.5 text-white" />
                 </div>
                 <div className="flex flex-col gap-2">
+                  {/* ⚠️ NUNCA remover ou reabilitar a opção de compra pelo chat.
+                      Compra só ocorre dentro do sistema (painel). */}
+                  <button
+                    disabled
+                    className="text-left text-sm px-4 py-2 rounded-xl border-2 border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed font-medium"
+                    onClick={() => {
+                      setMessages(prev => [...prev, {
+                        role: "assistant" as const,
+                        content: "🛒 Para adquirir um certificado, acesse o sistema pelo botão **\"Acessar minha conta\"** ou **\"Comprar Agora\"** no topo da página. Por lá você finaliza a compra com segurança. 😊",
+                      }]);
+                      setShowMenuOptions(false);
+                    }}
+                  >
+                    🛒 Comprar certificado digital
+                    <span className="ml-2 text-xs text-gray-400">(acesse o sistema)</span>
+                  </button>
                   {[
-                    { label: "🛒 Comprar certificado digital", msg: "1" },
                     { label: "🎫 Abrir chamado de suporte", msg: "2" },
                     { label: "❓ Tirar dúvidas sobre certificados", msg: "3" },
                     { label: "🔍 Consultar meu pedido", msg: "4" },
@@ -840,7 +855,6 @@ function ChatWidget() {
                     <button
                       key={opt.msg}
                       onClick={() => {
-                        // Limpa estados ao iniciar nova conversa
                         setActiveOrderInfo(null);
                         setHopeUrl(null);
                         setAvailableSlots(null);
