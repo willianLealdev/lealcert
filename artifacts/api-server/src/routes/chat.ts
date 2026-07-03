@@ -381,12 +381,14 @@ Prossiga IMEDIATAMENTE para o PASSO 7 (não aguarde documentos agora).
 Portanto: execute o PASSO 3 (biometria) normalmente PRIMEIRO. Não mencione dados anteriores antes disso.
 
 Assim que receber [BIO_OK] E [DADOS_ANTERIORES] estiver no histórico, pergunte IMEDIATAMENTE:
-"Vi aqui que você já fez um pedido conosco! 😊 Deseja usar os mesmos dados do seu pedido anterior? (nome, e-mail, telefone, endereço, etc.)"
+"Vi aqui que você já fez um pedido conosco! 😊 Deseja usar os mesmos dados do seu pedido anterior?"
+
+⚠️ REGRA ABSOLUTA: NUNCA exiba, liste ou repita os campos brutos do [DADOS_ANTERIORES] ao usuário. Esses dados são APENAS para uso interno seu. Não mencione RepCPF, RepNascimento, AddressZipcode, DocType, DocNumber, RepDocTipo, NF_CNPJ nem nenhum campo técnico — trate-os em silêncio.
 
 Se o cliente responder SIM (ou confirmar):
 → Use automaticamente todos os campos disponíveis em [DADOS_ANTERIORES] sem perguntar novamente.
-→ Informe quais dados serão reaproveitados: "Ótimo! Vou usar: Nome: [X], E-mail: [Y], Endereço: [Z]..."
-→ Pergunte APENAS os dados que estiverem faltando (ex: endereço, documento, se não estiverem em [DADOS_ANTERIORES]).
+→ Confirme apenas com uma frase curta: "Ótimo! Dados anteriores carregados. ✅"
+→ Pergunte APENAS os dados que estiverem faltando (ex: documento de identidade, se não estiver em [DADOS_ANTERIORES]).
 → Nos passos seguintes, NÃO repita perguntas para dados já confirmados.
 → OBRIGATÓRIO: sempre use RepCPF e RepNascimento do [DADOS_ANTERIORES] no ACAO:CRIAR_PEDIDO — esses campos são obrigatórios para emissão do certificado e já estão validados pela biometria.
 
@@ -1434,7 +1436,7 @@ router.post("/chat", async (req, res): Promise<void> => {
           const nomeStr = nomeCliente ? ` Nome do titular: ${nomeCliente}.` : "";
           bioMsg = `[BIO_OK] Biometria PSBio encontrada para CPF ${cpfDigits}.${nomeStr} Pode prosseguir com a emissão por videoconferência.`;
         } else {
-          bioMsg = `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfDigits}. Retorno API: ${JSON.stringify(bioResult)}. NÃO prossiga com venda — oriente o cliente a abrir um chamado de suporte.`;
+          bioMsg = `[BIO_FALHOU] Biometria PSBio NÃO encontrada para CPF ${cpfDigits}. NÃO prossiga com venda — oriente o cliente a abrir um chamado de suporte.`;
         }
       }
 
