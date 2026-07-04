@@ -68,6 +68,51 @@ app.use((_req, res, next) => {
   next();
 });
 
+// ── Bot / crawler blocker ─────────────────────────────────────────────────────
+// Paths whitelisted: webhooks that legitimately come from non-browser UAs
+const BOT_WHITELIST_PATHS = new Set([
+  "/api/mp/webhook",
+  "/api/marketing/webhook/inbound",
+]);
+
+// Patterns that match known scrapers, bots and automation tools.
+// Case-insensitive. New entries go at the end.
+const BOT_UA_PATTERNS = [
+  /bot/i, /crawl/i, /spider/i, /scrape/i, /slurp/i,
+  /python-requests/i, /python-urllib/i, /httpx/i, /aiohttp/i,
+  /go-http-client/i, /java\//i, /jakarta/i,
+  /curl\//i, /wget\//i, /libcurl/i,
+  /axios/i, /got\//i, /node-fetch/i, /undici/i,
+  /phpunit/i, /guzzle/i, /okhttp/i,
+  /semrush/i, /ahrefs/i, /mj12bot/i, /dotbot/i,
+  /bingpreview/i, /facebookexternalhit/i, /twitterbot/i,
+  /linkedinbot/i, /whatsapp/i,
+  /zgrab/i, /masscan/i, /nmap/i, /nikto/i, /sqlmap/i,
+  /dirbuster/i, /nuclei/i, /hydra/i, /burpsuite/i,
+];
+
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  // Webhooks de terceiros usam UAs não-browser — liberar
+  if (BOT_WHITELIST_PATHS.has(req.path)) { next(); return; }
+
+  const ua = req.headers["user-agent"] ?? "";
+
+  // UA vazia = crawler, ferramenta CLI ou scanner — bloquear
+  if (!ua.trim()) {
+    res.status(404).end();
+    return;
+  }
+
+  // UA corresponde a padrão de bot conhecido — bloquear
+  if (BOT_UA_PATTERNS.some(p => p.test(ua))) {
+    logger.debug({ ua, path: req.path }, "bot-blocker: UA bloqueada");
+    res.status(404).end();
+    return;
+  }
+
+  next();
+});
+
 // ── CORS — only allow known origins ──────────────────────────────────────────
 const allowedOrigins = new Set<string>(["http://localhost:80", "http://localhost:3000"]);
 // Replit deployments
