@@ -379,10 +379,9 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
               </Button>
               <Button
                 variant="outline"
-                className="border-green-400 text-green-800 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="hidden"
                 onClick={handleDocsConfirmar}
-                disabled={!docsLinkOpened}
-                title={!docsLinkOpened ? "Clique primeiro em 'Enviar Documentos' para acessar o portal" : undefined}
+                disabled
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Já enviei os documentos
