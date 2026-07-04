@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   useListIpLogs, useListIpBlocks, useUnblockIp, useBanIp, useUnbanIp,
   useAllowIp, useListIpWhitelist, useRemoveIpFromWhitelist, useAddIpToWhitelist,
+  useRefreshIpGeo,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,17 @@ export default function AdminIpSecurity() {
   );
 
   const whitelistQuery = useListIpWhitelist();
+
+  const refreshGeoMutation = useRefreshIpGeo({
+    mutation: {
+      onSuccess: (data) => {
+        toast({ title: "✅ Países atualizados", description: `${data.updated} de ${data.total} IPs atualizados.` });
+        logsQuery.refetch();
+        blocksQuery.refetch();
+      },
+      onError: () => toast({ title: "Erro ao atualizar países", variant: "destructive" }),
+    },
+  });
 
   const unblockMutation = useUnblockIp({
     mutation: {
@@ -151,12 +163,26 @@ export default function AdminIpSecurity() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <ShieldAlert className="h-6 w-6 text-blue-600" />
-          Segurança de IP
-        </h1>
-        <p className="text-slate-500 text-sm mt-1">Monitoramento de acessos, bloqueios, banimentos e IPs autorizados.</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <ShieldAlert className="h-6 w-6 text-blue-600" />
+            Segurança de IP
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">Monitoramento de acessos, bloqueios, banimentos e IPs autorizados.</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refreshGeoMutation.mutate()}
+          disabled={refreshGeoMutation.isPending}
+          title="Atualiza o país de todos os registros que estão como Desconhecido"
+        >
+          {refreshGeoMutation.isPending
+            ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+            : <Globe className="h-4 w-4 mr-1.5" />}
+          Atualizar países
+        </Button>
       </div>
 
       {/* Stat cards */}

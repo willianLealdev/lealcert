@@ -1797,6 +1797,12 @@ export type AllowIp200 = {
   message?: string;
 };
 
+export type RefreshIpGeo200 = {
+  ok?: boolean;
+  total?: number;
+  updated?: number;
+};
+
 export type AddIpToWhitelist200 = {
   ok?: boolean;
   message?: string;

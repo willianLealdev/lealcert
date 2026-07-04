@@ -142,6 +142,7 @@ import type {
   PushTestBody,
   PushUnsubscribeBody,
   PushVapidPublicKey,
+  RefreshIpGeo200,
   RegisterInput,
   RemoveIpFromWhitelist200,
   ResendVerificationInput,
@@ -7542,6 +7543,76 @@ export const useAllowIp = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAllowIpMutationOptions(options));
+    }
+
+export const getRefreshIpGeoUrl = () => {
+
+
+
+
+  return `/api/admin/ip-security/refresh-geo`
+}
+
+/**
+ * @summary Re-geocodifica todos os registros de IP sem país preenchido
+ */
+export const refreshIpGeo = async ( options?: RequestInit): Promise<RefreshIpGeo200> => {
+
+  return customFetch<RefreshIpGeo200>(getRefreshIpGeoUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRefreshIpGeoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshIpGeo>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshIpGeo>>, TError,void, TContext> => {
+
+const mutationKey = ['refreshIpGeo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshIpGeo>>, void> = () => {
+
+
+          return  refreshIpGeo(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshIpGeoMutationResult = NonNullable<Awaited<ReturnType<typeof refreshIpGeo>>>
+
+    export type RefreshIpGeoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Re-geocodifica todos os registros de IP sem país preenchido
+ */
+export const useRefreshIpGeo = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshIpGeo>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshIpGeo>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRefreshIpGeoMutationOptions(options));
     }
 
 export const getListIpWhitelistUrl = () => {

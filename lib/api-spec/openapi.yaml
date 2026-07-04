@@ -2048,6 +2048,23 @@ paths:
                   message:
                     type: string
 
+  /admin/ip-security/refresh-geo:
+    post:
+      operationId: refreshIpGeo
+      tags: [admin]
+      summary: Re-geocodifica todos os registros de IP sem país preenchido
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  total: { type: integer }
+                  updated: { type: integer }
+
   /admin/ip-whitelist:
     get:
       operationId: listIpWhitelist

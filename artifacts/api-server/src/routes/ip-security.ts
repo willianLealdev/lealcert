@@ -236,4 +236,41 @@ router.post("/admin/ip-blocks/:ip/unban", requireAdmin, async (req, res): Promis
   res.json({ ok: true, message: `Banimento do IP ${ip} revertido.` });
 });
 
+// ── POST /admin/ip-security/refresh-geo — Re-geocodifica registros sem país ──
+router.post("/admin/ip-security/refresh-geo", requireAdmin, async (req, res): Promise<void> => {
+  const { geolocate } = await import("../lib/ip-security");
+  const { isNull, or, eq } = await import("drizzle-orm");
+
+  // Busca IPs únicos sem país em logs e blocos
+  const [logsRows, blocksRows] = await Promise.all([
+    db.selectDistinct({ ip: ipLogsTable.ip })
+      .from(ipLogsTable)
+      .where(or(isNull(ipLogsTable.country), eq(ipLogsTable.country, ""), eq(ipLogsTable.country, "Desconhecido"))),
+    db.selectDistinct({ ip: ipBlocksTable.ip })
+      .from(ipBlocksTable)
+      .where(or(isNull(ipBlocksTable.country), eq(ipBlocksTable.country, ""), eq(ipBlocksTable.country, "Desconhecido"))),
+  ]);
+
+  const uniqueIps = [...new Set([...logsRows.map(r => r.ip), ...blocksRows.map(r => r.ip)])];
+
+  let updated = 0;
+  for (const ip of uniqueIps) {
+    try {
+      const geo = await geolocate(ip);
+      if (geo.countryCode) {
+        await Promise.all([
+          db.update(ipLogsTable).set({ country: geo.country, countryCode: geo.countryCode, city: geo.city })
+            .where(eq(ipLogsTable.ip, ip)),
+          db.update(ipBlocksTable).set({ country: geo.country, countryCode: geo.countryCode, city: geo.city })
+            .where(eq(ipBlocksTable.ip, ip)),
+        ]);
+        updated++;
+      }
+    } catch { /* segue para o próximo */ }
+  }
+
+  logger.info({ total: uniqueIps.length, updated }, "ip-security: refresh-geo concluído");
+  res.json({ ok: true, total: uniqueIps.length, updated });
+});
+
 export default router;

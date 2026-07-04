@@ -163,6 +163,7 @@ export * from './pushSubscribeBodyKeys';
 export * from './pushTestBody';
 export * from './pushUnsubscribeBody';
 export * from './pushVapidPublicKey';
+export * from './refreshIpGeo200';
 export * from './registerInput';
 export * from './registerInputPersonType';
 export * from './registerInputUserType';

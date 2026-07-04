@@ -2072,6 +2072,16 @@ export const AllowIpResponse = zod.object({
 
 
 /**
+ * @summary Re-geocodifica todos os registros de IP sem país preenchido
+ */
+export const RefreshIpGeoResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "total": zod.number().optional(),
+  "updated": zod.number().optional()
+})
+
+
+/**
  * @summary List permanently allowed IPs (admin only)
  */
 export const ListIpWhitelistResponseItem = zod.object({
