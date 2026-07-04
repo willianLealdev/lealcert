@@ -553,6 +553,19 @@ export default function NewOrder() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPreFillModal]);
 
+  // Auto-dispara consulta RFB quando CNPJ + CPF + data de nascimento estão preenchidos
+  // (inclusive via pré-preenchimento automático — igual ao comportamento do CEP)
+  useEffect(() => {
+    if (!isCnpjCert) return;
+    if (cnpjRfbState && cnpjRfbState !== "loading" && (cnpjRfbState as { ok: boolean }).ok) return;
+    const cnpjDigits = form.customerCpfCnpj.replace(/\D/g, "");
+    const cpfDigits = form.repCpf.replace(/\D/g, "");
+    if (cnpjDigits.length === 14 && cpfDigits.length === 11 && form.repBirthDate.length === 10) {
+      void triggerCnpjRfb(form.customerCpfCnpj, form.repCpf, form.repBirthDate);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.customerCpfCnpj, form.repCpf, form.repBirthDate, isCnpjCert]);
+
   // ── Mutations ──
   const createOrder = useCreateOrder({
     mutation: {
