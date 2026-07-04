@@ -74,13 +74,69 @@ function emailWrapper(content: string, appName: string, logoUrl: string | null):
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  created: "Criado",
+  created: "Pedido Criado",
   pending_payment: "Aguardando Pagamento",
-  paid: "Pagamento Confirmado",
-  protocol_assigned: "Protocolo Atribuído",
-  completed: "Concluído",
+  paid: "Pagamento Efetuado",
+  protocol_assigned: "Pedido Validado",
+  completed: "Certificado Emitido",
   cancelled: "Cancelado",
 };
+
+const STATUS_COLORS: Record<string, string> = {
+  created: "#2563eb",
+  pending_payment: "#f59e0b",
+  paid: "#10b981",
+  protocol_assigned: "#2563eb",
+  completed: "#10b981",
+  cancelled: "#ef4444",
+};
+
+function statusBanner(status: string, statusLabel: string, color: string): string {
+  const icons: Record<string, string> = {
+    created: "🎉",
+    pending_payment: "⏳",
+    paid: "✅",
+    protocol_assigned: "📋",
+    completed: "🏆",
+    cancelled: "❌",
+  };
+  const icon = icons[status] ?? "📌";
+  return `
+    <div style="background:${color}15;border:1px solid ${color}40;border-radius:8px;padding:18px;margin-bottom:20px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:6px;">${icon}</div>
+      <div style="font-size:18px;font-weight:700;color:${color};">${statusLabel}</div>
+    </div>`;
+}
+
+function statusMessage(opts: { status: string; customerName: string; certName?: string; protocolNumber?: string; total?: number }): string {
+  if (opts.status === "created") {
+    return `
+      <p style="color:#475569;margin:0 0 16px;">Seu pedido foi criado com sucesso! Assim que o pagamento for confirmado, daremos continuidade à emissão do seu certificado.</p>
+      <p style="color:#475569;margin:0;">Qualquer dúvida, nossa equipe está à disposição. 😊</p>`;
+  }
+  if (opts.status === "paid") {
+    return `
+      <p style="color:#475569;margin:0 0 16px;">Recebemos o pagamento do seu pedido! ✅</p>
+      <p style="color:#475569;margin:0;">Estamos registrando seu pedido no sistema. Em breve você receberá o link para agendar seu atendimento presencial. 📅</p>`;
+  }
+  if (opts.status === "protocol_assigned") {
+    return `
+      <p style="color:#475569;margin:0 0 16px;">Seu pedido foi validado com sucesso! 📋</p>
+      <p style="color:#475569;margin:0;">Agora você já pode agendar seu atendimento. Acesse o painel e escolha o melhor horário para você. 😊</p>`;
+  }
+  if (opts.status === "completed") {
+    return `
+      <p style="color:#475569;margin:0 0 16px;">Seu certificado digital foi <strong>emitido com sucesso</strong>! Você já pode utilizá-lo normalmente. 🔐</p>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-top:16px;text-align:center;">
+        <p style="color:#1e40af;font-size:15px;font-weight:600;margin:0 0 6px;">💙 Obrigado por escolher a ${opts.certName ? "LealCert" : "LealCert"}!</p>
+        <p style="color:#3b82f6;font-size:13px;margin:0;">Foi um prazer atendê-lo. Qualquer necessidade futura, estamos aqui.</p>
+      </div>`;
+  }
+  if (opts.status === "cancelled") {
+    return `<p style="color:#475569;margin:0;">Seu pedido foi cancelado. Se tiver dúvidas ou precisar de ajuda, entre em contato com nossa equipe.</p>`;
+  }
+  return `<p style="color:#475569;margin:0;">Seu pedido foi atualizado. Para mais detalhes, acesse o painel.</p>`;
+}
 
 export async function sendOrderStatusEmail(opts: {
   to: string;
@@ -93,34 +149,20 @@ export async function sendOrderStatusEmail(opts: {
 }): Promise<void> {
   const cfg = await getEmailConfig();
   const statusLabel = STATUS_LABELS[opts.status] ?? opts.status;
-  const subject = `Pedido #${opts.orderNumber} — ${statusLabel} | ${cfg.appName}`;
-
-  const statusColor: Record<string, string> = {
-    pending_payment: "#f59e0b",
-    paid: "#10b981",
-    protocol_assigned: "#2563eb",
-    completed: "#10b981",
-    cancelled: "#ef4444",
-  };
-  const color = statusColor[opts.status] ?? "#64748b";
+  const color = STATUS_COLORS[opts.status] ?? "#64748b";
+  const subject = `${statusLabel} — Pedido #${opts.orderNumber} | ${cfg.appName}`;
 
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:24px;border:1px solid #e2e8f0;">
-      <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">Olá, ${opts.customerName}!</h2>
-      <p style="color:#475569;margin:0 0 20px;">Seu pedido foi atualizado:</p>
-      <div style="background:${color}15;border:1px solid ${color}40;border-radius:8px;padding:16px;margin-bottom:20px;text-align:center;">
-        <div style="font-size:13px;color:#64748b;margin-bottom:4px;">Status atual</div>
-        <div style="font-size:18px;font-weight:700;color:${color};">${statusLabel}</div>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:14px;">
-        <tr><td style="padding:6px 0;color:#64748b;">Pedido</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">#${opts.orderNumber}</td></tr>
+      <h2 style="color:#0f172a;margin:0 0 16px;font-size:18px;">Olá, ${opts.customerName}!</h2>
+      ${statusBanner(opts.status, statusLabel, color)}
+      <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px;">
+        <tr><td style="padding:6px 0;color:#64748b;width:40%;">Pedido</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">#${opts.orderNumber}</td></tr>
         ${opts.certName ? `<tr><td style="padding:6px 0;color:#64748b;">Certificado</td><td style="padding:6px 0;color:#0f172a;">${opts.certName}</td></tr>` : ""}
         ${opts.total !== undefined ? `<tr><td style="padding:6px 0;color:#64748b;">Total</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">R$ ${opts.total.toFixed(2)}</td></tr>` : ""}
         ${opts.protocolNumber ? `<tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;font-weight:600;color:#2563eb;">${opts.protocolNumber}</td></tr>` : ""}
       </table>
-      ${opts.status === "pending_payment" ? `<div style="margin-top:20px;padding:14px;background:#fef3c7;border-radius:8px;font-size:13px;color:#92400e;">⏳ <strong>Aguardando pagamento.</strong> Após confirmar, nossa equipe entrará em contato para agendar a emissão.</div>` : ""}
-      ${opts.status === "paid" ? `<div style="margin-top:20px;padding:14px;background:#dcfce7;border-radius:8px;font-size:13px;color:#166534;">✅ <strong>Pagamento recebido!</strong> Em breve entraremos em contato para agendar a emissão.</div>` : ""}
-      ${opts.status === "completed" ? `<div style="margin-top:20px;padding:14px;background:#dcfce7;border-radius:8px;font-size:13px;color:#166534;">🎉 <strong>Certificado emitido com sucesso!</strong> Você já pode utilizá-lo.</div>` : ""}
+      ${statusMessage(opts)}
     </div>
     <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:16px;">
       Para acompanhar seu pedido, acesse <a href="${cfg.siteUrl}/entrar" style="color:#2563eb;">${cfg.siteUrl.replace(/^https?:\/\//, "")}</a><br>
@@ -128,7 +170,7 @@ export async function sendOrderStatusEmail(opts: {
     </p>
   `, cfg.appName, cfg.logoUrl);
 
-  const text = `Olá, ${opts.customerName}!\n\nSeu pedido #${opts.orderNumber} foi atualizado para: ${statusLabel}\n${opts.certName ? `Certificado: ${opts.certName}\n` : ""}${opts.total !== undefined ? `Total: R$ ${opts.total.toFixed(2)}\n` : ""}${opts.protocolNumber ? `Protocolo: ${opts.protocolNumber}\n` : ""}\n${cfg.appName} — Certificados Digitais`;
+  const text = `Olá, ${opts.customerName}!\n\n${statusLabel} — Pedido #${opts.orderNumber}\n${opts.certName ? `Certificado: ${opts.certName}\n` : ""}${opts.total !== undefined ? `Total: R$ ${opts.total.toFixed(2)}\n` : ""}${opts.protocolNumber ? `Protocolo: ${opts.protocolNumber}\n` : ""}\n\nAcesse: ${cfg.siteUrl}/entrar\n\n${cfg.appName} — Certificados Digitais`;
 
   const transporter = await createTransporter(cfg);
   if (!transporter) {

@@ -35,12 +35,12 @@ function evolutionSettingsFrom(s: Awaited<ReturnType<typeof getSettings>>) {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  created: "Criado",
+  created: "Pedido Criado",
   pending_payment: "Aguardando Pagamento",
-  paid: "Pagamento Confirmado ✅",
-  protocol_assigned: "Protocolo Atribuído 📋",
-  completed: "Concluído 🎉",
-  cancelled: "Cancelado ❌",
+  paid: "Pagamento Efetuado",
+  protocol_assigned: "Pedido Validado",
+  completed: "Certificado Emitido",
+  cancelled: "Cancelado",
 };
 
 function buildStatusWhatsApp(opts: {
@@ -50,22 +50,66 @@ function buildStatusWhatsApp(opts: {
   certName?: string;
   protocolNumber?: string;
 }): string {
-  const statusLabel = STATUS_LABELS[opts.status] ?? opts.status;
-  let msg = `*LealCert — Atualização de Pedido*\n\nOlá, ${opts.customerName}!\n\nSeu pedido foi atualizado:\n🔢 Pedido: *#${opts.orderNumber}*\n📌 Status: *${statusLabel}*`;
-  if (opts.certName) msg += `\n📄 Certificado: ${opts.certName}`;
-  if (opts.protocolNumber) msg += `\n🔑 Protocolo: ${opts.protocolNumber}`;
+  const cert = opts.certName ? `\n📄 Certificado: ${opts.certName}` : "";
+  const proto = opts.protocolNumber ? `\n🔑 Protocolo: *${opts.protocolNumber}*` : "";
 
-  if (opts.status === "paid") {
-    msg += "\n\n✅ Pagamento confirmado! Em breve você receberá as instruções para agendar a emissão do seu certificado.";
-  } else if (opts.status === "protocol_assigned") {
-    msg += "\n\n📋 Seu pedido foi registrado no sistema do provedor. Aguarde as instruções de agendamento.";
-  } else if (opts.status === "completed") {
-    msg += "\n\n🎉 Seu certificado digital foi emitido com sucesso! Já pode utilizá-lo.";
-  } else if (opts.status === "cancelled") {
-    msg += "\n\nSe tiver dúvidas, entre em contato com nossa equipe.";
+  if (opts.status === "created") {
+    return (
+      `*LealCert — Pedido Criado* 🎉\n\n` +
+      `Olá, *${opts.customerName}*!\n\n` +
+      `Seu pedido foi criado com sucesso!\n` +
+      `🔢 Pedido: *#${opts.orderNumber}*${cert}\n\n` +
+      `Em breve você receberá as instruções de pagamento. Qualquer dúvida, estamos à disposição. 😊`
+    );
   }
 
-  return msg;
+  if (opts.status === "paid") {
+    return (
+      `*LealCert — Pagamento Efetuado* ✅\n\n` +
+      `Olá, *${opts.customerName}*!\n\n` +
+      `Recebemos o pagamento do seu pedido!\n` +
+      `🔢 Pedido: *#${opts.orderNumber}*${cert}\n\n` +
+      `Estamos registrando seu pedido no sistema. Em breve você receberá o link para agendar seu atendimento. 📅`
+    );
+  }
+
+  if (opts.status === "protocol_assigned") {
+    return (
+      `*LealCert — Pedido Validado* 📋\n\n` +
+      `Olá, *${opts.customerName}*!\n\n` +
+      `Seu pedido foi validado com sucesso!\n` +
+      `🔢 Pedido: *#${opts.orderNumber}*${cert}${proto}\n\n` +
+      `Agora você já pode agendar seu atendimento. Acesse o painel e escolha o melhor horário para você. 😊`
+    );
+  }
+
+  if (opts.status === "completed") {
+    return (
+      `*LealCert — Certificado Emitido* 🎉\n\n` +
+      `Olá, *${opts.customerName}*!\n\n` +
+      `Seu certificado digital foi emitido com sucesso!\n` +
+      `🔢 Pedido: *#${opts.orderNumber}*${cert}${proto}\n\n` +
+      `Você já pode utilizá-lo normalmente. 🔐\n\n` +
+      `_Obrigado por escolher a LealCert! Foi um prazer atendê-lo. Qualquer necessidade futura, estamos aqui. 💙_`
+    );
+  }
+
+  if (opts.status === "cancelled") {
+    return (
+      `*LealCert — Pedido Cancelado* ❌\n\n` +
+      `Olá, *${opts.customerName}*!\n\n` +
+      `Seu pedido *#${opts.orderNumber}* foi cancelado.\n\n` +
+      `Se tiver dúvidas ou precisar de ajuda, entre em contato com nossa equipe.`
+    );
+  }
+
+  // Fallback genérico
+  const statusLabel = STATUS_LABELS[opts.status] ?? opts.status;
+  return (
+    `*LealCert — Atualização de Pedido*\n\n` +
+    `Olá, *${opts.customerName}*!\n\n` +
+    `Seu pedido *#${opts.orderNumber}* foi atualizado para: *${statusLabel}*${cert}${proto}`
+  );
 }
 
 export async function notifyOrderStatus(opts: {
@@ -142,7 +186,15 @@ export async function notifyScheduling(opts: {
 
   if (opts.phone && evo) {
     const msg =
-      `*LealCert — Agendamento Confirmado* 📅\n\nOlá, ${opts.customerName}!\n\nSeu atendimento foi agendado!\n\n🔢 Pedido: #${opts.orderNumber}\n🔑 Protocolo: ${opts.protocolo}\n📍 Local: ${opts.localNome}\n⏰ Data/Hora: ${opts.dataHora}\n\nLembre-se de levar um documento de identificação com foto.`;
+      `*LealCert — Agendamento Realizado* 📅\n\n` +
+      `Olá, *${opts.customerName}*!\n\n` +
+      `Seu atendimento foi agendado com sucesso!\n\n` +
+      `🔢 Pedido: *#${opts.orderNumber}*\n` +
+      `🔑 Protocolo: *${opts.protocolo}*\n` +
+      `📍 Local: ${opts.localNome}\n` +
+      `⏰ Data e Hora: *${opts.dataHora}*\n\n` +
+      `⚠️ Importante: apresente um documento de identificação original (RG ou CNH) no momento do atendimento. Compareça com 10 minutos de antecedência.\n\n` +
+      `Qualquer dúvida, estamos à disposição. 😊`;
     sendWhatsApp(evo, opts.phone, msg).catch((err: unknown) =>
       logger.error({ err }, "Erro ao enviar WhatsApp de agendamento"),
     );
@@ -175,8 +227,13 @@ export async function notifyProviderRegistered(opts: {
   }
 
   if (opts.phone && evo) {
-    const msg =
-      `*LealCert — Pedido Registrado* 📋\n\nOlá, ${opts.customerName}!\n\nSeu pedido *#${opts.orderNumber}* foi registrado no sistema ${providerLabel}${opts.protocolNumber ? ` com protocolo *${opts.protocolNumber}*` : ""}.\n\nAgora você já pode agendar o atendimento! Acesse o painel ou aguarde nosso contato. 😊`;
+    const msg = buildStatusWhatsApp({
+      customerName: opts.customerName,
+      orderNumber: opts.orderNumber,
+      status: "protocol_assigned",
+      certName: opts.certName,
+      protocolNumber: opts.protocolNumber,
+    });
     sendWhatsApp(evo, opts.phone, msg).catch((err: unknown) =>
       logger.error({ err }, "Erro ao enviar WhatsApp provider registrado"),
     );

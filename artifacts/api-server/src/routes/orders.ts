@@ -378,7 +378,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
       phone: order.customerPhone,
       customerName: order.customerName,
       orderNumber: order.orderNumber,
-      status: "pending_payment",
+      status: "created",
       total,
       certName: cert.name,
     }).catch((err: unknown) => logger.error({ err }, "Erro ao notificar criação de pedido"));
