@@ -5,6 +5,7 @@ import { db, usersTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { sendTempPasswordEmail } from "../lib/email";
+import { sendWaText } from "../lib/notify";
 
 const router = Router();
 
@@ -70,6 +71,12 @@ router.post("/admin/agentes", requireAdmin, async (req, res): Promise<void> => {
   } catch (err) {
     logger.warn({ err, email }, "agentes: falha ao enviar email de senha temporária");
   }
+  if (phone) {
+    sendWaText(
+      String(phone),
+      `*LealCert — Bem-vindo(a), ${name.trim()}!* 👋\n\nSua conta de agente foi criada com sucesso.\n\n🔑 Sua senha temporária é: *${tempPassword}*\n\nAcesse o sistema e troque a senha assim que possível.\n\n⚠️ Por segurança, não compartilhe essa senha com ninguém.`,
+    ).catch(() => {});
+  }
 
   res.status(201).json(agentRow(created));
 });
@@ -108,6 +115,12 @@ router.post("/admin/agentes/:id/reset-password", requireAdmin, async (req, res):
     await sendTempPasswordEmail(user.email, user.name, tempPassword);
   } catch (err) {
     logger.warn({ err, id }, "agentes: falha ao reenviar email");
+  }
+  if (user.phone) {
+    sendWaText(
+      user.phone,
+      `*LealCert — Redefinição de Senha* 🔑\n\nOlá, ${user.name}!\n\nSua senha foi redefinida pelo administrador.\n\n🔑 Nova senha temporária: *${tempPassword}*\n\nAcesse o sistema e troque a senha assim que possível.\n\n⚠️ Por segurança, não compartilhe essa senha com ninguém.`,
+    ).catch(() => {});
   }
 
   logger.info({ id }, "agentes: senha resetada");
