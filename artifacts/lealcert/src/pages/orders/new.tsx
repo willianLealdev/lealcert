@@ -1020,7 +1020,12 @@ export default function NewOrder() {
                           <p className="text-sm font-semibold truncate">{emp.nome}</p>
                           <p className="text-xs text-muted-foreground">{maskCnpj(emp.cnpj)}</p>
                         </div>
-                        <Button size="sm" onClick={() => { if (rep) applyRepFields(rep); applyEmpresaFields(emp); confirmPreFill(); }}>
+                        <Button size="sm" onClick={() => {
+                          if (rep) applyRepFields(rep);
+                          applyEmpresaFields(emp);
+                          confirmPreFill();
+                          triggerCnpjRfb(emp.cnpj, gateCpfRef.current, gateBirthDateRef.current);
+                        }}>
                           Usar esta
                         </Button>
                       </div>
@@ -1049,7 +1054,12 @@ export default function NewOrder() {
                   </div>
                   <p className="text-sm text-muted-foreground">Deseja comprar o certificado para esta empresa?</p>
                   <div className="flex flex-col gap-2">
-                    <Button className="w-full" onClick={() => { if (rep) applyRepFields(rep); applyEmpresaFields(emp); confirmPreFill(); }}>
+                    <Button className="w-full" onClick={() => {
+                      if (rep) applyRepFields(rep);
+                      applyEmpresaFields(emp);
+                      confirmPreFill();
+                      triggerCnpjRfb(emp.cnpj, gateCpfRef.current, gateBirthDateRef.current);
+                    }}>
                       Sim, usar esta empresa
                     </Button>
                     <Button variant="outline" className="w-full" onClick={() => { if (rep) applyRepFields(rep); confirmPreFill(); }}>

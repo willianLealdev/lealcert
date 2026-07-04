@@ -211,6 +211,9 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [docsLinkOpened, setDocsLinkOpened] = useState(() => {
+    try { return localStorage.getItem(`gar_docs_opened_${orderId}`) === "1"; } catch { return false; }
+  });
   const [docsConfirmed, setDocsConfirmed] = useState(() => {
     try { return localStorage.getItem(`gar_docs_submitted_${orderId}`) === "1"; } catch { return false; }
   });
@@ -366,11 +369,21 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
               Antes de agendar seu atendimento, você precisa enviar os documentos solicitados pelo portal de documentação.
             </p>
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button className="flex-1" onClick={() => setDocsModalOpen(true)}>
+              <Button className="flex-1" onClick={() => {
+                try { localStorage.setItem(`gar_docs_opened_${orderId}`, "1"); } catch { /* ignore */ }
+                setDocsLinkOpened(true);
+                setDocsModalOpen(true);
+              }}>
                 <FileText className="h-4 w-4 mr-2" />
                 Enviar Documentos
               </Button>
-              <Button variant="outline" className="border-green-400 text-green-800 hover:bg-green-50" onClick={handleDocsConfirmar}>
+              <Button
+                variant="outline"
+                className="border-green-400 text-green-800 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={handleDocsConfirmar}
+                disabled={!docsLinkOpened}
+                title={!docsLinkOpened ? "Clique primeiro em 'Enviar Documentos' para acessar o portal" : undefined}
+              >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Já enviei os documentos
               </Button>
