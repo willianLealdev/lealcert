@@ -118,6 +118,11 @@ export default defineConfig({
     headers: {
       "Cache-Control": "no-store, no-cache, must-revalidate",
       "Pragma": "no-cache",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "X-XSS-Protection": "1; mode=block",
+      "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=(), usb=()",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
     },
     fs: {
       strict: true,

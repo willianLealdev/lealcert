@@ -72,21 +72,21 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
     const mpToken = settings?.mpAccessToken || "";
     if (!mpToken) { logger.warn("mp/webhook: MP Access Token não configurado"); return; }
 
-    // ── Signature verification ──────────────────────────────────────────────
+    // ── Signature verification (obrigatória) ────────────────────────────────
     const webhookSecret = settings?.webhookSecret || "";
-    if (webhookSecret) {
-      const xSignature = (req.headers["x-signature"] as string) || "";
-      const xRequestId = (req.headers["x-request-id"] as string) || "";
-      if (!xSignature) {
-        logger.warn({ paymentId }, "mp/webhook: x-signature ausente — rejeitando");
-        return;
-      }
-      if (!verifyMpSignature(webhookSecret, xSignature, xRequestId, String(paymentId))) {
-        logger.warn({ paymentId }, "mp/webhook: assinatura HMAC inválida — rejeitando");
-        return;
-      }
-    } else {
-      logger.warn("mp/webhook: webhookSecret não configurado — verificação de assinatura ignorada");
+    if (!webhookSecret) {
+      logger.error({ paymentId }, "mp/webhook: webhookSecret não configurado — rejeitando por segurança. Configure o Webhook Secret em Configurações → MercadoPago.");
+      return;
+    }
+    const xSignature = (req.headers["x-signature"] as string) || "";
+    const xRequestId = (req.headers["x-request-id"] as string) || "";
+    if (!xSignature) {
+      logger.warn({ paymentId }, "mp/webhook: x-signature ausente — rejeitando");
+      return;
+    }
+    if (!verifyMpSignature(webhookSecret, xSignature, xRequestId, String(paymentId))) {
+      logger.warn({ paymentId }, "mp/webhook: assinatura HMAC inválida — rejeitando");
+      return;
     }
     // ───────────────────────────────────────────────────────────────────────
 

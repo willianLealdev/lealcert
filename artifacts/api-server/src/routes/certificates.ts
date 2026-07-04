@@ -8,7 +8,7 @@ import { logger } from "../lib/logger";
 
 const router = Router();
 
-function certRow(c: typeof certificatesTable.$inferSelect) {
+function certRowPublic(c: typeof certificatesTable.$inferSelect) {
   return {
     id: c.id,
     name: c.name,
@@ -16,8 +16,6 @@ function certRow(c: typeof certificatesTable.$inferSelect) {
     price: parseFloat(c.price),
     priceContador: c.priceContador != null ? parseFloat(c.priceContador) : null,
     active: c.active,
-    garHashProduto: c.garHashProduto ?? null,
-    safewebIdProduto: c.safewebIdProduto ?? null,
     validityMonths: c.validityMonths,
     product: c.product ?? null,
     issuanceType: c.issuanceType ?? null,
@@ -25,11 +23,21 @@ function certRow(c: typeof certificatesTable.$inferSelect) {
   };
 }
 
+function certRow(c: typeof certificatesTable.$inferSelect) {
+  return {
+    ...certRowPublic(c),
+    garHashProduto: c.garHashProduto ?? null,
+    safewebIdProduto: c.safewebIdProduto ?? null,
+  };
+}
+
 router.get("/certificates", requireAuth, async (req, res): Promise<void> => {
   const { activeOnly } = req.query;
+  const session = req.session as unknown as Record<string, unknown>;
+  const isAdmin = session?.role === "admin";
   const rows = await db.select().from(certificatesTable).orderBy(certificatesTable.id);
   const result = activeOnly === "true" ? rows.filter(r => r.active) : rows;
-  res.json(result.map(certRow));
+  res.json(result.map(isAdmin ? certRow : certRowPublic));
 });
 
 router.post("/certificates", requireAdmin, async (req, res): Promise<void> => {

@@ -13,6 +13,44 @@ import {
   generateIpVerificationCode,
 } from "../lib/ip-security";
 
+// ── Bloqueio por CPF/CNPJ (brute-force por documento) ───────────────────────
+const CPF_MAX_ATTEMPTS = 5;
+const CPF_WINDOW_MS = 15 * 60 * 1000;    // 15 min
+const CPF_BLOCK_MS   = 15 * 60 * 1000;   // 15 min de bloqueio
+
+interface CpfAttemptEntry { count: number; windowStart: number; blockedUntil: number }
+const cpfAttempts = new Map<string, CpfAttemptEntry>();
+
+function checkCpfBlock(digits: string): { blocked: boolean; unblockAt?: Date } {
+  const entry = cpfAttempts.get(digits);
+  if (!entry) return { blocked: false };
+  if (Date.now() < entry.blockedUntil) return { blocked: true, unblockAt: new Date(entry.blockedUntil) };
+  if (Date.now() - entry.windowStart > CPF_WINDOW_MS) {
+    cpfAttempts.delete(digits);
+    return { blocked: false };
+  }
+  return { blocked: false };
+}
+
+function recordCpfFailure(digits: string): boolean {
+  const now = Date.now();
+  const entry = cpfAttempts.get(digits);
+  if (!entry || now - entry.windowStart > CPF_WINDOW_MS) {
+    cpfAttempts.set(digits, { count: 1, windowStart: now, blockedUntil: 0 });
+    return false;
+  }
+  entry.count++;
+  if (entry.count >= CPF_MAX_ATTEMPTS) {
+    entry.blockedUntil = now + CPF_BLOCK_MS;
+    return true;
+  }
+  return false;
+}
+
+function clearCpfAttempts(digits: string) {
+  cpfAttempts.delete(digits);
+}
+
 // ── Validação de CPF e CNPJ (dígitos verificadores) ─────────────────────────
 function validarCpf(digits: string): boolean {
   if (digits.length !== 11) return false;
@@ -534,6 +572,18 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
 
   const clientIp = getClientIp(req as Parameters<typeof getClientIp>[0]);
+  const loginDigits = cpfCnpj.replace(/\D/g, "");
+
+  // ── 0. Verificar bloqueio por CPF/CNPJ ───────────────────────────────────
+  const cpfBlock = checkCpfBlock(loginDigits);
+  if (cpfBlock.blocked) {
+    res.status(423).json({
+      error: "CPF/CNPJ bloqueado temporariamente por excesso de tentativas. Aguarde 15 minutos.",
+      code: "cpf_blocked",
+      unblockAt: cpfBlock.unblockAt,
+    });
+    return;
+  }
 
   // ── 1. Verificar se IP está banido ou bloqueado ───────────────────────────
   const ipStatus = await checkIpStatus(clientIp);
@@ -558,7 +608,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const digits = cpfCnpj.replace(/\D/g, "");
+  const digits = loginDigits;
   const [user] = await db
     .select()
     .from(usersTable)
@@ -567,6 +617,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   if (!user) {
     await bcrypt.compare(password, "$2a$10$invalidhashfortimingprotection00000000000000000000000");
+    recordCpfFailure(digits);
     await handleFailedLogin(clientIp, digits);
     await recordLoginAttempt({ ip: clientIp, cpfCnpj: digits, success: false });
     res.status(401).json({ error: "CPF/CNPJ ou senha inválidos." });
@@ -585,9 +636,15 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   // ── 2. Validar senha ──────────────────────────────────────────────────────
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
+    const cpfNowBlocked = recordCpfFailure(digits);
     const nowBlocked = await handleFailedLogin(clientIp, digits);
     await recordLoginAttempt({ ip: clientIp, cpfCnpj: digits, userId: user.id, success: false, blocked: nowBlocked });
-    if (nowBlocked) {
+    if (cpfNowBlocked) {
+      res.status(423).json({
+        error: "CPF/CNPJ bloqueado temporariamente por excesso de tentativas. Aguarde 15 minutos.",
+        code: "cpf_blocked",
+      });
+    } else if (nowBlocked) {
       const freshStatus = await checkIpStatus(clientIp);
       res.status(423).json({
         error: "IP bloqueado após múltiplas tentativas incorretas. Abra um chamado ou aguarde até 4 horas.",
@@ -601,6 +658,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
 
   // ── 3. Login bem-sucedido — limpar tentativas ─────────────────────────────
+  clearCpfAttempts(digits);
   await clearFailedAttempts(clientIp);
   await recordLoginAttempt({ ip: clientIp, cpfCnpj: digits, userId: user.id, success: true });
 
@@ -760,6 +818,16 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     return;
   }
   const digits = cpfCnpj.replace(/\D/g, "");
+
+  // Delay constante para impedir timing attack (usuário existente vs. não existente)
+  const minDelayMs = 400;
+  const startedAt = Date.now();
+  const ensureDelay = () => {
+    const elapsed = Date.now() - startedAt;
+    const remaining = minDelayMs - elapsed;
+    return remaining > 0 ? new Promise(r => setTimeout(r, remaining)) : Promise.resolve();
+  };
+
   const [user] = await db
     .select()
     .from(usersTable)
@@ -767,6 +835,7 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     .limit(1);
 
   if (!user || !user.email) {
+    await ensureDelay();
     res.json({ message: "Se o CPF/CNPJ estiver cadastrado, você receberá um e-mail com a senha temporária." });
     return;
   }

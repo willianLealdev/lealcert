@@ -4,8 +4,12 @@ import { db, settingsTable } from "@workspace/db";
 const router = Router();
 
 // ── GET /branding (public — no auth required) ─────────────────────────────
-// Returns safe public branding info used by login page and app layout.
-router.get("/branding", async (_req, res): Promise<void> => {
+// Returns safe UI/branding fields. Infrastructure fields (activeProvider,
+// safewebAmbiente) are included only for authenticated sessions.
+router.get("/branding", async (req, res): Promise<void> => {
+  const session = req.session as unknown as Record<string, unknown>;
+  const isAuthenticated = Boolean(session?.userId);
+
   const rows = await db.select({
     appName: settingsTable.appName,
     logoUrl: settingsTable.logoUrl,
@@ -29,8 +33,11 @@ router.get("/branding", async (_req, res): Promise<void> => {
     contactWhatsapp: s?.contactWhatsapp ?? null,
     contactEmailSupport: s?.contactEmailSupport ?? null,
     contactAddress: s?.contactAddress ?? null,
-    safewebAmbiente: s?.safewebAmbiente ?? null,
-    activeProvider: s?.activeProvider ?? "gestaoar",
+    // Only exposed to authenticated users — omitted for unauthenticated public access
+    ...(isAuthenticated && {
+      safewebAmbiente: s?.safewebAmbiente ?? null,
+      activeProvider: s?.activeProvider ?? "gestaoar",
+    }),
   });
 });
 

@@ -144,6 +144,24 @@ const webhookLimiter = rateLimit({
   message: { error: "Muitas requisições ao webhook." },
 });
 
+// VAPID public key: 30 req / 15 min per IP — low-value endpoint, no need for more
+const vapidLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas requisições." },
+});
+
+// MP Webhook inbound: 30 req / 15 min per IP — signature-verified, low volume expected
+const mpWebhookLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas requisições ao webhook." },
+});
+
 app.use("/api", generalLimiter);
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
@@ -151,6 +169,8 @@ app.use("/api/auth/forgot-password", authLimiter);
 app.use("/api/auth/resend-verification", authLimiter);  // prevent email spam
 app.use("/api/chat", chatLimiter);                      // prevent AI cost abuse
 app.use("/api/marketing/webhook/inbound", webhookLimiter);
+app.use("/api/push/public-key", vapidLimiter);
+app.use("/api/mp/webhook", mpWebhookLimiter);
 
 // ── Session (session-only cookie — expires when browser closes) ──────────────
 const PgSession = connectPgSimple(session);
