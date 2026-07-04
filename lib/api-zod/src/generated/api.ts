@@ -1919,6 +1919,20 @@ export const UnsubscribePushResponse = zod.object({
 
 
 /**
+ * @summary Open a support ticket for IP block (unauthenticated)
+ */
+export const ReportIpBlockBody = zod.object({
+  "cpfCnpj": zod.string(),
+  "message": zod.string().optional()
+})
+
+export const ReportIpBlockResponse = zod.object({
+  "ok": zod.boolean(),
+  "ticketId": zod.number()
+})
+
+
+/**
  * @summary Verify IP with code sent to email
  */
 export const VerifyIpBody = zod.object({

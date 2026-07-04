@@ -756,6 +756,11 @@ export interface PushVapidPublicKey {
   publicKey: string;
 }
 
+export interface ReportIpBlockBody {
+  cpfCnpj: string;
+  message?: string;
+}
+
 export interface PushUnsubscribeBody {
   endpoint: string;
 }
@@ -1747,6 +1752,11 @@ export type SubscribePush200 = {
 
 export type UnsubscribePush200 = {
   ok?: boolean;
+};
+
+export type ReportIpBlock200 = {
+  ok: boolean;
+  ticketId: number;
 };
 
 export type VerifyIpBody = {

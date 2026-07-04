@@ -168,6 +168,7 @@ export * from './registerInput';
 export * from './registerInputPersonType';
 export * from './registerInputUserType';
 export * from './removeIpFromWhitelist200';
+export * from './reportIpBlock200';
 export * from './resendVerificationInput';
 export * from './safewebAgendarInput';
 export * from './safewebAgendarResult';

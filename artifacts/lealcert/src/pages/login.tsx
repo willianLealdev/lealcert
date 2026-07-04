@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldCheck, Eye, EyeOff, Phone, MessageCircle, Mail, MapPin, ShieldAlert, Clock, KeyRound, RefreshCw } from "lucide-react";
+import { ChatWidget } from "@/components/chat-widget";
 
 type Step = "credentials" | "ip-verify";
 type IpBlockInfo = { code: "ip_banned" | "ip_blocked"; error: string; isForeign?: boolean; unblockAt?: string } | null;
@@ -162,6 +163,7 @@ export default function Login() {
   );
 
   return (
+    <>
     <div className="min-h-screen flex" style={{ background: "linear-gradient(135deg, hsl(220,52%,8%) 0%, hsl(218,52%,14%) 50%, hsl(214,60%,20%) 100%)" }}>
       {leftPanel}
 
@@ -178,7 +180,7 @@ export default function Login() {
               <div className={`mb-5 rounded-xl p-4 border ${ipBlockInfo.code === "ip_banned" ? "bg-red-950/60 border-red-500/30" : "bg-amber-950/60 border-amber-500/30"}`}>
                 <div className="flex gap-3">
                   <ShieldAlert className={`h-5 w-5 mt-0.5 shrink-0 ${ipBlockInfo.code === "ip_banned" ? "text-red-400" : "text-amber-400"}`} />
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className={`font-semibold text-sm ${ipBlockInfo.code === "ip_banned" ? "text-red-300" : "text-amber-300"}`}>
                       {ipBlockInfo.code === "ip_banned" ? "IP Banido" : "Acesso Temporariamente Bloqueado"}
                     </p>
@@ -189,6 +191,28 @@ export default function Login() {
                         Desbloqueio automático: {new Date(ipBlockInfo.unblockAt).toLocaleString("pt-BR")}
                       </p>
                     )}
+                    <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                      <p className="text-xs text-white/50 flex items-start gap-1.5">
+                        <span className="shrink-0 mt-0.5">💡</span>
+                        <span>
+                          Se você estiver usando uma <strong className="text-white/70">VPN com IP fora do Brasil</strong>, desative-a e tente novamente.
+                        </span>
+                      </p>
+                      <p className="text-xs text-white/50 flex items-start gap-1.5">
+                        <MessageCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-400" />
+                        <span>
+                          Acredita que o bloqueio está errado?{" "}
+                          <button
+                            type="button"
+                            onClick={() => document.querySelector<HTMLButtonElement>("[aria-label='Abrir chat de vendas']")?.click()}
+                            className="underline text-blue-400 hover:text-blue-300 transition-colors font-medium"
+                          >
+                            Fale com o assistente
+                          </button>
+                          {" "}e informe seu nome e CPF/CNPJ para abrirmos um chamado.
+                        </span>
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -333,5 +357,7 @@ export default function Login() {
         </div>
       </div>
     </div>
+    <ChatWidget />
+    </>
   );
 }

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { eq, or, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
-import { db, usersTable, ipVerificationsTable, settingsTable } from "@workspace/db";
+import { db, usersTable, ipVerificationsTable, settingsTable, ticketsTable, messagesTable } from "@workspace/db";
 import { swConsultaCPF } from "../lib/safeweb";
 import { logger } from "../lib/logger";
 import { sendVerificationEmail, sendWelcomeEmail, sendTempPasswordEmail, sendIpVerificationEmail } from "../lib/email";
@@ -809,6 +809,56 @@ router.post("/auth/change-password", async (req, res): Promise<void> => {
     .set({ passwordHash, mustChangePassword: false })
     .where(eq(usersTable.id, user.id));
   res.json({ message: "Senha alterada com sucesso." });
+});
+
+// ── POST /auth/report-block — Abrir chamado de desbloqueio de IP (sem login) ──
+// Rate limit simples: máx 1 chamado por IP a cada 10 minutos (em memória)
+const reportBlockCooldown = new Map<string, number>();
+router.post("/auth/report-block", async (req, res): Promise<void> => {
+  const clientIp = getClientIp(req as Parameters<typeof getClientIp>[0]);
+  const lastCall = reportBlockCooldown.get(clientIp) ?? 0;
+  if (Date.now() - lastCall < 10 * 60 * 1000) {
+    res.status(429).json({ error: "Aguarde 10 minutos antes de abrir outro chamado." });
+    return;
+  }
+
+  const { cpfCnpj, message } = req.body ?? {};
+  if (!cpfCnpj) {
+    res.status(400).json({ error: "CPF/CNPJ é obrigatório." });
+    return;
+  }
+  const digits = String(cpfCnpj).replace(/\D/g, "");
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.cpfCnpj, digits)).limit(1);
+  if (!user) {
+    res.status(404).json({ error: "CPF/CNPJ não encontrado. Verifique os dados informados." });
+    return;
+  }
+
+  const subject = "Solicitação de desbloqueio de IP";
+  const content = [
+    `Usuário: ${user.name}`,
+    `CPF/CNPJ: ${digits}`,
+    `IP reportado: ${clientIp}`,
+    message ? `\nMensagem: ${message}` : "",
+    "\n---\nEsta solicitação foi aberta automaticamente pela tela de login após bloqueio de IP.",
+  ].filter(Boolean).join("\n");
+
+  const [ticket] = await db.insert(ticketsTable).values({
+    userId: user.id,
+    subject,
+    status: "open",
+    unreadAdmin: true,
+    unreadClient: false,
+  }).returning();
+
+  await db.insert(messagesTable).values({
+    ticketId: ticket.id,
+    userId: user.id,
+    content,
+  });
+
+  reportBlockCooldown.set(clientIp, Date.now());
+  res.json({ ok: true, ticketId: ticket.id });
 });
 
 router.post("/auth/logout", (req, res): void => {

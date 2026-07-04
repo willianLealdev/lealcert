@@ -145,6 +145,8 @@ import type {
   RefreshIpGeo200,
   RegisterInput,
   RemoveIpFromWhitelist200,
+  ReportIpBlock200,
+  ReportIpBlockBody,
   ResendVerificationInput,
   SafewebAgendarInput,
   SafewebAgendarResult,
@@ -7020,6 +7022,77 @@ export const useUnsubscribePush = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUnsubscribePushMutationOptions(options));
+    }
+
+export const getReportIpBlockUrl = () => {
+
+
+
+
+  return `/api/auth/report-block`
+}
+
+/**
+ * @summary Open a support ticket for IP block (unauthenticated)
+ */
+export const reportIpBlock = async (reportIpBlockBody: ReportIpBlockBody, options?: RequestInit): Promise<ReportIpBlock200> => {
+
+  return customFetch<ReportIpBlock200>(getReportIpBlockUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reportIpBlockBody,)
+  }
+);}
+
+
+
+
+export const getReportIpBlockMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportIpBlock>>, TError,{data: BodyType<ReportIpBlockBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportIpBlock>>, TError,{data: BodyType<ReportIpBlockBody>}, TContext> => {
+
+const mutationKey = ['reportIpBlock'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportIpBlock>>, {data: BodyType<ReportIpBlockBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  reportIpBlock(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportIpBlockMutationResult = NonNullable<Awaited<ReturnType<typeof reportIpBlock>>>
+    export type ReportIpBlockMutationBody = BodyType<ReportIpBlockBody>
+    export type ReportIpBlockMutationError = ErrorType<void>
+
+    /**
+ * @summary Open a support ticket for IP block (unauthenticated)
+ */
+export const useReportIpBlock = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportIpBlock>>, TError,{data: BodyType<ReportIpBlockBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportIpBlock>>,
+        TError,
+        {data: BodyType<ReportIpBlockBody>},
+        TContext
+      > => {
+      return useMutation(getReportIpBlockMutationOptions(options));
     }
 
 export const getVerifyIpUrl = () => {

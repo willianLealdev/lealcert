@@ -1850,6 +1850,37 @@ paths:
                   ok:
                     type: boolean
 
+  /auth/report-block:
+    post:
+      operationId: reportIpBlock
+      tags: [auth]
+      summary: Open a support ticket for IP block (unauthenticated)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportIpBlockBody"
+      responses:
+        "200":
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, ticketId]
+                properties:
+                  ok:
+                    type: boolean
+                  ticketId:
+                    type: integer
+        "400":
+          description: Missing or invalid CPF/CNPJ
+        "404":
+          description: User not found
+        "429":
+          description: Rate limited
+
   /auth/verify-ip:
     post:
       operationId: verifyIp
@@ -4023,6 +4054,15 @@ components:
       required: [publicKey]
       properties:
         publicKey:
+          type: string
+
+    ReportIpBlockBody:
+      type: object
+      required: [cpfCnpj]
+      properties:
+        cpfCnpj:
+          type: string
+        message:
           type: string
 
     PushUnsubscribeBody:
