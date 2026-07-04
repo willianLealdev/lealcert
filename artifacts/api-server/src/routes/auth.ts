@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, or, desc } from "drizzle-orm";
+import { eq, or, and, not, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { db, usersTable, ipVerificationsTable, settingsTable, ticketsTable, messagesTable } from "@workspace/db";
@@ -364,14 +364,27 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     res.status(400).json({ error: "CPF ou CNPJ inválido. Verifique os dígitos digitados." });
     return;
   }
-  const existing = await db
-    .select({ id: usersTable.id })
+  const existingRows = await db
+    .select({ id: usersTable.id, cpfCnpj: usersTable.cpfCnpj, email: usersTable.email, phone: usersTable.phone })
     .from(usersTable)
-    .where(or(eq(usersTable.cpfCnpj, digits), eq(usersTable.email, email.toLowerCase().trim())))
-    .limit(1);
-  if (existing.length > 0) {
-    res.status(409).json({ error: "CPF/CNPJ ou e-mail já cadastrado." });
-    return;
+    .where(or(
+      eq(usersTable.cpfCnpj, digits),
+      eq(usersTable.email, email.toLowerCase().trim()),
+      ...(phone ? [eq(usersTable.phone, String(phone).replace(/\D/g, ""))] : []),
+    ));
+  for (const row of existingRows) {
+    if (row.cpfCnpj === digits) {
+      res.status(409).json({ error: "CPF/CNPJ já cadastrado." });
+      return;
+    }
+    if (row.email === email.toLowerCase().trim()) {
+      res.status(409).json({ error: "Este e-mail já está cadastrado em outra conta." });
+      return;
+    }
+    if (phone && row.phone === String(phone).replace(/\D/g, "")) {
+      res.status(409).json({ error: "Este telefone já está cadastrado em outra conta." });
+      return;
+    }
   }
   const passwordHash = await bcrypt.hash(password, 10);
   const code = generateCode();
@@ -896,8 +909,35 @@ router.patch("/auth/profile", async (req, res): Promise<void> => {
           zipCode, street, addressNumber, complement, neighborhood, city, addressState } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (name) updates.name = name;
-  if (email) updates.email = email;
-  if (phone) updates.phone = phone;
+
+  // Verificar unicidade de e-mail e telefone antes de salvar
+  if (email) {
+    const emailNorm = String(email).toLowerCase().trim();
+    const [emailConflict] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(and(eq(usersTable.email, emailNorm), not(eq(usersTable.id, userId))))
+      .limit(1);
+    if (emailConflict) {
+      res.status(409).json({ error: "Este e-mail já está cadastrado em outra conta." });
+      return;
+    }
+    updates.email = emailNorm;
+  }
+  if (phone) {
+    const phoneNorm = String(phone).replace(/\D/g, "");
+    const [phoneConflict] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(and(eq(usersTable.phone, phoneNorm), not(eq(usersTable.id, userId))))
+      .limit(1);
+    if (phoneConflict) {
+      res.status(409).json({ error: "Este telefone já está cadastrado em outra conta." });
+      return;
+    }
+    updates.phone = phoneNorm;
+  }
+
   if (zipCode !== undefined) updates.zipCode = zipCode ? String(zipCode).replace(/\D/g, "") : null;
   if (street !== undefined) updates.street = street || null;
   if (addressNumber !== undefined) updates.addressNumber = addressNumber || null;

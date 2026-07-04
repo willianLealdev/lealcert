@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
@@ -44,10 +44,27 @@ router.post("/admin/agentes", requireAdmin, async (req, res): Promise<void> => {
   }
   const doc = String(cpfCnpj).replace(/\D/g, "");
 
-  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.cpfCnpj, doc)).limit(1);
-  if (existing.length > 0) {
-    res.status(409).json({ error: "Já existe um usuário com este CPF/CNPJ." });
-    return;
+  const conflictRows = await db
+    .select({ id: usersTable.id, cpfCnpj: usersTable.cpfCnpj, email: usersTable.email, phone: usersTable.phone })
+    .from(usersTable)
+    .where(or(
+      eq(usersTable.cpfCnpj, doc),
+      eq(usersTable.email, String(email).toLowerCase().trim()),
+      ...(phone ? [eq(usersTable.phone, String(phone).replace(/\D/g, ""))] : []),
+    ));
+  for (const row of conflictRows) {
+    if (row.cpfCnpj === doc) {
+      res.status(409).json({ error: "Já existe um usuário com este CPF/CNPJ." });
+      return;
+    }
+    if (row.email === String(email).toLowerCase().trim()) {
+      res.status(409).json({ error: "Este e-mail já está cadastrado em outra conta." });
+      return;
+    }
+    if (phone && row.phone === String(phone).replace(/\D/g, "")) {
+      res.status(409).json({ error: "Este telefone já está cadastrado em outra conta." });
+      return;
+    }
   }
 
   const tempPassword = generateTempPassword();
