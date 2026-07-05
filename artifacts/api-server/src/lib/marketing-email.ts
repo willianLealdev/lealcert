@@ -35,7 +35,7 @@ async function createTransporter() {
       port: cfg.port,
       secure: cfg.port === 465,
       auth: { user: cfg.user, pass: cfg.pass },
-      tls: { rejectUnauthorized: process.env.NODE_ENV === "production" },
+      tls: { rejectUnauthorized: false },
     }),
     cfg,
   };
