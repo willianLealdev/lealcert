@@ -66,7 +66,7 @@ function genToken() {
 
 const PIXEL = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
 
-router.get("/marketing/track/:token.png", async (req, res): Promise<void> => {
+router.get("/marketing/track/:token", async (req, res): Promise<void> => {
   const token = req.params.token;
   const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.trackingToken, token)).limit(1);
   if (send) {

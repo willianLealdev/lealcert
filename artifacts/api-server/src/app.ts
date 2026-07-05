@@ -74,6 +74,8 @@ const BOT_WHITELIST_PATHS = new Set([
   "/api/mp/webhook",
   "/api/marketing/webhook/inbound",
 ]);
+// Prefixes whitelisted: tracking pixel fetched by email proxies (GoogleImageProxy etc.)
+const BOT_WHITELIST_PREFIXES = ["/api/marketing/track/", "/api/marketing/click/"];
 
 // Patterns that match known scrapers, bots and automation tools.
 // Case-insensitive. New entries go at the end.
@@ -92,8 +94,9 @@ const BOT_UA_PATTERNS = [
 ];
 
 app.use((req: Request, res: Response, next: NextFunction): void => {
-  // Webhooks de terceiros usam UAs não-browser — liberar
+  // Webhooks e tracking de terceiros usam UAs não-browser — liberar
   if (BOT_WHITELIST_PATHS.has(req.path)) { next(); return; }
+  if (BOT_WHITELIST_PREFIXES.some(p => req.path.startsWith(p))) { next(); return; }
 
   const ua = req.headers["user-agent"] ?? "";
 

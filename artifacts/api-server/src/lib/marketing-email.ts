@@ -66,7 +66,7 @@ export async function sendMarketingEmail({ campaign, contact, trackingToken }: S
   }
   const { transport, cfg } = result;
   const baseUrl = cfg.siteUrl;
-  const pixelUrl = `${baseUrl}/api/marketing/track/${trackingToken}.png`;
+  const pixelUrl = `${baseUrl}/api/marketing/track/${trackingToken}`;
   const unsubUrl = `${baseUrl}/unsubscribe?token=${trackingToken}`;
 
   const bodyWithVars = campaign.bodyHtml
