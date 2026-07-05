@@ -22,8 +22,25 @@ async function checkScheduledCampaigns() {
 
     for (const campaign of due) {
       logger.info({ campaignId: campaign.id, name: campaign.name }, "Dispatching scheduled campaign");
-      await db.update(marketingCampaignsTable).set({ status: "sending" }).where(eq(marketingCampaignsTable.id, campaign.id));
-      dispatchCampaign(campaign.id).catch(err => logger.error({ err, campaignId: campaign.id }, "Scheduled campaign dispatch error"));
+      await db.update(marketingCampaignsTable).set({
+        status: "sending",
+        scheduledTargetOverride: null,
+        scheduledContactIds: null,
+        scheduledManualRecipients: null,
+      }).where(eq(marketingCampaignsTable.id, campaign.id));
+
+      const opts: import("../routes/marketing").DispatchOptions = {};
+      if (campaign.scheduledTargetOverride) {
+        opts.targetOverride = campaign.scheduledTargetOverride as import("../routes/marketing").DispatchOptions["targetOverride"];
+      }
+      if (campaign.scheduledContactIds) {
+        try { opts.specificContactIds = JSON.parse(campaign.scheduledContactIds); } catch { /* ignorar */ }
+      }
+      if (campaign.scheduledManualRecipients) {
+        try { opts.manualRecipients = JSON.parse(campaign.scheduledManualRecipients); } catch { /* ignorar */ }
+      }
+
+      dispatchCampaign(campaign.id, opts).catch(err => logger.error({ err, campaignId: campaign.id }, "Scheduled campaign dispatch error"));
     }
   } catch (err) {
     logger.error({ err }, "Scheduler check error");

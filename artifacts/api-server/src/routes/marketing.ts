@@ -443,7 +443,15 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
   }
 
   if (scheduledAt) {
-    await db.update(marketingCampaignsTable).set({ status: "scheduled", scheduledAt: new Date(scheduledAt) }).where(eq(marketingCampaignsTable.id, id));
+    await db.update(marketingCampaignsTable).set({
+      status: "scheduled",
+      scheduledAt: new Date(scheduledAt),
+      scheduledTargetOverride: dispatchOpts.targetOverride ?? null,
+      scheduledContactIds: dispatchOpts.specificContactIds?.length
+        ? JSON.stringify(dispatchOpts.specificContactIds) : null,
+      scheduledManualRecipients: dispatchOpts.manualRecipients?.length
+        ? JSON.stringify(dispatchOpts.manualRecipients) : null,
+    }).where(eq(marketingCampaignsTable.id, id));
     res.json({ message: `Campanha agendada para ${new Date(scheduledAt).toLocaleString("pt-BR")}.` });
     return;
   }
@@ -488,7 +496,7 @@ router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> =
 });
 
 // ─── Campaign Dispatch ────────────────────────────────────────────────────────
-interface DispatchOptions {
+export interface DispatchOptions {
   targetOverride?: "all" | "cliente" | "contador" | "specific" | "manual";
   specificContactIds?: number[];
   manualRecipients?: { name: string; email: string }[];
