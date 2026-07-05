@@ -1,10 +1,12 @@
 /**
  * POST /mp/webhook — recebe notificações de pagamento do MercadoPago.
- * Ao confirmar pagamento aprovado:
- *  1. Verifica assinatura HMAC-SHA256 do webhook (x-signature header)
- *  2. Atualiza pedido para status "paid"
- *  3. Envia notificação (e-mail + WhatsApp)
- *  4. Dispara registro automático no provedor ativo (Gestão AR ou Safeweb)
+ *
+ * Fluxo:
+ *  1. Extrai paymentId e verifica assinatura HMAC-SHA256 ANTES de responder
+ *  2. Só retorna HTTP 200 após assinatura válida (payloads falsos → 401)
+ *  3. Atualiza pedido para status "paid"
+ *  4. Envia notificação (e-mail + WhatsApp)
+ *  5. Dispara registro automático no provedor ativo (Gestão AR ou Safeweb)
  */
 import { Router } from "express";
 import { eq } from "drizzle-orm";
@@ -52,48 +54,73 @@ function verifyMpSignature(
 }
 
 router.post("/mp/webhook", async (req, res): Promise<void> => {
-  res.sendStatus(200); // respond immediately so MP doesn't retry
-
   try {
     const topic = req.query.topic as string | undefined;
     const body = req.body as Record<string, unknown>;
 
+    // Eventos que não são pagamento: acknowledge imediato, sem processar
     const isPayment = topic === "payment" || body.type === "payment";
-    if (!isPayment) return;
+    if (!isPayment) {
+      res.sendStatus(200);
+      return;
+    }
 
     const paymentId =
       (body.data as Record<string, unknown>)?.id ??
       body.id ??
       (req.query.id as string | undefined);
 
-    if (!paymentId) { logger.warn("mp/webhook: sem paymentId"); return; }
+    if (!paymentId) {
+      logger.warn("mp/webhook: sem paymentId");
+      res.sendStatus(200); // acknowledge mas ignora — não há ID para validar
+      return;
+    }
 
+    // ── Buscar configurações (necessário antes da validação de assinatura) ──
     const [settings] = await db.select().from(settingsTable).limit(1);
-    const mpToken = settings?.mpAccessToken || "";
-    if (!mpToken) { logger.warn("mp/webhook: MP Access Token não configurado"); return; }
 
-    // ── Signature verification (obrigatória) ────────────────────────────────
+    // ── Validação de assinatura ANTES de responder ───────────────────────────
+    // Payloads sem assinatura válida recebem 401 — não 200.
     const webhookSecret = settings?.webhookSecret || "";
     if (!webhookSecret) {
-      logger.error({ paymentId }, "mp/webhook: webhookSecret não configurado — rejeitando por segurança. Configure o Webhook Secret em Configurações → MercadoPago.");
+      logger.error(
+        { paymentId },
+        "mp/webhook: webhookSecret não configurado — rejeitando. Configure em Configurações → MercadoPago.",
+      );
+      res.status(401).end();
       return;
     }
+
     const xSignature = (req.headers["x-signature"] as string) || "";
     const xRequestId = (req.headers["x-request-id"] as string) || "";
+
     if (!xSignature) {
       logger.warn({ paymentId }, "mp/webhook: x-signature ausente — rejeitando");
+      res.status(401).end();
       return;
     }
+
     if (!verifyMpSignature(webhookSecret, xSignature, xRequestId, String(paymentId))) {
       logger.warn({ paymentId }, "mp/webhook: assinatura HMAC inválida — rejeitando");
+      res.status(401).end();
       return;
     }
-    // ───────────────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────────────────
+
+    // Assinatura válida — responder 200 agora para o MP não retentar
+    res.sendStatus(200);
+
+    // ── Processamento assíncrono (MP já recebeu o 200) ───────────────────────
+    const mpToken = settings?.mpAccessToken || "";
+    if (!mpToken) { logger.warn("mp/webhook: MP Access Token não configurado"); return; }
 
     const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { Authorization: `Bearer ${mpToken}` },
     });
-    if (!mpRes.ok) { logger.warn({ paymentId, status: mpRes.status }, "mp/webhook: falha ao consultar pagamento no MP"); return; }
+    if (!mpRes.ok) {
+      logger.warn({ paymentId, status: mpRes.status }, "mp/webhook: falha ao consultar pagamento no MP");
+      return;
+    }
 
     const payment = await mpRes.json() as { status: string; external_reference?: string; id?: number };
     logger.info({ paymentId, status: payment.status, ref: payment.external_reference }, "mp/webhook: pagamento consultado");
@@ -171,6 +198,7 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
 
   } catch (err) {
     logger.error({ err }, "mp/webhook: erro inesperado");
+    if (!res.headersSent) res.status(500).end();
   }
 });
 
