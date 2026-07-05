@@ -416,7 +416,7 @@ function SendCampaignDialog({
       targetOverride: SendTarget;
       specificContactIds?: number[];
       manualRecipients?: ManualRecipient[];
-    } = { targetOverride: target, scheduledAt: scheduledAt || undefined };
+    } = { targetOverride: target, scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined };
 
     if (target === "specific") {
       if (!selectedContacts.length) {
