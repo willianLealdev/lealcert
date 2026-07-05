@@ -16,7 +16,7 @@ async function getSmtpConfig() {
   const s = rows[0];
   return {
     appName: s?.appName ?? "LealCert",
-    siteUrl: s?.siteUrl ?? "https://lealcert.com.br",
+    siteUrl: s?.siteUrl || "https://lealcert.com.br",
     mailFrom: s?.mailFrom ?? null,
     host: s?.smtpHostDb ?? null,
     port: parseInt(s?.smtpPortDb ?? "587", 10),
