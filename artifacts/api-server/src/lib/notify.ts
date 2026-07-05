@@ -14,14 +14,13 @@ import { logger } from "./logger";
  */
 export async function sendWaText(phone: string | null | undefined, message: string): Promise<void> {
   if (!phone) return;
-  try {
-    const [s] = await db.select().from(settingsTable).limit(1);
-    const evo = evolutionSettingsFrom(s);
-    if (!evo) return;
-    await sendWhatsApp(evo, phone, message);
-  } catch (err) {
-    logger.error({ err, phone }, "sendWaText: erro ao enviar WhatsApp");
+  const [s] = await db.select().from(settingsTable).limit(1);
+  const evo = evolutionSettingsFrom(s);
+  if (!evo) {
+    logger.warn({ phone }, "sendWaText: Evolution API não configurada — WhatsApp não enviado");
+    return;
   }
+  await sendWhatsApp(evo, phone, message);
 }
 
 async function getSettings() {

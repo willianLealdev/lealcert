@@ -680,7 +680,13 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       logger.error({ err }, "Falha ao enviar e-mail de verificação de IP");
     }
     if (user.phone) {
-      sendWaText(user.phone, `*LealCert — Acesso de novo dispositivo* 🛡️\n\nOlá, ${user.name}!\n\nDetectamos um acesso de um novo endereço IP. Seu código de verificação é: *${code}*\n\nEle expira em 15 minutos. Se não foi você, ignore esta mensagem.`).catch(() => {});
+      try {
+        await sendWaText(user.phone, `*LealCert — Acesso de novo dispositivo* 🛡️\n\nOlá, ${user.name}!\n\nDetectamos um acesso de um novo endereço IP. Seu código de verificação é: *${code}*\n\nEle expira em 15 minutos. Se não foi você, ignore esta mensagem.`);
+      } catch (err) {
+        logger.error({ err, phone: user.phone }, "verify-ip: falha ao enviar WhatsApp com código de IP");
+      }
+    } else {
+      logger.warn({ userId: user.id }, "verify-ip: usuário sem telefone cadastrado — WhatsApp não enviado");
     }
     res.status(202).json({ requiresIpVerification: true });
     return;
@@ -806,7 +812,13 @@ router.post("/auth/resend-ip-verification", async (req, res): Promise<void> => {
     logger.error({ err }, "Falha ao reenviar e-mail de verificação de IP");
   }
   if (user.phone) {
-    sendWaText(user.phone, `*LealCert — Código de verificação* 🛡️\n\nSeu novo código é: *${code}*\n\nEle expira em 15 minutos.`).catch(() => {});
+    try {
+      await sendWaText(user.phone, `*LealCert — Código de verificação* 🛡️\n\nSeu novo código é: *${code}*\n\nEle expira em 15 minutos.`);
+    } catch (err) {
+      logger.error({ err, phone: user.phone }, "resend-ip-verification: falha ao enviar WhatsApp");
+    }
+  } else {
+    logger.warn({ userId: user.id }, "resend-ip-verification: usuário sem telefone cadastrado — WhatsApp não enviado");
   }
   res.json({ message: "Código reenviado." });
 });
