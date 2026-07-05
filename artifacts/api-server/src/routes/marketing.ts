@@ -554,6 +554,17 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       await db.update(marketingSendsTable).set({ status: "failed", error }).where(eq(marketingSendsTable.trackingToken, token));
       bounced++;
       logger.warn({ email: contact.email, error }, "Failed to send marketing email");
+
+      // Marcar contato como bloqueado por bounce se for um contato real da base
+      if (contact.id > 0) {
+        const isPermanentBounce = /550|551|552|553|554|user.unknown|does not exist|invalid|no such user|mailbox.*not.*found|bounce/i.test(error);
+        if (isPermanentBounce) {
+          await db.update(marketingContactsTable)
+            .set({ bounced: true })
+            .where(eq(marketingContactsTable.id, contact.id));
+          logger.info({ contactId: contact.id, email: contact.email }, "Contato marcado como bloqueado por bounce permanente");
+        }
+      }
     }
 
     await new Promise(r => setTimeout(r, 100));
