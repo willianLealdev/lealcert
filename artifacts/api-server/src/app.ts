@@ -144,10 +144,18 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
-// General: 200 req / 15 min per IP
+// Auth paths — rate-limited only by the IP-security system (3 fails → block);
+// express-rate-limit here would cause legitimate users to be locked out on session expiry.
+const AUTH_PATHS = new Set([
+  "/api/auth/login", "/api/auth/register",
+  "/api/auth/forgot-password", "/api/auth/resend-verification",
+  "/api/auth/verify-ip",
+]);
+
+// General: 500 req / 15 min per IP
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
@@ -155,15 +163,18 @@ const generalLimiter = rateLimit({
     if (req.path === "/api/mp/webhook" || req.path.startsWith("/api/push")) return true;
     // Não limitar usuários já autenticados (sessão válida)
     if ((req.session as unknown as Record<string, unknown>)?.userId) return true;
+    // Não limitar rotas de autenticação — o sistema de IP security já faz isso
+    if (AUTH_PATHS.has(req.path)) return true;
     return false;
   },
   message: { error: "Muitas requisições. Tente novamente em alguns minutos." },
 });
 
-// Strict: 10 attempts / 15 min per IP for auth endpoints
+// authLimiter mantido apenas para compatibilidade mas não é mais aplicado no login
+// (IP security com bloqueio após 3 falhas é mais preciso que rate-limit por IP)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Muitas tentativas. Aguarde 15 minutos antes de tentar novamente." },
@@ -211,7 +222,8 @@ const mpWebhookLimiter = rateLimit({
 });
 
 app.use("/api", generalLimiter);
-app.use("/api/auth/login", authLimiter);
+// Login não usa authLimiter — o sistema de IP security (3 falhas → bloqueio) já cobre brute force
+// authLimiter fica apenas em rotas de registro e senha esquecida para evitar spam de e-mail
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/forgot-password", authLimiter);
 app.use("/api/auth/resend-verification", authLimiter);  // prevent email spam
@@ -238,7 +250,7 @@ app.use(
       secure: process.env.NODE_ENV === "production", // HTTPS-only in prod (Replit proxy)
       httpOnly: true,
       sameSite: "lax",
-      // No maxAge → session cookie: deleted when browser tab/window closes
+      maxAge: 30 * 24 * 60 * 60 * 1000,             // 30 dias — sessão persiste mesmo fechando o browser
     },
   }),
 );

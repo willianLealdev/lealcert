@@ -27,6 +27,7 @@ import {
   getListMarketingCampaignsQueryKey,
   getListMarketingRepliesQueryKey,
 } from "@workspace/api-client-react";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -226,6 +227,7 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
   invalidate: () => void;
   toast: ReturnType<typeof useToast>["toast"];
 }) {
+  const { user } = useAuth();
   const [tick, setTick] = useState(0);
   const { data: progress } = useGetMarketingCampaignProgress(campaignId);
   const resumeMutation = useResumeMarketingCampaign({ mutation: {
@@ -234,13 +236,15 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
   }});
 
   useEffect(() => {
+    // Parar polling se não autenticado (evita consumir rate limit quando sessão expira)
+    if (!user) return;
     if (progress?.status !== "sending") {
       if (progress) { onComplete(); invalidate(); }
       return;
     }
     const id = setInterval(() => setTick(t => t + 1), 3000);
     return () => clearInterval(id);
-  }, [progress?.status]);
+  }, [progress?.status, user]);
 
   // Re-fetch on tick
   const qc = useQueryClient();
