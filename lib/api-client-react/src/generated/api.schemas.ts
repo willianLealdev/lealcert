@@ -119,6 +119,11 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface BulkActionResponse {
+  message: string;
+  count: number;
+}
+
 export interface LoginInput {
   cpfCnpj: string;
   password: string;

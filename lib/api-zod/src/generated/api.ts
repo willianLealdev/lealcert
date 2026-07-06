@@ -2991,6 +2991,15 @@ export const ListMarketingBouncesResponse = zod.array(ListMarketingBouncesRespon
 
 
 /**
+ * @summary Delete all bounced contacts from the database
+ */
+export const DeleteAllMarketingBouncesResponse = zod.object({
+  "message": zod.string(),
+  "count": zod.number()
+})
+
+
+/**
  * @summary Restore a bounced contact (mark as active again)
  */
 export const RestoreMarketingBounceParams = zod.object({
@@ -3011,6 +3020,15 @@ export const DeleteMarketingBounceParams = zod.object({
 
 export const DeleteMarketingBounceResponse = zod.object({
   "message": zod.string()
+})
+
+
+/**
+ * @summary Restore all bounced contacts at once
+ */
+export const RestoreAllMarketingBouncesResponse = zod.object({
+  "message": zod.string(),
+  "count": zod.number()
 })
 
 

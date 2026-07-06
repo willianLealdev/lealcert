@@ -40,6 +40,7 @@ import type {
   BatchToggleCertificatesInput,
   BounceContact,
   BrandingInfo,
+  BulkActionResponse,
   BulkDeleteContactsInput,
   BulkDeleteContactsResult,
   CampaignBounceEntry,
@@ -10162,6 +10163,76 @@ export function useListMarketingBounces<TData = Awaited<ReturnType<typeof listMa
 
 
 
+export const getDeleteAllMarketingBouncesUrl = () => {
+
+
+
+
+  return `/api/marketing/bounces`
+}
+
+/**
+ * @summary Delete all bounced contacts from the database
+ */
+export const deleteAllMarketingBounces = async ( options?: RequestInit): Promise<BulkActionResponse> => {
+
+  return customFetch<BulkActionResponse>(getDeleteAllMarketingBouncesUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAllMarketingBouncesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAllMarketingBounces>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAllMarketingBounces>>, TError,void, TContext> => {
+
+const mutationKey = ['deleteAllMarketingBounces'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAllMarketingBounces>>, void> = () => {
+
+
+          return  deleteAllMarketingBounces(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAllMarketingBouncesMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAllMarketingBounces>>>
+
+    export type DeleteAllMarketingBouncesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete all bounced contacts from the database
+ */
+export const useDeleteAllMarketingBounces = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAllMarketingBounces>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAllMarketingBounces>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteAllMarketingBouncesMutationOptions(options));
+    }
+
 export const getRestoreMarketingBounceUrl = (id: number,) => {
 
 
@@ -10300,6 +10371,76 @@ export const useDeleteMarketingBounce = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteMarketingBounceMutationOptions(options));
+    }
+
+export const getRestoreAllMarketingBouncesUrl = () => {
+
+
+
+
+  return `/api/marketing/bounces/restore-all`
+}
+
+/**
+ * @summary Restore all bounced contacts at once
+ */
+export const restoreAllMarketingBounces = async ( options?: RequestInit): Promise<BulkActionResponse> => {
+
+  return customFetch<BulkActionResponse>(getRestoreAllMarketingBouncesUrl(),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getRestoreAllMarketingBouncesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreAllMarketingBounces>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreAllMarketingBounces>>, TError,void, TContext> => {
+
+const mutationKey = ['restoreAllMarketingBounces'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreAllMarketingBounces>>, void> = () => {
+
+
+          return  restoreAllMarketingBounces(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreAllMarketingBouncesMutationResult = NonNullable<Awaited<ReturnType<typeof restoreAllMarketingBounces>>>
+
+    export type RestoreAllMarketingBouncesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Restore all bounced contacts at once
+ */
+export const useRestoreAllMarketingBounces = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreAllMarketingBounces>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreAllMarketingBounces>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRestoreAllMarketingBouncesMutationOptions(options));
     }
 
 export const getListMarketingRepliesUrl = (params?: ListMarketingRepliesParams,) => {

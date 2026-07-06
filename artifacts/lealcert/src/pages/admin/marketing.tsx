@@ -28,6 +28,8 @@ import {
   useListMarketingBounces,
   useRestoreMarketingBounce,
   useDeleteMarketingBounce,
+  useRestoreAllMarketingBounces,
+  useDeleteAllMarketingBounces,
   getGetMarketingStatsQueryKey,
   getListMarketingContactsQueryKey,
   getListMarketingCampaignsQueryKey,
@@ -1615,6 +1617,16 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
     onError: () => toast({ title: "Erro ao excluir contato", variant: "destructive" }),
   }});
 
+  const restoreAllMutation = useRestoreAllMarketingBounces({ mutation: {
+    onSuccess: (data) => { toast({ title: `${data.count} contato(s) restaurado(s)!`, description: "Todos voltarão a receber e-mails." }); invalidate(); },
+    onError: () => toast({ title: "Erro ao restaurar todos", variant: "destructive" }),
+  }});
+
+  const deleteAllMutation = useDeleteAllMarketingBounces({ mutation: {
+    onSuccess: (data) => { toast({ title: `${data.count} contato(s) excluído(s).` }); invalidate(); },
+    onError: () => toast({ title: "Erro ao excluir todos", variant: "destructive" }),
+  }});
+
   function handleRestore(id: number, email: string) {
     if (confirm(`Restaurar ${email}? Ele voltará a receber e-mails nas próximas campanhas.`))
       restoreMutation.mutate({ id });
@@ -1625,12 +1637,22 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
       deleteMutation.mutate({ id });
   }
 
+  function handleRestoreAll() {
+    if (confirm(`Restaurar todos os ${bounces.length} contatos da lista? Eles voltarão a receber e-mails.`))
+      restoreAllMutation.mutate();
+  }
+
+  function handleDeleteAll() {
+    if (confirm(`Excluir permanentemente todos os ${bounces.length} contatos da lista de bounces? Essa ação não pode ser desfeita.`))
+      deleteAllMutation.mutate();
+  }
+
   return (
     <div className="space-y-4">
       {/* Header info */}
       <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-200 rounded-xl">
         <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
-        <div className="text-sm">
+        <div className="flex-1 text-sm">
           <p className="font-semibold text-orange-800">E-mails rejeitados (bounces)</p>
           <p className="text-orange-700 mt-0.5">
             Esses contatos tiveram e-mails devolvidos pelo servidor de destino. Verifique o endereço antes de decidir o que fazer.
@@ -1640,6 +1662,28 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
             <strong>Excluir</strong> — remove o contato do sistema (você decide).
           </p>
         </div>
+        {bounces.length > 0 && (
+          <div className="flex gap-2 shrink-0">
+            <Button
+              size="sm" variant="outline"
+              className="text-green-700 border-green-300 hover:bg-green-50 gap-1.5"
+              onClick={handleRestoreAll}
+              disabled={restoreAllMutation.isPending}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Restaurar todos
+            </Button>
+            <Button
+              size="sm" variant="outline"
+              className="text-red-700 border-red-300 hover:bg-red-50 gap-1.5"
+              onClick={handleDeleteAll}
+              disabled={deleteAllMutation.isPending}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Excluir todos
+            </Button>
+          </div>
+        )}
       </div>
 
       {isLoading ? (

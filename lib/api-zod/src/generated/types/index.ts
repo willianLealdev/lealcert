@@ -29,6 +29,7 @@ export * from './batchToggleCertificates200';
 export * from './batchToggleCertificatesInput';
 export * from './bounceContact';
 export * from './brandingInfo';
+export * from './bulkActionResponse';
 export * from './bulkDeleteContactsInput';
 export * from './bulkDeleteContactsResult';
 export * from './campaignBounceEntry';

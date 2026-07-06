@@ -452,6 +452,28 @@ router.delete("/marketing/bounces/:id", async (req, res): Promise<void> => {
   res.json({ message: "Contato removido." });
 });
 
+router.patch("/marketing/bounces/restore-all", async (_req, res): Promise<void> => {
+  const result = await db.update(marketingContactsTable)
+    .set({ bounced: false, emailStatus: "unknown", emailInvalidReason: null, emailValidatedAt: null })
+    .where(eq(marketingContactsTable.bounced, true))
+    .returning({ id: marketingContactsTable.id });
+  res.json({ message: `${result.length} contato(s) restaurado(s).`, count: result.length });
+});
+
+router.delete("/marketing/bounces", async (_req, res): Promise<void> => {
+  // Deleta contatos que aparecem na lista de bounces (bounced=true OU têm envio falhado)
+  const result = await db.execute<{ id: number }>(sql`
+    DELETE FROM marketing_contacts
+    WHERE bounced = true
+       OR id IN (
+         SELECT DISTINCT contact_id FROM marketing_sends
+         WHERE status = 'failed' AND contact_id IS NOT NULL
+       )
+    RETURNING id
+  `);
+  res.json({ message: `${result.rows.length} contato(s) excluído(s).`, count: result.rows.length });
+});
+
 // ─── Campaigns ───────────────────────────────────────────────────────────────
 router.get("/marketing/campaigns", async (req, res): Promise<void> => {
   const campaigns = await db.select().from(marketingCampaignsTable).orderBy(desc(marketingCampaignsTable.createdAt));

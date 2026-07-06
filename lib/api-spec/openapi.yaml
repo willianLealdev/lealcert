@@ -2748,6 +2748,17 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BounceContact"
+    delete:
+      operationId: deleteAllMarketingBounces
+      tags: [marketing]
+      summary: Delete all bounced contacts from the database
+      responses:
+        "200":
+          description: All deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkActionResponse"
 
   /marketing/bounces/{id}/restore:
     patch:
@@ -2786,6 +2797,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/bounces/restore-all:
+    patch:
+      operationId: restoreAllMarketingBounces
+      tags: [marketing]
+      summary: Restore all bounced contacts at once
+      responses:
+        "200":
+          description: All restored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkActionResponse"
 
   /marketing/replies:
     get:
@@ -3077,6 +3101,15 @@ components:
       properties:
         message:
           type: string
+
+    BulkActionResponse:
+      type: object
+      required: [message, count]
+      properties:
+        message:
+          type: string
+        count:
+          type: integer
 
     LoginInput:
       type: object
