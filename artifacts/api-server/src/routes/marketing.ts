@@ -376,6 +376,62 @@ router.delete("/marketing/contacts/:id", async (req, res): Promise<void> => {
   res.json({ message: "Contato removido." });
 });
 
+// ─── Bounces ──────────────────────────────────────────────────────────────────
+router.get("/marketing/bounces", async (_req, res): Promise<void> => {
+  // Busca contatos com bounce=true + último erro registrado no histórico de envios
+  const rows = await db.execute<{
+    id: number; name: string; email: string; type: string; tags: string | null; created_at: Date;
+    last_error: string | null; last_sent_at: Date | null; campaign_name: string | null; campaign_id: number | null;
+  }>(sql`
+    SELECT
+      c.id, c.name, c.email, c.type, c.tags, c.created_at,
+      s.error     AS last_error,
+      s.sent_at   AS last_sent_at,
+      camp.name   AS campaign_name,
+      camp.id     AS campaign_id
+    FROM marketing_contacts c
+    LEFT JOIN LATERAL (
+      SELECT ms.error, ms.sent_at, ms.campaign_id
+      FROM marketing_sends ms
+      WHERE ms.contact_id = c.id AND ms.status = 'failed'
+      ORDER BY ms.created_at DESC
+      LIMIT 1
+    ) s ON true
+    LEFT JOIN marketing_campaigns camp ON camp.id = s.campaign_id
+    WHERE c.bounced = true
+    ORDER BY s.sent_at DESC NULLS LAST, c.created_at DESC
+  `);
+
+  res.json(rows.rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    type: r.type,
+    tags: r.tags,
+    createdAt: r.created_at,
+    lastError: r.last_error,
+    lastSentAt: r.last_sent_at,
+    campaignName: r.campaign_name,
+    campaignId: r.campaign_id,
+  })));
+});
+
+router.patch("/marketing/bounces/:id/restore", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const [updated] = await db.update(marketingContactsTable)
+    .set({ bounced: false, emailStatus: "unknown", emailInvalidReason: null, emailValidatedAt: null })
+    .where(eq(marketingContactsTable.id, id))
+    .returning({ id: marketingContactsTable.id });
+  if (!updated) { res.status(404).json({ error: "Contato não encontrado." }); return; }
+  res.json({ message: "Contato restaurado." });
+});
+
+router.delete("/marketing/bounces/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  await db.delete(marketingContactsTable).where(eq(marketingContactsTable.id, id));
+  res.json({ message: "Contato removido." });
+});
+
 // ─── Campaigns ───────────────────────────────────────────────────────────────
 router.get("/marketing/campaigns", async (req, res): Promise<void> => {
   const campaigns = await db.select().from(marketingCampaignsTable).orderBy(desc(marketingCampaignsTable.createdAt));

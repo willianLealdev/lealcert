@@ -22,10 +22,14 @@ import {
   useBulkDeleteMarketingContacts,
   useGetMarketingCampaignProgress,
   useResumeMarketingCampaign,
+  useListMarketingBounces,
+  useRestoreMarketingBounce,
+  useDeleteMarketingBounce,
   getGetMarketingStatsQueryKey,
   getListMarketingContactsQueryKey,
   getListMarketingCampaignsQueryKey,
   getListMarketingRepliesQueryKey,
+  getListMarketingBouncesQueryKey,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -39,9 +43,10 @@ import {
   Megaphone, Users, Mail, MailOpen, Send, Upload, Plus, Trash2, Pencil,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
   ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy, MousePointerClick,
+  AlertTriangle, RotateCcw,
 } from "lucide-react";
 
-type Tab = "overview" | "campanhas" | "clientes" | "contadores" | "respostas";
+type Tab = "overview" | "campanhas" | "clientes" | "contadores" | "respostas" | "bounces";
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number | string; icon: React.ElementType; color: string }) {
   return (
@@ -111,6 +116,7 @@ export default function AdminMarketing() {
     qc.invalidateQueries({ queryKey: ["/api/marketing/contacts"] });
     qc.invalidateQueries({ queryKey: getListMarketingCampaignsQueryKey() });
     qc.invalidateQueries({ queryKey: getListMarketingRepliesQueryKey({}) });
+    qc.invalidateQueries({ queryKey: getListMarketingBouncesQueryKey() });
   };
 
   return (
@@ -137,6 +143,7 @@ export default function AdminMarketing() {
           { id: "clientes", label: "Clientes", icon: Users },
           { id: "contadores", label: "Contadores", icon: Users },
           { id: "respostas", label: "Respostas", icon: MessageSquare },
+          { id: "bounces", label: "Bounces", icon: AlertTriangle },
         ] as { id: Tab; label: string; icon: React.ElementType }[]).map(t => (
           <button
             key={t.id}
@@ -145,11 +152,16 @@ export default function AdminMarketing() {
               tab === t.id ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <t.icon className="h-4 w-4" />
+            <t.icon className={`h-4 w-4 ${t.id === "bounces" && (stats?.bounced ?? 0) > 0 ? "text-orange-500" : ""}`} />
             {t.label}
             {t.id === "respostas" && (stats?.unreadReplies ?? 0) > 0 && (
               <span className="bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center ml-1">
                 {stats?.unreadReplies}
+              </span>
+            )}
+            {t.id === "bounces" && (stats?.bounced ?? 0) > 0 && (
+              <span className="bg-orange-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] flex items-center justify-center ml-1 leading-none">
+                {stats?.bounced}
               </span>
             )}
           </button>
@@ -161,6 +173,7 @@ export default function AdminMarketing() {
       {tab === "clientes" && <ContatosTab type="cliente" invalidate={invalidate} toast={toast} />}
       {tab === "contadores" && <ContatosTab type="contador" invalidate={invalidate} toast={toast} />}
       {tab === "respostas" && <RespostasTab invalidate={invalidate} toast={toast} />}
+      {tab === "bounces" && <BouncesTab invalidate={invalidate} toast={toast} />}
     </div>
   );
 }
@@ -1238,6 +1251,142 @@ function EditContactDialog({ contact, type, onClose, onSaved, toast }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Bounces ──────────────────────────────────────────────────────────────────
+function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: ReturnType<typeof useToast>["toast"] }) {
+  const { data: bounces = [], isLoading } = useListMarketingBounces();
+
+  const restoreMutation = useRestoreMarketingBounce({ mutation: {
+    onSuccess: () => { toast({ title: "Contato restaurado!", description: "O e-mail será incluído nos próximos envios." }); invalidate(); },
+    onError: () => toast({ title: "Erro ao restaurar contato", variant: "destructive" }),
+  }});
+
+  const deleteMutation = useDeleteMarketingBounce({ mutation: {
+    onSuccess: () => { toast({ title: "Contato excluído permanentemente." }); invalidate(); },
+    onError: () => toast({ title: "Erro ao excluir contato", variant: "destructive" }),
+  }});
+
+  function handleRestore(id: number, email: string) {
+    if (confirm(`Restaurar ${email}? Ele voltará a receber e-mails nas próximas campanhas.`))
+      restoreMutation.mutate({ id });
+  }
+
+  function handleDelete(id: number, email: string) {
+    if (confirm(`Excluir permanentemente ${email}? Essa ação não pode ser desfeita.`))
+      deleteMutation.mutate({ id });
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header info */}
+      <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+        <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
+        <div className="text-sm">
+          <p className="font-semibold text-orange-800">E-mails rejeitados (bounces)</p>
+          <p className="text-orange-700 mt-0.5">
+            Esses contatos tiveram e-mails devolvidos pelo servidor de destino. Verifique se o endereço está correto antes de decidir.
+            <br />
+            <strong>Restaurar</strong> — volta a enviar para este contato nas próximas campanhas. &nbsp;
+            <strong>Excluir</strong> — remove permanentemente do sistema.
+          </p>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+          <RefreshCw className="h-4 w-4 animate-spin" /> Carregando…
+        </div>
+      ) : bounces.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+          <CheckCircle2 className="h-8 w-8 text-green-500" />
+          <p className="font-medium">Nenhum bounce registrado</p>
+          <p className="text-sm">Todos os e-mails enviados foram aceitos pelos servidores de destino.</p>
+        </div>
+      ) : (
+        <div className="bg-card border rounded-xl overflow-hidden">
+          {/* Table header */}
+          <div className="grid grid-cols-[2fr_2fr_1fr_2fr_1fr_auto] text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30">
+            <span>Nome</span>
+            <span>E-mail</span>
+            <span>Tipo</span>
+            <span>Motivo do Bounce</span>
+            <span>Campanha</span>
+            <span></span>
+          </div>
+
+          {bounces.map((b, i) => (
+            <div
+              key={b.id}
+              className={`grid grid-cols-[2fr_2fr_1fr_2fr_1fr_auto] px-4 py-3 items-start gap-3 text-sm ${
+                i < bounces.length - 1 ? "border-b" : ""
+              } hover:bg-muted/20 transition-colors`}
+            >
+              {/* Nome */}
+              <span className="font-medium truncate">{b.name}</span>
+
+              {/* E-mail */}
+              <span className="text-muted-foreground truncate font-mono text-xs">{b.email}</span>
+
+              {/* Tipo */}
+              <span>
+                <Badge variant="outline" className="text-xs capitalize">{b.type}</Badge>
+              </span>
+
+              {/* Motivo */}
+              <div className="space-y-0.5">
+                {b.lastError ? (
+                  <>
+                    <p className="text-xs text-destructive leading-snug line-clamp-2" title={b.lastError}>
+                      {b.lastError}
+                    </p>
+                    {b.lastSentAt && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {new Date(b.lastSentAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground italic">Sem detalhes registrados</span>
+                )}
+              </div>
+
+              {/* Campanha */}
+              <span className="text-xs text-muted-foreground truncate">
+                {b.campaignName ?? "—"}
+              </span>
+
+              {/* Ações */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-green-600 hover:bg-green-50 hover:text-green-700"
+                  title="Restaurar — voltar a enviar e-mails para este contato"
+                  disabled={restoreMutation.isPending}
+                  onClick={() => handleRestore(b.id, b.email)}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                  title="Excluir permanentemente"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => handleDelete(b.id, b.email)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground text-right">{bounces.length} contato(s) com bounce</p>
+    </div>
   );
 }
 

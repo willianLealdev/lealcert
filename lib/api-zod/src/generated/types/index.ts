@@ -27,6 +27,7 @@ export * from './banIp200';
 export * from './batchDeleteCertificates200';
 export * from './batchToggleCertificates200';
 export * from './batchToggleCertificatesInput';
+export * from './bounceContact';
 export * from './brandingInfo';
 export * from './bulkDeleteContactsInput';
 export * from './bulkDeleteContactsResult';

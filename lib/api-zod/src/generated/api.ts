@@ -2925,6 +2925,48 @@ export const ResumeMarketingCampaignResponse = zod.object({
 
 
 /**
+ * @summary List bounced contacts with last error reason
+ */
+export const ListMarketingBouncesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "type": zod.string(),
+  "tags": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "lastError": zod.string().nullish().describe('Motivo do bounce (mensagem de erro do último envio falho)'),
+  "lastSentAt": zod.string().nullish(),
+  "campaignName": zod.string().nullish(),
+  "campaignId": zod.number().nullish()
+})
+export const ListMarketingBouncesResponse = zod.array(ListMarketingBouncesResponseItem)
+
+
+/**
+ * @summary Restore a bounced contact (mark as active again)
+ */
+export const RestoreMarketingBounceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RestoreMarketingBounceResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Permanently delete a bounced contact
+ */
+export const DeleteMarketingBounceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteMarketingBounceResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary List inbound replies
  */
 export const ListMarketingRepliesQueryParams = zod.object({

@@ -1260,6 +1260,20 @@ export interface MarketingContact {
   createdAt: string;
 }
 
+export interface BounceContact {
+  id: number;
+  name: string;
+  email: string;
+  type: string;
+  tags?: string | null;
+  createdAt: string;
+  /** Motivo do bounce (mensagem de erro do último envio falho) */
+  lastError?: string | null;
+  lastSentAt?: string | null;
+  campaignName?: string | null;
+  campaignId?: number | null;
+}
+
 export interface CampaignProgress {
   status: string;
   totalSent: number;

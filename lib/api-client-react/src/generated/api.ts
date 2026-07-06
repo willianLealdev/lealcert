@@ -38,6 +38,7 @@ import type {
   BatchDeleteCertificatesBody,
   BatchToggleCertificates200,
   BatchToggleCertificatesInput,
+  BounceContact,
   BrandingInfo,
   BulkDeleteContactsInput,
   BulkDeleteContactsResult,
@@ -9913,6 +9914,223 @@ export const useResumeMarketingCampaign = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getResumeMarketingCampaignMutationOptions(options));
+    }
+
+export const getListMarketingBouncesUrl = () => {
+
+
+
+
+  return `/api/marketing/bounces`
+}
+
+/**
+ * @summary List bounced contacts with last error reason
+ */
+export const listMarketingBounces = async ( options?: RequestInit): Promise<BounceContact[]> => {
+
+  return customFetch<BounceContact[]>(getListMarketingBouncesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMarketingBouncesQueryKey = () => {
+    return [
+    `/api/marketing/bounces`
+    ] as const;
+    }
+
+
+export const getListMarketingBouncesQueryOptions = <TData = Awaited<ReturnType<typeof listMarketingBounces>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMarketingBounces>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMarketingBouncesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMarketingBounces>>> = ({ signal }) => listMarketingBounces({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMarketingBounces>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMarketingBouncesQueryResult = NonNullable<Awaited<ReturnType<typeof listMarketingBounces>>>
+export type ListMarketingBouncesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List bounced contacts with last error reason
+ */
+
+export function useListMarketingBounces<TData = Awaited<ReturnType<typeof listMarketingBounces>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMarketingBounces>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMarketingBouncesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getRestoreMarketingBounceUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/bounces/${id}/restore`
+}
+
+/**
+ * @summary Restore a bounced contact (mark as active again)
+ */
+export const restoreMarketingBounce = async (id: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getRestoreMarketingBounceUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getRestoreMarketingBounceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreMarketingBounce>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreMarketingBounce>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['restoreMarketingBounce'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreMarketingBounce>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  restoreMarketingBounce(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreMarketingBounceMutationResult = NonNullable<Awaited<ReturnType<typeof restoreMarketingBounce>>>
+
+    export type RestoreMarketingBounceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Restore a bounced contact (mark as active again)
+ */
+export const useRestoreMarketingBounce = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreMarketingBounce>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreMarketingBounce>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRestoreMarketingBounceMutationOptions(options));
+    }
+
+export const getDeleteMarketingBounceUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/bounces/${id}`
+}
+
+/**
+ * @summary Permanently delete a bounced contact
+ */
+export const deleteMarketingBounce = async (id: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getDeleteMarketingBounceUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteMarketingBounceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMarketingBounce>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMarketingBounce>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMarketingBounce'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMarketingBounce>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMarketingBounce(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMarketingBounceMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMarketingBounce>>>
+
+    export type DeleteMarketingBounceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Permanently delete a bounced contact
+ */
+export const useDeleteMarketingBounce = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMarketingBounce>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMarketingBounce>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMarketingBounceMutationOptions(options));
     }
 
 export const getListMarketingRepliesUrl = (params?: ListMarketingRepliesParams,) => {

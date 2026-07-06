@@ -2686,6 +2686,59 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
+  /marketing/bounces:
+    get:
+      operationId: listMarketingBounces
+      tags: [marketing]
+      summary: List bounced contacts with last error reason
+      responses:
+        "200":
+          description: Bounced contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BounceContact"
+
+  /marketing/bounces/{id}/restore:
+    patch:
+      operationId: restoreMarketingBounce
+      tags: [marketing]
+      summary: Restore a bounced contact (mark as active again)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/bounces/{id}:
+    delete:
+      operationId: deleteMarketingBounce
+      tags: [marketing]
+      summary: Permanently delete a bounced contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   /marketing/replies:
     get:
       operationId: listMarketingReplies
@@ -4841,6 +4894,37 @@ components:
           nullable: true
         createdAt:
           type: string
+
+    BounceContact:
+      type: object
+      required: [id, name, email, type, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        type:
+          type: string
+        tags:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        lastError:
+          type: string
+          nullable: true
+          description: Motivo do bounce (mensagem de erro do último envio falho)
+        lastSentAt:
+          type: string
+          nullable: true
+        campaignName:
+          type: string
+          nullable: true
+        campaignId:
+          type: integer
+          nullable: true
 
     CampaignProgress:
       type: object
