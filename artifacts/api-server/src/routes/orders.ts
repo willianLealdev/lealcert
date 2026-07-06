@@ -764,6 +764,14 @@ router.post("/orders/:id/safeweb-cancelar", requireAdmin, async (req, res): Prom
     const { logEvent } = await import("../lib/order-events");
     await logEvent(id, "gar_status_updated", `Solicitação Safeweb cancelada. Motivo: ${motivo ?? "Cancelado pelo administrador"}`, { result });
 
+    notifyOrderStatus({
+      to: order.customerEmail,
+      phone: order.customerPhone,
+      customerName: order.customerName,
+      orderNumber: order.orderNumber,
+      status: "cancelled",
+    }).catch((err: unknown) => req.log.error({ err }, "Erro ao notificar cancelamento Safeweb"));
+
     res.json({ ok: true, message: "Solicitação cancelada com sucesso" });
   } catch (err) {
     const msg = (err as Error).message ?? "";
@@ -1141,6 +1149,14 @@ router.post("/orders/:id/gar-cancelar-protocolo", requireAdmin, async (req, res)
       ? `Pedido cancelado localmente (protocolo já cancelado diretamente no Gestão AR). Motivo: ${motivo ?? "Cancelado pelo administrador"}`
       : `Protocolo GAR cancelado via Safeweb. Agendamento removido. Motivo: ${motivo ?? "Cancelado pelo administrador"}`;
     await logEvent(id, "order_cancelled", logMsg, { force: !!force });
+
+    notifyOrderStatus({
+      to: order.customerEmail,
+      phone: order.customerPhone,
+      customerName: order.customerName,
+      orderNumber: order.orderNumber,
+      status: "cancelled",
+    }).catch((err: unknown) => req.log.error({ err }, "Erro ao notificar cancelamento GAR"));
 
     res.json({ ok: true, message: force ? "Pedido cancelado no sistema." : "Protocolo e agendamento cancelados com sucesso." });
   } catch (err) {
