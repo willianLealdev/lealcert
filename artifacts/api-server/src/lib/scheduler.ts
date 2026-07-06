@@ -4,6 +4,7 @@ import { logger } from "./logger";
 import { dispatchCampaign } from "../routes/marketing";
 import { sendDailySalesReport } from "./email";
 import { notifyOrderStatus } from "./notify";
+import { startImapPoller } from "./imap-poller";
 
 let running = false;
 
@@ -448,6 +449,9 @@ export function startScheduler() {
   setInterval(checkWhatsAppConnection, 5 * 60_000);
   setTimeout(() => checkWhatsAppConnection().catch(err => logger.error({ err }, "WA monitor: erro inicial")), 10_000);
   logger.info("WhatsApp connection monitor started (5min interval)");
+
+  // Polling IMAP — lê respostas de email a cada 2 minutos
+  startImapPoller();
 
   // E-mail de vendas do dia — dispara às 08:00 BRT, depois a cada 24h
   const msFirst = msUntilNext8amBrt();
