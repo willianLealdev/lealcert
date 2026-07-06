@@ -2648,6 +2648,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
+  /marketing/campaigns/{id}/progress:
+    get:
+      operationId: getMarketingCampaignProgress
+      tags: [marketing]
+      summary: Get campaign send progress
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignProgress"
+
+  /marketing/campaigns/{id}/resume:
+    post:
+      operationId: resumeMarketingCampaign
+      tags: [marketing]
+      summary: Resume an interrupted campaign dispatch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   /marketing/replies:
     get:
       operationId: listMarketingReplies
@@ -4804,9 +4842,22 @@ components:
         createdAt:
           type: string
 
+    CampaignProgress:
+      type: object
+      required: [status, totalSent, totalContacts, totalBounced]
+      properties:
+        status:
+          type: string
+        totalSent:
+          type: integer
+        totalContacts:
+          type: integer
+        totalBounced:
+          type: integer
+
     MarketingCampaign:
       type: object
-      required: [id, name, subject, bodyHtml, fromName, fromEmail, status, totalSent, totalDelivered, totalOpened, totalClicked, totalBounced, totalReplied, createdAt, updatedAt]
+      required: [id, name, subject, bodyHtml, fromName, fromEmail, status, totalSent, totalDelivered, totalOpened, totalClicked, totalBounced, totalReplied, totalContacts, createdAt, updatedAt]
       properties:
         id:
           type: integer
@@ -4845,6 +4896,8 @@ components:
         totalBounced:
           type: integer
         totalReplied:
+          type: integer
+        totalContacts:
           type: integer
         filterTags:
           type: string

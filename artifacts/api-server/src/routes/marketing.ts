@@ -495,6 +495,32 @@ router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> =
   res.json({ message: "Campanha cancelada." });
 });
 
+router.get("/marketing/campaigns/:id/progress", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const [campaign] = await db
+    .select({
+      status: marketingCampaignsTable.status,
+      totalSent: marketingCampaignsTable.totalSent,
+      totalContacts: marketingCampaignsTable.totalContacts,
+      totalBounced: marketingCampaignsTable.totalBounced,
+    })
+    .from(marketingCampaignsTable)
+    .where(eq(marketingCampaignsTable.id, id))
+    .limit(1);
+  if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
+  res.json(campaign);
+});
+
+router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const [campaign] = await db.select({ status: marketingCampaignsTable.status })
+    .from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
+  if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
+  if (campaign.status !== "sending") { res.status(400).json({ error: "Campanha não está em andamento." }); return; }
+  res.json({ message: "Retomando envio…" });
+  dispatchCampaign(id).catch(err => logger.error({ campaignId: id, err }, "Resume dispatch error"));
+});
+
 // ─── Campaign Dispatch ────────────────────────────────────────────────────────
 export interface DispatchOptions {
   targetOverride?: "all" | "cliente" | "contador" | "specific" | "manual";
@@ -544,10 +570,41 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded");
   }
 
-  let sent = 0;
-  let bounced = 0;
+  // ── Resume support ────────────────────────────────────────────────────────
+  // Query already-sent contact IDs so we can skip them on resume
+  const alreadySentRows = await db
+    .select({ contactId: marketingSendsTable.contactId })
+    .from(marketingSendsTable)
+    .where(and(eq(marketingSendsTable.campaignId, campaignId), eq(marketingSendsTable.status, "sent")));
+  const sentContactIds = new Set(
+    alreadySentRows.map(r => r.contactId).filter((id): id is number => id !== null)
+  );
+  const alreadySentCount = sentContactIds.size;
 
-  for (const contact of contacts) {
+  // Delete pending/failed records so they get retried
+  await db.delete(marketingSendsTable).where(
+    and(
+      eq(marketingSendsTable.campaignId, campaignId),
+      inArray(marketingSendsTable.status, ["pending", "failed"])
+    )
+  );
+
+  // Filter out contacts already successfully sent
+  const remaining = contacts.filter(c => c.id <= 0 || !sentContactIds.has(c.id));
+
+  // Mark campaign as sending with total count
+  await db.update(marketingCampaignsTable).set({
+    status: "sending",
+    totalContacts: contacts.length,
+    totalSent: alreadySentCount,
+  }).where(eq(marketingCampaignsTable.id, campaignId));
+
+  let sent = alreadySentCount;
+  let bounced = campaign.totalBounced;
+
+  logger.info({ campaignId, total: contacts.length, alreadySent: alreadySentCount, remaining: remaining.length }, "Campaign dispatch started");
+
+  for (const contact of remaining) {
     const token = genToken();
     try {
       await db.insert(marketingSendsTable).values({
@@ -559,13 +616,16 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       await sendMarketingEmail({ campaign, contact, trackingToken: token });
       await db.update(marketingSendsTable).set({ status: "sent", sentAt: new Date() }).where(eq(marketingSendsTable.trackingToken, token));
       sent++;
+      // Update progress incrementally so the frontend can poll it
+      await db.update(marketingCampaignsTable)
+        .set({ totalSent: sent })
+        .where(eq(marketingCampaignsTable.id, campaignId));
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       await db.update(marketingSendsTable).set({ status: "failed", error }).where(eq(marketingSendsTable.trackingToken, token));
       bounced++;
       logger.warn({ email: contact.email, error }, "Failed to send marketing email");
 
-      // Marcar contato como bloqueado por bounce se for um contato real da base
       if (contact.id > 0) {
         const isPermanentBounce = /550|551|552|553|554|user.unknown|does not exist|invalid|no such user|mailbox.*not.*found|bounce/i.test(error);
         if (isPermanentBounce) {

@@ -1260,6 +1260,13 @@ export interface MarketingContact {
   createdAt: string;
 }
 
+export interface CampaignProgress {
+  status: string;
+  totalSent: number;
+  totalContacts: number;
+  totalBounced: number;
+}
+
 export type MarketingCampaignTargetType = typeof MarketingCampaignTargetType[keyof typeof MarketingCampaignTargetType];
 
 
@@ -1287,6 +1294,7 @@ export interface MarketingCampaign {
   totalClicked: number;
   totalBounced: number;
   totalReplied: number;
+  totalContacts: number;
   filterTags?: string | null;
   targetType?: MarketingCampaignTargetType;
   createdAt: string;

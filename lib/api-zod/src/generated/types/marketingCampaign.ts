@@ -25,6 +25,7 @@ export interface MarketingCampaign {
   totalClicked: number;
   totalBounced: number;
   totalReplied: number;
+  totalContacts: number;
   filterTags?: string | null;
   targetType?: MarketingCampaignTargetType;
   createdAt: string;

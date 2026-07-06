@@ -36,6 +36,7 @@ export const marketingCampaignsTable = pgTable("marketing_campaigns", {
   totalClicked: integer("total_clicked").notNull().default(0),
   totalBounced: integer("total_bounced").notNull().default(0),
   totalReplied: integer("total_replied").notNull().default(0),
+  totalContacts: integer("total_contacts").notNull().default(0),
   filterTags: text("filter_tags"),
   targetType: text("target_type").notNull().default("all"),
   scheduledTargetOverride: text("scheduled_target_override"),

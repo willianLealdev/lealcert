@@ -2746,6 +2746,7 @@ export const ListMarketingCampaignsResponseItem = zod.object({
   "totalClicked": zod.number(),
   "totalBounced": zod.number(),
   "totalReplied": zod.number(),
+  "totalContacts": zod.number(),
   "filterTags": zod.string().nullish(),
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
   "createdAt": zod.string(),
@@ -2796,6 +2797,7 @@ export const GetMarketingCampaignResponse = zod.object({
   "totalClicked": zod.number(),
   "totalBounced": zod.number(),
   "totalReplied": zod.number(),
+  "totalContacts": zod.number(),
   "filterTags": zod.string().nullish(),
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
   "createdAt": zod.string(),
@@ -2841,6 +2843,7 @@ export const UpdateMarketingCampaignResponse = zod.object({
   "totalClicked": zod.number(),
   "totalBounced": zod.number(),
   "totalReplied": zod.number(),
+  "totalContacts": zod.number(),
   "filterTags": zod.string().nullish(),
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
   "createdAt": zod.string(),
@@ -2890,6 +2893,33 @@ export const CancelMarketingCampaignParams = zod.object({
 })
 
 export const CancelMarketingCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Get campaign send progress
+ */
+export const GetMarketingCampaignProgressParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetMarketingCampaignProgressResponse = zod.object({
+  "status": zod.string(),
+  "totalSent": zod.number(),
+  "totalContacts": zod.number(),
+  "totalBounced": zod.number()
+})
+
+
+/**
+ * @summary Resume an interrupted campaign dispatch
+ */
+export const ResumeMarketingCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ResumeMarketingCampaignResponse = zod.object({
   "message": zod.string()
 })
 

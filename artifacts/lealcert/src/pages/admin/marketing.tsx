@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { useQueryClient } from "@tanstack/react-query";
 import type { MarketingStats } from "@workspace/api-client-react";
@@ -20,6 +20,8 @@ import {
   useReplyToContact,
   useValidateContactEmails,
   useBulkDeleteMarketingContacts,
+  useGetMarketingCampaignProgress,
+  useResumeMarketingCampaign,
   getGetMarketingStatsQueryKey,
   getListMarketingContactsQueryKey,
   getListMarketingCampaignsQueryKey,
@@ -217,6 +219,77 @@ function OverviewTab({ stats }: { stats: MarketingStats | undefined }) {
   );
 }
 
+// ─── Campaign Progress Bar (polls while sending) ──────────────────────────────
+function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
+  campaignId: number;
+  onComplete: () => void;
+  invalidate: () => void;
+  toast: ReturnType<typeof useToast>["toast"];
+}) {
+  const [tick, setTick] = useState(0);
+  const { data: progress } = useGetMarketingCampaignProgress(campaignId);
+  const resumeMutation = useResumeMarketingCampaign({ mutation: {
+    onSuccess: () => toast({ title: "Envio retomado!", description: "Continuando de onde parou." }),
+    onError: () => toast({ title: "Erro ao retomar", variant: "destructive" }),
+  }});
+
+  useEffect(() => {
+    if (progress?.status !== "sending") {
+      if (progress) { onComplete(); invalidate(); }
+      return;
+    }
+    const id = setInterval(() => setTick(t => t + 1), 3000);
+    return () => clearInterval(id);
+  }, [progress?.status]);
+
+  // Re-fetch on tick
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (tick > 0) qc.invalidateQueries({ queryKey: ["/api/marketing/campaigns", campaignId, "progress"] });
+  }, [tick]);
+
+  const total = progress?.totalContacts ?? 0;
+  const sent = progress?.totalSent ?? 0;
+  const pct = total > 0 ? Math.min(100, Math.round((sent / total) * 100)) : 0;
+
+  return (
+    <div className="mt-4 pt-4 border-t space-y-3">
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />
+          Enviando em andamento…
+        </span>
+        <span className="font-semibold tabular-nums">
+          {sent.toLocaleString("pt-BR")} / {total.toLocaleString("pt-BR")} e-mails
+          <span className="text-muted-foreground font-normal ml-1">({pct}%)</span>
+        </span>
+      </div>
+      <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+        <div
+          className="h-full bg-primary rounded-full transition-all duration-700"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {(progress?.totalBounced ?? 0) > 0 && (
+        <p className="text-xs text-red-500">{progress!.totalBounced} bounce(s) detectados</p>
+      )}
+      <div className="flex justify-end">
+        <Button
+          size="sm" variant="outline"
+          disabled={resumeMutation.isPending}
+          onClick={() => resumeMutation.mutate({ id: campaignId })}
+          className="gap-1.5 text-xs"
+        >
+          {resumeMutation.isPending
+            ? <RefreshCw className="h-3 w-3 animate-spin" />
+            : <RefreshCw className="h-3 w-3" />}
+          Retomar se pausado
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Campanhas ───────────────────────────────────────────────────────────────
 function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: ReturnType<typeof useToast>["toast"] }) {
   const [showForm, setShowForm] = useState(false);
@@ -316,6 +389,15 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
                   </Button>
                 </div>
               </div>
+
+              {c.status === "sending" && (
+                <CampaignProgress
+                  campaignId={c.id}
+                  onComplete={() => {}}
+                  invalidate={invalidate}
+                  toast={toast}
+                />
+              )}
 
               {c.status === "sent" && (
                 <div className="grid grid-cols-5 gap-3 mt-4 pt-4 border-t">

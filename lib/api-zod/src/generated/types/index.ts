@@ -30,6 +30,7 @@ export * from './batchToggleCertificatesInput';
 export * from './brandingInfo';
 export * from './bulkDeleteContactsInput';
 export * from './bulkDeleteContactsResult';
+export * from './campaignProgress';
 export * from './certificate';
 export * from './certificateInput';
 export * from './certificateRenewal';

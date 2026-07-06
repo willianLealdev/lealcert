@@ -41,6 +41,7 @@ import type {
   BrandingInfo,
   BulkDeleteContactsInput,
   BulkDeleteContactsResult,
+  CampaignProgress,
   Certificate,
   CertificateInput,
   CertificateRenewal,
@@ -9765,6 +9766,153 @@ export const useCancelMarketingCampaign = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCancelMarketingCampaignMutationOptions(options));
+    }
+
+export const getGetMarketingCampaignProgressUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/campaigns/${id}/progress`
+}
+
+/**
+ * @summary Get campaign send progress
+ */
+export const getMarketingCampaignProgress = async (id: number, options?: RequestInit): Promise<CampaignProgress> => {
+
+  return customFetch<CampaignProgress>(getGetMarketingCampaignProgressUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMarketingCampaignProgressQueryKey = (id: number,) => {
+    return [
+    `/api/marketing/campaigns/${id}/progress`
+    ] as const;
+    }
+
+
+export const getGetMarketingCampaignProgressQueryOptions = <TData = Awaited<ReturnType<typeof getMarketingCampaignProgress>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMarketingCampaignProgress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMarketingCampaignProgressQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMarketingCampaignProgress>>> = ({ signal }) => getMarketingCampaignProgress(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMarketingCampaignProgress>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMarketingCampaignProgressQueryResult = NonNullable<Awaited<ReturnType<typeof getMarketingCampaignProgress>>>
+export type GetMarketingCampaignProgressQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get campaign send progress
+ */
+
+export function useGetMarketingCampaignProgress<TData = Awaited<ReturnType<typeof getMarketingCampaignProgress>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMarketingCampaignProgress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMarketingCampaignProgressQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getResumeMarketingCampaignUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/campaigns/${id}/resume`
+}
+
+/**
+ * @summary Resume an interrupted campaign dispatch
+ */
+export const resumeMarketingCampaign = async (id: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getResumeMarketingCampaignUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getResumeMarketingCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumeMarketingCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resumeMarketingCampaign>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['resumeMarketingCampaign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resumeMarketingCampaign>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  resumeMarketingCampaign(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResumeMarketingCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof resumeMarketingCampaign>>>
+
+    export type ResumeMarketingCampaignMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Resume an interrupted campaign dispatch
+ */
+export const useResumeMarketingCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumeMarketingCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resumeMarketingCampaign>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getResumeMarketingCampaignMutationOptions(options));
     }
 
 export const getListMarketingRepliesUrl = (params?: ListMarketingRepliesParams,) => {
