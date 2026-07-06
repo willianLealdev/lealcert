@@ -197,6 +197,43 @@ router.post("/support/:id/messages", requireAuth, async (req, res): Promise<void
   });
 });
 
+router.patch("/support/:id/reopen", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+
+  const [ticketInfo] = await db
+    .select({ subject: ticketsTable.subject, ownerName: usersTable.name, ownerPhone: usersTable.phone })
+    .from(ticketsTable)
+    .leftJoin(usersTable, eq(ticketsTable.userId, usersTable.id))
+    .where(eq(ticketsTable.id, id))
+    .limit(1);
+
+  const [ticket] = await db
+    .update(ticketsTable)
+    .set({ status: "open", updatedAt: new Date() })
+    .where(eq(ticketsTable.id, id))
+    .returning();
+  if (!ticket) { res.status(404).json({ error: "Ticket não encontrado." }); return; }
+
+  if (ticketInfo?.ownerPhone) {
+    sendWaText(
+      ticketInfo.ownerPhone,
+      `*LealCert — Chamado Reaberto* 🔄\n\nOlá, ${ticketInfo.ownerName ?? "cliente"}!\n\nSeu chamado *#${id}* foi reaberto.\n📋 *Assunto:* ${ticketInfo.subject}\n\nContinuaremos atendendo você. Acompanhe pelo painel.\n\n🌐 lealcert.com.br`,
+    ).catch((err: unknown) => logger.error({ err }, "support: erro ao enviar WhatsApp de reabertura"));
+  }
+
+  res.json({
+    id: ticket.id,
+    userId: ticket.userId,
+    userName: null,
+    subject: ticket.subject,
+    status: ticket.status,
+    unreadAdmin: ticket.unreadAdmin,
+    unreadClient: ticket.unreadClient,
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
+  });
+});
+
 router.patch("/support/:id/close", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 

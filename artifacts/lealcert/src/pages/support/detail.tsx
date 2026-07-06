@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams } from "wouter";
-import { useGetTicket, useReplyTicket, useCloseTicket } from "@workspace/api-client-react";
+import { useGetTicket, useReplyTicket, useCloseTicket, useReopenTicket } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Send, Loader2, CheckCircle } from "lucide-react";
+import { ArrowLeft, Send, Loader2, CheckCircle, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -51,6 +51,12 @@ export default function TicketDetail() {
     },
   });
 
+  const reopenTicket = useReopenTicket({
+    mutation: {
+      onSuccess: () => { toast({ title: "Chamado reaberto." }); refetch(); },
+    },
+  });
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [ticket?.messages]);
@@ -88,6 +94,12 @@ export default function TicketDetail() {
           <Button variant="outline" size="sm" className="shrink-0" onClick={() => closeTicket.mutate({ id: Number(id) })} disabled={closeTicket.isPending}>
             <CheckCircle className="h-4 w-4 mr-2" />
             Encerrar
+          </Button>
+        )}
+        {ticket.status === "closed" && user?.role === "admin" && (
+          <Button variant="outline" size="sm" className="shrink-0" onClick={() => reopenTicket.mutate({ id: Number(id) })} disabled={reopenTicket.isPending}>
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reabrir
           </Button>
         )}
       </div>

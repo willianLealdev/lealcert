@@ -1252,6 +1252,26 @@ export const CloseTicketResponse = zod.object({
 
 
 /**
+ * @summary Reopen a closed ticket
+ */
+export const ReopenTicketParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ReopenTicketResponse = zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string().nullish(),
+  "subject": zod.string(),
+  "status": zod.enum(['open', 'in_progress', 'closed']),
+  "unreadAdmin": zod.boolean().optional(),
+  "unreadClient": zod.boolean().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional()
+})
+
+
+/**
  * @summary Tabela de preços real da Gestão AR
  */
 export const GetGarProdutosQueryParams = zod.object({

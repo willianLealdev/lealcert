@@ -2,7 +2,7 @@ import { Router } from "express";
 import { eq, desc, ilike, or, sql } from "drizzle-orm";
 import { db, ordersTable, usersTable, certificatesTable, settingsTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
-import { notifyOrderStatus } from "../lib/notify";
+import { notifyOrderStatus, notifyScheduling, sendWaText } from "../lib/notify";
 import { logger } from "../lib/logger";
 import { swConsultaCPF, swConsultaCNPJ, swBiometriaPSBioGlobal, swHopeSolicitation, type SafewebSettings } from "../lib/safeweb";
 import { garPsBio } from "../lib/gestaoar";
@@ -855,6 +855,16 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
     const acao = isReagendar ? "Agendamento alterado (GAR)" : "Atendimento agendado (GAR)";
     await logEvent(id, "scheduling_confirmed", `${acao}: ${nomeLocal} — ${dataInicial}`, { hashLocal, dataInicial, dataFinal, isReagendar });
 
+    notifyScheduling({
+      to: order.customerEmail,
+      phone: order.customerPhone,
+      customerName: order.customerName,
+      orderNumber: order.orderNumber,
+      protocolo: order.garProtocolo ?? order.garHashVenda ?? String(id),
+      localNome: nomeLocal,
+      dataHora: dataHoraStr,
+    }).catch((err: unknown) => req.log.error({ err }, "agendar-gar: erro ao notificar agendamento"));
+
     req.log.info({ orderId: id, dataInicial, nomeLocal }, "agendar-gar: agendamento confirmado");
     res.json({ ok: true, dataHora: dataHoraStr, localNome: nomeLocal });
   } catch (err) {
@@ -942,6 +952,11 @@ router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res
 
     const { logEvent } = await import("../lib/order-events");
     await logEvent(id, "scheduling_confirmed", "Agendamento GAR cancelado com sucesso", {});
+
+    sendWaText(
+      order.customerPhone,
+      `*LealCert — Agendamento Cancelado* ❌\n\nOlá, *${order.customerName}*!\n\nSeu agendamento do pedido *#${order.orderNumber}* foi cancelado.\n\nEntre em contato conosco para reagendar seu atendimento. 📅`,
+    ).catch((err: unknown) => req.log.error({ err }, "gar-cancelar-agendamento: erro ao notificar cliente"));
 
     req.log.info({ orderId: id }, "gar-cancelar-agendamento: concluído");
     res.json({ ok: true });
@@ -1264,6 +1279,16 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   const { logEvent } = await import("../lib/order-events");
   const acao = isReagendar ? "Agendamento alterado" : "Atendimento agendado";
   await logEvent(id, "scheduling_confirmed", `${acao}: ${nomeLocal} — ${dataAgenda} ${horarioLabel}`, { agendamentoId, dataHora, isReagendar });
+
+  notifyScheduling({
+    to: order.customerEmail,
+    phone: order.customerPhone,
+    customerName: order.customerName,
+    orderNumber: order.orderNumber,
+    protocolo: order.safewebSolicitacaoId ? String(order.safewebSolicitacaoId) : String(id),
+    localNome: nomeLocal,
+    dataHora: `${dataAgenda} ${horarioLabel}`,
+  }).catch((err: unknown) => req.log.error({ err }, "safeweb-agendar: erro ao notificar agendamento"));
 
   res.json({ ok: true, dataHora, localNome: nomeLocal, agendamentoId });
 });

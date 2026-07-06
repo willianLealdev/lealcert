@@ -4264,6 +4264,76 @@ export const useCloseTicket = <TError = ErrorType<unknown>,
       return useMutation(getCloseTicketMutationOptions(options));
     }
 
+export const getReopenTicketUrl = (id: number,) => {
+
+
+
+
+  return `/api/support/${id}/reopen`
+}
+
+/**
+ * @summary Reopen a closed ticket
+ */
+export const reopenTicket = async (id: number, options?: RequestInit): Promise<Ticket> => {
+
+  return customFetch<Ticket>(getReopenTicketUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getReopenTicketMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reopenTicket>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reopenTicket>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['reopenTicket'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reopenTicket>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  reopenTicket(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReopenTicketMutationResult = NonNullable<Awaited<ReturnType<typeof reopenTicket>>>
+
+    export type ReopenTicketMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Reopen a closed ticket
+ */
+export const useReopenTicket = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reopenTicket>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reopenTicket>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getReopenTicketMutationOptions(options));
+    }
+
 export const getGetGarProdutosUrl = (params?: GetGarProdutosParams,) => {
   const normalizedParams = new URLSearchParams();
 

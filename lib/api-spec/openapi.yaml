@@ -1199,6 +1199,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/Ticket"
 
+  /support/{id}/reopen:
+    patch:
+      operationId: reopenTicket
+      tags: [support]
+      summary: Reopen a closed ticket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reopened ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+
   /gestaoar/produtos:
     get:
       operationId: getGarProdutos
