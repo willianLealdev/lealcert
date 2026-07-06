@@ -26,6 +26,7 @@ import {
   useListCampaignBounces,
   useListMarketingBounces,
   useRestoreMarketingBounce,
+  useDeleteMarketingBounce,
   getGetMarketingStatsQueryKey,
   getListMarketingContactsQueryKey,
   getListMarketingCampaignsQueryKey,
@@ -1371,15 +1372,26 @@ function EditContactDialog({ contact, type, onClose, onSaved, toast }: {
 // ─── Bounces ──────────────────────────────────────────────────────────────────
 function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: ReturnType<typeof useToast>["toast"] }) {
   const { data: bounces = [], isLoading } = useListMarketingBounces();
+  const [editContact, setEditContact] = useState<{ id: number; name: string; email: string; phone?: string | null; tags?: string | null } | null>(null);
 
   const restoreMutation = useRestoreMarketingBounce({ mutation: {
     onSuccess: () => { toast({ title: "Contato restaurado!", description: "O e-mail será incluído nos próximos envios." }); invalidate(); },
     onError: () => toast({ title: "Erro ao restaurar contato", variant: "destructive" }),
   }});
 
+  const deleteMutation = useDeleteMarketingBounce({ mutation: {
+    onSuccess: () => { toast({ title: "Contato excluído." }); invalidate(); },
+    onError: () => toast({ title: "Erro ao excluir contato", variant: "destructive" }),
+  }});
+
   function handleRestore(id: number, email: string) {
     if (confirm(`Restaurar ${email}? Ele voltará a receber e-mails nas próximas campanhas.`))
       restoreMutation.mutate({ id });
+  }
+
+  function handleDelete(id: number, email: string) {
+    if (confirm(`Excluir ${email} permanentemente? Essa ação não pode ser desfeita.`))
+      deleteMutation.mutate({ id });
   }
 
   return (
@@ -1390,9 +1402,11 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
         <div className="text-sm">
           <p className="font-semibold text-orange-800">E-mails rejeitados (bounces)</p>
           <p className="text-orange-700 mt-0.5">
-            Esses contatos tiveram e-mails devolvidos pelo servidor de destino. Verifique se o endereço está correto antes de decidir.
+            Esses contatos tiveram e-mails devolvidos pelo servidor de destino. Verifique o endereço antes de decidir o que fazer.
             <br />
-            <strong>Restaurar</strong> — volta a enviar para este contato nas próximas campanhas.
+            <strong>Editar</strong> — corrige o e-mail ou dados do contato. &nbsp;
+            <strong>Restaurar</strong> — volta a enviar nas próximas campanhas. &nbsp;
+            <strong>Excluir</strong> — remove o contato do sistema (você decide).
           </p>
         </div>
       </div>
@@ -1465,12 +1479,31 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="h-7 w-7 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                  title="Editar contato — corrigir e-mail ou dados"
+                  onClick={() => setEditContact({ id: b.id, name: b.name ?? "", email: b.email })}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-7 w-7 text-green-600 hover:bg-green-50 hover:text-green-700"
                   title="Restaurar — voltar a enviar e-mails para este contato"
                   disabled={restoreMutation.isPending}
                   onClick={() => handleRestore(b.id, b.email)}
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                  title="Excluir contato permanentemente"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => handleDelete(b.id, b.email)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
@@ -1479,6 +1512,15 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
       )}
 
       <p className="text-xs text-muted-foreground text-right">{bounces.length} contato(s) com bounce</p>
+      {editContact && (
+        <EditContactDialog
+          contact={editContact}
+          type="cliente"
+          onClose={() => setEditContact(null)}
+          onSaved={() => { setEditContact(null); invalidate(); }}
+          toast={toast}
+        />
+      )}
     </div>
   );
 }
