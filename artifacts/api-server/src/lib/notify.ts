@@ -146,15 +146,21 @@ export async function notifyOrderStatus(opts: {
     );
   }
 
-  // Notificar o responsável pela conta (usuário que criou o pedido) nos eventos críticos
-  const notifyResponsible = ["completed", "aguardando_validacao", "pending_docs"].includes(opts.status);
+  // Notificar o responsável (usuário que criou o pedido) em todos os eventos, EXCETO pedido criado e pagamento confirmado
+  const notifyResponsible = !["created", "paid"].includes(opts.status);
   if (notifyResponsible && opts.responsiblePhone && evo) {
     const certLabel = opts.certName ? ` — ${opts.certName}` : "";
+    const proto = opts.protocolNumber ? ` | Protocolo: ${opts.protocolNumber}` : "";
     let responsibleMsg = "";
     if (opts.status === "completed") {
-      responsibleMsg = `*LealCert — Certificado emitido* ✅\n\nO certificado de *${opts.customerName}*${certLabel} (Pedido #${opts.orderNumber}) foi *emitido com sucesso*!\n\nAcesse o painel para mais detalhes.`;
+      responsibleMsg = `*LealCert — Certificado emitido* ✅\n\nO certificado de *${opts.customerName}*${certLabel} (Pedido #${opts.orderNumber}${proto}) foi *emitido com sucesso*!\n\nAcesse o painel para mais detalhes.`;
+    } else if (opts.status === "cancelled") {
+      responsibleMsg = `*LealCert — Pedido cancelado* ❌\n\nO pedido de *${opts.customerName}*${certLabel} (#${opts.orderNumber}) foi *cancelado*.\n\nAcesse o painel para mais detalhes.`;
+    } else if (opts.status === "protocol_assigned") {
+      responsibleMsg = `*LealCert — Pedido validado* 📋\n\nO pedido de *${opts.customerName}*${certLabel} (#${opts.orderNumber}${proto}) foi *validado* e está pronto para agendamento.\n\nAcesse o painel para acompanhar.`;
     } else {
-      responsibleMsg = `*LealCert — Pendência no pedido* ⚠️\n\nO pedido de *${opts.customerName}*${certLabel} (#${opts.orderNumber}) requer atenção.\n\nAcesse o painel para verificar a pendência e regularizar a situação.`;
+      const statusLabel = STATUS_LABELS[opts.status] ?? opts.status;
+      responsibleMsg = `*LealCert — Atualização de pedido* 📌\n\nPedido de *${opts.customerName}*${certLabel} (#${opts.orderNumber}) atualizado para: *${statusLabel}*.\n\nAcesse o painel para mais detalhes.`;
     }
     sendWhatsApp(evo, opts.responsiblePhone, responsibleMsg).catch((err: unknown) =>
       logger.error({ err }, "notifyOrderStatus: erro ao enviar WhatsApp ao responsável"),
@@ -165,6 +171,7 @@ export async function notifyOrderStatus(opts: {
 export async function notifyScheduling(opts: {
   to?: string | null;
   phone?: string | null;
+  responsiblePhone?: string | null;
   customerName: string;
   orderNumber: string;
   protocolo: string;
@@ -198,6 +205,18 @@ export async function notifyScheduling(opts: {
       `Qualquer dúvida, estamos à disposição. 😊`;
     sendWhatsApp(evo, opts.phone, msg).catch((err: unknown) =>
       logger.error({ err }, "Erro ao enviar WhatsApp de agendamento"),
+    );
+  }
+
+  if (opts.responsiblePhone && evo) {
+    const responsibleMsg =
+      `*LealCert — Agendamento confirmado* 📅\n\n` +
+      `O atendimento de *${opts.customerName}* (Pedido #${opts.orderNumber}) foi agendado.\n\n` +
+      `📍 Local: ${opts.localNome}\n` +
+      `⏰ Data e Hora: *${opts.dataHora}*\n\n` +
+      `Acesse o painel para mais detalhes.`;
+    sendWhatsApp(evo, opts.responsiblePhone, responsibleMsg).catch((err: unknown) =>
+      logger.error({ err }, "Erro ao enviar WhatsApp de agendamento ao responsável"),
     );
   }
 }

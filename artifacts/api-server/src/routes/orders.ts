@@ -855,9 +855,13 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
     const acao = isReagendar ? "Agendamento alterado (GAR)" : "Atendimento agendado (GAR)";
     await logEvent(id, "scheduling_confirmed", `${acao}: ${nomeLocal} — ${dataInicial}`, { hashLocal, dataInicial, dataFinal, isReagendar });
 
+    const garResponsiblePhone = order.userId
+      ? await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, order.userId)).limit(1).then(r => r[0]?.phone ?? null)
+      : null;
     notifyScheduling({
       to: order.customerEmail,
       phone: order.customerPhone,
+      responsiblePhone: garResponsiblePhone,
       customerName: order.customerName,
       orderNumber: order.orderNumber,
       protocolo: order.garProtocolo ?? order.garHashVenda ?? String(id),
@@ -953,10 +957,19 @@ router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res
     const { logEvent } = await import("../lib/order-events");
     await logEvent(id, "scheduling_confirmed", "Agendamento GAR cancelado com sucesso", {});
 
+    const cancelResponsiblePhone = order.userId
+      ? await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, order.userId)).limit(1).then(r => r[0]?.phone ?? null)
+      : null;
     sendWaText(
       order.customerPhone,
       `*LealCert — Agendamento Cancelado* ❌\n\nOlá, *${order.customerName}*!\n\nSeu agendamento do pedido *#${order.orderNumber}* foi cancelado.\n\nEntre em contato conosco para reagendar seu atendimento. 📅`,
     ).catch((err: unknown) => req.log.error({ err }, "gar-cancelar-agendamento: erro ao notificar cliente"));
+    if (cancelResponsiblePhone) {
+      sendWaText(
+        cancelResponsiblePhone,
+        `*LealCert — Agendamento cancelado* ❌\n\nO agendamento de *${order.customerName}* (Pedido #${order.orderNumber}) foi cancelado.\n\nAcesse o painel para reagendar.`,
+      ).catch((err: unknown) => req.log.error({ err }, "gar-cancelar-agendamento: erro ao notificar responsável"));
+    }
 
     req.log.info({ orderId: id }, "gar-cancelar-agendamento: concluído");
     res.json({ ok: true });
@@ -1280,9 +1293,13 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   const acao = isReagendar ? "Agendamento alterado" : "Atendimento agendado";
   await logEvent(id, "scheduling_confirmed", `${acao}: ${nomeLocal} — ${dataAgenda} ${horarioLabel}`, { agendamentoId, dataHora, isReagendar });
 
+  const swResponsiblePhone = order.userId
+    ? await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, order.userId)).limit(1).then(r => r[0]?.phone ?? null)
+    : null;
   notifyScheduling({
     to: order.customerEmail,
     phone: order.customerPhone,
+    responsiblePhone: swResponsiblePhone,
     customerName: order.customerName,
     orderNumber: order.orderNumber,
     protocolo: order.safewebSolicitacaoId ? String(order.safewebSolicitacaoId) : String(id),
