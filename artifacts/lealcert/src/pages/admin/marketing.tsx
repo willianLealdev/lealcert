@@ -14,6 +14,7 @@ import {
   useDeleteMarketingCampaign,
   useSendMarketingCampaign,
   useCancelMarketingCampaign,
+  useDeleteMarketingReply,
   useListMarketingReplies,
   useMarkReplyRead,
   useReplyToContact,
@@ -1165,6 +1166,14 @@ function RespostasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
   const markReadMutation = useMarkReplyRead({ mutation: {
     onSuccess: () => invalidate(),
   }});
+  const deleteMutation = useDeleteMarketingReply({ mutation: {
+    onSuccess: () => {
+      toast({ title: "Mensagem excluída." });
+      setSelected(null);
+      invalidate();
+    },
+    onError: () => toast({ title: "Erro ao excluir mensagem", variant: "destructive" }),
+  }});
   const replyMutation = useReplyToContact({ mutation: {
     onSuccess: () => {
       toast({ title: "Resposta enviada!" });
@@ -1252,7 +1261,19 @@ function RespostasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
                       <p className="font-semibold">{selectedReply.fromName ?? selectedReply.fromEmail}</p>
                       <p className="text-sm text-muted-foreground">{selectedReply.fromEmail}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground">{new Date(selectedReply.createdAt).toLocaleString("pt-BR")}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{new Date(selectedReply.createdAt).toLocaleString("pt-BR")}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => { if (confirm("Excluir esta mensagem?")) deleteMutation.mutate({ id: selectedReply.id }); }}
+                        title="Excluir mensagem"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <p className="font-medium mt-2">{selectedReply.subject ?? "(sem assunto)"}</p>
                 </div>

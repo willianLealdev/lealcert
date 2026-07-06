@@ -2899,6 +2899,18 @@ export const ListMarketingRepliesResponse = zod.array(ListMarketingRepliesRespon
 
 
 /**
+ * @summary Delete an inbound reply
+ */
+export const DeleteMarketingReplyParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteMarketingReplyResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Mark reply as read
  */
 export const MarkReplyReadParams = zod.object({

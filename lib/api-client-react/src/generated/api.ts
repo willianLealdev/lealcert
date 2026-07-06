@@ -9781,6 +9781,76 @@ export function useListMarketingReplies<TData = Awaited<ReturnType<typeof listMa
 
 
 
+export const getDeleteMarketingReplyUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/replies/${id}`
+}
+
+/**
+ * @summary Delete an inbound reply
+ */
+export const deleteMarketingReply = async (id: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getDeleteMarketingReplyUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteMarketingReplyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMarketingReply>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMarketingReply>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMarketingReply'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMarketingReply>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMarketingReply(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMarketingReplyMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMarketingReply>>>
+
+    export type DeleteMarketingReplyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete an inbound reply
+ */
+export const useDeleteMarketingReply = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMarketingReply>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMarketingReply>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMarketingReplyMutationOptions(options));
+    }
+
 export const getMarkReplyReadUrl = (id: number,) => {
 
 

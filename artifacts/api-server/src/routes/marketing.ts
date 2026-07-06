@@ -585,6 +585,12 @@ router.get("/marketing/replies", async (req, res): Promise<void> => {
   res.json(replies);
 });
 
+router.delete("/marketing/replies/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  await db.delete(marketingRepliesTable).where(eq(marketingRepliesTable.id, id));
+  res.json({ message: "Mensagem excluída." });
+});
+
 router.post("/marketing/replies/:id/read", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   await db.update(marketingRepliesTable).set({ readAt: new Date() }).where(eq(marketingRepliesTable.id, id));

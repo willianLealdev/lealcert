@@ -2649,6 +2649,25 @@ paths:
                 items:
                   $ref: "#/components/schemas/MarketingReply"
 
+  /marketing/replies/{id}:
+    delete:
+      operationId: deleteMarketingReply
+      tags: [marketing]
+      summary: Delete an inbound reply
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   /marketing/replies/{id}/read:
     post:
       operationId: markReplyRead
