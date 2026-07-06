@@ -679,7 +679,8 @@ router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> =
 export interface DispatchOptions {
   targetOverride?: "all" | "cliente" | "contador" | "specific" | "manual"
     | "opened_all" | "opened_cliente" | "opened_contador"
-    | "clicked_all" | "clicked_cliente" | "clicked_contador";
+    | "clicked_all" | "clicked_cliente" | "clicked_contador"
+    | "not_opened_cliente" | "not_opened_contador";
   specificContactIds?: number[];
   manualRecipients?: { name: string; email: string }[];
 }
@@ -724,6 +725,24 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     }
     contacts = await db.select().from(marketingContactsTable)
       .where(inArray(marketingContactsTable.id, opts.specificContactIds));
+  } else if (effectiveTarget === "not_opened_cliente" || effectiveTarget === "not_opened_contador") {
+    const contactType = effectiveTarget === "not_opened_cliente" ? "cliente" : "contador";
+    const rawContacts = await db.execute<RawContactRow>(sql`
+      SELECT mc.id, mc.name, mc.email, mc.phone, mc.type, mc.status, mc.bounced, mc.tags,
+        mc.email_status, mc.email_invalid_reason, mc.email_validated_at,
+        mc.unsubscribed_at, mc.created_at
+      FROM marketing_contacts mc
+      WHERE mc.status = 'active'
+        AND mc.bounced = false
+        AND mc.email_status NOT IN ('invalid', 'disposable')
+        AND mc.type = ${contactType}
+        AND NOT EXISTS (
+          SELECT 1 FROM marketing_sends ms
+          WHERE ms.contact_id = mc.id AND ms.opened_at IS NOT NULL
+        )
+    `);
+    contacts = rawContacts.rows.map(mapContact);
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded (not-opened)");
   } else if (effectiveTarget.startsWith("opened_") || effectiveTarget.startsWith("clicked_")) {
     const engagementCol = effectiveTarget.startsWith("opened_") ? "opened_at" : "clicked_at";
     const typeSuffix = effectiveTarget.split("_")[1]; // all | cliente | contador

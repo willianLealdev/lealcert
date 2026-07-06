@@ -43,7 +43,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Megaphone, Users, Mail, MailOpen, Send, Upload, Plus, Trash2, Pencil,
+  Megaphone, Users, Mail, MailOpen, MailX, Send, Upload, Plus, Trash2, Pencil,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
   ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy, MousePointerClick,
   AlertTriangle, RotateCcw,
@@ -788,7 +788,8 @@ function CampaignBouncesModal({ campaignId, campaignName, onClose }: {
 // ─── Send Campaign Dialog ─────────────────────────────────────────────────────
 type SendTarget = "all" | "cliente" | "contador" | "specific" | "manual"
   | "opened_all" | "opened_cliente" | "opened_contador"
-  | "clicked_all" | "clicked_cliente" | "clicked_contador";
+  | "clicked_all" | "clicked_cliente" | "clicked_contador"
+  | "not_opened_cliente" | "not_opened_contador";
 
 interface ManualRecipient { name: string; email: string }
 
@@ -867,8 +868,10 @@ function SendCampaignDialog({
     { id: "opened_contador",  label: "Quem abriu — Contadores",  desc: "Contadores que abriram qualquer campanha",  icon: MailOpen, group: "engajamento" },
     { id: "clicked_all",      label: "Quem clicou — Todos",      desc: "Contatos que clicaram em qualquer campanha", icon: MousePointerClick, group: "engajamento" },
     { id: "clicked_cliente",  label: "Quem clicou — Clientes",   desc: "Clientes que clicaram em qualquer campanha", icon: MousePointerClick, group: "engajamento" },
-    { id: "clicked_contador", label: "Quem clicou — Contadores", desc: "Contadores que clicaram em qualquer campanha", icon: MousePointerClick, group: "engajamento" },
-    { id: "specific",         label: "Cliente específico",       desc: "Busque e selecione da base",                icon: Search },
+    { id: "clicked_contador",     label: "Quem clicou — Contadores",    desc: "Contadores que clicaram em qualquer campanha",    icon: MousePointerClick, group: "engajamento" },
+    { id: "not_opened_cliente",   label: "Quem não abriu — Clientes",   desc: "Clientes que nunca abriram um e-mail",            icon: MailX, group: "engajamento" },
+    { id: "not_opened_contador",  label: "Quem não abriu — Contadores", desc: "Contadores que nunca abriram um e-mail",          icon: MailX, group: "engajamento" },
+    { id: "specific",             label: "Cliente específico",          desc: "Busque e selecione da base",                      icon: Search },
     { id: "manual",           label: "Destinatário manual",      desc: "Digite nome e e-mail na hora",              icon: Plus },
   ];
 

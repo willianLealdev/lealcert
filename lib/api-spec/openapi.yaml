@@ -5250,7 +5250,7 @@ components:
           type: string
         targetOverride:
           type: string
-          enum: [all, cliente, contador, specific, manual, opened_all, opened_cliente, opened_contador, clicked_all, clicked_cliente, clicked_contador]
+          enum: [all, cliente, contador, specific, manual, opened_all, opened_cliente, opened_contador, clicked_all, clicked_cliente, clicked_contador, not_opened_cliente, not_opened_contador]
           description: Override campaign targetType for this send
         specificContactIds:
           type: array
