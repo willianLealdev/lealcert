@@ -21,6 +21,7 @@ import {
   useValidateContactEmails,
   useBulkDeleteMarketingContacts,
   useGetMarketingCampaignProgress,
+  getGetMarketingCampaignProgressQueryKey,
   useResumeMarketingCampaign,
   useListMarketingBounces,
   useRestoreMarketingBounce,
@@ -259,10 +260,10 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
     return () => clearInterval(id);
   }, [progress?.status, user]);
 
-  // Re-fetch on tick
+  // Re-fetch on tick — usa a query key exata do hook gerado para não invalidar a lista de campanhas
   const qc = useQueryClient();
   useEffect(() => {
-    if (tick > 0) qc.invalidateQueries({ queryKey: ["/api/marketing/campaigns", campaignId, "progress"] });
+    if (tick > 0) qc.invalidateQueries({ queryKey: getGetMarketingCampaignProgressQueryKey(campaignId) });
   }, [tick]);
 
   const total = progress?.totalContacts ?? 0;

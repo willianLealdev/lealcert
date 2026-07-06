@@ -15,6 +15,13 @@
       "when": 1782080000000,
       "tag": "0001_ip_security",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783267200000,
+      "tag": "0002_add_total_contacts",
+      "breakpoints": true
     }
   ]
 }
