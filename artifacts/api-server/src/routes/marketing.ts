@@ -510,14 +510,24 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
 
   let contacts: { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date }[] = [];
 
-  if (effectiveTarget === "manual" && opts.manualRecipients?.length) {
+  if (effectiveTarget === "manual") {
+    if (!opts.manualRecipients?.length) {
+      logger.error({ campaignId, effectiveTarget }, "Dispatch abortado: target=manual mas manualRecipients vazio — evitando envio para todos");
+      await db.update(marketingCampaignsTable).set({ status: "draft" }).where(eq(marketingCampaignsTable.id, campaignId));
+      return;
+    }
     contacts = opts.manualRecipients.map((r, i) => ({
       id: -(i + 1), name: r.name, email: r.email, phone: null,
       type: "manual", status: "active", bounced: false, tags: null,
       emailStatus: "unknown", emailInvalidReason: null, emailValidatedAt: null,
       unsubscribedAt: null, createdAt: new Date(),
     }));
-  } else if (effectiveTarget === "specific" && opts.specificContactIds?.length) {
+  } else if (effectiveTarget === "specific") {
+    if (!opts.specificContactIds?.length) {
+      logger.error({ campaignId, effectiveTarget }, "Dispatch abortado: target=specific mas specificContactIds vazio — evitando envio para todos");
+      await db.update(marketingCampaignsTable).set({ status: "draft" }).where(eq(marketingCampaignsTable.id, campaignId));
+      return;
+    }
     contacts = await db.select().from(marketingContactsTable)
       .where(inArray(marketingContactsTable.id, opts.specificContactIds));
   } else {
