@@ -769,7 +769,18 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
         trackingToken: token,
         status: "pending",
       });
-    } catch { continue; }
+    } catch {
+      // Fallback: columns may not exist in production yet — insert without them
+      try {
+        await db.execute(sql`
+          INSERT INTO marketing_sends (campaign_id, contact_id, tracking_token, status)
+          VALUES (${campaignId}, ${contact.id > 0 ? contact.id : null}, ${token}, 'pending')
+          ON CONFLICT DO NOTHING
+        `);
+        const check = await db.execute<{ id: number }>(sql`SELECT id FROM marketing_sends WHERE tracking_token = ${token}`);
+        if (!check.rows.length) continue;
+      } catch { continue; }
+    }
 
     try {
       await sendMarketingEmail({ campaign, contact, trackingToken: token });
