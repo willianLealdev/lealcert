@@ -26,7 +26,6 @@ import {
   useListCampaignBounces,
   useListMarketingBounces,
   useRestoreMarketingBounce,
-  useDeleteMarketingBounce,
   getGetMarketingStatsQueryKey,
   getListMarketingContactsQueryKey,
   getListMarketingCampaignsQueryKey,
@@ -1378,19 +1377,9 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
     onError: () => toast({ title: "Erro ao restaurar contato", variant: "destructive" }),
   }});
 
-  const deleteMutation = useDeleteMarketingBounce({ mutation: {
-    onSuccess: () => { toast({ title: "Contato excluído permanentemente." }); invalidate(); },
-    onError: () => toast({ title: "Erro ao excluir contato", variant: "destructive" }),
-  }});
-
   function handleRestore(id: number, email: string) {
     if (confirm(`Restaurar ${email}? Ele voltará a receber e-mails nas próximas campanhas.`))
       restoreMutation.mutate({ id });
-  }
-
-  function handleDelete(id: number, email: string) {
-    if (confirm(`Excluir permanentemente ${email}? Essa ação não pode ser desfeita.`))
-      deleteMutation.mutate({ id });
   }
 
   return (
@@ -1403,8 +1392,7 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
           <p className="text-orange-700 mt-0.5">
             Esses contatos tiveram e-mails devolvidos pelo servidor de destino. Verifique se o endereço está correto antes de decidir.
             <br />
-            <strong>Restaurar</strong> — volta a enviar para este contato nas próximas campanhas. &nbsp;
-            <strong>Excluir</strong> — remove permanentemente do sistema.
+            <strong>Restaurar</strong> — volta a enviar para este contato nas próximas campanhas.
           </p>
         </div>
       </div>
@@ -1483,16 +1471,6 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
                   onClick={() => handleRestore(b.id, b.email)}
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                  title="Excluir permanentemente"
-                  disabled={deleteMutation.isPending}
-                  onClick={() => handleDelete(b.id, b.email)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
