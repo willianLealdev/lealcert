@@ -221,18 +221,8 @@ const mpWebhookLimiter = rateLimit({
   message: { error: "Muitas requisições ao webhook." },
 });
 
-app.use("/api", generalLimiter);
-// Login não usa authLimiter — o sistema de IP security (3 falhas → bloqueio) já cobre brute force
-// authLimiter fica apenas em rotas de registro e senha esquecida para evitar spam de e-mail
-app.use("/api/auth/register", authLimiter);
-app.use("/api/auth/forgot-password", authLimiter);
-app.use("/api/auth/resend-verification", authLimiter);  // prevent email spam
-app.use("/api/chat", chatLimiter);                      // prevent AI cost abuse
-app.use("/api/marketing/webhook/inbound", webhookLimiter);
-app.use("/api/push/public-key", vapidLimiter);
-app.use("/api/mp/webhook", mpWebhookLimiter);
-
-// ── Session (session-only cookie — expires when browser closes) ──────────────
+// ── Session deve vir ANTES dos rate limiters para que req.session esteja disponível
+// nos callbacks skip() — caso contrário usuários autenticados são limitados como anônimos
 const PgSession = connectPgSimple(session);
 
 app.use(
@@ -254,6 +244,18 @@ app.use(
     },
   }),
 );
+
+// Rate limiters — registrados DEPOIS da sessão para que skip(req) possa ler req.session.userId
+app.use("/api", generalLimiter);
+// Login não usa authLimiter — o sistema de IP security (3 falhas → bloqueio) já cobre brute force
+// authLimiter fica apenas em rotas de registro e senha esquecida para evitar spam de e-mail
+app.use("/api/auth/register", authLimiter);
+app.use("/api/auth/forgot-password", authLimiter);
+app.use("/api/auth/resend-verification", authLimiter);  // prevent email spam
+app.use("/api/chat", chatLimiter);                      // prevent AI cost abuse
+app.use("/api/marketing/webhook/inbound", webhookLimiter);
+app.use("/api/push/public-key", vapidLimiter);
+app.use("/api/mp/webhook", mpWebhookLimiter);
 
 app.use("/api", router);
 
