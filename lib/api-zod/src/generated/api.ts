@@ -2873,7 +2873,7 @@ export const SendMarketingCampaignParams = zod.object({
 
 export const SendMarketingCampaignBody = zod.object({
   "scheduledAt": zod.string().optional(),
-  "targetOverride": zod.enum(['all', 'cliente', 'contador', 'specific', 'manual']).optional().describe('Override campaign targetType for this send'),
+  "targetOverride": zod.enum(['all', 'cliente', 'contador', 'specific', 'manual', 'opened_all', 'opened_cliente', 'opened_contador', 'clicked_all', 'clicked_cliente', 'clicked_contador']).optional().describe('Override campaign targetType for this send'),
   "specificContactIds": zod.array(zod.number()).optional().describe('Contact IDs to send to when targetOverride=specific'),
   "manualRecipients": zod.array(zod.object({
   "name": zod.string(),

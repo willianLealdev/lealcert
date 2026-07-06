@@ -786,7 +786,9 @@ function CampaignBouncesModal({ campaignId, campaignName, onClose }: {
 }
 
 // ─── Send Campaign Dialog ─────────────────────────────────────────────────────
-type SendTarget = "all" | "cliente" | "contador" | "specific" | "manual";
+type SendTarget = "all" | "cliente" | "contador" | "specific" | "manual"
+  | "opened_all" | "opened_cliente" | "opened_contador"
+  | "clicked_all" | "clicked_cliente" | "clicked_contador";
 
 interface ManualRecipient { name: string; email: string }
 
@@ -856,12 +858,18 @@ function SendCampaignDialog({
     sendMutation.mutate({ id: campaignId, data: body });
   }
 
-  const targetOptions: { id: SendTarget; label: string; desc: string; icon: React.ElementType }[] = [
-    { id: "all", label: "Todos os contatos", desc: "Clientes e contadores ativos", icon: Users },
-    { id: "contador", label: "Contadores", desc: "Apenas contadores ativos da base", icon: Users },
-    { id: "cliente", label: "Lista de clientes", desc: "Apenas clientes ativos da base", icon: Users },
-    { id: "specific", label: "Cliente específico", desc: "Busque e selecione da base", icon: Search },
-    { id: "manual", label: "Destinatário manual", desc: "Digite nome e e-mail na hora", icon: Plus },
+  const targetOptions: { id: SendTarget; label: string; desc: string; icon: React.ElementType; group?: string }[] = [
+    { id: "all",              label: "Todos os contatos",        desc: "Clientes e contadores ativos",              icon: Users },
+    { id: "cliente",          label: "Clientes",                 desc: "Apenas clientes ativos da base",            icon: Users },
+    { id: "contador",         label: "Contadores",               desc: "Apenas contadores ativos da base",          icon: Users },
+    { id: "opened_all",       label: "Quem abriu — Todos",       desc: "Contatos que abriram qualquer campanha",    icon: MailOpen, group: "engajamento" },
+    { id: "opened_cliente",   label: "Quem abriu — Clientes",    desc: "Clientes que abriram qualquer campanha",    icon: MailOpen, group: "engajamento" },
+    { id: "opened_contador",  label: "Quem abriu — Contadores",  desc: "Contadores que abriram qualquer campanha",  icon: MailOpen, group: "engajamento" },
+    { id: "clicked_all",      label: "Quem clicou — Todos",      desc: "Contatos que clicaram em qualquer campanha", icon: MousePointerClick, group: "engajamento" },
+    { id: "clicked_cliente",  label: "Quem clicou — Clientes",   desc: "Clientes que clicaram em qualquer campanha", icon: MousePointerClick, group: "engajamento" },
+    { id: "clicked_contador", label: "Quem clicou — Contadores", desc: "Contadores que clicaram em qualquer campanha", icon: MousePointerClick, group: "engajamento" },
+    { id: "specific",         label: "Cliente específico",       desc: "Busque e selecione da base",                icon: Search },
+    { id: "manual",           label: "Destinatário manual",      desc: "Digite nome e e-mail na hora",              icon: Plus },
   ];
 
   return (
@@ -877,31 +885,45 @@ function SendCampaignDialog({
           {/* Target selection */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">Para quem enviar?</Label>
-            <div className="space-y-2">
-              {targetOptions.map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => setTarget(opt.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
-                    target === opt.id
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-border hover:border-muted-foreground/40 hover:bg-muted/30"
-                  }`}
-                >
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    target === opt.id ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                  }`}>
-                    <opt.icon className="h-4 w-4" />
+            <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+              {targetOptions.map((opt, i) => {
+                const prevGroup = i > 0 ? targetOptions[i - 1].group : opt.group;
+                const showSep = i > 0 && opt.group !== prevGroup;
+                return (
+                  <div key={opt.id}>
+                    {showSep && (
+                      <div className="flex items-center gap-2 py-1.5">
+                        <div className="flex-1 border-t border-border" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                          {opt.group === "engajamento" ? "Por Engajamento" : "Avançado"}
+                        </span>
+                        <div className="flex-1 border-t border-border" />
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setTarget(opt.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
+                        target === opt.id
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-border hover:border-muted-foreground/40 hover:bg-muted/30"
+                      }`}
+                    >
+                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        target === opt.id ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                      }`}>
+                        <opt.icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{opt.label}</p>
+                        <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                      </div>
+                      <div className={`ml-auto h-4 w-4 rounded-full border-2 shrink-0 ${
+                        target === opt.id ? "border-primary bg-primary" : "border-muted-foreground/40"
+                      }`} />
+                    </button>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{opt.label}</p>
-                    <p className="text-xs text-muted-foreground">{opt.desc}</p>
-                  </div>
-                  <div className={`ml-auto h-4 w-4 rounded-full border-2 shrink-0 ${
-                    target === opt.id ? "border-primary bg-primary" : "border-muted-foreground/40"
-                  }`} />
-                </button>
-              ))}
+                );
+              })}
             </div>
           </div>
 

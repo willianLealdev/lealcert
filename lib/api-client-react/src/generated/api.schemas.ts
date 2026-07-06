@@ -1440,6 +1440,12 @@ export const SendCampaignInputTargetOverride = {
   contador: 'contador',
   specific: 'specific',
   manual: 'manual',
+  opened_all: 'opened_all',
+  opened_cliente: 'opened_cliente',
+  opened_contador: 'opened_contador',
+  clicked_all: 'clicked_all',
+  clicked_cliente: 'clicked_cliente',
+  clicked_contador: 'clicked_contador',
 } as const;
 
 export type SendCampaignInputManualRecipientsItem = {

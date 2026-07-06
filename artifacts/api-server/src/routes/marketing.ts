@@ -677,9 +677,23 @@ router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> =
 
 // ─── Campaign Dispatch ────────────────────────────────────────────────────────
 export interface DispatchOptions {
-  targetOverride?: "all" | "cliente" | "contador" | "specific" | "manual";
+  targetOverride?: "all" | "cliente" | "contador" | "specific" | "manual"
+    | "opened_all" | "opened_cliente" | "opened_contador"
+    | "clicked_all" | "clicked_cliente" | "clicked_contador";
   specificContactIds?: number[];
   manualRecipients?: { name: string; email: string }[];
+}
+
+type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date };
+type RawContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; created_at: Date };
+
+function mapContact(r: RawContactRow): ContactRow {
+  return {
+    id: r.id, name: r.name, email: r.email, phone: r.phone, type: r.type, status: r.status,
+    bounced: r.bounced, tags: r.tags, emailStatus: r.email_status,
+    emailInvalidReason: r.email_invalid_reason, emailValidatedAt: r.email_validated_at,
+    unsubscribedAt: r.unsubscribed_at, createdAt: r.created_at,
+  };
 }
 
 export async function dispatchCampaign(campaignId: number, opts: DispatchOptions = {}) {
@@ -688,7 +702,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
 
   const effectiveTarget = opts.targetOverride ?? campaign.targetType;
 
-  let contacts: { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date }[] = [];
+  let contacts: ContactRow[] = [];
 
   if (effectiveTarget === "manual") {
     if (!opts.manualRecipients?.length) {
@@ -710,17 +724,34 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     }
     contacts = await db.select().from(marketingContactsTable)
       .where(inArray(marketingContactsTable.id, opts.specificContactIds));
+  } else if (effectiveTarget.startsWith("opened_") || effectiveTarget.startsWith("clicked_")) {
+    const engagementCol = effectiveTarget.startsWith("opened_") ? "opened_at" : "clicked_at";
+    const typeSuffix = effectiveTarget.split("_")[1]; // all | cliente | contador
+    const typeClause = typeSuffix === "cliente" ? sql` AND mc.type = 'cliente'`
+      : typeSuffix === "contador" ? sql` AND mc.type = 'contador'`
+      : sql``;
+    const rawContacts = await db.execute<RawContactRow>(sql`
+      SELECT DISTINCT ON (mc.id)
+        mc.id, mc.name, mc.email, mc.phone, mc.type, mc.status, mc.bounced, mc.tags,
+        mc.email_status, mc.email_invalid_reason, mc.email_validated_at,
+        mc.unsubscribed_at, mc.created_at
+      FROM marketing_contacts mc
+      INNER JOIN marketing_sends ms ON ms.contact_id = mc.id
+      WHERE ms.${sql.raw(engagementCol)} IS NOT NULL
+        AND mc.status = 'active'
+        AND mc.bounced = false
+        AND mc.email_status NOT IN ('invalid', 'disposable')
+        ${typeClause}
+      ORDER BY mc.id
+    `);
+    contacts = rawContacts.rows.map(mapContact);
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded (engagement)");
   } else {
     const typeFilter = effectiveTarget === "cliente" ? "cliente" : effectiveTarget === "contador" ? "contador" : null;
-    const rawContacts = await db.execute<{ id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; created_at: Date }>(
+    const rawContacts = await db.execute<RawContactRow>(
       sql`SELECT * FROM marketing_contacts WHERE status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``}`
     );
-    contacts = rawContacts.rows.map(r => ({
-      id: r.id, name: r.name, email: r.email, phone: r.phone, type: r.type, status: r.status,
-      bounced: r.bounced, tags: r.tags, emailStatus: r.email_status,
-      emailInvalidReason: r.email_invalid_reason, emailValidatedAt: r.email_validated_at,
-      unsubscribedAt: r.unsubscribed_at, createdAt: r.created_at,
-    }));
+    contacts = rawContacts.rows.map(mapContact);
     logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded");
   }
 
