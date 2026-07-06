@@ -3,6 +3,34 @@ import { simpleParser } from "mailparser";
 import { db, settingsTable } from "@workspace/db";
 import { logger } from "./logger";
 
+const BOUNCE_FROM_PATTERNS = [
+  /mailer-daemon/i,
+  /postmaster/i,
+  /mail delivery subsystem/i,
+  /delivery status notification/i,
+  /mail system/i,
+  /MAILER-DAEMON/,
+];
+
+const BOUNCE_SUBJECT_PATTERNS = [
+  /undelivered mail/i,
+  /delivery (status notification|failure|failed)/i,
+  /failed to deliver/i,
+  /returned mail/i,
+  /warning.*message delivery/i,
+  /delay in message delivery/i,
+  /auto-reply/i,
+  /out of office/i,
+  /ausente/i,
+  /fora do escritório/i,
+];
+
+function isBounceOrAutoReply(fromRaw: string, subject: string): boolean {
+  if (BOUNCE_FROM_PATTERNS.some(p => p.test(fromRaw))) return true;
+  if (BOUNCE_SUBJECT_PATTERNS.some(p => p.test(subject))) return true;
+  return false;
+}
+
 let pollerRunning = false;
 
 async function pollInbox(): Promise<void> {
@@ -46,6 +74,9 @@ async function pollInbox(): Promise<void> {
 
     logger.info({ count: messages.length }, "IMAP poller: emails não lidos encontrados");
 
+    let processed = 0;
+    let skipped = 0;
+
     for (const message of messages) {
       try {
         const part = message.parts.find((p: { which: string }) => p.which === "");
@@ -59,6 +90,12 @@ async function pollInbox(): Promise<void> {
         const messageId = parsed.messageId ?? null;
         const inReplyTo = parsed.inReplyTo ?? null;
 
+        if (isBounceOrAutoReply(fromRaw, subject)) {
+          logger.info({ from: fromRaw, subject }, "IMAP poller: bounce/auto-reply ignorado");
+          skipped++;
+          continue;
+        }
+
         const port = process.env.PORT ?? "8080";
         const secret = s?.webhookSecret ?? "";
         const url = `http://localhost:${port}/api/marketing/webhook/inbound${secret ? `?secret=${encodeURIComponent(secret)}` : ""}`;
@@ -71,6 +108,7 @@ async function pollInbox(): Promise<void> {
 
         if (resp.ok) {
           logger.info({ from: fromRaw, subject }, "IMAP poller: reply processada");
+          processed++;
         } else {
           logger.warn({ from: fromRaw, status: resp.status }, "IMAP poller: webhook retornou erro");
         }
@@ -79,6 +117,7 @@ async function pollInbox(): Promise<void> {
       }
     }
 
+    logger.info({ processed, skipped }, "IMAP poller: ciclo concluído");
     connection.end();
   } catch (err) {
     logger.error({ err }, "IMAP poller: erro na conexão");
