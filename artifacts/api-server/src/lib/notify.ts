@@ -58,7 +58,8 @@ function buildStatusWhatsApp(opts: {
       `Olá, *${opts.customerName}*!\n\n` +
       `Seu pedido foi criado com sucesso!\n` +
       `🔢 Pedido: *#${opts.orderNumber}*${cert}\n\n` +
-      `Em breve você receberá as instruções de pagamento. Qualquer dúvida, estamos à disposição. 😊`
+      `⚠️ Para prosseguir, efetue o pagamento pelo painel. Somente após a confirmação do pagamento será possível agendar o atendimento.\n\n` +
+      `Qualquer dúvida, estamos à disposição. 😊`
     );
   }
 
@@ -68,7 +69,8 @@ function buildStatusWhatsApp(opts: {
       `Olá, *${opts.customerName}*!\n\n` +
       `Recebemos o pagamento do seu pedido!\n` +
       `🔢 Pedido: *#${opts.orderNumber}*${cert}\n\n` +
-      `Estamos registrando seu pedido no sistema. Em breve você receberá o link para agendar seu atendimento. 📅`
+      `Acesse o painel e efetue o agendamento do seu atendimento. 📅\n\n` +
+      `🌐 lealcert.com.br`
     );
   }
 

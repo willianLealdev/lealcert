@@ -111,13 +111,14 @@ function statusBanner(status: string, statusLabel: string, color: string): strin
 function statusMessage(opts: { status: string; customerName: string; certName?: string; protocolNumber?: string; total?: number }): string {
   if (opts.status === "created") {
     return `
-      <p style="color:#475569;margin:0 0 16px;">Seu pedido foi criado com sucesso! Assim que o pagamento for confirmado, daremos continuidade à emissão do seu certificado.</p>
+      <p style="color:#475569;margin:0 0 16px;">Seu pedido foi criado com sucesso!</p>
+      <p style="color:#475569;margin:0 0 16px;">⚠️ Para prosseguir, efetue o pagamento pelo painel. Somente após a confirmação do pagamento será possível agendar o atendimento.</p>
       <p style="color:#475569;margin:0;">Qualquer dúvida, nossa equipe está à disposição. 😊</p>`;
   }
   if (opts.status === "paid") {
     return `
       <p style="color:#475569;margin:0 0 16px;">Recebemos o pagamento do seu pedido! ✅</p>
-      <p style="color:#475569;margin:0;">Estamos registrando seu pedido no sistema. Em breve você receberá o link para agendar seu atendimento presencial. 📅</p>`;
+      <p style="color:#475569;margin:0;">Acesse o painel e efetue o agendamento do seu atendimento. 📅</p>`;
   }
   if (opts.status === "protocol_assigned") {
     return `
