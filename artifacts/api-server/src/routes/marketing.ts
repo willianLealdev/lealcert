@@ -161,11 +161,12 @@ router.get("/marketing/stats", async (req, res): Promise<void> => {
   }).from(marketingContactsTable);
 
   // Contatos distintos com pelo menos um envio falhado (bounce real)
-  const [{ bouncedContacts }] = await db.execute<{ bouncedContacts: number }>(sql`
+  const bouncedResult = await db.execute<{ bouncedContacts: number }>(sql`
     SELECT count(DISTINCT ms.contact_id)::int AS "bouncedContacts"
     FROM marketing_sends ms
     WHERE ms.status = 'failed' AND ms.contact_id IS NOT NULL
   `);
+  const bouncedContacts = bouncedResult.rows[0]?.bouncedContacts ?? 0;
 
   const [campaigns] = await db.select({
     total: sql<number>`count(*)::int`,
@@ -570,6 +571,57 @@ router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> =
   res.json({ message: "Campanha cancelada." });
 });
 
+router.get("/marketing/campaigns/:id/sends", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const statusFilter = req.query.status as string | undefined;
+
+  const rows = await db.execute<{
+    id: number; contact_id: number | null; email: string; name: string | null;
+    status: string; sent_at: Date | null; error: string | null;
+    opened_at: Date | null; open_count: number; clicked_at: Date | null; click_count: number;
+  }>(sql`
+    SELECT
+      ms.id,
+      ms.contact_id,
+      coalesce(mc.email, ms.recipient_email)  AS email,
+      coalesce(mc.name,  ms.recipient_name)   AS name,
+      ms.status,
+      ms.sent_at,
+      ms.error,
+      ms.opened_at,
+      ms.open_count,
+      ms.clicked_at,
+      ms.click_count
+    FROM marketing_sends ms
+    LEFT JOIN marketing_contacts mc ON mc.id = ms.contact_id
+    WHERE ms.campaign_id = ${id}
+      ${statusFilter === "sent"    ? sql`AND ms.status = 'sent'`    : sql``}
+      ${statusFilter === "failed"  ? sql`AND ms.status = 'failed'`  : sql``}
+      ${statusFilter === "pending" ? sql`AND ms.status = 'pending'` : sql``}
+      ${statusFilter === "opened"  ? sql`AND ms.opened_at IS NOT NULL` : sql``}
+      ${statusFilter === "clicked" ? sql`AND ms.clicked_at IS NOT NULL` : sql``}
+    ORDER BY
+      CASE ms.status WHEN 'failed' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,
+      ms.sent_at DESC NULLS LAST
+  `);
+
+  res.json(rows.rows.map(r => ({
+    id: r.id,
+    contactId: r.contact_id,
+    email: r.email,
+    name: r.name,
+    status: r.status,
+    sentAt: r.sent_at,
+    error: r.error,
+    opened: r.opened_at !== null,
+    openCount: r.open_count,
+    clicked: r.clicked_at !== null,
+    clickCount: r.click_count,
+    openedAt: r.opened_at,
+    clickedAt: r.clicked_at,
+  })));
+});
+
 router.get("/marketing/campaigns/:id/bounces", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   const rows = await db.execute<{
@@ -710,7 +762,12 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     const token = genToken();
     try {
       await db.insert(marketingSendsTable).values({
-        campaignId, contactId: contact.id > 0 ? contact.id : null, trackingToken: token, status: "pending",
+        campaignId,
+        contactId: contact.id > 0 ? contact.id : null,
+        recipientEmail: contact.email,
+        recipientName: contact.name,
+        trackingToken: token,
+        status: "pending",
       });
     } catch { continue; }
 

@@ -2667,6 +2667,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/CampaignProgress"
 
+  /marketing/campaigns/{id}/sends:
+    get:
+      operationId: listCampaignSends
+      tags: [marketing]
+      summary: List all individual sends for a campaign with open/click/status per recipient
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Filter by status (sent, failed, pending, opened, clicked)
+      responses:
+        "200":
+          description: Campaign sends
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CampaignSendEntry"
+
   /marketing/campaigns/{id}/bounces:
     get:
       operationId: listCampaignBounces
@@ -5077,6 +5104,44 @@ components:
           type: integer
         unreadReplies:
           type: integer
+
+    CampaignSendEntry:
+      type: object
+      required: [id, email, name, status, sentAt, opened, clicked, openCount, clickCount]
+      properties:
+        id:
+          type: integer
+        contactId:
+          type: integer
+          nullable: true
+        email:
+          type: string
+        name:
+          type: string
+          nullable: true
+        status:
+          type: string
+          description: sent | failed | pending
+        sentAt:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        opened:
+          type: boolean
+        openCount:
+          type: integer
+        clicked:
+          type: boolean
+        clickCount:
+          type: integer
+        openedAt:
+          type: string
+          nullable: true
+        clickedAt:
+          type: string
+          nullable: true
 
     CampaignBounceEntry:
       type: object

@@ -2914,6 +2914,35 @@ export const GetMarketingCampaignProgressResponse = zod.object({
 
 
 /**
+ * @summary List all individual sends for a campaign with open/click/status per recipient
+ */
+export const ListCampaignSendsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListCampaignSendsQueryParams = zod.object({
+  "status": zod.coerce.string().optional()
+})
+
+export const ListCampaignSendsResponseItem = zod.object({
+  "id": zod.number(),
+  "contactId": zod.number().nullish(),
+  "email": zod.string(),
+  "name": zod.string().nullable(),
+  "status": zod.string().describe('sent | failed | pending'),
+  "sentAt": zod.string().nullable(),
+  "error": zod.string().nullish(),
+  "opened": zod.boolean(),
+  "openCount": zod.number(),
+  "clicked": zod.boolean(),
+  "clickCount": zod.number(),
+  "openedAt": zod.string().nullish(),
+  "clickedAt": zod.string().nullish()
+})
+export const ListCampaignSendsResponse = zod.array(ListCampaignSendsResponseItem)
+
+
+/**
  * @summary List failed sends (bounces) for a specific campaign
  */
 export const ListCampaignBouncesParams = zod.object({

@@ -1344,6 +1344,23 @@ export interface MarketingStats {
   unreadReplies: number;
 }
 
+export interface CampaignSendEntry {
+  id: number;
+  contactId?: number | null;
+  email: string;
+  name: string | null;
+  /** sent | failed | pending */
+  status: string;
+  sentAt: string | null;
+  error?: string | null;
+  opened: boolean;
+  openCount: number;
+  clicked: boolean;
+  clickCount: number;
+  openedAt?: string | null;
+  clickedAt?: string | null;
+}
+
 export interface CampaignBounceEntry {
   /** ID do registro em marketing_sends */
   id: number;
@@ -1927,6 +1944,13 @@ export const ListMarketingContactsEmailStatus = {
 export type ListMarketingContacts200 = {
   data: MarketingContact[];
   total: number;
+};
+
+export type ListCampaignSendsParams = {
+/**
+ * Filter by status (sent, failed, pending, opened, clicked)
+ */
+status?: string;
 };
 
 export type ListMarketingRepliesParams = {

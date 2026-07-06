@@ -50,6 +50,8 @@ export const marketingSendsTable = pgTable("marketing_sends", {
   id: serial("id").primaryKey(),
   campaignId: integer("campaign_id").notNull().references(() => marketingCampaignsTable.id, { onDelete: "cascade" }),
   contactId: integer("contact_id").references(() => marketingContactsTable.id, { onDelete: "set null" }),
+  recipientEmail: text("recipient_email"),
+  recipientName: text("recipient_name"),
   status: text("status").notNull().default("pending"),
   sentAt: timestamp("sent_at", { withTimezone: true }),
   error: text("error"),

@@ -24,6 +24,7 @@ import {
   getGetMarketingCampaignProgressQueryKey,
   useResumeMarketingCampaign,
   useListCampaignBounces,
+  useListCampaignSends,
   useListMarketingBounces,
   useRestoreMarketingBounce,
   useDeleteMarketingBounce,
@@ -326,6 +327,7 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
   const [editCampaign, setEditCampaign] = useState<number | null>(null);
   const [showSendDialog, setShowSendDialog] = useState<number | null>(null);
   const [showBouncesModal, setShowBouncesModal] = useState<number | null>(null);
+  const [showSendsModal, setShowSendsModal] = useState<number | null>(null);
   const [duplicating, setDuplicating] = useState<number | null>(null);
 
   const { data: campaigns = [], isLoading } = useListMarketingCampaigns();
@@ -391,6 +393,12 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {(c.status === "sent" || c.status === "sending") && (
+                    <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowSendsModal(c.id)}>
+                      <Users className="h-3.5 w-3.5" />
+                      Ver Envios
+                    </Button>
+                  )}
                   {c.status !== "sending" && (
                     <>
                       <Button size="sm" variant="outline" onClick={() => { setEditCampaign(c.id); setShowForm(true); }}>Editar</Button>
@@ -488,7 +496,205 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
           onClose={() => setShowBouncesModal(null)}
         />
       )}
+
+      {showSendsModal !== null && (
+        <CampaignSendsModal
+          campaignId={showSendsModal}
+          campaignName={campaigns.find(c => c.id === showSendsModal)?.name ?? ""}
+          onClose={() => setShowSendsModal(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── Campaign Sends Modal ─────────────────────────────────────────────────────
+type SendStatus = "all" | "sent" | "failed" | "pending" | "opened" | "clicked";
+
+function CampaignSendsModal({ campaignId, campaignName, onClose }: {
+  campaignId: number;
+  campaignName: string;
+  onClose: () => void;
+}) {
+  const [statusFilter, setStatusFilter] = useState<SendStatus>("all");
+  const [search, setSearch] = useState("");
+
+  const { data: sends = [], isLoading } = useListCampaignSends(
+    campaignId,
+    statusFilter !== "all" ? { status: statusFilter } : {},
+  );
+
+  const filtered = search.trim()
+    ? sends.filter(s =>
+        (s.email ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (s.name ?? "").toLowerCase().includes(search.toLowerCase()),
+      )
+    : sends;
+
+  const sentCount   = sends.filter(s => s.status === "sent").length;
+  const failedCount = sends.filter(s => s.status === "failed").length;
+  const openedCount = sends.filter(s => s.opened).length;
+  const clickedCount = sends.filter(s => s.clicked).length;
+
+  const FILTERS: { label: string; value: SendStatus }[] = [
+    { label: "Todos", value: "all" },
+    { label: `Enviados (${sentCount})`, value: "sent" },
+    { label: `Falhas (${failedCount})`, value: "failed" },
+    { label: `Abertos (${openedCount})`, value: "opened" },
+    { label: `Clicados (${clickedCount})`, value: "clicked" },
+  ];
+
+  function exportCsv() {
+    const header = "Email,Nome,Status,Enviado em,Abriu,Clicou,Erro";
+    const rows = filtered.map(s =>
+      [
+        s.email,
+        s.name ?? "",
+        s.status,
+        s.sentAt ? new Date(s.sentAt).toLocaleString("pt-BR") : "",
+        s.opened ? "Sim" : "Não",
+        s.clicked ? "Sim" : "Não",
+        (s.error ?? "").replace(/,/g, " "),
+      ].join(","),
+    );
+    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `envios-${campaignId}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-blue-500" />
+            Relatório de Envios — {campaignName}
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* summary chips */}
+        <div className="flex flex-wrap gap-2 text-xs mb-1">
+          <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground">{sends.length} total</span>
+          <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">{sentCount} enviados</span>
+          {failedCount > 0 && <span className="px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">{failedCount} falhas</span>}
+          <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{openedCount} abriram</span>
+          <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">{clickedCount} clicaram</span>
+        </div>
+
+        {/* filter tabs */}
+        <div className="flex gap-1 flex-wrap">
+          {FILTERS.map(f => (
+            <button
+              key={f.value}
+              onClick={() => setStatusFilter(f.value)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                statusFilter === f.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* search + export */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="Filtrar por nome ou e-mail…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <Button size="sm" variant="outline" onClick={exportCsv} className="gap-1.5 shrink-0">
+            <Upload className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
+        </div>
+
+        <div className="text-xs text-muted-foreground">{filtered.length} resultado(s)</div>
+
+        {/* table */}
+        <div className="flex-1 overflow-y-auto border rounded-xl">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin" /> Carregando…
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+              Nenhum envio encontrado.
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                <tr>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Destinatário</th>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Status</th>
+                  <th className="text-center px-4 py-2 font-medium text-muted-foreground">Abriu</th>
+                  <th className="text-center px-4 py-2 font-medium text-muted-foreground">Clicou</th>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Enviado em</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((s, i) => (
+                  <tr key={s.id} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                    <td className="px-4 py-2.5">
+                      <div className="font-medium text-foreground leading-tight">{s.name ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground">{s.email}</div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {s.status === "sent" ? (
+                        <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 text-xs font-medium">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Enviado
+                        </span>
+                      ) : s.status === "failed" ? (
+                        <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 text-xs font-medium" title={s.error ?? ""}>
+                          <XCircle className="h-3.5 w-3.5" />
+                          {s.error ? s.error.slice(0, 40) + (s.error.length > 40 ? "…" : "") : "Falha"}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
+                          <Clock className="h-3.5 w-3.5" /> Pendente
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      {s.opened ? (
+                        <span className="inline-flex items-center justify-center gap-0.5 text-blue-600 dark:text-blue-400 text-xs font-medium" title={s.openedAt ? new Date(s.openedAt).toLocaleString("pt-BR") : ""}>
+                          <MailOpen className="h-3.5 w-3.5" />
+                          {s.openCount > 1 && <span>{s.openCount}×</span>}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/40">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      {s.clicked ? (
+                        <span className="inline-flex items-center justify-center gap-0.5 text-purple-600 dark:text-purple-400 text-xs font-medium" title={s.clickedAt ? new Date(s.clickedAt).toLocaleString("pt-BR") : ""}>
+                          <MousePointerClick className="h-3.5 w-3.5" />
+                          {s.clickCount > 1 && <span>{s.clickCount}×</span>}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/40">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                      {s.sentAt ? new Date(s.sentAt).toLocaleString("pt-BR") : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

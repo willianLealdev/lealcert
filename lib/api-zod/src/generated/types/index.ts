@@ -33,6 +33,7 @@ export * from './bulkDeleteContactsInput';
 export * from './bulkDeleteContactsResult';
 export * from './campaignBounceEntry';
 export * from './campaignProgress';
+export * from './campaignSendEntry';
 export * from './certificate';
 export * from './certificateInput';
 export * from './certificateRenewal';

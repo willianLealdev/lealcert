@@ -44,6 +44,7 @@ import type {
   BulkDeleteContactsResult,
   CampaignBounceEntry,
   CampaignProgress,
+  CampaignSendEntry,
   Certificate,
   CertificateInput,
   CertificateRenewal,
@@ -115,6 +116,7 @@ import type {
   IpBlock,
   IpLogsResponse,
   IpWhitelistEntry,
+  ListCampaignSendsParams,
   ListCertificatesParams,
   ListIpBlocksParams,
   ListIpLogsParams,
@@ -9835,6 +9837,95 @@ export function useGetMarketingCampaignProgress<TData = Awaited<ReturnType<typeo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetMarketingCampaignProgressQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListCampaignSendsUrl = (id: number,
+    params?: ListCampaignSendsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/marketing/campaigns/${id}/sends?${stringifiedParams}` : `/api/marketing/campaigns/${id}/sends`
+}
+
+/**
+ * @summary List all individual sends for a campaign with open/click/status per recipient
+ */
+export const listCampaignSends = async (id: number,
+    params?: ListCampaignSendsParams, options?: RequestInit): Promise<CampaignSendEntry[]> => {
+
+  return customFetch<CampaignSendEntry[]>(getListCampaignSendsUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCampaignSendsQueryKey = (id: number,
+    params?: ListCampaignSendsParams,) => {
+    return [
+    `/api/marketing/campaigns/${id}/sends`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCampaignSendsQueryOptions = <TData = Awaited<ReturnType<typeof listCampaignSends>>, TError = ErrorType<unknown>>(id: number,
+    params?: ListCampaignSendsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCampaignSends>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCampaignSendsQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCampaignSends>>> = ({ signal }) => listCampaignSends(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCampaignSends>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCampaignSendsQueryResult = NonNullable<Awaited<ReturnType<typeof listCampaignSends>>>
+export type ListCampaignSendsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all individual sends for a campaign with open/click/status per recipient
+ */
+
+export function useListCampaignSends<TData = Awaited<ReturnType<typeof listCampaignSends>>, TError = ErrorType<unknown>>(
+ id: number,
+    params?: ListCampaignSendsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCampaignSends>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCampaignSendsQueryOptions(id,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
