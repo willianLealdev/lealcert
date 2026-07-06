@@ -2598,7 +2598,8 @@ export const GetMarketingStatsResponse = zod.object({
   "totalContacts": zod.number(),
   "activeContacts": zod.number(),
   "unsubscribed": zod.number(),
-  "bounced": zod.number(),
+  "bounced": zod.number().describe('Soma de todos os bounces registrados nas campanhas enviadas'),
+  "permanentBounced": zod.number().describe('Contatos marcados como bloqueados permanentemente (bounce hard)'),
   "totalCampaigns": zod.number(),
   "sentCampaigns": zod.number(),
   "scheduledCampaigns": zod.number(),
@@ -2910,6 +2911,24 @@ export const GetMarketingCampaignProgressResponse = zod.object({
   "totalContacts": zod.number(),
   "totalBounced": zod.number()
 })
+
+
+/**
+ * @summary List failed sends (bounces) for a specific campaign
+ */
+export const ListCampaignBouncesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListCampaignBouncesResponseItem = zod.object({
+  "id": zod.number().describe('ID do registro em marketing_sends'),
+  "contactId": zod.number().nullish(),
+  "email": zod.string(),
+  "name": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "sentAt": zod.string().nullable()
+})
+export const ListCampaignBouncesResponse = zod.array(ListCampaignBouncesResponseItem)
 
 
 /**

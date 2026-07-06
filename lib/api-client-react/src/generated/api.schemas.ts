@@ -1334,11 +1334,24 @@ export interface MarketingStats {
   totalContacts: number;
   activeContacts: number;
   unsubscribed: number;
+  /** Soma de todos os bounces registrados nas campanhas enviadas */
   bounced: number;
+  /** Contatos marcados como bloqueados permanentemente (bounce hard) */
+  permanentBounced: number;
   totalCampaigns: number;
   sentCampaigns: number;
   scheduledCampaigns: number;
   unreadReplies: number;
+}
+
+export interface CampaignBounceEntry {
+  /** ID do registro em marketing_sends */
+  id: number;
+  contactId?: number | null;
+  email: string;
+  name: string | null;
+  error: string | null;
+  sentAt: string | null;
 }
 
 export interface ImportContactsResult {

@@ -31,6 +31,7 @@ export * from './bounceContact';
 export * from './brandingInfo';
 export * from './bulkDeleteContactsInput';
 export * from './bulkDeleteContactsResult';
+export * from './campaignBounceEntry';
 export * from './campaignProgress';
 export * from './certificate';
 export * from './certificateInput';

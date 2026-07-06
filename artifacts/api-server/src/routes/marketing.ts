@@ -157,13 +157,15 @@ router.get("/marketing/stats", async (req, res): Promise<void> => {
     total: sql<number>`count(*)::int`,
     active: sql<number>`count(*) filter (where status = 'active' and not bounced)::int`,
     unsubscribed: sql<number>`count(*) filter (where status = 'unsubscribed')::int`,
-    bounced: sql<number>`count(*) filter (where bounced = true)::int`,
+    permanentBounced: sql<number>`count(*) filter (where bounced = true)::int`,
   }).from(marketingContactsTable);
 
   const [campaigns] = await db.select({
     total: sql<number>`count(*)::int`,
     sent: sql<number>`count(*) filter (where status = 'sent')::int`,
     scheduled: sql<number>`count(*) filter (where status = 'scheduled')::int`,
+    // Soma todos os bounces registrados nas campanhas (inclui soft e hard bounces)
+    totalBounced: sql<number>`coalesce(sum(total_bounced), 0)::int`,
   }).from(marketingCampaignsTable);
 
   const [replies] = await db.select({
@@ -174,7 +176,8 @@ router.get("/marketing/stats", async (req, res): Promise<void> => {
     totalContacts: contacts?.total ?? 0,
     activeContacts: contacts?.active ?? 0,
     unsubscribed: contacts?.unsubscribed ?? 0,
-    bounced: contacts?.bounced ?? 0,
+    bounced: campaigns?.totalBounced ?? 0,          // total de falhas em campanhas
+    permanentBounced: contacts?.permanentBounced ?? 0, // contatos bloqueados permanentemente
     totalCampaigns: campaigns?.total ?? 0,
     sentCampaigns: campaigns?.sent ?? 0,
     scheduledCampaigns: campaigns?.scheduled ?? 0,
@@ -549,6 +552,33 @@ router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> =
   const id = parseInt(req.params.id, 10);
   await db.update(marketingCampaignsTable).set({ status: "draft", scheduledAt: null }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Campanha cancelada." });
+});
+
+router.get("/marketing/campaigns/:id/bounces", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const rows = await db.execute<{
+    id: number; contact_id: number | null; email: string; name: string | null; error: string | null; sent_at: Date | null;
+  }>(sql`
+    SELECT
+      ms.id,
+      ms.contact_id,
+      coalesce(mc.email, ms.recipient_email) AS email,
+      coalesce(mc.name, ms.recipient_name)   AS name,
+      ms.error,
+      ms.sent_at
+    FROM marketing_sends ms
+    LEFT JOIN marketing_contacts mc ON mc.id = ms.contact_id
+    WHERE ms.campaign_id = ${id} AND ms.status = 'failed'
+    ORDER BY ms.created_at DESC
+  `);
+  res.json(rows.rows.map(r => ({
+    id: r.id,
+    contactId: r.contact_id,
+    email: r.email,
+    name: r.name,
+    error: r.error,
+    sentAt: r.sent_at,
+  })));
 });
 
 router.get("/marketing/campaigns/:id/progress", async (req, res): Promise<void> => {

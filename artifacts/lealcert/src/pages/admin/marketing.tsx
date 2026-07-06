@@ -23,6 +23,7 @@ import {
   useGetMarketingCampaignProgress,
   getGetMarketingCampaignProgressQueryKey,
   useResumeMarketingCampaign,
+  useListCampaignBounces,
   useListMarketingBounces,
   useRestoreMarketingBounce,
   useDeleteMarketingBounce,
@@ -191,7 +192,18 @@ function OverviewTab({ stats }: { stats: MarketingStats | undefined }) {
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Descadastrados" value={stats?.unsubscribed ?? 0} icon={XCircle} color="bg-slate-500" />
-        <StatCard label="Com Bounce" value={stats?.bounced ?? 0} icon={AlertCircle} color="bg-red-500" />
+        <div className="bg-card border rounded-xl p-5 flex items-center gap-4">
+          <div className="h-10 w-10 rounded-xl bg-red-500 flex items-center justify-center shrink-0">
+            <AlertCircle className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold leading-tight">{stats?.bounced ?? 0}</p>
+            <p className="text-xs text-muted-foreground truncate">Bounces em Campanhas</p>
+            {(stats?.permanentBounced ?? 0) > 0 && (
+              <p className="text-[10px] text-red-600 mt-0.5">{stats?.permanentBounced} bloqueados permanentemente</p>
+            )}
+          </div>
+        </div>
         <StatCard label="Campanhas Agendadas" value={stats?.scheduledCampaigns ?? 0} icon={Clock} color="bg-cyan-500" />
         <StatCard label="Total de Campanhas" value={stats?.totalCampaigns ?? 0} icon={Megaphone} color="bg-pink-500" />
       </div>
@@ -313,6 +325,7 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
   const [showForm, setShowForm] = useState(false);
   const [editCampaign, setEditCampaign] = useState<number | null>(null);
   const [showSendDialog, setShowSendDialog] = useState<number | null>(null);
+  const [showBouncesModal, setShowBouncesModal] = useState<number | null>(null);
   const [duplicating, setDuplicating] = useState<number | null>(null);
 
   const { data: campaigns = [], isLoading } = useListMarketingCampaigns();
@@ -420,21 +433,27 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
               {c.status === "sent" && (
                 <div className="grid grid-cols-5 gap-3 mt-4 pt-4 border-t">
                   {[
-                    { label: "Enviados", value: c.totalSent, icon: Send, color: "text-muted-foreground" },
-                    { label: "Abertos", value: c.totalOpened, icon: MailOpen, color: "text-blue-500" },
-                    { label: "Cliques", value: c.totalClicked, icon: MousePointerClick, color: "text-emerald-500" },
-                    { label: "Bounces", value: c.totalBounced, icon: AlertCircle, color: "text-red-400" },
-                    { label: "Respostas", value: c.totalReplied, icon: Reply, color: "text-violet-500" },
-                  ].map(({ label, value, icon: Icon, color }) => (
-                    <div key={label} className="text-center">
-                      <div className={`flex items-center justify-center gap-1 mb-0.5 ${color}`}>
+                    { label: "Enviados", value: c.totalSent, icon: Send, color: "text-muted-foreground", onClick: undefined },
+                    { label: "Abertos", value: c.totalOpened, icon: MailOpen, color: "text-blue-500", onClick: undefined },
+                    { label: "Cliques", value: c.totalClicked, icon: MousePointerClick, color: "text-emerald-500", onClick: undefined },
+                    { label: "Bounces", value: c.totalBounced, icon: AlertCircle, color: "text-red-400", onClick: c.totalBounced > 0 ? () => setShowBouncesModal(c.id) : undefined },
+                    { label: "Respostas", value: c.totalReplied, icon: Reply, color: "text-violet-500", onClick: undefined },
+                  ].map(({ label, value, icon: Icon, color, onClick }) => (
+                    <div
+                      key={label}
+                      className={`text-center ${onClick ? "cursor-pointer group" : ""}`}
+                      onClick={onClick}
+                      title={onClick ? "Clique para ver os e-mails que bouncearam" : undefined}
+                    >
+                      <div className={`flex items-center justify-center gap-1 mb-0.5 ${color} ${onClick ? "group-hover:underline" : ""}`}>
                         <Icon className="h-3.5 w-3.5" />
                         <span className="text-xs font-medium">{label}</span>
                       </div>
-                      <p className="text-xl font-bold">{value}</p>
+                      <p className={`text-xl font-bold ${onClick ? "group-hover:text-red-500 transition-colors" : ""}`}>{value}</p>
                       {c.totalSent > 0 && (
                         <p className="text-xs text-muted-foreground">{Math.round((value / c.totalSent) * 100)}%</p>
                       )}
+                      {onClick && <p className="text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">Ver detalhes →</p>}
                     </div>
                   ))}
                 </div>
@@ -461,7 +480,102 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
           toast={toast}
         />
       )}
+
+      {showBouncesModal !== null && (
+        <CampaignBouncesModal
+          campaignId={showBouncesModal}
+          campaignName={campaigns.find(c => c.id === showBouncesModal)?.name ?? ""}
+          onClose={() => setShowBouncesModal(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── Campaign Bounces Modal ───────────────────────────────────────────────────
+function CampaignBouncesModal({ campaignId, campaignName, onClose }: {
+  campaignId: number;
+  campaignName: string;
+  onClose: () => void;
+}) {
+  const { data: bounces = [], isLoading } = useListCampaignBounces(campaignId);
+  const [search, setSearch] = useState("");
+
+  const filtered = search.trim()
+    ? bounces.filter(b => b.email.toLowerCase().includes(search.toLowerCase()) || (b.name ?? "").toLowerCase().includes(search.toLowerCase()))
+    : bounces;
+
+  function copyAll() {
+    const text = filtered.map(b => b.email).join("\n");
+    navigator.clipboard.writeText(text);
+  }
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-500" />
+            Bounces — {campaignName}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="Filtrar por nome ou e-mail…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <Button size="sm" variant="outline" onClick={copyAll} className="gap-1.5 shrink-0">
+            <Copy className="h-3.5 w-3.5" /> Copiar e-mails
+          </Button>
+        </div>
+
+        <div className="text-xs text-muted-foreground mb-2">
+          {filtered.length} de {bounces.length} bounce(s)
+        </div>
+
+        <div className="flex-1 overflow-y-auto border rounded-xl">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin" /> Carregando…
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+              <CheckCircle2 className="h-6 w-6 text-green-500" />
+              <p className="text-sm">Nenhum bounce encontrado</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-[2fr_3fr_1fr] text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-2.5 border-b bg-muted/30">
+                <span>Nome</span><span>E-mail</span><span>Data</span>
+              </div>
+              {filtered.map((b, i) => (
+                <div
+                  key={b.id}
+                  className={`grid grid-cols-[2fr_3fr_1fr] px-4 py-2.5 items-start text-sm gap-2 ${i < filtered.length - 1 ? "border-b" : ""} hover:bg-muted/20`}
+                >
+                  <span className="truncate font-medium">{b.name ?? "—"}</span>
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs truncate text-foreground">{b.email}</p>
+                    {b.error && (
+                      <p className="text-[10px] text-red-500 leading-snug mt-0.5 line-clamp-2" title={b.error}>{b.error}</p>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {b.sentAt ? new Date(b.sentAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : "—"}
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

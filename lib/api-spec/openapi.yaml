@@ -2667,6 +2667,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/CampaignProgress"
 
+  /marketing/campaigns/{id}/bounces:
+    get:
+      operationId: listCampaignBounces
+      tags: [marketing]
+      summary: List failed sends (bounces) for a specific campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Bounced sends
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CampaignBounceEntry"
+
   /marketing/campaigns/{id}/resume:
     post:
       operationId: resumeMarketingCampaign
@@ -5034,7 +5055,7 @@ components:
 
     MarketingStats:
       type: object
-      required: [totalContacts, activeContacts, unsubscribed, bounced, totalCampaigns, sentCampaigns, scheduledCampaigns, unreadReplies]
+      required: [totalContacts, activeContacts, unsubscribed, bounced, permanentBounced, totalCampaigns, sentCampaigns, scheduledCampaigns, unreadReplies]
       properties:
         totalContacts:
           type: integer
@@ -5044,6 +5065,10 @@ components:
           type: integer
         bounced:
           type: integer
+          description: Soma de todos os bounces registrados nas campanhas enviadas
+        permanentBounced:
+          type: integer
+          description: Contatos marcados como bloqueados permanentemente (bounce hard)
         totalCampaigns:
           type: integer
         sentCampaigns:
@@ -5052,6 +5077,28 @@ components:
           type: integer
         unreadReplies:
           type: integer
+
+    CampaignBounceEntry:
+      type: object
+      required: [id, email, name, error, sentAt]
+      properties:
+        id:
+          type: integer
+          description: ID do registro em marketing_sends
+        contactId:
+          type: integer
+          nullable: true
+        email:
+          type: string
+        name:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        sentAt:
+          type: string
+          nullable: true
 
     ImportContactsResult:
       type: object
