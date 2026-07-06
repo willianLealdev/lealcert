@@ -160,11 +160,17 @@ router.get("/marketing/stats", async (req, res): Promise<void> => {
     permanentBounced: sql<number>`count(*) filter (where bounced = true)::int`,
   }).from(marketingContactsTable);
 
+  // Contatos distintos com pelo menos um envio falhado (bounce real)
+  const [{ bouncedContacts }] = await db.execute<{ bouncedContacts: number }>(sql`
+    SELECT count(DISTINCT ms.contact_id)::int AS "bouncedContacts"
+    FROM marketing_sends ms
+    WHERE ms.status = 'failed' AND ms.contact_id IS NOT NULL
+  `);
+
   const [campaigns] = await db.select({
     total: sql<number>`count(*)::int`,
     sent: sql<number>`count(*) filter (where status = 'sent')::int`,
     scheduled: sql<number>`count(*) filter (where status = 'scheduled')::int`,
-    // Soma todos os bounces registrados nas campanhas (inclui soft e hard bounces)
     totalBounced: sql<number>`coalesce(sum(total_bounced), 0)::int`,
   }).from(marketingCampaignsTable);
 
@@ -176,8 +182,8 @@ router.get("/marketing/stats", async (req, res): Promise<void> => {
     totalContacts: contacts?.total ?? 0,
     activeContacts: contacts?.active ?? 0,
     unsubscribed: contacts?.unsubscribed ?? 0,
-    bounced: campaigns?.totalBounced ?? 0,          // total de falhas em campanhas
-    permanentBounced: contacts?.permanentBounced ?? 0, // contatos bloqueados permanentemente
+    bounced: bouncedContacts ?? 0,                      // contatos distintos com envio falhado
+    permanentBounced: contacts?.permanentBounced ?? 0,  // contatos bloqueados permanentemente (flag)
     totalCampaigns: campaigns?.total ?? 0,
     sentCampaigns: campaigns?.sent ?? 0,
     scheduledCampaigns: campaigns?.scheduled ?? 0,
@@ -381,19 +387,21 @@ router.delete("/marketing/contacts/:id", async (req, res): Promise<void> => {
 
 // ─── Bounces ──────────────────────────────────────────────────────────────────
 router.get("/marketing/bounces", async (_req, res): Promise<void> => {
-  // Busca contatos com bounce=true + último erro registrado no histórico de envios
+  // Busca contatos que tiveram pelo menos um envio falhado em marketing_sends
+  // (independente de ter bounced=true — contatos com bounced=true sem envio registrado também entram)
   const rows = await db.execute<{
     id: number; name: string; email: string; type: string; tags: string | null; created_at: Date;
     last_error: string | null; last_sent_at: Date | null; campaign_name: string | null; campaign_id: number | null;
+    bounced: boolean;
   }>(sql`
     SELECT
-      c.id, c.name, c.email, c.type, c.tags, c.created_at,
+      c.id, c.name, c.email, c.type, c.tags, c.created_at, c.bounced,
       s.error     AS last_error,
       s.sent_at   AS last_sent_at,
       camp.name   AS campaign_name,
       camp.id     AS campaign_id
     FROM marketing_contacts c
-    LEFT JOIN LATERAL (
+    INNER JOIN LATERAL (
       SELECT ms.error, ms.sent_at, ms.campaign_id
       FROM marketing_sends ms
       WHERE ms.contact_id = c.id AND ms.status = 'failed'
@@ -401,8 +409,16 @@ router.get("/marketing/bounces", async (_req, res): Promise<void> => {
       LIMIT 1
     ) s ON true
     LEFT JOIN marketing_campaigns camp ON camp.id = s.campaign_id
+    UNION
+    SELECT
+      c.id, c.name, c.email, c.type, c.tags, c.created_at, c.bounced,
+      NULL AS last_error, NULL AS last_sent_at, NULL AS campaign_name, NULL AS campaign_id
+    FROM marketing_contacts c
     WHERE c.bounced = true
-    ORDER BY s.sent_at DESC NULLS LAST, c.created_at DESC
+      AND NOT EXISTS (
+        SELECT 1 FROM marketing_sends ms WHERE ms.contact_id = c.id AND ms.status = 'failed'
+      )
+    ORDER BY last_sent_at DESC NULLS LAST, created_at DESC
   `);
 
   res.json(rows.rows.map(r => ({
