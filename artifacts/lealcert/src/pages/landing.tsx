@@ -9,12 +9,12 @@ import { ChatWidget } from "@/components/chat-widget";
 function LealCertLogo({ variant = "dark" }: { variant?: "dark" | "light" }) {
   if (variant === "light") {
     return (
-      <div className="bg-white rounded-lg px-4 py-2">
-        <img src="/logo-cropped.png" alt="LealCert" className="h-10 w-auto object-contain" />
+      <div className="bg-white rounded-xl px-5 py-2.5">
+        <img src="/logo-oficial-cropped.png" alt="LealCert" className="h-10 w-auto object-contain" />
       </div>
     );
   }
-  return <img src="/logo-cropped.png" alt="LealCert" className="h-14 w-auto object-contain" />;
+  return <img src="/logo-oficial-cropped.png" alt="LealCert" className="h-14 w-auto object-contain" />;
 }
 
 type CertFromDB = {
