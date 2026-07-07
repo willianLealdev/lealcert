@@ -7,34 +7,10 @@ import {
 import { ChatWidget } from "@/components/chat-widget";
 
 function LealCertLogo({ variant = "dark" }: { variant?: "dark" | "light" }) {
-  const textColor = variant === "light" ? "white" : "#0f172a";
-  const subColor = variant === "light" ? "#94a3b8" : "#64748b";
-  return (
-    <svg width="152" height="38" viewBox="0 0 152 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id={`sg-${variant}`} x1="0" y1="0" x2="24" y2="28" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#3b82f6"/>
-          <stop offset="1" stopColor="#1d4ed8"/>
-        </linearGradient>
-        <linearGradient id={`sg2-${variant}`} x1="0" y1="0" x2="24" y2="28" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#60a5fa"/>
-          <stop offset="1" stopColor="#2563eb"/>
-        </linearGradient>
-      </defs>
-      {/* Shield outer */}
-      <path d="M12 2L2 6.5V16C2 22.6 6.5 28.6 12 30.5C17.5 28.6 22 22.6 22 16V6.5L12 2Z" fill={`url(#sg-${variant})`}/>
-      {/* Shield inner highlight */}
-      <path d="M12 5L4.5 8.8V16C4.5 21.2 7.8 26 12 27.8C16.2 26 19.5 21.2 19.5 16V8.8L12 5Z" fill={`url(#sg2-${variant})`}/>
-      {/* Checkmark */}
-      <path d="M8.5 16L11 18.8L15.5 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      {/* Leal */}
-      <text x="30" y="22" fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fontWeight="700" fontSize="18" fill={textColor}>Leal</text>
-      {/* Cert */}
-      <text x="72" y="22" fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fontWeight="700" fontSize="18" fill="#2563eb">Cert</text>
-      {/* Tagline */}
-      <text x="30" y="33" fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fontWeight="400" fontSize="6.5" letterSpacing="1.8" fill={subColor}>CERTIFICADOS DIGITAIS</text>
-    </svg>
-  );
+  if (variant === "light") {
+    return <img src="/logo-nobg.png" alt="LealCert" className="h-10 w-auto object-contain brightness-0 invert" />;
+  }
+  return <img src="/logo-cropped.png" alt="LealCert" className="h-12 w-auto object-contain" />;
 }
 
 type CertFromDB = {
