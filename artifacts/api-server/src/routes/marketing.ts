@@ -530,7 +530,13 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
   }
 
   const dispatchOpts: DispatchOptions = {};
-  if (targetOverride && ["all", "cliente", "contador", "specific", "manual"].includes(targetOverride)) {
+  const validTargets = [
+    "all", "cliente", "contador", "specific", "manual",
+    "opened_all", "opened_cliente", "opened_contador",
+    "clicked_all", "clicked_cliente", "clicked_contador",
+    "not_opened_cliente", "not_opened_contador",
+  ];
+  if (targetOverride && validTargets.includes(targetOverride)) {
     dispatchOpts.targetOverride = targetOverride;
   }
   if (Array.isArray(specificContactIds) && specificContactIds.length > 0) {
