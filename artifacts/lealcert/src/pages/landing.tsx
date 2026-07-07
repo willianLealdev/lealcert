@@ -145,7 +145,7 @@ function CertCard({ group, certs }: { group: typeof CERT_GROUPS[number]; certs: 
         <div className="mb-5 h-8 bg-gray-100 rounded-lg animate-pulse" />
       )}
 
-      <a href="/cadastro" className={`block w-full text-center font-bold py-3 rounded-xl transition-all hover:scale-105 ${
+      <a href="/register" className={`block w-full text-center font-bold py-3 rounded-xl transition-all hover:scale-105 ${
         group.highlight ? "bg-[#2563eb] text-white hover:bg-blue-700 shadow-md shadow-blue-200" : "bg-[#0f172a] text-white hover:bg-gray-800"
       }`}>
         Comprar
@@ -277,7 +277,9 @@ export default function Landing() {
       <nav className="sticky top-0 z-40 bg-[#0f172a] border-b border-white/10 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-24">
           <div className="flex items-center">
-            <img src="/logo-new.png" alt="LealCert" className="h-20 w-auto object-contain" />
+            <div className="bg-white rounded-xl px-4 py-2">
+              <img src="/logo-nobg.png" alt="LealCert" className="h-12 w-auto object-contain" />
+            </div>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
             <a href="#certificados" className="hover:text-white transition-colors">Certificados</a>
@@ -290,8 +292,8 @@ export default function Landing() {
             <a href="/entrar" className="hidden sm:block text-sm font-medium text-gray-300 hover:text-white transition-colors px-4 py-2 rounded-lg border border-white/20 hover:border-white/40">
               Acessar conta
             </a>
-            <a href="/cadastro" className="bg-[#2563eb] text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-blue-600 transition-colors shadow-sm">
-              Emitir Certificado
+            <a href="/register" className="bg-[#2563eb] text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-blue-600 transition-colors shadow-sm">
+              Cadastrar
             </a>
           </div>
         </div>
@@ -317,7 +319,7 @@ export default function Landing() {
               e-CPF e e-CNPJ emitidos com agilidade e segurança. Videoconferência rápida, agente credenciado ICP-Brasil e certificado entregue digitalmente em até 24h úteis.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
-              <a href="/cadastro"
+              <a href="/register"
                 className="flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-blue-600 text-white font-bold px-8 py-4 rounded-xl transition-all hover:scale-105 shadow-lg shadow-blue-900/30 text-base">
                 Emitir meu Certificado
                 <ChevronRight className="h-5 w-5" />
@@ -428,7 +430,7 @@ export default function Landing() {
             ))}
           </div>
           <div className="text-center mt-12">
-            <a href="/cadastro"
+            <a href="/register"
               className="inline-flex items-center gap-2 bg-[#2563eb] text-white font-bold px-8 py-4 rounded-xl hover:bg-blue-700 transition-all hover:scale-105 shadow-md shadow-blue-200">
               Começar agora — é rápido e fácil
               <ChevronRight className="h-5 w-5" />
@@ -523,7 +525,7 @@ export default function Landing() {
           <h2 className="text-3xl sm:text-4xl font-black mb-4">Pronto para emitir seu certificado?</h2>
           <p className="text-blue-100/80 text-lg mb-8">Cadastre-se agora, escolha seu certificado e agende a videoconferência. Em menos de 24h úteis seu certificado estará em mãos.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/cadastro"
+            <a href="/register"
               className="inline-flex items-center justify-center gap-3 bg-white text-[#2563eb] font-bold px-10 py-4 rounded-xl hover:bg-blue-50 transition-all hover:scale-105 shadow-xl">
               Criar minha conta grátis
               <ChevronRight className="h-5 w-5" />
@@ -580,7 +582,9 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="LealCert" className="h-10 w-auto object-contain brightness-0 invert" />
+              <div className="bg-white rounded-lg px-3 py-1.5">
+                <img src="/logo-nobg.png" alt="LealCert" className="h-8 w-auto object-contain" />
+              </div>
               <span className="text-gray-400 text-sm">— Certificados Digitais ICP-Brasil</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-400">
