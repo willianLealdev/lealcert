@@ -6,27 +6,33 @@ import {
 } from "lucide-react";
 import { ChatWidget } from "@/components/chat-widget";
 
-function LealCertLogo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
-  const scale = size === "sm" ? 0.75 : size === "lg" ? 1.2 : 1;
+function LealCertLogo({ variant = "dark" }: { variant?: "dark" | "light" }) {
+  const textColor = variant === "light" ? "white" : "#0f172a";
+  const subColor = variant === "light" ? "#94a3b8" : "#64748b";
   return (
-    <svg width={Math.round(160 * scale)} height={Math.round(40 * scale)} viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Shield */}
-      <path d="M4 8.5L16 4L28 8.5V18C28 24.5 22.5 30 16 32C9.5 30 4 24.5 4 18V8.5Z" fill="#2563eb"/>
-      <path d="M6 9.8L16 6L26 9.8V18C26 23.5 21.5 28.3 16 30C10.5 28.3 6 23.5 6 18V9.8Z" fill="url(#shieldGrad)"/>
-      {/* Check */}
-      <path d="M11 17.5L14.5 21L21 13.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-      {/* LEAL */}
-      <text x="36" y="25" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="16" letterSpacing="-0.3" fill="white">LEAL</text>
-      {/* CERT */}
-      <text x="87" y="25" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="16" letterSpacing="-0.3" fill="#f59e0b">CERT</text>
-      {/* Tag line */}
-      <text x="36" y="34" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="400" fontSize="7" letterSpacing="1.5" fill="#94a3b8">CERTIFICADOS DIGITAIS</text>
+    <svg width="152" height="38" viewBox="0 0 152 38" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="shieldGrad" x1="6" y1="6" x2="26" y2="30" gradientUnits="userSpaceOnUse">
+        <linearGradient id={`sg-${variant}`} x1="0" y1="0" x2="24" y2="28" gradientUnits="userSpaceOnUse">
           <stop stopColor="#3b82f6"/>
           <stop offset="1" stopColor="#1d4ed8"/>
         </linearGradient>
+        <linearGradient id={`sg2-${variant}`} x1="0" y1="0" x2="24" y2="28" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#60a5fa"/>
+          <stop offset="1" stopColor="#2563eb"/>
+        </linearGradient>
       </defs>
+      {/* Shield outer */}
+      <path d="M12 2L2 6.5V16C2 22.6 6.5 28.6 12 30.5C17.5 28.6 22 22.6 22 16V6.5L12 2Z" fill={`url(#sg-${variant})`}/>
+      {/* Shield inner highlight */}
+      <path d="M12 5L4.5 8.8V16C4.5 21.2 7.8 26 12 27.8C16.2 26 19.5 21.2 19.5 16V8.8L12 5Z" fill={`url(#sg2-${variant})`}/>
+      {/* Checkmark */}
+      <path d="M8.5 16L11 18.8L15.5 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Leal */}
+      <text x="30" y="22" fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fontWeight="700" fontSize="18" fill={textColor}>Leal</text>
+      {/* Cert */}
+      <text x="72" y="22" fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fontWeight="700" fontSize="18" fill="#2563eb">Cert</text>
+      {/* Tagline */}
+      <text x="30" y="33" fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" fontWeight="400" fontSize="6.5" letterSpacing="1.8" fill={subColor}>CERTIFICADOS DIGITAIS</text>
     </svg>
   );
 }
@@ -299,23 +305,23 @@ export default function Landing() {
       </div>
 
       {/* Nav */}
-      <nav className="sticky top-0 z-40 bg-[#0f172a] border-b border-white/10 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-24">
+      <nav className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-20">
           <div className="flex items-center">
-            <LealCertLogo size="md" />
+            <LealCertLogo variant="dark" />
           </div>
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
-            <a href="#certificados" className="hover:text-white transition-colors">Certificados</a>
-            <a href="#como-funciona" className="hover:text-white transition-colors">Como Funciona</a>
-            <a href="#sobre" className="hover:text-white transition-colors">Por que nós</a>
-            <a href="#avaliacoes" className="hover:text-white transition-colors">Avaliações</a>
-            <a href="#contato" className="hover:text-white transition-colors">Contato</a>
+          <div className="hidden md:flex items-center gap-1 text-sm font-medium text-gray-600">
+            <a href="#certificados" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Certificados</a>
+            <a href="#como-funciona" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Como Funciona</a>
+            <a href="#sobre" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Por que nós</a>
+            <a href="#avaliacoes" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Avaliações</a>
+            <a href="#contato" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Contato</a>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/entrar" className="hidden sm:block text-sm font-medium text-gray-300 hover:text-white transition-colors px-4 py-2 rounded-lg border border-white/20 hover:border-white/40">
+            <a href="/entrar" className="hidden sm:block text-sm font-semibold text-[#0f172a] hover:text-[#2563eb] transition-colors px-4 py-2 rounded-lg border border-gray-300 hover:border-[#2563eb]">
               Acessar conta
             </a>
-            <a href="/register" className="bg-[#2563eb] text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-blue-600 transition-colors shadow-sm">
+            <a href="/register" className="bg-[#2563eb] text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
               Cadastrar
             </a>
           </div>
@@ -605,7 +611,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <LealCertLogo size="sm" />
+              <LealCertLogo variant="light" />
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-400">
               <a href="/entrar" className="hover:text-white transition-colors">Área do Cliente</a>
