@@ -8,9 +8,13 @@ import { ChatWidget } from "@/components/chat-widget";
 
 function LealCertLogo({ variant = "dark" }: { variant?: "dark" | "light" }) {
   if (variant === "light") {
-    return <img src="/logo-nobg.png" alt="LealCert" className="h-10 w-auto object-contain brightness-0 invert" />;
+    return (
+      <div className="bg-white rounded-lg px-4 py-2">
+        <img src="/logo-cropped.png" alt="LealCert" className="h-10 w-auto object-contain" />
+      </div>
+    );
   }
-  return <img src="/logo-cropped.png" alt="LealCert" className="h-12 w-auto object-contain" />;
+  return <img src="/logo-cropped.png" alt="LealCert" className="h-14 w-auto object-contain" />;
 }
 
 type CertFromDB = {
