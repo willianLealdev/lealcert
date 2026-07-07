@@ -6,6 +6,31 @@ import {
 } from "lucide-react";
 import { ChatWidget } from "@/components/chat-widget";
 
+function LealCertLogo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+  const scale = size === "sm" ? 0.75 : size === "lg" ? 1.2 : 1;
+  return (
+    <svg width={Math.round(160 * scale)} height={Math.round(40 * scale)} viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Shield */}
+      <path d="M4 8.5L16 4L28 8.5V18C28 24.5 22.5 30 16 32C9.5 30 4 24.5 4 18V8.5Z" fill="#2563eb"/>
+      <path d="M6 9.8L16 6L26 9.8V18C26 23.5 21.5 28.3 16 30C10.5 28.3 6 23.5 6 18V9.8Z" fill="url(#shieldGrad)"/>
+      {/* Check */}
+      <path d="M11 17.5L14.5 21L21 13.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* LEAL */}
+      <text x="36" y="25" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="16" letterSpacing="-0.3" fill="white">LEAL</text>
+      {/* CERT */}
+      <text x="87" y="25" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="16" letterSpacing="-0.3" fill="#f59e0b">CERT</text>
+      {/* Tag line */}
+      <text x="36" y="34" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="400" fontSize="7" letterSpacing="1.5" fill="#94a3b8">CERTIFICADOS DIGITAIS</text>
+      <defs>
+        <linearGradient id="shieldGrad" x1="6" y1="6" x2="26" y2="30" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#3b82f6"/>
+          <stop offset="1" stopColor="#1d4ed8"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
 type CertFromDB = {
   id: number;
   name: string;
@@ -277,9 +302,7 @@ export default function Landing() {
       <nav className="sticky top-0 z-40 bg-[#0f172a] border-b border-white/10 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-24">
           <div className="flex items-center">
-            <div className="bg-white rounded-xl px-4 py-2">
-              <img src="/logo-nobg.png" alt="LealCert" className="h-12 w-auto object-contain" />
-            </div>
+            <LealCertLogo size="md" />
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
             <a href="#certificados" className="hover:text-white transition-colors">Certificados</a>
@@ -582,10 +605,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="bg-white rounded-lg px-3 py-1.5">
-                <img src="/logo-nobg.png" alt="LealCert" className="h-8 w-auto object-contain" />
-              </div>
-              <span className="text-gray-400 text-sm">— Certificados Digitais ICP-Brasil</span>
+              <LealCertLogo size="sm" />
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-400">
               <a href="/entrar" className="hover:text-white transition-colors">Área do Cliente</a>
