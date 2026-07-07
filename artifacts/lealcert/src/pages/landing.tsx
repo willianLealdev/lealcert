@@ -330,7 +330,7 @@ export default function Landing() {
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
               <a href="/register"
                 className="flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-blue-600 text-white font-bold px-8 py-4 rounded-xl transition-all hover:scale-105 shadow-lg shadow-blue-900/30 text-base">
-                Emitir meu Certificado
+                Cadastrar
                 <ChevronRight className="h-5 w-5" />
               </a>
               <a href="#certificados"
