@@ -1,45 +1,52 @@
+import { useState, useEffect } from "react";
 import {
   Shield, CheckCircle2, Clock, Award, Users, FileText,
   ChevronRight, Star, Lock, Zap, Phone, Mail, MapPin,
-  BadgeCheck, CalendarCheck, CreditCard, Headphones,
+  BadgeCheck, CalendarCheck, CreditCard, Headphones, Loader2, Send,
 } from "lucide-react";
 
-const PRODUCTS = [
+type CertFromDB = {
+  id: number;
+  name: string;
+  description: string | null;
+  price: string;
+  validityMonths: number;
+  product: string | null;
+  issuanceType: string | null;
+  model: string | null;
+};
+
+type ReviewFromDB = {
+  id: number;
+  name: string;
+  role: string;
+  text: string;
+  stars: number;
+  createdAt: string;
+};
+
+const CERT_GROUPS = [
   {
+    key: "ecpf",
     tag: "Mais vendido",
     tagColor: "bg-blue-600 text-white",
-    name: "e-CPF A1",
+    name: "e-CPF",
     sub: "Pessoa Física",
     desc: "Para profissionais autônomos, advogados, contadores e qualquer cidadão que precisa assinar documentos digitalmente.",
-    features: ["Arquivo digital (nuvem ou PC)", "Válido por 12 meses", "Assinatura eletrônica ICP-Brasil", "Acesso ao Gov.br nível Ouro"],
-    price: "R$ 119",
-    period: "/ ano",
-    cta: "Emitir e-CPF",
+    features: ["Arquivo digital (A1) ou Token/Cartão (A3)", "Assinatura eletrônica ICP-Brasil", "Acesso ao Gov.br nível Ouro", "NF-e, declaração de IR e muito mais"],
     highlight: false,
+    matchFn: (c: CertFromDB) => c.name.toLowerCase().includes("cpf"),
   },
   {
+    key: "ecnpj",
     tag: "Indicado para empresas",
     tagColor: "bg-amber-500 text-white",
-    name: "e-CNPJ A1",
+    name: "e-CNPJ",
     sub: "Pessoa Jurídica",
     desc: "Obrigatório para emissão de NF-e, eSocial, EFD-Reinf e acesso a portais da Receita Federal e Prefeitura.",
-    features: ["Arquivo digital (nuvem ou PC)", "Válido por 12 meses", "NF-e, NFS-e e eSocial", "Receita Federal e Prefeitura"],
-    price: "R$ 189",
-    period: "/ ano",
-    cta: "Emitir e-CNPJ",
+    features: ["Arquivo digital (A1) ou Token/Cartão (A3)", "NF-e, NFS-e e eSocial", "Receita Federal e Prefeitura", "Validade de 12 ou 24 meses"],
     highlight: true,
-  },
-  {
-    tag: "Máxima segurança",
-    tagColor: "bg-slate-600 text-white",
-    name: "e-CPF / e-CNPJ A3",
-    sub: "Cartão ou Token",
-    desc: "Certificado armazenado em dispositivo físico criptografado. Validade de 1 a 3 anos e máxima proteção.",
-    features: ["Dispositivo físico (cartão/token)", "Validade de 1 a 3 anos", "Portabilidade total", "Compatível com todos sistemas"],
-    price: "A partir de R$ 249",
-    period: "",
-    cta: "Consultar A3",
-    highlight: false,
+    matchFn: (c: CertFromDB) => c.name.toLowerCase().includes("cnpj"),
   },
 ];
 
@@ -59,13 +66,203 @@ const BENEFITS = [
   { icon: Headphones, title: "Suporte especializado", desc: "Equipe técnica treinada e credenciada" },
 ];
 
-const TESTIMONIALS = [
-  { name: "Marcos Oliveira", role: "Contador — São Paulo/SP", text: "Processo muito simples e rápido. Emiti o e-CNPJ dos meus 12 clientes em menos de dois dias. Atendimento excelente.", stars: 5 },
-  { name: "Fernanda Costa", role: "Advogada — Belo Horizonte/MG", text: "Finalmente uma certificadora que realmente atende online. Tudo sem sair de casa, certificado em menos de 1 hora.", stars: 5 },
-  { name: "Roberto Almeida", role: "Empresário — Curitiba/PR", text: "Já renovei 3 vezes com a LealCert. Preço justo e nunca tive problema. Recomendo para qualquer empresa.", stars: 5 },
-];
+function StarRating({ value, onChange }: { value: number; onChange?: (v: number) => void }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map(n => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange?.(n)}
+          onMouseEnter={() => onChange && setHover(n)}
+          onMouseLeave={() => onChange && setHover(0)}
+          className={onChange ? "cursor-pointer" : "cursor-default"}
+        >
+          <Star className={`h-5 w-5 ${(hover || value) >= n ? "fill-[#f59e0b] text-[#f59e0b]" : "text-gray-300"}`} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CertCard({ group, certs }: { group: typeof CERT_GROUPS[number]; certs: CertFromDB[] }) {
+  const matched = certs.filter(group.matchFn);
+
+  const lowestPrice = matched.length
+    ? Math.min(...matched.map(c => parseFloat(c.price)))
+    : null;
+
+  const options = matched.filter(c => {
+    const vm = c.validityMonths;
+    return vm === 12 || vm === 24;
+  });
+
+  return (
+    <div className={`relative rounded-2xl border-2 p-7 flex flex-col transition-all hover:shadow-xl ${
+      group.highlight ? "border-[#2563eb] shadow-lg shadow-blue-100" : "border-gray-100 shadow-sm hover:border-[#2563eb]/30"
+    }`}>
+      {group.highlight && (
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+          <span className="bg-[#2563eb] text-white text-xs font-bold px-4 py-1.5 rounded-full shadow">MAIS VENDIDO</span>
+        </div>
+      )}
+      <div className="mb-4">
+        <span className={`text-xs font-bold px-3 py-1 rounded-full ${group.tagColor}`}>{group.tag}</span>
+      </div>
+      <h3 className="text-2xl font-black mb-1">{group.name}</h3>
+      <p className="text-[#2563eb] font-semibold text-sm mb-3">{group.sub}</p>
+      <p className="text-gray-500 text-sm leading-relaxed mb-5">{group.desc}</p>
+      <ul className="space-y-2 mb-6 flex-1">
+        {group.features.map(f => (
+          <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
+            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+            {f}
+          </li>
+        ))}
+      </ul>
+
+      {options.length > 0 && (
+        <div className="mb-5 space-y-2">
+          {options.map(c => (
+            <div key={c.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2.5 border border-gray-100">
+              <span className="text-sm font-medium text-gray-600">{c.validityMonths} meses ({c.model ?? (c.validityMonths === 12 ? "A1" : "A3")})</span>
+              <span className="text-base font-black text-[#0f172a]">R$ {parseFloat(c.price).toFixed(2).replace(".", ",")}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {lowestPrice !== null && options.length === 0 && (
+        <div className="mb-5">
+          <span className="text-2xl font-black text-[#0f172a]">A partir de R$ {lowestPrice.toFixed(2).replace(".", ",")}</span>
+          <span className="text-gray-400 text-sm ml-1">/ ano</span>
+        </div>
+      )}
+
+      {lowestPrice === null && (
+        <div className="mb-5 h-8 bg-gray-100 rounded-lg animate-pulse" />
+      )}
+
+      <a href="/cadastro" className={`block w-full text-center font-bold py-3 rounded-xl transition-all hover:scale-105 ${
+        group.highlight ? "bg-[#2563eb] text-white hover:bg-blue-700 shadow-md shadow-blue-200" : "bg-[#0f172a] text-white hover:bg-gray-800"
+      }`}>
+        Comprar
+      </a>
+    </div>
+  );
+}
+
+function ReviewForm({ onSuccess }: { onSuccess: () => void }) {
+  const [form, setForm] = useState({ name: "", role: "", text: "", stars: 5 });
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch("/api/public/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMsg(data.message);
+        setForm({ name: "", role: "", text: "", stars: 5 });
+        onSuccess();
+      } else {
+        setMsg("Erro ao enviar avaliação. Tente novamente.");
+      }
+    } catch {
+      setMsg("Erro de conexão. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-[#f8fafc] rounded-2xl border border-gray-100 p-6 mt-8">
+      <h3 className="font-black text-lg mb-4">Deixe sua avaliação</h3>
+      {msg ? (
+        <div className="text-center py-6">
+          <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-3" />
+          <p className="font-semibold text-gray-700">{msg}</p>
+        </div>
+      ) : (
+        <form onSubmit={submit} className="space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Seu nome *</label>
+              <input
+                required
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Ex: João Silva"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Profissão / Cidade</label>
+              <input
+                value={form.role}
+                onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                placeholder="Ex: Contador — São Paulo/SP"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb]"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Sua avaliação *</label>
+            <textarea
+              required
+              rows={3}
+              value={form.text}
+              onChange={e => setForm(f => ({ ...f, text: e.target.value }))}
+              placeholder="Conte como foi sua experiência com a LealCert..."
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] resize-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-2 block">Nota</label>
+            <StarRating value={form.stars} onChange={v => setForm(f => ({ ...f, stars: v }))} />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex items-center gap-2 bg-[#2563eb] text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Enviar avaliação
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
 
 export default function NovaLanding() {
+  const [certs, setCerts] = useState<CertFromDB[]>([]);
+  const [reviews, setReviews] = useState<ReviewFromDB[]>([]);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/public/certificates")
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setCerts(data))
+      .catch(() => {});
+  }, []);
+
+  function loadReviews() {
+    fetch("/api/public/reviews")
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setReviews(data))
+      .catch(() => {});
+  }
+
+  useEffect(() => { loadReviews(); }, []);
+
   return (
     <div className="min-h-screen bg-white text-[#0f172a] font-sans">
 
@@ -76,22 +273,23 @@ export default function NovaLanding() {
       </div>
 
       {/* Nav */}
-      <nav className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="LealCert" className="h-10 w-auto object-contain" />
+      <nav className="sticky top-0 z-40 bg-[#0f172a] border-b border-white/10 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-20">
+          <div className="flex items-center">
+            <img src="/logo.png" alt="LealCert" className="h-16 w-auto object-contain" />
           </div>
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-            <a href="#certificados" className="hover:text-[#2563eb] transition-colors">Certificados</a>
-            <a href="#como-funciona" className="hover:text-[#2563eb] transition-colors">Como Funciona</a>
-            <a href="#sobre" className="hover:text-[#2563eb] transition-colors">Por que nós</a>
-            <a href="#contato" className="hover:text-[#2563eb] transition-colors">Contato</a>
+          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
+            <a href="#certificados" className="hover:text-white transition-colors">Certificados</a>
+            <a href="#como-funciona" className="hover:text-white transition-colors">Como Funciona</a>
+            <a href="#sobre" className="hover:text-white transition-colors">Por que nós</a>
+            <a href="#avaliacoes" className="hover:text-white transition-colors">Avaliações</a>
+            <a href="#contato" className="hover:text-white transition-colors">Contato</a>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/entrar" className="hidden sm:block text-sm font-medium text-gray-600 hover:text-[#2563eb] transition-colors px-4 py-2 rounded-lg border border-gray-200 hover:border-[#2563eb]">
+            <a href="/entrar" className="hidden sm:block text-sm font-medium text-gray-300 hover:text-white transition-colors px-4 py-2 rounded-lg border border-white/20 hover:border-white/40">
               Acessar conta
             </a>
-            <a href="/cadastro" className="bg-[#2563eb] text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+            <a href="/cadastro" className="bg-[#2563eb] text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-blue-600 transition-colors shadow-sm">
               Emitir Certificado
             </a>
           </div>
@@ -101,9 +299,8 @@ export default function NovaLanding() {
       {/* Hero */}
       <section className="relative bg-[#0f172a] text-white overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#1a2e4a] to-[#0f172a]" />
-        <div className="absolute right-0 top-0 w-1/2 h-full opacity-10"
-          style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232563eb' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
-
+        <div className="absolute right-0 top-0 w-1/2 h-full opacity-5"
+          style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232563eb' fill-opacity='0.8'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24 grid md:grid-cols-2 gap-10 items-center">
           <div>
             <div className="inline-flex items-center gap-2 bg-[#2563eb]/20 border border-[#2563eb]/40 rounded-full px-4 py-1.5 text-sm text-blue-300 mb-6">
@@ -136,7 +333,6 @@ export default function NovaLanding() {
             </div>
           </div>
 
-          {/* Stats card */}
           <div className="hidden md:flex flex-col gap-4">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur">
               <div className="grid grid-cols-2 gap-6">
@@ -159,7 +355,7 @@ export default function NovaLanding() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">Certificadora Autorizada</p>
-                <p className="text-xs text-blue-200/60 mt-0.5">Credenciada junto à cadeia ICP-Brasil conforme Medida Provisória 2.200-2/2001</p>
+                <p className="text-xs text-blue-200/60 mt-0.5">Credenciada junto à cadeia ICP-Brasil conforme MP 2.200-2/2001</p>
               </div>
             </div>
           </div>
@@ -184,61 +380,23 @@ export default function NovaLanding() {
         </div>
       </div>
 
-      {/* Produtos / Preços */}
+      {/* Certificados / Preços */}
       <section id="certificados" className="py-16 sm:py-24 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <span className="text-[#2563eb] font-semibold text-sm uppercase tracking-wider">Nossos certificados</span>
             <h2 className="text-3xl sm:text-4xl font-black mt-2 mb-3">Escolha o certificado ideal</h2>
-            <p className="text-gray-500 max-w-xl mx-auto">Para pessoa física, jurídica e escritórios de contabilidade — temos a solução certa com o melhor custo-benefício</p>
+            <p className="text-gray-500 max-w-xl mx-auto">Validade de 12 ou 24 meses — pessoa física, jurídica e escritórios de contabilidade</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {PRODUCTS.map(p => (
-              <div key={p.name}
-                className={`relative rounded-2xl border-2 p-7 flex flex-col transition-all hover:shadow-xl ${
-                  p.highlight
-                    ? "border-[#2563eb] shadow-lg shadow-blue-100"
-                    : "border-gray-100 shadow-sm hover:border-[#2563eb]/30"
-                }`}>
-                {p.highlight && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                    <span className="bg-[#2563eb] text-white text-xs font-bold px-4 py-1.5 rounded-full shadow">MAIS VENDIDO</span>
-                  </div>
-                )}
-                <div className="mb-4">
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${p.tagColor}`}>{p.tag}</span>
-                </div>
-                <h3 className="text-2xl font-black mb-1">{p.name}</h3>
-                <p className="text-[#2563eb] font-semibold text-sm mb-3">{p.sub}</p>
-                <p className="text-gray-500 text-sm leading-relaxed mb-5">{p.desc}</p>
-                <ul className="space-y-2 mb-6 flex-1">
-                  {p.features.map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <div className="border-t border-gray-100 pt-5 mt-auto">
-                  <div className="mb-4">
-                    <span className="text-2xl font-black text-[#0f172a]">{p.price}</span>
-                    {p.period && <span className="text-gray-400 text-sm ml-1">{p.period}</span>}
-                  </div>
-                  <a href="/cadastro"
-                    className={`block w-full text-center font-bold py-3 rounded-xl transition-all hover:scale-105 ${
-                      p.highlight
-                        ? "bg-[#2563eb] text-white hover:bg-blue-700 shadow-md shadow-blue-200"
-                        : "bg-[#0f172a] text-white hover:bg-gray-800"
-                    }`}>
-                    {p.cta}
-                  </a>
-                </div>
-              </div>
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {CERT_GROUPS.map(group => (
+              <CertCard key={group.key} group={group} certs={certs} />
             ))}
           </div>
           <p className="text-center text-xs text-gray-400 mt-8 flex items-center justify-center gap-1.5">
             <Lock className="h-3.5 w-3.5" />
-            Preços válidos para emissão via videoconferência online. Condições especiais para contabilidades com volume. <a href="#contato" className="text-[#2563eb] hover:underline ml-1">Consulte-nos</a>
+            Condições especiais para contabilidades com volume. &nbsp;
+            <a href="#contato" className="text-[#2563eb] hover:underline">Consulte-nos</a>
           </p>
         </div>
       </section>
@@ -302,29 +460,59 @@ export default function NovaLanding() {
         </div>
       </section>
 
-      {/* Depoimentos */}
-      <section className="py-16 sm:py-24 bg-white">
+      {/* Avaliações */}
+      <section id="avaliacoes" className="py-16 sm:py-24 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <span className="text-[#2563eb] font-semibold text-sm uppercase tracking-wider">Depoimentos</span>
             <h2 className="text-3xl sm:text-4xl font-black mt-2 mb-3">O que nossos clientes dizem</h2>
+            <p className="text-gray-500 max-w-xl mx-auto">Avaliações reais de clientes que emitiram seus certificados com a LealCert</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map(t => (
-              <div key={t.name} className="bg-[#f8fafc] rounded-2xl p-6 border border-gray-100">
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: t.stars }).map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-[#f59e0b] text-[#f59e0b]" />
-                  ))}
+
+          {reviews.length === 0 ? (
+            <div className="grid md:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-[#f8fafc] rounded-2xl p-6 border border-gray-100 animate-pulse">
+                  <div className="flex gap-1 mb-4">
+                    {[1, 2, 3, 4, 5].map(s => <div key={s} className="h-4 w-4 bg-gray-200 rounded" />)}
+                  </div>
+                  <div className="space-y-2 mb-5">
+                    <div className="h-3 bg-gray-200 rounded w-full" />
+                    <div className="h-3 bg-gray-200 rounded w-4/5" />
+                    <div className="h-3 bg-gray-200 rounded w-3/4" />
+                  </div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
                 </div>
-                <p className="text-gray-600 text-sm leading-relaxed mb-5">"{t.text}"</p>
-                <div>
-                  <p className="font-bold text-sm text-[#0f172a]">{t.name}</p>
-                  <p className="text-xs text-gray-400">{t.role}</p>
+              ))}
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-6">
+              {reviews.map(r => (
+                <div key={r.id} className="bg-[#f8fafc] rounded-2xl p-6 border border-gray-100">
+                  <StarRating value={r.stars} />
+                  <p className="text-gray-600 text-sm leading-relaxed my-4">"{r.text}"</p>
+                  <div>
+                    <p className="font-bold text-sm text-[#0f172a]">{r.name}</p>
+                    <p className="text-xs text-gray-400">{r.role}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          )}
+
+          <div className="text-center mt-8">
+            <button
+              onClick={() => setShowReviewForm(v => !v)}
+              className="inline-flex items-center gap-2 border border-[#2563eb] text-[#2563eb] font-semibold px-6 py-3 rounded-xl hover:bg-blue-50 transition-colors text-sm"
+            >
+              <Star className="h-4 w-4" />
+              {showReviewForm ? "Fechar formulário" : "Deixar minha avaliação"}
+            </button>
           </div>
+
+          {showReviewForm && (
+            <ReviewForm onSuccess={() => { loadReviews(); setTimeout(() => setShowReviewForm(false), 3000); }} />
+          )}
         </div>
       </section>
 
@@ -351,27 +539,36 @@ export default function NovaLanding() {
       {/* Contato */}
       <section id="contato" className="py-14 bg-[#f8fafc]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center">
-              <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Phone className="h-5 w-5 text-[#2563eb]" />
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-black mb-2">Fale Conosco</h2>
+            <p className="text-gray-500 text-sm">Estamos disponíveis para tirar suas dúvidas e ajudar com a emissão do seu certificado</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            <a href="https://wa.me/551731760105" target="_blank" rel="noopener noreferrer"
+              className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center hover:border-green-300 hover:shadow-md transition-all group">
+              <div className="h-12 w-12 bg-green-50 group-hover:bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-4 transition-colors">
+                <Phone className="h-5 w-5 text-green-600" />
               </div>
-              <h3 className="font-bold mb-1">WhatsApp / Chat</h3>
-              <p className="text-sm text-gray-500">Atendimento rápido pelo chat integrado no site</p>
-            </div>
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center">
-              <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <h3 className="font-bold mb-1">WhatsApp</h3>
+              <p className="text-sm text-gray-500">(17) 3176-0105</p>
+              <p className="text-xs text-green-600 font-medium mt-1">Clique para abrir</p>
+            </a>
+            <a href="mailto:certificados@lealcert.com.br"
+              className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center hover:border-blue-200 hover:shadow-md transition-all group">
+              <div className="h-12 w-12 bg-blue-50 group-hover:bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4 transition-colors">
                 <Mail className="h-5 w-5 text-[#2563eb]" />
               </div>
               <h3 className="font-bold mb-1">E-mail</h3>
-              <p className="text-sm text-gray-500">contato@lealcert.com.br</p>
-            </div>
+              <p className="text-sm text-gray-500">certificados@lealcert.com.br</p>
+              <p className="text-xs text-[#2563eb] font-medium mt-1">Resposta em até 2h</p>
+            </a>
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center">
               <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <MapPin className="h-5 w-5 text-[#2563eb]" />
               </div>
               <h3 className="font-bold mb-1">Atendimento nacional</h3>
               <p className="text-sm text-gray-500">Clientes em todo o Brasil, 100% remoto</p>
+              <p className="text-xs text-gray-400 mt-1">Seg–Sex, 8h às 18h</p>
             </div>
           </div>
         </div>
@@ -387,7 +584,7 @@ export default function NovaLanding() {
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-400">
               <a href="/entrar" className="hover:text-white transition-colors">Área do Cliente</a>
-              <a href="mailto:contato@lealcert.com.br" className="hover:text-white transition-colors">Contato</a>
+              <a href="mailto:certificados@lealcert.com.br" className="hover:text-white transition-colors">Contato</a>
               <a href="/politica-de-privacidade" className="hover:text-white transition-colors">Privacidade</a>
             </div>
           </div>

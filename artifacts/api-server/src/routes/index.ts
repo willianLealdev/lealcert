@@ -22,6 +22,7 @@ import pushRouter from "./push";
 import ipSecurityRouter from "./ip-security";
 import agentesRouter from "./agentes";
 import agenteDocsRouter from "./agente-docs";
+import publicRouter from "./public";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(couponsRouter);
 router.use(ipSecurityRouter);
 router.use(agentesRouter);
 router.use(agenteDocsRouter);
+router.use(publicRouter);
 
 export default router;
