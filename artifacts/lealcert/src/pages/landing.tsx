@@ -37,30 +37,24 @@ type ReviewFromDB = {
   createdAt: string;
 };
 
-const CERT_GROUPS = [
-  {
-    key: "ecpf",
-    tag: "Mais vendido",
-    tagColor: "bg-blue-600 text-white",
-    name: "e-CPF",
+const PRODUCT_INFO: Record<string, { label: string; sub: string; desc: string; color: string; border: string; badge: string }> = {
+  "e-CPF": {
+    label: "e-CPF",
     sub: "Pessoa Física",
-    desc: "Para profissionais autônomos, advogados, contadores e qualquer cidadão que precisa assinar documentos digitalmente.",
-    features: ["Arquivo digital (A1) ou Token/Cartão (A3)", "Assinatura eletrônica ICP-Brasil", "Acesso ao Gov.br nível Ouro", "NF-e, declaração de IR e muito mais"],
-    highlight: false,
-    matchFn: (c: CertFromDB) => c.name.toLowerCase().includes("cpf"),
+    desc: "Para profissionais autônomos, advogados, MEIs e qualquer cidadão. Assine documentos, acesse Gov.br nível Ouro, declare IR e muito mais.",
+    color: "text-[#2563eb]",
+    border: "border-[#2563eb]",
+    badge: "bg-[#2563eb] text-white",
   },
-  {
-    key: "ecnpj",
-    tag: "Indicado para empresas",
-    tagColor: "bg-amber-500 text-white",
-    name: "e-CNPJ",
+  "e-CNPJ": {
+    label: "e-CNPJ",
     sub: "Pessoa Jurídica",
-    desc: "Obrigatório para emissão de NF-e, eSocial, EFD-Reinf e acesso a portais da Receita Federal e Prefeitura.",
-    features: ["Arquivo digital (A1) ou Token/Cartão (A3)", "NF-e, NFS-e e eSocial", "Receita Federal e Prefeitura", "Validade de 12 ou 24 meses"],
-    highlight: true,
-    matchFn: (c: CertFromDB) => c.name.toLowerCase().includes("cnpj"),
+    desc: "Obrigatório para NF-e, eSocial, EFD-Reinf e acesso aos portais da Receita Federal, Prefeitura e sistemas do governo.",
+    color: "text-amber-600",
+    border: "border-amber-500",
+    badge: "bg-amber-500 text-white",
   },
-];
+};
 
 const STEPS = [
   { n: "01", icon: FileText, title: "Faça seu cadastro", desc: "Acesse o sistema, crie seu cadastro com CPF ou CNPJ e escolha o certificado ideal para o seu caso." },
@@ -98,69 +92,141 @@ function StarRating({ value, onChange }: { value: number; onChange?: (v: number)
   );
 }
 
-function CertCard({ group, certs }: { group: typeof CERT_GROUPS[number]; certs: CertFromDB[] }) {
-  const matched = certs.filter(group.matchFn);
+function fmtPrice(price: string) {
+  return parseFloat(price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
-  const lowestPrice = matched.length
-    ? Math.min(...matched.map(c => parseFloat(c.price)))
-    : null;
+function CertSelector({ certs }: { certs: CertFromDB[] }) {
+  const products = ["e-CPF", "e-CNPJ"];
+  const [product, setProduct] = useState("e-CPF");
+  const [period, setPeriod] = useState(12);
 
-  const options = matched.filter(c => {
-    const vm = c.validityMonths;
-    return vm === 12 || vm === 24;
-  });
+  const allPeriods = Array.from(
+    new Set(
+      certs
+        .filter(c => (c.product ?? "").startsWith(product))
+        .map(c => c.validityMonths)
+    )
+  ).sort((a, b) => a - b);
+
+  const matched = certs.filter(
+    c => (c.product ?? "").startsWith(product) && c.validityMonths === period
+  );
+
+  const info = PRODUCT_INFO[product];
 
   return (
-    <div className={`relative rounded-2xl border-2 p-7 flex flex-col transition-all hover:shadow-xl ${
-      group.highlight ? "border-[#2563eb] shadow-lg shadow-blue-100" : "border-gray-100 shadow-sm hover:border-[#2563eb]/30"
-    }`}>
-      {group.highlight && (
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-          <span className="bg-[#2563eb] text-white text-xs font-bold px-4 py-1.5 rounded-full shadow">MAIS VENDIDO</span>
+    <div className="space-y-8">
+      {/* Product tabs */}
+      <div className="flex justify-center gap-3 flex-wrap">
+        {products.map(p => {
+          const inf = PRODUCT_INFO[p];
+          const active = product === p;
+          return (
+            <button
+              key={p}
+              onClick={() => { setProduct(p); setPeriod(12); }}
+              className={`flex flex-col items-center px-8 py-4 rounded-2xl border-2 font-bold transition-all min-w-[160px] ${
+                active
+                  ? `${inf.border} bg-white shadow-lg shadow-blue-100/60`
+                  : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+              }`}
+            >
+              <span className={`text-2xl font-black ${active ? inf.color : "text-gray-700"}`}>{inf.label}</span>
+              <span className={`text-xs font-medium mt-0.5 ${active ? inf.color : "text-gray-400"}`}>{inf.sub}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Description */}
+      {info && (
+        <p className="text-center text-gray-500 text-sm max-w-lg mx-auto">{info.desc}</p>
+      )}
+
+      {/* Period selector */}
+      {certs.length > 0 && allPeriods.length > 0 && (
+        <div className="flex justify-center gap-2">
+          <span className="self-center text-sm font-semibold text-gray-500 mr-1">Validade:</span>
+          {allPeriods.map(m => (
+            <button
+              key={m}
+              onClick={() => setPeriod(m)}
+              className={`px-5 py-2 rounded-xl text-sm font-bold border-2 transition-all ${
+                period === m
+                  ? "border-[#2563eb] bg-[#2563eb] text-white shadow-md shadow-blue-200"
+                  : "border-gray-200 text-gray-600 hover:border-[#2563eb]/40 hover:text-[#2563eb]"
+              }`}
+            >
+              {m} meses
+            </button>
+          ))}
         </div>
       )}
-      <div className="mb-4">
-        <span className={`text-xs font-bold px-3 py-1 rounded-full ${group.tagColor}`}>{group.tag}</span>
-      </div>
-      <h3 className="text-2xl font-black mb-1">{group.name}</h3>
-      <p className="text-[#2563eb] font-semibold text-sm mb-3">{group.sub}</p>
-      <p className="text-gray-500 text-sm leading-relaxed mb-5">{group.desc}</p>
-      <ul className="space-y-2 mb-6 flex-1">
-        {group.features.map(f => (
-          <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
-            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-            {f}
-          </li>
-        ))}
-      </ul>
 
-      {options.length > 0 && (
-        <div className="mb-5 space-y-2">
-          {options.map(c => (
-            <div key={c.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2.5 border border-gray-100">
-              <span className="text-sm font-medium text-gray-600">{c.validityMonths} meses ({c.model ?? (c.validityMonths === 12 ? "A1" : "A3")})</span>
-              <span className="text-base font-black text-[#0f172a]">R$ {parseFloat(c.price).toFixed(2).replace(".", ",")}</span>
+      {/* Loading skeleton */}
+      {certs.length === 0 && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-52 rounded-2xl bg-gray-100 animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {/* Certificate cards */}
+      {certs.length > 0 && matched.length === 0 && (
+        <p className="text-center text-gray-400 text-sm py-8">Nenhum certificado disponível para esta seleção.</p>
+      )}
+
+      {matched.length > 0 && (
+        <div className={`grid gap-5 max-w-4xl mx-auto ${matched.length === 1 ? "max-w-sm" : matched.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+          {matched.map(c => (
+            <div key={c.id} className="flex flex-col rounded-2xl border-2 border-gray-100 bg-white p-6 hover:border-[#2563eb]/40 hover:shadow-lg transition-all">
+              {/* Model badge */}
+              <div className="flex items-center justify-between mb-4">
+                <span className={`text-xs font-bold px-3 py-1 rounded-full ${info?.badge ?? "bg-gray-100 text-gray-600"}`}>
+                  {c.model ?? "—"}
+                </span>
+                {c.issuanceType && (
+                  <span className="text-xs text-gray-400 font-medium">{c.issuanceType}</span>
+                )}
+              </div>
+
+              {/* Name */}
+              <h3 className="font-bold text-[#0f172a] text-base leading-snug mb-1">{c.name}</h3>
+              <p className="text-xs text-gray-400 mb-4">{c.validityMonths} meses de validade</p>
+
+              {/* Price */}
+              <div className="mt-auto">
+                <p className="text-2xl font-black text-[#0f172a]">{fmtPrice(c.price)}</p>
+                <p className="text-xs text-gray-400 mb-4">preço do cliente</p>
+                <a
+                  href="/register"
+                  className="block w-full text-center bg-[#2563eb] hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all hover:scale-105 shadow-md shadow-blue-200/50"
+                >
+                  Comprar
+                </a>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {lowestPrice !== null && options.length === 0 && (
-        <div className="mb-5">
-          <span className="text-2xl font-black text-[#0f172a]">A partir de R$ {lowestPrice.toFixed(2).replace(".", ",")}</span>
-          <span className="text-gray-400 text-sm ml-1">/ ano</span>
-        </div>
-      )}
+      {/* Disclaimer */}
+      <div className="max-w-2xl mx-auto bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 flex gap-3 items-start">
+        <span className="text-amber-500 text-lg leading-none mt-0.5">⚠</span>
+        <p className="text-sm text-amber-800">
+          <strong>Atenção:</strong> todos os certificados são vendidos <strong>somente como certificado</strong>, sem token ou cartão incluso. O cliente já deve possuir o dispositivo leitor (token USB ou cartão smart card) para utilizar o certificado A3.
+        </p>
+      </div>
 
-      {lowestPrice === null && (
-        <div className="mb-5 h-8 bg-gray-100 rounded-lg animate-pulse" />
-      )}
-
-      <a href="/register" className={`block w-full text-center font-bold py-3 rounded-xl transition-all hover:scale-105 ${
-        group.highlight ? "bg-[#2563eb] text-white hover:bg-blue-700 shadow-md shadow-blue-200" : "bg-[#0f172a] text-white hover:bg-gray-800"
-      }`}>
-        Comprar
-      </a>
+      {/* Contador note */}
+      <p className="text-center text-sm text-gray-400">
+        É contador ou escritório de contabilidade?{" "}
+        <a href="/entrar" className="text-[#2563eb] font-semibold hover:underline">
+          Acesse o sistema para ver suas condições especiais →
+        </a>
+      </p>
     </div>
   );
 }
@@ -302,22 +368,13 @@ export default function Landing() {
 
       {/* Certificados / Preços */}
       <section id="certificados" className="py-16 sm:py-24 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <span className="text-[#2563eb] font-semibold text-sm uppercase tracking-wider">Nossos certificados</span>
             <h2 className="text-3xl sm:text-4xl font-black mt-2 mb-3">Escolha o certificado ideal</h2>
-            <p className="text-gray-500 max-w-xl mx-auto">Validade de 12 ou 24 meses — pessoa física, jurídica e escritórios de contabilidade</p>
+            <p className="text-gray-500 max-w-xl mx-auto">Selecione o tipo e a validade para ver os certificados disponíveis e o preço atualizado</p>
           </div>
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {CERT_GROUPS.map(group => (
-              <CertCard key={group.key} group={group} certs={certs} />
-            ))}
-          </div>
-          <p className="text-center text-xs text-gray-400 mt-8 flex items-center justify-center gap-1.5">
-            <Lock className="h-3.5 w-3.5" />
-            Condições especiais para contabilidades com volume. &nbsp;
-            <a href="#contato" className="text-[#2563eb] hover:underline">Consulte-nos</a>
-          </p>
+          <CertSelector certs={certs} />
         </div>
       </section>
 
