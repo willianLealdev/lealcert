@@ -165,99 +165,9 @@ function CertCard({ group, certs }: { group: typeof CERT_GROUPS[number]; certs: 
   );
 }
 
-function ReviewForm({ onSuccess }: { onSuccess: () => void }) {
-  const [form, setForm] = useState({ name: "", role: "", text: "", stars: 5 });
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await fetch("/api/public/reviews", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMsg(data.message);
-        setForm({ name: "", role: "", text: "", stars: 5 });
-        onSuccess();
-      } else {
-        setMsg("Erro ao enviar avaliação. Tente novamente.");
-      }
-    } catch {
-      setMsg("Erro de conexão. Tente novamente.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="bg-[#f8fafc] rounded-2xl border border-gray-100 p-6 mt-8">
-      <h3 className="font-black text-lg mb-4">Deixe sua avaliação</h3>
-      {msg ? (
-        <div className="text-center py-6">
-          <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-3" />
-          <p className="font-semibold text-gray-700">{msg}</p>
-        </div>
-      ) : (
-        <form onSubmit={submit} className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">Seu nome *</label>
-              <input
-                required
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="Ex: João Silva"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb]"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">Profissão / Cidade</label>
-              <input
-                value={form.role}
-                onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                placeholder="Ex: Contador — São Paulo/SP"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb]"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">Sua avaliação *</label>
-            <textarea
-              required
-              rows={3}
-              value={form.text}
-              onChange={e => setForm(f => ({ ...f, text: e.target.value }))}
-              placeholder="Conte como foi sua experiência com a LealCert..."
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] resize-none"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-2 block">Nota</label>
-            <StarRating value={form.stars} onChange={v => setForm(f => ({ ...f, stars: v }))} />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex items-center gap-2 bg-[#2563eb] text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Enviar avaliação
-          </button>
-        </form>
-      )}
-    </div>
-  );
-}
-
 export default function Landing() {
   const [certs, setCerts] = useState<CertFromDB[]>([]);
   const [reviews, setReviews] = useState<ReviewFromDB[]>([]);
-  const [showReviewForm, setShowReviewForm] = useState(false);
 
   useEffect(() => {
     fetch("/api/public/certificates")
@@ -266,14 +176,12 @@ export default function Landing() {
       .catch(() => {});
   }, []);
 
-  function loadReviews() {
+  useEffect(() => {
     fetch("/api/public/reviews")
       .then(r => r.json())
       .then(data => Array.isArray(data) && setReviews(data))
       .catch(() => {});
-  }
-
-  useEffect(() => { loadReviews(); }, []);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a] font-sans">
@@ -513,18 +421,14 @@ export default function Landing() {
           )}
 
           <div className="text-center mt-8">
-            <button
-              onClick={() => setShowReviewForm(v => !v)}
+            <a
+              href="/dashboard"
               className="inline-flex items-center gap-2 border border-[#2563eb] text-[#2563eb] font-semibold px-6 py-3 rounded-xl hover:bg-blue-50 transition-colors text-sm"
             >
               <Star className="h-4 w-4" />
-              {showReviewForm ? "Fechar formulário" : "Deixar minha avaliação"}
-            </button>
+              Deixar minha avaliação
+            </a>
           </div>
-
-          {showReviewForm && (
-            <ReviewForm onSuccess={() => { loadReviews(); setTimeout(() => setShowReviewForm(false), 3000); }} />
-          )}
         </div>
       </section>
 

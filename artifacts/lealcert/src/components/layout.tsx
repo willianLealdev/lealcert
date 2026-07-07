@@ -40,8 +40,10 @@ import {
   UserCog,
   BarChart2,
   X,
+  MessageSquare,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
+import { ReviewPrompt } from "@/components/review-prompt";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -60,6 +62,7 @@ const adminNav = [
   { name: "Agenda", href: "/admin/slots", icon: CalendarDays },
   { name: "Renovações", href: "/admin/renovacoes", icon: RefreshCw },
   { name: "Descontos", href: "/admin/coupons", icon: Tag },
+  { name: "Avaliações", href: "/admin/reviews", icon: MessageSquare },
   { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
   { name: "Segurança de IP", href: "/admin/ip-security", icon: ShieldCheck },
   { name: "Relatórios GAR", href: "/admin/relatorios-gar", icon: BarChart2 },
@@ -500,6 +503,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+      <ReviewPrompt />
     </div>
   );
 }

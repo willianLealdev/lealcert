@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { certificatesTable, reviewsTable, insertReviewSchema } from "@workspace/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -28,6 +28,7 @@ router.get("/public/certificates", async (req, res) => {
   }
 });
 
+/* ── PUBLIC: list approved reviews ──────────────────────────── */
 router.get("/public/reviews", async (req, res) => {
   try {
     const reviews = await db
@@ -40,7 +41,7 @@ router.get("/public/reviews", async (req, res) => {
         createdAt: reviewsTable.createdAt,
       })
       .from(reviewsTable)
-      .where(eq(reviewsTable.approved, true))
+      .where(eq(reviewsTable.status, "approved"))
       .orderBy(desc(reviewsTable.createdAt))
       .limit(20);
     res.json(reviews);
@@ -50,14 +51,18 @@ router.get("/public/reviews", async (req, res) => {
   }
 });
 
-router.post("/public/reviews", async (req, res) => {
+/* ── AUTHENTICATED: submit review ────────────────────────────── */
+router.post("/reviews", async (req, res) => {
+  const session = (req as any).session?.user;
+  if (!session) { res.status(401).json({ error: "Você precisa estar logado para enviar uma avaliação." }); return; }
+
   const parsed = insertReviewSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Dados inválidos", details: parsed.error.issues });
     return;
   }
   try {
-    await db.insert(reviewsTable).values({ ...parsed.data, approved: false });
+    await db.insert(reviewsTable).values({ ...parsed.data, status: "pending", userId: session.id });
     res.status(201).json({ message: "Avaliação enviada! Será publicada após aprovação." });
   } catch (err) {
     req.log.error(err, "submit review error");
@@ -65,14 +70,42 @@ router.post("/public/reviews", async (req, res) => {
   }
 });
 
+/* ── AUTHENTICATED: check if current user already reviewed ──── */
+router.get("/reviews/my-status", async (req, res) => {
+  const session = (req as any).session?.user;
+  if (!session) { res.status(401).json({ error: "Não autenticado" }); return; }
+  try {
+    const existing = await db
+      .select({ id: reviewsTable.id })
+      .from(reviewsTable)
+      .where(eq(reviewsTable.userId, session.id))
+      .limit(1);
+    res.json({ hasReviewed: existing.length > 0 });
+  } catch (err) {
+    req.log.error(err, "my-status error");
+    res.status(500).json({ error: "Erro" });
+  }
+});
+
+/* ── ADMIN: list reviews (with optional ?status= filter) ─────── */
 router.get("/admin/reviews", async (req, res) => {
   const session = (req as any).session?.user;
   if (session?.role !== "admin") { res.status(403).json({ error: "Forbidden" }); return; }
   try {
-    const reviews = await db
-      .select()
-      .from(reviewsTable)
-      .orderBy(desc(reviewsTable.createdAt));
+    const statusFilter = req.query.status as string | undefined;
+    let reviews;
+    if (statusFilter && ["pending", "approved", "rejected"].includes(statusFilter)) {
+      reviews = await db
+        .select()
+        .from(reviewsTable)
+        .where(eq(reviewsTable.status, statusFilter))
+        .orderBy(desc(reviewsTable.createdAt));
+    } else {
+      reviews = await db
+        .select()
+        .from(reviewsTable)
+        .orderBy(desc(reviewsTable.createdAt));
+    }
     res.json(reviews);
   } catch (err) {
     req.log.error(err, "admin reviews error");
@@ -80,19 +113,24 @@ router.get("/admin/reviews", async (req, res) => {
   }
 });
 
+/* ── ADMIN: update review status ─────────────────────────────── */
 router.patch("/admin/reviews/:id", async (req, res) => {
   const session = (req as any).session?.user;
   if (session?.role !== "admin") { res.status(403).json({ error: "Forbidden" }); return; }
-  const { approved } = req.body;
+  const { status } = req.body;
+  if (!["pending", "approved", "rejected"].includes(status)) {
+    res.status(400).json({ error: "Status inválido" }); return;
+  }
   try {
-    await db.update(reviewsTable).set({ approved }).where(eq(reviewsTable.id, Number(req.params.id)));
+    await db.update(reviewsTable).set({ status }).where(eq(reviewsTable.id, Number(req.params.id)));
     res.json({ ok: true });
   } catch (err) {
-    req.log.error(err, "approve review error");
+    req.log.error(err, "update review status error");
     res.status(500).json({ error: "Erro" });
   }
 });
 
+/* ── ADMIN: delete review ────────────────────────────────────── */
 router.delete("/admin/reviews/:id", async (req, res) => {
   const session = (req as any).session?.user;
   if (session?.role !== "admin") { res.status(403).json({ error: "Forbidden" }); return; }
