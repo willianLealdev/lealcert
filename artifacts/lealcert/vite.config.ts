@@ -115,6 +115,19 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    warmup: {
+      clientFiles: [
+        "./src/pages/landing.tsx",
+        "./src/pages/comprar.tsx",
+        "./src/pages/orders/detail.tsx",
+        "./src/pages/orders/new.tsx",
+        "./src/pages/orders/index.tsx",
+        "./src/pages/dashboard.tsx",
+        "./src/pages/login.tsx",
+        "./src/components/chat-widget.tsx",
+        "./src/lib/auth.tsx",
+      ],
+    },
     headers: {
       "Cache-Control": "no-store, no-cache, must-revalidate",
       "Pragma": "no-cache",
