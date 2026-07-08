@@ -663,6 +663,9 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
       await logPayEv(id, "payment_initiated", `Pagamento por cartão gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
 
       const approved = data.status === "approved";
+      const inProcess = data.status === "in_process" || data.status === "authorized";
+      const rejected = data.status === "rejected" || data.status === "cancelled";
+
       if (approved) {
         await db.update(ordersTable).set({ status: "paid" }).where(eq(ordersTable.id, id));
         await logPayEv(id, "payment_confirmed", `Pagamento por cartão aprovado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
@@ -671,9 +674,13 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
         const { swAutoComprar } = await import("../lib/sw-auto");
         if (activeProvider === "safeweb") swAutoComprar(id).catch(() => {});
         else garAutoComprar(id).catch(() => {});
+      } else if (rejected) {
+        await logPayEv(id, "payment_failed", `Pagamento por cartão recusado — ${data.status_detail ?? data.status}`, { mpPaymentId: data.id });
+      } else if (inProcess) {
+        await logPayEv(id, "payment_in_process", `Pagamento por cartão em análise — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
       }
 
-      res.json({ paymentId: String(data.id ?? ""), method: "cartao", approved });
+      res.json({ paymentId: String(data.id ?? ""), method: "cartao", approved, inProcess, rejected, mpStatusDetail: data.status_detail ?? null });
     }
   } catch (err) {
     req.log.error({ err }, "orders/:id/payment error");

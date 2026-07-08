@@ -847,7 +847,7 @@ export default function NewOrder() {
       toast({ title: "Pedido criado!", description: `Pedido ${orderData.orderNumber} criado com sucesso.` });
       try { localStorage.removeItem("lealcert_order_local"); } catch { /* ignore */ }
 
-      await createPaymentMut.mutateAsync({
+      const payResult = await createPaymentMut.mutateAsync({
         id: orderData.id,
         data: {
           method: selectedMethod,
@@ -860,6 +860,27 @@ export default function NewOrder() {
           } : {}),
         },
       });
+
+      // Para cartão, informar o resultado antes de redirecionar
+      if (selectedMethod === "cartao") {
+        const r = payResult as { approved?: boolean; inProcess?: boolean; rejected?: boolean };
+        if (r.rejected) {
+          toast({
+            title: "Cartão recusado",
+            description: "O pagamento foi recusado pela operadora. Verifique os dados ou use outro cartão.",
+            variant: "destructive",
+          });
+          return; // fica na tela — admin pode tentar novamente
+        }
+        if (r.inProcess) {
+          toast({
+            title: "Pagamento em análise",
+            description: `Pedido ${orderData.orderNumber} criado. O pagamento está em análise pela operadora do cartão.`,
+          });
+        } else if (r.approved) {
+          toast({ title: "Pagamento aprovado!", description: `Pedido ${orderData.orderNumber} pago e em processamento.` });
+        }
+      }
 
       setLocation(`/orders/${orderData.id}`);
     } catch (err: unknown) {
