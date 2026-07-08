@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { db, usersTable } from "@workspace/db";
+import { db, pool, usersTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 
 const router = Router();
@@ -132,6 +132,7 @@ router.patch("/users/:id", requireAdmin, async (req, res): Promise<void> => {
 
 router.delete("/users/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido." }); return; }
 
   // Prevent admin from deleting their own account via this route
   if (id === (req.session.userId as number)) {
@@ -139,8 +140,39 @@ router.delete("/users/:id", requireAdmin, async (req, res): Promise<void> => {
     return;
   }
 
-  await db.delete(usersTable).where(eq(usersTable.id, id));
-  res.sendStatus(204);
+  const [user] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!user) { res.status(404).json({ error: "Usuário não encontrado." }); return; }
+
+  const adminId = req.session.userId as number;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Pedidos: preserva o histórico reatribuindo ao admin
+    await client.query("UPDATE orders SET user_id = $1 WHERE user_id = $2", [adminId, id]);
+    // Mensagens de tickets do usuário: exclui antes dos tickets
+    await client.query("DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE user_id = $1)", [id]);
+    // Mensagens enviadas pelo usuário em outros tickets: reatribui ao admin
+    await client.query("UPDATE messages SET user_id = $1 WHERE user_id = $2", [adminId, id]);
+    // Tickets do usuário
+    await client.query("DELETE FROM tickets WHERE user_id = $1", [id]);
+    // Push subscriptions
+    await client.query("DELETE FROM push_subscriptions WHERE user_id = $1", [id]);
+    // IP logs e verificações
+    await client.query("DELETE FROM ip_verifications WHERE user_id = $1", [id]);
+    await client.query("DELETE FROM ip_logs WHERE user_id = $1", [id]);
+    // Referências nullable em ip_blocks e ip_whitelist
+    await client.query("UPDATE ip_blocks SET unblocked_by = NULL WHERE unblocked_by = $1", [id]);
+    await client.query("UPDATE ip_whitelist SET added_by = NULL WHERE added_by = $1", [id]);
+    // Por fim, remove o usuário
+    await client.query("DELETE FROM users WHERE id = $1", [id]);
+    await client.query("COMMIT");
+    res.sendStatus(204);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 });
 
 export default router;

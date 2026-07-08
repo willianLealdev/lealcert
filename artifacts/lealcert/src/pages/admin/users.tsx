@@ -159,7 +159,7 @@ export default function AdminUsers() {
 
   const createUser = useCreateUser({ mutation: { onSuccess: () => { toast({ title: "Usuário criado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const updateUser = useUpdateUser({ mutation: { onSuccess: () => { toast({ title: "Usuário atualizado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
-  const deleteUser = useDeleteUser({ mutation: { onSuccess: () => { toast({ title: "Usuário removido." }); setDeleteId(null); refetch(); } } });
+  const deleteUser = useDeleteUser({ mutation: { onSuccess: () => { toast({ title: "Usuário removido." }); setDeleteId(null); refetch(); }, onError: (e) => toast({ title: "Erro ao remover usuário", description: getApiError(e), variant: "destructive" }) } });
 
   function openCreate() { setForm(EMPTY); setEditId(null); setOpen(true); }
   function openEdit(u: UserRow) {
