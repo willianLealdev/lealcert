@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useRegister } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,16 +60,37 @@ const sectionStyle = {
   padding: "16px",
 };
 
+function maskCpfFromDigits(digits: string) {
+  const d = digits.slice(0, 11);
+  return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, (_, a, b, c, e) =>
+    [a, b, c].filter(Boolean).join(".") + (e ? "-" + e : "")
+  );
+}
+function maskCnpjFromDigits(digits: string) {
+  const d = digits.slice(0, 14);
+  return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, (_, a, b, c, dd, e) =>
+    `${a}.${b}.${c}/${dd}${e ? "-" + e : ""}`
+  );
+}
+
 export default function Register() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
 
+  // Lê parâmetros da URL (vindos do fluxo de novo usuário no login)
+  const urlParams = new URLSearchParams(search);
+  const urlPersonType = urlParams.get("personType") as "fisica" | "juridica" | null;
+  const urlCpfCnpj = urlParams.get("cpfCnpj") ?? "";
+
   const [userType, setUserType] = useState<"contador" | "cliente" | "">("");
-  const [personType, setPersonType] = useState<"fisica" | "juridica" | "">("");
+  const [personType, setPersonType] = useState<"fisica" | "juridica" | "">(urlPersonType ?? "");
 
   const [form, setForm] = useState({
-    cpfCnpj: "",
+    cpfCnpj: urlCpfCnpj
+      ? (urlPersonType === "juridica" ? maskCnpjFromDigits(urlCpfCnpj) : maskCpfFromDigits(urlCpfCnpj))
+      : "",
     name: "",
     email: "",
     phone: "",

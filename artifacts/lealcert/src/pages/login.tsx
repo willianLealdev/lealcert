@@ -8,10 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, Eye, EyeOff, Phone, MessageCircle, Mail, MapPin, ShieldAlert, Clock, KeyRound, RefreshCw } from "lucide-react";
+import { Loader2, ShieldCheck, Eye, EyeOff, Phone, MessageCircle, Mail, MapPin, ShieldAlert, Clock, KeyRound, RefreshCw, User, Building2, ArrowLeft, XCircle, CheckCircle2, ChevronRight } from "lucide-react";
 import { ChatWidget } from "@/components/chat-widget";
 
-type Step = "credentials" | "ip-verify";
+type Step = "credentials" | "ip-verify" | "new-user";
+
+function maskCpf(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, (_, a, b, c, e) =>
+    [a, b, c].filter(Boolean).join(".") + (e ? "-" + e : "")
+  );
+}
+function maskCnpj(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 14);
+  return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, (_, a, b, c, dd, e) =>
+    `${a}.${b}.${c}/${dd}${e ? "-" + e : ""}`
+  );
+}
 type IpBlockInfo = { code: "ip_banned" | "ip_blocked"; error: string; isForeign?: boolean; unblockAt?: string } | null;
 
 function homeRoute(role?: string) {
@@ -28,11 +41,43 @@ export default function Login() {
   const [ipResendLoading, setIpResendLoading] = useState(false);
   const [ipResendCooldown, setIpResendCooldown] = useState(0);
   const [ipBlockInfo, setIpBlockInfo] = useState<IpBlockInfo>(null);
+
+  // ── Fluxo "novo usuário" ────────────────────────────────────────────────────
+  const [nuPersonType, setNuPersonType] = useState<"cpf" | "cnpj">("cpf");
+  const [nuDoc, setNuDoc] = useState("");
+  const [nuLoading, setNuLoading] = useState(false);
+  const [nuResult, setNuResult] = useState<{ found: boolean; name?: string } | null>(null);
+  const [nuError, setNuError] = useState("");
+
+  const nuDocDigits = nuDoc.replace(/\D/g, "");
+  const nuMinLen = nuPersonType === "cpf" ? 11 : 14;
+
+  const handleNuLookup = async () => {
+    if (nuDocDigits.length !== nuMinLen) { setNuError(`Informe um ${nuPersonType === "cpf" ? "CPF" : "CNPJ"} válido.`); return; }
+    setNuLoading(true); setNuError(""); setNuResult(null);
+    try {
+      const r = await fetch("/api/public/checkout/lookup", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cpfCnpj: nuDocDigits }),
+      });
+      const data = await r.json() as { found: boolean; name?: string };
+      setNuResult(data);
+    } catch { setNuError("Erro de rede. Tente novamente."); }
+    finally { setNuLoading(false); }
+  };
+
   const { user } = useAuth();
   const branding = useBranding();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const goToRegister = () => {
+    const params = new URLSearchParams({ personType: nuPersonType === "cpf" ? "fisica" : "juridica" });
+    if (nuDocDigits) params.set("cpfCnpj", nuDocDigits);
+    setLocation(`/register?${params.toString()}`);
+  };
 
   const loginMutation = useLogin({
     mutation: {
@@ -277,12 +322,167 @@ export default function Login() {
                 </form>
                 <div className="mt-6 pt-5 border-t border-white/10 space-y-3">
                   <div className="text-center">
-                    <Link href="/register">
-                      <span className="text-sm text-blue-300 hover:text-blue-200 transition-colors cursor-pointer font-medium">Não tem conta? Cadastre-se</span>
-                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => { setStep("new-user"); setNuDoc(""); setNuResult(null); setNuError(""); setNuPersonType("cpf"); }}
+                      className="text-sm text-blue-300 hover:text-blue-200 transition-colors cursor-pointer font-medium"
+                    >
+                      Não tem conta? Cadastre-se
+                    </button>
                   </div>
                   <p className="text-xs text-center text-blue-200/40">Em caso de problemas de acesso, entre em contato com o administrador.</p>
                 </div>
+              </>
+            )}
+
+            {/* ── Step: new-user ──────────────────────────────── */}
+            {step === "new-user" && (
+              <>
+                <div className="mb-6 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep("credentials")}
+                    className="text-blue-200/50 hover:text-blue-200 transition-colors"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  <div>
+                    <h1 className="text-xl font-bold text-white">Novo cadastro</h1>
+                    <p className="text-blue-200/60 text-sm mt-0.5">Informe seus dados para verificarmos</p>
+                  </div>
+                </div>
+
+                {/* Tipo de pessoa */}
+                <div className="space-y-3 mb-4">
+                  <Label className="text-blue-100/80 text-sm font-medium">Você é:</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(["cpf", "cnpj"] as const).map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => { setNuPersonType(t); setNuDoc(""); setNuResult(null); setNuError(""); }}
+                        className="flex flex-col items-center gap-2 rounded-xl p-4 border-2 transition-all"
+                        style={{
+                          background: nuPersonType === t ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.05)",
+                          borderColor: nuPersonType === t ? "rgba(37,99,235,0.8)" : "rgba(255,255,255,0.15)",
+                        }}
+                      >
+                        {t === "cpf"
+                          ? <User className={`h-6 w-6 ${nuPersonType === t ? "text-blue-400" : "text-blue-200/40"}`} />
+                          : <Building2 className={`h-6 w-6 ${nuPersonType === t ? "text-blue-400" : "text-blue-200/40"}`} />}
+                        <div className="text-center">
+                          <p className={`text-sm font-semibold ${nuPersonType === t ? "text-white" : "text-blue-200/60"}`}>
+                            {t === "cpf" ? "Pessoa Física" : "Pessoa Jurídica"}
+                          </p>
+                          <p className="text-xs" style={{ color: nuPersonType === t ? "rgba(147,197,253,0.7)" : "rgba(147,197,253,0.30)" }}>
+                            {t === "cpf" ? "CPF" : "CNPJ"}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Documento */}
+                {!nuResult && (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-blue-100/80 text-sm font-medium">
+                        {nuPersonType === "cpf" ? "CPF" : "CNPJ"} *
+                      </Label>
+                      <Input
+                        placeholder={nuPersonType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
+                        value={nuDoc}
+                        onChange={e => {
+                          const v = nuPersonType === "cpf" ? maskCpf(e.target.value) : maskCnpj(e.target.value);
+                          setNuDoc(v); setNuError("");
+                        }}
+                        onKeyDown={e => e.key === "Enter" && !nuLoading && handleNuLookup()}
+                        className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 focus-visible:ring-blue-400/30 h-11"
+                        style={{ background: "rgba(255,255,255,0.07)" }}
+                        inputMode="numeric"
+                        autoFocus
+                      />
+                    </div>
+                    {nuError && (
+                      <p className="text-sm text-red-400 flex items-center gap-1.5">
+                        <XCircle className="h-4 w-4 shrink-0" />{nuError}
+                      </p>
+                    )}
+                    <Button
+                      type="button"
+                      className="w-full h-11 text-base font-semibold"
+                      style={{ background: "linear-gradient(135deg, hsl(214,80%,50%) 0%, hsl(214,80%,42%) 100%)", boxShadow: "0 4px 20px hsl(214,80%,46%,0.45)" }}
+                      disabled={nuLoading || nuDocDigits.length < nuMinLen}
+                      onClick={handleNuLookup}
+                    >
+                      {nuLoading
+                        ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Verificando...</>
+                        : <><ChevronRight className="h-4 w-4 mr-2" />Verificar</>}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Resultado: já tem cadastro */}
+                {nuResult?.found && (
+                  <div className="space-y-4">
+                    <div className="rounded-xl p-4 border border-blue-500/30" style={{ background: "rgba(37,99,235,0.15)" }}>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-blue-200">Cadastro já existe!</p>
+                          {nuResult.name && <p className="text-xs text-blue-300/80 mt-0.5">Encontramos o cadastro de <strong>{nuResult.name}</strong>.</p>}
+                          <p className="text-xs text-blue-200/60 mt-1">Use suas credenciais para entrar normalmente.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full h-11 text-base font-semibold"
+                      style={{ background: "linear-gradient(135deg, hsl(214,80%,50%) 0%, hsl(214,80%,42%) 100%)", boxShadow: "0 4px 20px hsl(214,80%,46%,0.45)" }}
+                      onClick={() => { setStep("credentials"); setCpfCnpj(nuDoc); }}
+                    >
+                      Ir para o login
+                    </Button>
+                    <button
+                      type="button"
+                      className="w-full text-xs text-blue-200/50 hover:text-blue-200 transition-colors text-center"
+                      onClick={() => { setNuResult(null); setNuDoc(""); }}
+                    >
+                      Verificar outro documento
+                    </button>
+                  </div>
+                )}
+
+                {/* Resultado: não tem cadastro → seguir para registro */}
+                {nuResult?.found === false && (
+                  <div className="space-y-4">
+                    <div className="rounded-xl p-4 border border-emerald-500/30" style={{ background: "rgba(16,185,129,0.10)" }}>
+                      <div className="flex items-start gap-3">
+                        <User className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-300">Nenhum cadastro encontrado</p>
+                          <p className="text-xs text-emerald-200/60 mt-1">Você pode criar sua conta agora.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full h-11 text-base font-semibold"
+                      style={{ background: "linear-gradient(135deg, hsl(214,80%,50%) 0%, hsl(214,80%,42%) 100%)", boxShadow: "0 4px 20px hsl(214,80%,46%,0.45)" }}
+                      onClick={goToRegister}
+                    >
+                      Criar minha conta
+                    </Button>
+                    <button
+                      type="button"
+                      className="w-full text-xs text-blue-200/50 hover:text-blue-200 transition-colors text-center"
+                      onClick={() => { setNuResult(null); setNuDoc(""); }}
+                    >
+                      Verificar outro documento
+                    </button>
+                  </div>
+                )}
               </>
             )}
 
