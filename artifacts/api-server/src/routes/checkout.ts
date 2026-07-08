@@ -70,6 +70,88 @@ router.get("/public/checkout/cert/:id", async (req, res): Promise<void> => {
   });
 });
 
+// ── POST /public/checkout/lookup — verifica se CPF/CNPJ já tem conta ─────────
+router.post("/public/checkout/lookup", async (req, res): Promise<void> => {
+  const { cpfCnpj, password } = req.body ?? {};
+  const doc = String(cpfCnpj ?? "").replace(/\D/g, "");
+  if (!doc || (doc.length !== 11 && doc.length !== 14)) {
+    res.status(400).json({ found: false, error: "CPF/CNPJ inválido." }); return;
+  }
+  const [user] = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      phone: usersTable.phone,
+      passwordHash: usersTable.passwordHash,
+      personType: usersTable.personType,
+      isActive: usersTable.isActive,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.cpfCnpj, doc))
+    .limit(1);
+
+  if (!user || !user.isActive) {
+    res.json({ found: false }); return;
+  }
+
+  // Se enviou senha → tentar login
+  if (password) {
+    const ok = await bcrypt.compare(String(password), user.passwordHash ?? "");
+    if (!ok) {
+      res.status(401).json({ found: true, authenticated: false, error: "Senha incorreta." }); return;
+    }
+    // Busca último pedido para pré-preencher dados
+    const [lastOrder] = await db
+      .select({
+        customerName: ordersTable.customerName,
+        customerEmail: ordersTable.customerEmail,
+        customerPhone: ordersTable.customerPhone,
+        customerBirthDate: ordersTable.customerBirthDate,
+        companyName: ordersTable.companyName,
+        addressZipcode: ordersTable.addressZipcode,
+        addressStreet: ordersTable.addressStreet,
+        addressNumber: ordersTable.addressNumber,
+        addressComplement: ordersTable.addressComplement,
+        addressNeighborhood: ordersTable.addressNeighborhood,
+        addressCity: ordersTable.addressCity,
+        addressState: ordersTable.addressState,
+        representanteNascimento: ordersTable.representanteNascimento,
+        representanteDocTipo: ordersTable.representanteDocTipo,
+        representanteDocNumero: ordersTable.representanteDocNumero,
+        representanteDocEmissor: ordersTable.representanteDocEmissor,
+        nfCnpj: ordersTable.nfCnpj,
+        nfNome: ordersTable.nfNome,
+        nfZipcode: ordersTable.nfZipcode,
+        nfStreet: ordersTable.nfStreet,
+        nfNumber: ordersTable.nfNumber,
+        nfComplement: ordersTable.nfComplement,
+        nfNeighborhood: ordersTable.nfNeighborhood,
+        nfCity: ordersTable.nfCity,
+        nfState: ordersTable.nfState,
+      })
+      .from(ordersTable)
+      .where(eq(ordersTable.userId, user.id))
+      .orderBy(ordersTable.createdAt)
+      .limit(1);
+
+    res.json({
+      found: true,
+      authenticated: true,
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      personType: user.personType,
+      prefill: lastOrder ?? null,
+    });
+    return;
+  }
+
+  // Sem senha → apenas confirma existência
+  res.json({ found: true, name: user.name });
+});
+
 // ── POST /public/checkout/bio — valida CPF + PSBio (sem auth) ────────────────
 router.post("/public/checkout/bio", async (req, res): Promise<void> => {
   const { cpf, dataNascimento } = req.body ?? {};
