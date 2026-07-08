@@ -426,26 +426,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        {/* Provider badge + certifier logo */}
-        <div className="px-3 py-2 border-t border-sidebar-border/30">
-          {collapsed ? (
-            <div className="flex justify-center">
-              <ProviderDot activeProvider={branding.activeProvider} safewebAmbiente={branding.safewebAmbiente} />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sidebar-foreground/30 text-[10px] uppercase tracking-wider whitespace-nowrap">Certificado por</span>
-                <img
-                  src="/safeweb-logo.png"
-                  alt="Safeweb"
-                  className="h-5 w-auto object-contain brightness-0 invert opacity-40"
-                />
+        {/* Provider badge + certifier logo — visível apenas para admin */}
+        {user?.role === "admin" && (
+          <div className="px-3 py-2 border-t border-sidebar-border/30">
+            {collapsed ? (
+              <div className="flex justify-center">
+                <ProviderDot activeProvider={branding.activeProvider} safewebAmbiente={branding.safewebAmbiente} />
               </div>
-              <ProviderBadge activeProvider={branding.activeProvider} safewebAmbiente={branding.safewebAmbiente} />
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sidebar-foreground/30 text-[10px] uppercase tracking-wider whitespace-nowrap">Certificado por</span>
+                  <img
+                    src="/safeweb-logo.png"
+                    alt="Safeweb"
+                    className="h-5 w-auto object-contain brightness-0 invert opacity-40"
+                  />
+                </div>
+                <ProviderBadge activeProvider={branding.activeProvider} safewebAmbiente={branding.safewebAmbiente} />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* User footer */}
         <div className="p-2 border-t border-sidebar-border/50 space-y-0.5">
@@ -463,7 +465,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="min-w-0">
                   <p className="font-medium text-sidebar-foreground truncate text-xs">{user?.name}</p>
                   <p className="text-xs text-sidebar-foreground/50 capitalize">
-                    {user?.role === "admin" ? "Administrador" : user?.role === "agente" ? "Agente de Registro" : "Contador"}
+                    {user?.role === "admin" ? "Administrador" : user?.role === "agente" ? "Agente de Registro" : user?.userType === "cliente" ? "Cliente" : "Contador"}
                   </p>
                 </div>
               )}
