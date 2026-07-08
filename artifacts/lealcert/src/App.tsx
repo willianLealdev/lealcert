@@ -63,6 +63,7 @@ import AdminRelatoriosGar from "@/pages/admin/relatorios-gar";
 import AdminReviews from "@/pages/admin/reviews";
 import AgenteConsultar from "@/pages/agente/consultar";
 import PrivacyPolicy from "@/pages/privacy-policy";
+import ComprarPage from "@/pages/comprar";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -120,6 +121,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/change-password" component={ChangePassword} />
       <Route path="/politica-de-privacidade" component={PrivacyPolicy} />
+      <Route path="/comprar/:certId" component={ComprarPage} />
       {/* Protected user routes */}
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/orders" component={() => <ProtectedRoute component={Orders} />} />

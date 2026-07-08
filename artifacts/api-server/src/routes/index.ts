@@ -23,6 +23,7 @@ import ipSecurityRouter from "./ip-security";
 import agentesRouter from "./agentes";
 import agenteDocsRouter from "./agente-docs";
 import publicRouter from "./public";
+import checkoutRouter from "./checkout";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(ipSecurityRouter);
 router.use(agentesRouter);
 router.use(agenteDocsRouter);
 router.use(publicRouter);
+router.use(checkoutRouter);
 
 export default router;

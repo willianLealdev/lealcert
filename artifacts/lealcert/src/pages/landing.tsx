@@ -201,7 +201,7 @@ function CertSelector({ certs }: { certs: CertFromDB[] }) {
                 <p className="text-2xl font-black text-[#0f172a]">{fmtPrice(c.price)}</p>
                 <p className="text-xs text-gray-400 mb-4">preço do cliente</p>
                 <a
-                  href="/register"
+                  href={`/comprar/${c.id}`}
                   className="block w-full text-center bg-[#2563eb] hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all hover:scale-105 shadow-md shadow-blue-200/50"
                 >
                   Comprar
