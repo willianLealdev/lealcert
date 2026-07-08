@@ -37,8 +37,8 @@ export default function ChangePassword() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      toast({ title: "Senha muito curta", description: "A nova senha deve ter no mínimo 6 caracteres.", variant: "destructive" });
+    if (newPassword.length < 8) {
+      toast({ title: "Senha muito curta", description: "A nova senha deve ter no mínimo 8 caracteres.", variant: "destructive" });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -104,7 +104,7 @@ export default function ChangePassword() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-blue-100/80 text-sm font-medium">Nova senha * (mínimo 6 caracteres)</Label>
+              <Label className="text-blue-100/80 text-sm font-medium">Nova senha * (mínimo 8 caracteres)</Label>
               <div className="relative">
                 <Input
                   type={showNew ? "text" : "password"}
