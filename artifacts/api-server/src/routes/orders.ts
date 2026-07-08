@@ -1260,7 +1260,7 @@ router.post("/orders/:id/gar-cancelar-protocolo", requireAdmin, async (req, res)
     if (hasAgendamento && order.garHashVenda && s?.garApiKey) {
       try {
         const { garExcluirAgendamento } = await import("../lib/gestaoar");
-        await garExcluirAgendamento(s.garApiKey, order.garHashVenda);
+        await garExcluirAgendamento(s.garApiKey, order.garHashVenda, order.garPedido);
         req.log.info({ orderId: id }, "gar-cancelar-protocolo: agendamento GAR cancelado junto");
       } catch (agendErr) {
         req.log.warn({ err: agendErr, orderId: id }, "gar-cancelar-protocolo: não foi possível cancelar agendamento GAR (continuando)");

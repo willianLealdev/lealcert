@@ -473,7 +473,10 @@ export async function garExcluirAgendamento(
   hashVenda: string,
   garPedidoNumero?: string | null,
 ): Promise<{ Status?: number; Erros?: { Ocorrencia: string }[] }> {
-  // Usa HashVenda — mesmo padrão do endpoint Agendamento
+  // Contrato GAR: id = número do pedido (garPedido), HashUsuario = UUID do hash da venda
+  if (!garPedidoNumero) {
+    throw new Error("garPedido (id do pedido GAR) não encontrado no pedido — não é possível cancelar agendamento sem ele");
+  }
   const raw = await garPost<
     { Status?: number; Erros?: { Ocorrencia: string }[] } |
     { ErrorCode?: string; ErrorDescription?: string }[]
@@ -481,8 +484,8 @@ export async function garExcluirAgendamento(
     "ExcluirAgendamento",
     {
       apiKey,
-      HashVenda: hashVenda,
-      ...(garPedidoNumero ? { Pedido: garPedidoNumero } : {}),
+      id: garPedidoNumero,
+      HashUsuario: hashVenda,
     },
   );
 
