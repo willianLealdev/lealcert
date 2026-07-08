@@ -165,6 +165,60 @@ router.post("/public/checkout/lookup", async (req, res): Promise<void> => {
   res.json({ found: true, name: user.name });
 });
 
+// ── POST /public/checkout/register-provisional — cria conta provisória ───────
+router.post("/public/checkout/register-provisional", async (req, res): Promise<void> => {
+  const { cpfCnpj, email, personType } = req.body ?? {};
+  const doc = String(cpfCnpj ?? "").replace(/\D/g, "");
+  const emailStr = String(email ?? "").toLowerCase().trim();
+
+  if (!doc || (doc.length !== 11 && doc.length !== 14)) {
+    res.status(400).json({ error: "CPF/CNPJ inválido." }); return;
+  }
+  if (!emailStr || !emailStr.includes("@")) {
+    res.status(400).json({ error: "E-mail inválido." }); return;
+  }
+
+  // Verifica se CPF/CNPJ já tem cadastro
+  const [existingDoc] = await db.select({ id: usersTable.id })
+    .from(usersTable).where(eq(usersTable.cpfCnpj, doc)).limit(1);
+  if (existingDoc) {
+    res.status(409).json({ error: "Este CPF/CNPJ já possui cadastro. Clique em \"Já sou cliente\" para entrar." }); return;
+  }
+
+  // Verifica se e-mail já está em uso
+  const [existingEmail] = await db.select({ id: usersTable.id })
+    .from(usersTable).where(eq(usersTable.email, emailStr)).limit(1);
+  if (existingEmail) {
+    res.status(409).json({ error: "Este e-mail já está cadastrado. Clique em \"Já sou cliente\" para entrar." }); return;
+  }
+
+  const tempPassword = generateTempPassword();
+  const passwordHash = await bcrypt.hash(tempPassword, 10);
+  const resolvedPersonType = personType === "juridica" ? "juridica" : "fisica";
+
+  await db.insert(usersTable).values({
+    name: emailStr,
+    email: emailStr,
+    cpfCnpj: doc,
+    passwordHash,
+    phone: null,
+    role: "contador",
+    userType: "cliente",
+    personType: resolvedPersonType,
+    isActive: true,
+    emailVerified: true,
+    mustChangePassword: true,
+  });
+
+  try {
+    await sendTempPasswordEmail(emailStr, emailStr, tempPassword);
+  } catch (err) {
+    logger.warn({ err }, "register-provisional: falha ao enviar e-mail de senha provisória");
+  }
+
+  res.json({ ok: true });
+});
+
 // ── POST /public/checkout/bio — valida CPF + PSBio (sem auth) ────────────────
 router.post("/public/checkout/bio", async (req, res): Promise<void> => {
   const { cpf, dataNascimento } = req.body ?? {};
@@ -435,7 +489,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
   const existingUser = await db
     .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, role: usersTable.role, userType: usersTable.userType })
     .from(usersTable)
-    .where(eq(usersTable.cpfCnpj, cpfDigits))
+    .where(eq(usersTable.cpfCnpj, docDigits))
     .limit(1);
 
   if (existingUser.length > 0) {

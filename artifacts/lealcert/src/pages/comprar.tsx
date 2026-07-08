@@ -314,6 +314,10 @@ export default function ComprarPage() {
   // Lookup flow
   const [lookupMode, setLookupMode] = useState<null | "cliente" | "novo">(null);
   const [newClientType, setNewClientType] = useState<"cpf" | "cnpj">("cpf");
+  const [newClientDoc, setNewClientDoc] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+  const [newClientRegLoading, setNewClientRegLoading] = useState(false);
+  const [newClientRegError, setNewClientRegError] = useState("");
 
   /* ── certificado ─────────────────────────────────────────────────────── */
   const { data: cert, isLoading: certLoading, isError: certError } = useQuery<Certificate>({
@@ -435,6 +439,43 @@ export default function ComprarPage() {
     setLookupError("");
     // Mostra os termos antes de avançar para bio
     setShowTerms(true);
+  };
+
+  const handleNovoRegister = async () => {
+    const docD = newClientDoc.replace(/\D/g, "");
+    const expectedLen = newClientType === "cpf" ? 11 : 14;
+    if (docD.length !== expectedLen) {
+      setNewClientRegError(`Informe um ${newClientType === "cpf" ? "CPF" : "CNPJ"} válido.`); return;
+    }
+    const emailTrimmed = newClientEmail.trim().toLowerCase();
+    if (!emailTrimmed || !emailTrimmed.includes("@")) {
+      setNewClientRegError("Informe um e-mail válido."); return;
+    }
+    setNewClientRegLoading(true); setNewClientRegError("");
+    try {
+      const r = await fetch("/api/public/checkout/register-provisional", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cpfCnpj: docD,
+          email: emailTrimmed,
+          personType: newClientType === "cpf" ? "fisica" : "juridica",
+        }),
+      });
+      const data = await r.json() as { ok?: boolean; error?: string };
+      if (!r.ok) { setNewClientRegError(data.error ?? "Erro ao criar cadastro."); return; }
+      // Pré-preenche email no formulário de dados
+      setDados(prev => ({ ...prev, email: emailTrimmed }));
+      // Pré-preenche CPF no bio para clientes PF
+      if (newClientType === "cpf") {
+        setBio(prev => ({ ...prev, cpf: maskCpf(docD) }));
+      }
+      continueAsNew();
+    } catch {
+      setNewClientRegError("Erro de rede. Tente novamente.");
+    } finally {
+      setNewClientRegLoading(false);
+    }
   };
 
   /* ══════════════════════════════════════════════════════════════════════
@@ -1319,43 +1360,82 @@ export default function ComprarPage() {
                       {lookupMode === "novo" && (
                         <div className="space-y-4">
                           <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setLookupMode(null)} className="text-muted-foreground hover:text-foreground">
+                            <button type="button" onClick={() => { setLookupMode(null); setNewClientDoc(""); setNewClientEmail(""); setNewClientRegError(""); }} className="text-muted-foreground hover:text-foreground">
                               <ArrowLeft className="h-4 w-4" />
                             </button>
-                            <p className="text-sm font-medium text-muted-foreground">Novo cliente</p>
+                            <p className="text-sm font-medium text-muted-foreground">Novo cliente — criar acesso</p>
                           </div>
-                          <p className="text-sm text-foreground font-medium">Deseja se cadastrar com:</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <button
-                              type="button"
-                              onClick={() => setNewClientType("cpf")}
-                              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${newClientType === "cpf" ? "border-primary bg-blue-50 text-primary" : "border-muted bg-white text-muted-foreground hover:border-primary/50"}`}
-                            >
-                              <User className="h-6 w-6" />
-                              <div className="text-center">
-                                <p className="font-semibold text-sm">CPF</p>
-                                <p className="text-xs mt-0.5">Pessoa Física</p>
-                              </div>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setNewClientType("cnpj")}
-                              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${newClientType === "cnpj" ? "border-primary bg-blue-50 text-primary" : "border-muted bg-white text-muted-foreground hover:border-primary/50"}`}
-                            >
-                              <Building2 className="h-6 w-6" />
-                              <div className="text-center">
-                                <p className="font-semibold text-sm">CNPJ</p>
-                                <p className="text-xs mt-0.5">Pessoa Jurídica</p>
-                              </div>
-                            </button>
+
+                          {/* Tipo: CPF ou CNPJ */}
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-foreground">Você se cadastrará com:</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <button
+                                type="button"
+                                onClick={() => { setNewClientType("cpf"); setNewClientDoc(""); setNewClientRegError(""); }}
+                                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${newClientType === "cpf" ? "border-primary bg-blue-50 text-primary" : "border-muted bg-white text-muted-foreground hover:border-primary/50"}`}
+                              >
+                                <User className="h-6 w-6" />
+                                <div className="text-center">
+                                  <p className="font-semibold text-sm">CPF</p>
+                                  <p className="text-xs mt-0.5">Pessoa Física</p>
+                                </div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setNewClientType("cnpj"); setNewClientDoc(""); setNewClientRegError(""); }}
+                                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${newClientType === "cnpj" ? "border-primary bg-blue-50 text-primary" : "border-muted bg-white text-muted-foreground hover:border-primary/50"}`}
+                              >
+                                <Building2 className="h-6 w-6" />
+                                <div className="text-center">
+                                  <p className="font-semibold text-sm">CNPJ</p>
+                                  <p className="text-xs mt-0.5">Pessoa Jurídica</p>
+                                </div>
+                              </button>
+                            </div>
                           </div>
-                          <p className="text-xs text-muted-foreground bg-slate-50 rounded-lg px-3 py-2">
-                            {newClientType === "cpf"
-                              ? "Você precisará do seu CPF e data de nascimento para a validação biométrica ICP-Brasil."
-                              : "Você precisará do CPF do representante legal da empresa e data de nascimento para validação ICP-Brasil."}
-                          </p>
-                          <Button className="w-full h-11" onClick={continueAsNew}>
-                            Continuar <ArrowRight className="h-4 w-4 ml-2" />
+
+                          {/* Documento */}
+                          <div className="space-y-1.5">
+                            <Label className="text-sm font-medium">{newClientType === "cpf" ? "CPF *" : "CNPJ *"}</Label>
+                            <Input
+                              value={newClientDoc}
+                              onChange={e => {
+                                const v = newClientType === "cpf" ? maskCpf(e.target.value) : maskCnpj(e.target.value);
+                                setNewClientDoc(v); setNewClientRegError("");
+                              }}
+                              placeholder={newClientType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
+                              inputMode="numeric"
+                            />
+                          </div>
+
+                          {/* E-mail */}
+                          <div className="space-y-1.5">
+                            <Label className="text-sm font-medium">E-mail *</Label>
+                            <Input
+                              type="email"
+                              value={newClientEmail}
+                              onChange={e => { setNewClientEmail(e.target.value); setNewClientRegError(""); }}
+                              placeholder="seu@email.com.br"
+                            />
+                            <p className="text-xs text-muted-foreground">Uma senha provisória será enviada para este e-mail.</p>
+                          </div>
+
+                          {newClientRegError && (
+                            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                              <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                              <p className="text-sm text-red-700">{newClientRegError}</p>
+                            </div>
+                          )}
+
+                          <Button
+                            className="w-full h-11"
+                            onClick={handleNovoRegister}
+                            disabled={newClientRegLoading}
+                          >
+                            {newClientRegLoading
+                              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando acesso...</>
+                              : <>Avançar <ArrowRight className="h-4 w-4 ml-2" /></>}
                           </Button>
                         </div>
                       )}
