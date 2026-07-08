@@ -471,15 +471,20 @@ export async function garObterAgendamento(apiKey: string, hashVenda: string): Pr
 export async function garExcluirAgendamento(
   apiKey: string,
   hashVenda: string,
+  garPedidoNumero?: string | null,
 ): Promise<{ Status?: number; Erros?: { Ocorrencia: string }[] }> {
-  // A API às vezes retorna array de erros ({ErrorCode, ErrorDescription})
-  // em vez do formato objeto ({Status, Erros}) — precisamos lidar com os dois
+  // Novo contrato da GAR: id (número do pedido) + HashUsuario (hashpessoa/hashVenda)
+  // Ref: suporte GAR, 07/07/2026
   const raw = await garPost<
     { Status?: number; Erros?: { Ocorrencia: string }[] } |
     { ErrorCode?: string; ErrorDescription?: string }[]
   >(
     "ExcluirAgendamento",
-    { apiKey, HashVenda: hashVenda, IsCliente: "1" },
+    {
+      apiKey,
+      id: garPedidoNumero ?? hashVenda,
+      HashUsuario: hashVenda,
+    },
   );
 
   // Formato array: [{ ErrorCode, ErrorDescription }] — array vazio = sucesso
