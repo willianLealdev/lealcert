@@ -1394,7 +1394,11 @@ export default function OrderDetail() {
           setPixData({ paymentId: data.paymentId, pixQrCode: data.pixQrCode ?? "", pixQrCodeBase64: data.pixQrCodeBase64 ?? "" });
         } else if (data.method === "boleto") {
           setBoletoData({ url: data.boletoUrl ?? null, barcode: data.boletoBarcode ?? null });
-          toast({ title: "Boleto gerado!", description: "Clique no link abaixo para acessar ou copie o código de barras." });
+          if (data.boletoUrl || data.boletoBarcode) {
+            toast({ title: "Boleto gerado!", description: "Clique no link abaixo para acessar ou copie o código de barras." });
+          } else {
+            toast({ title: "Boleto registrado no MP", description: "URL do boleto não retornada. Verifique se o pedido possui endereço completo.", variant: "destructive" });
+          }
         } else if (data.method === "cartao") {
           if (data.rejected) {
             toast({ title: "Cartão recusado", description: "Verifique os dados ou tente com outro cartão.", variant: "destructive" });
@@ -1986,6 +1990,39 @@ export default function OrderDetail() {
                 </div>
               );
             })()}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Card persistente de boleto — visível independente do status do pedido */}
+      {(order.mpBoletoUrl || order.mpBoletoBarcode) && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-amber-600" />
+              Boleto Bancário
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {order.mpBoletoUrl && (
+              <Button className="w-full" variant="outline" asChild>
+                <a href={order.mpBoletoUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />Visualizar / Imprimir Boleto
+                </a>
+              </Button>
+            )}
+            {order.mpBoletoBarcode && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Código de barras / Linha digitável:</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs bg-white border rounded px-2 py-1.5 flex-1 break-all font-mono">{order.mpBoletoBarcode}</code>
+                  <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(order.mpBoletoBarcode!); setBarcodeCopied(true); setTimeout(() => setBarcodeCopied(false), 2000); }}>
+                    {barcodeCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">Validade: 3 dias úteis após a geração.</p>
           </CardContent>
         </Card>
       )}

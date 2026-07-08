@@ -621,8 +621,9 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
       }
       const boletoUrl = data.transaction_details?.external_resource_url ?? null;
       const boletoBarcode = data.barcode?.content ?? null;
+      req.log.info({ mpId: data.id, mpStatus: data.status, boletoUrl, boletoBarcode }, "MP boleto response");
       await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? ""), mpBoletoUrl: boletoUrl, mpBoletoBarcode: boletoBarcode }).where(eq(ordersTable.id, id));
-      await logPayEv(id, "payment_initiated", `Boleto gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
+      await logPayEv(id, "payment_initiated", `Boleto gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id, boletoUrl, boletoBarcode });
       res.json({ paymentId: String(data.id ?? ""), method: "boleto", boletoUrl, boletoBarcode });
 
     } else {
