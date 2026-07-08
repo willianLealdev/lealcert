@@ -572,7 +572,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
   const nameParts = String(customerName).split(" ");
   const firstName = nameParts[0];
   const lastName = nameParts.slice(1).join(" ") || firstName;
-  const payerEmail = `naoresponda@lealcert.com.br`;
+  const payerEmail = "naorespondamp@lealcert.com.br";
 
   try {
     if (paymentMethod === "pix") {
