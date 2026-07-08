@@ -91,6 +91,15 @@ function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = 
   if (adminOnly && user.role !== "admin") return <NotFound />;
   if (agenteOnly && user.role !== "agente") return <NotFound />;
 
+  // Força conclusão do perfil antes de acessar qualquer outra área
+  if (user.mustChangePassword) {
+    return (
+      <Layout>
+        <Profile />
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <Component key={resetKey} />

@@ -494,18 +494,6 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
 
   if (existingUser.length > 0) {
     userId = existingUser[0].id;
-    // Garante que a sessão está ativa para o usuário (caso não tenha feito lookup com senha)
-    if (!req.session.userId) {
-      await new Promise<void>((resolve, reject) => {
-        req.session.regenerate((err) => {
-          if (err) { reject(err); return; }
-          req.session.userId = existingUser[0].id;
-          req.session.role = existingUser[0].role as string;
-          req.session.userType = existingUser[0].userType as string;
-          req.session.save((saveErr) => { if (saveErr) reject(saveErr); else resolve(); });
-        });
-      });
-    }
   } else {
     // Create new user with temp password
     isNewUser = true;
@@ -527,17 +515,6 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       mustChangePassword: true,
     }).returning({ id: usersTable.id });
     userId = newUser.id;
-
-    // Loga o novo usuário automaticamente
-    await new Promise<void>((resolve, reject) => {
-      req.session.regenerate((err) => {
-        if (err) { reject(err); return; }
-        req.session.userId = userId;
-        req.session.role = "contador";
-        req.session.userType = "cliente";
-        req.session.save((saveErr) => { if (saveErr) reject(saveErr); else resolve(); });
-      });
-    });
   }
 
   // Create order

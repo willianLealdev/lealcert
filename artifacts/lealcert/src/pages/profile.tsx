@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, User, MapPin, Building2 } from "lucide-react";
+import { Loader2, User, MapPin, Building2, AlertTriangle } from "lucide-react";
 
 function maskCep(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 8);
@@ -19,6 +19,7 @@ export default function Profile() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const mustComplete = user?.mustChangePassword === true;
 
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -69,6 +70,14 @@ export default function Profile() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (mustComplete) {
+      if (!name.trim() || name.trim() === email.trim()) {
+        toast({ title: "Informe seu nome completo", variant: "destructive" }); return;
+      }
+      if (!newPassword) {
+        toast({ title: "Defina sua nova senha de acesso", variant: "destructive" }); return;
+      }
+    }
     if (newPassword && newPassword !== confirmPassword) {
       toast({ title: "Senhas não coincidem", variant: "destructive" });
       return;
@@ -97,6 +106,18 @@ export default function Profile() {
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Meu Perfil</h1>
         <p className="text-muted-foreground text-sm sm:text-base">Gerencie seus dados e senha de acesso.</p>
       </div>
+
+      {mustComplete && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-amber-800 text-sm">Complete seu cadastro para continuar</p>
+            <p className="text-amber-700 text-xs mt-0.5">
+              Preencha seu nome completo e defina uma nova senha permanente. Você não poderá acessar outras áreas enquanto isso não for concluído.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
@@ -164,19 +185,23 @@ export default function Profile() {
                 )}
 
                 <div className="border-t pt-4 space-y-4">
-                  <p className="text-sm font-medium text-muted-foreground">Alterar Senha (opcional)</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {mustComplete ? "Defina sua senha permanente *" : "Alterar Senha (opcional)"}
+                  </p>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Senha Atual</Label>
-                      <Input id="currentPassword" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+                      <Label htmlFor="currentPassword">
+                        {mustComplete ? "Senha temporária recebida por e-mail" : "Senha Atual"}
+                      </Label>
+                      <Input id="currentPassword" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required={mustComplete} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="newPassword">Nova Senha</Label>
-                      <Input id="newPassword" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                      <Label htmlFor="newPassword">Nova Senha {mustComplete && <span className="text-destructive">*</span>}</Label>
+                      <Input id="newPassword" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required={mustComplete} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-                      <Input id="confirmPassword" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+                      <Label htmlFor="confirmPassword">Confirmar Senha {mustComplete && <span className="text-destructive">*</span>}</Label>
+                      <Input id="confirmPassword" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required={mustComplete} />
                     </div>
                   </div>
                 </div>
@@ -237,8 +262,10 @@ export default function Profile() {
               </CardContent>
             </Card>
 
-            <Button type="submit" disabled={updateProfile.isPending}>
-              {updateProfile.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : "Salvar Alterações"}
+            <Button type="submit" disabled={updateProfile.isPending} className={mustComplete ? "w-full" : undefined}>
+              {updateProfile.isPending
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>
+                : mustComplete ? "Concluir Cadastro e Acessar Plataforma" : "Salvar Alterações"}
             </Button>
           </form>
         </div>
