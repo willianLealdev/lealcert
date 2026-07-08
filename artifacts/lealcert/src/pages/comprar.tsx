@@ -119,6 +119,7 @@ interface PayState {
   pixQr: string | null; pixCode: string | null;
   boletoUrl: string | null; boletoBarcode: string | null;
   isNewUser: boolean; loading: boolean; error: string | null;
+  cardApproved?: boolean; cardInProcess?: boolean; cardRejected?: boolean;
 }
 
 /* ── Logo ──────────────────────────────────────────────────────────────── */
@@ -766,7 +767,7 @@ export default function ComprarPage() {
         cardName: cardName.trim(),
         cardExpiry,
         cardCvv,
-        installments,
+        installments: 1,
       } : {}),
     };
 
@@ -790,16 +791,17 @@ export default function ComprarPage() {
         boletoBarcode: data.boletoBarcode || null,
         isNewUser: data.isNewUser ?? false,
         loading: false, error: null,
+        cardApproved: data.approved ?? false,
+        cardInProcess: data.inProcess ?? false,
+        cardRejected: data.rejected ?? false,
       });
       // Após o submit o usuário já está autenticado na sessão — atualiza o contexto de auth
       await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      /* Cartão aprovado diretamente → vai pra tela de processando */
-      if (selectedMethod === "cartao" && data.approved) {
-        setStep("processando");
-      } else {
-        /* PIX/boleto → mostra QR/código na tela de pagamento e espera confirmação */
-        setStep("processando");
+      if (selectedMethod === "cartao" && data.rejected) {
+        setPay(p => ({ ...p, error: "Cartão recusado pela operadora. Verifique os dados ou tente outro cartão." }));
+        return;
       }
+      setStep("processando");
       window.scrollTo(0, 0);
     } catch {
       setPay(p => ({ ...p, loading: false, error: "Erro de rede. Tente novamente." }));
@@ -809,7 +811,7 @@ export default function ComprarPage() {
   /* ══════════════════════════════════════════════════════════════════════
      ETAPA "processando" — polling status automático
   ══════════════════════════════════════════════════════════════════════ */
-  type ProcessStep = "aguardando_pagamento" | "processando_pagamento" | "registrando_provedor" | "gerando_protocolo" | "concluido" | "erro";
+  type ProcessStep = "aguardando_pagamento" | "em_analise" | "processando_pagamento" | "registrando_provedor" | "gerando_protocolo" | "concluido" | "erro" | "recusado";
 
   const [processStep, setProcessStep] = useState<ProcessStep>("aguardando_pagamento");
   const [processoProtocolo, setProcessoProtocolo] = useState<string | null>(null);
@@ -831,19 +833,30 @@ export default function ComprarPage() {
   useEffect(() => {
     if (step !== "processando" || !pay.orderId) return;
 
-    // Se cartão aprovado → começa em processando_pagamento
-    if (pay.method === "cartao") setProcessStep("processando_pagamento");
-    else setProcessStep("aguardando_pagamento");
+    // Estado inicial conforme método e resultado do submit
+    if (pay.method === "cartao") {
+      if (pay.cardApproved) setProcessStep("processando_pagamento");
+      else if (pay.cardInProcess) setProcessStep("em_analise");
+      else setProcessStep("aguardando_pagamento");
+    } else {
+      setProcessStep("aguardando_pagamento");
+    }
 
     const poll = async () => {
       try {
         const r = await fetch(`/api/public/checkout/payment-status/${pay.orderId}`, { credentials: "include" });
         if (!r.ok) return;
-        const data: { status: string; garProtocolo?: string | null; safewebSolicitacaoId?: string | null; garHopeUploadUrl?: string | null; protocolNumber?: string | null } = await r.json();
+        const data: { status: string; inProcess?: boolean; rejected?: boolean; garProtocolo?: string | null; safewebSolicitacaoId?: string | null; garHopeUploadUrl?: string | null; protocolNumber?: string | null } = await r.json();
         const s = data.status;
 
-        if (s === "pending_payment" || s === "created") {
-          setProcessStep("aguardando_pagamento");
+        if (data.rejected) {
+          setProcessStep("recusado");
+          if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        } else if (data.inProcess) {
+          setProcessStep("em_analise");
+        } else if (s === "pending_payment" || s === "created") {
+          if (pay.method !== "cartao") setProcessStep("aguardando_pagamento");
+          // cartão em_analise já definido no início — não sobrescreve
         } else if (s === "paid") {
           setProcessStep("processando_pagamento");
         } else if (s === "protocol_assigned" || s === "aguardando_validacao" || s === "emitido" || s === "completed") {
@@ -2005,17 +2018,60 @@ export default function ComprarPage() {
                       </Card>
                     )}
 
-                    {/* Status automático */}
-                    <Card>
+                    {/* Em análise — cartão */}
+                    {processStep === "em_analise" && (
+                      <Card className="border-amber-200 bg-amber-50">
+                        <CardContent className="pt-5 flex items-start gap-3">
+                          <div className="h-9 w-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                            <RefreshCw className="h-5 w-5 text-amber-600 animate-spin" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-amber-800">Pagamento em análise</p>
+                            <p className="text-sm text-amber-700 mt-1">
+                              Seu pagamento foi recebido e está sendo analisado pela operadora do cartão.
+                              Isso pode levar alguns minutos. Esta página irá se atualizar automaticamente quando aprovado.
+                            </p>
+                            <p className="text-xs text-amber-600 mt-2">
+                              Pedido <strong>#{pay.orderNumber}</strong> — você também receberá a confirmação por e-mail.
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Cartão recusado */}
+                    {processStep === "recusado" && (
+                      <Card className="border-red-200 bg-red-50">
+                        <CardContent className="pt-5 flex items-start gap-3">
+                          <div className="h-9 w-9 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                            <XCircle className="h-5 w-5 text-red-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-red-800">Pagamento recusado</p>
+                            <p className="text-sm text-red-700 mt-1">
+                              O pagamento foi recusado pela operadora do cartão. Verifique os dados do cartão
+                              ou tente com outro método de pagamento.
+                            </p>
+                            <Button variant="outline" size="sm" className="mt-3 border-red-300 text-red-700 hover:bg-red-100"
+                              onClick={() => { setStep("pagamento"); window.scrollTo(0,0); }}>
+                              Tentar novamente
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Status automático — oculto quando recusado */}
+                    {processStep !== "recusado" && <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <RefreshCw className={`h-5 w-5 text-primary ${processStep !== "concluido" ? "animate-spin" : ""}`} />
-                          {processStep === "concluido" ? "Processo concluído!" : "Processando pedido..."}
+                          {processStep === "concluido" ? "Processo concluído!" : processStep === "em_analise" ? "Aguardando análise..." : "Processando pedido..."}
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">Acompanhe o andamento automático abaixo.</p>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {PROCESS_STEPS.filter(s => s.id !== "erro").map((ps, i) => {
+                        {PROCESS_STEPS.filter(s => s.id !== "erro" && s.id !== "em_analise" && s.id !== "recusado").map((ps, i) => {
                           const isConcluido = ps.id === "concluido" && processStep === "concluido";
                           const done = processIdx > i || isConcluido;
                           const active = processIdx === i && !isConcluido;
@@ -2050,7 +2106,7 @@ export default function ComprarPage() {
                           </div>
                         )}
                       </CardContent>
-                    </Card>
+                    </Card>}
                   </div>
                 )}
 

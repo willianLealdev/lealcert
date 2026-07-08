@@ -15,7 +15,9 @@ export type EventType =
   | "order_cancelled"
   | "status_updated"
   | "admin_action"
-  | "sync_performed";
+  | "sync_performed"
+  | "payment_failed"
+  | "payment_in_process";
 
 export async function logEvent(
   orderId: number,

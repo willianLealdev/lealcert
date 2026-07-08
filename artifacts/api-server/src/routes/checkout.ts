@@ -781,6 +781,9 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       }
 
       const approved = mpData.status === "approved";
+      const inProcess = mpData.status === "in_process" || mpData.status === "authorized";
+      const rejected = mpData.status === "rejected" || mpData.status === "cancelled";
+
       if (approved) {
         await db.update(ordersTable).set({ status: "paid" }).where(eq(ordersTable.id, order.id));
         await logEv(order.id, "payment_confirmed",
@@ -791,6 +794,14 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
         const activeProvider = settings?.activeProvider ?? "gestaoar";
         if (activeProvider === "safeweb") swAutoComprar(order.id).catch(() => {});
         else garAutoComprar(order.id).catch(() => {});
+      } else if (rejected) {
+        await logEv(order.id, "payment_failed",
+          `Pagamento por cartão recusado — status: ${mpData.status} / ${mpData.status_detail}`,
+          { mpPaymentId: mpData.id, via: "checkout" });
+      } else if (inProcess) {
+        await logEv(order.id, "payment_in_process",
+          `Pagamento por cartão em análise — R$ ${total.toFixed(2).replace(".", ",")}`,
+          { mpPaymentId: mpData.id, via: "checkout" });
       }
 
       res.json({
@@ -799,6 +810,9 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
         orderNumber,
         paymentMethod: "cartao",
         approved,
+        inProcess,
+        rejected,
+        mpStatusDetail: mpData.status_detail ?? null,
         cardPaymentId: String(mpData.id ?? ""),
         isNewUser,
         total,
@@ -833,7 +847,7 @@ router.get("/public/checkout/payment-status/:orderId", async (req, res): Promise
           headers: { Authorization: `Bearer ${mpToken}` },
         });
         if (mpRes.ok) {
-          const payment = await mpRes.json() as { status?: string };
+          const payment = await mpRes.json() as { status?: string; status_detail?: string };
           if (payment.status === "approved") {
             await db.update(ordersTable).set({ status: "paid" }).where(eq(ordersTable.id, orderId));
             const [settings2] = await db.select({ activeProvider: settingsTable.activeProvider }).from(settingsTable).limit(1);
@@ -846,6 +860,14 @@ router.get("/public/checkout/payment-status/:orderId", async (req, res): Promise
               garAutoComprar(orderId).catch(() => {});
             }
             res.json({ status: "paid", garProtocolo: row.garProtocolo, garHopeUploadUrl: row.garHopeUploadUrl, safewebSolicitacaoId: row.safewebSolicitacaoId, protocolNumber: row.protocolNumber });
+            return;
+          }
+          if (payment.status === "rejected" || payment.status === "cancelled") {
+            res.json({ status: "pending_payment", rejected: true, mpStatusDetail: payment.status_detail ?? null });
+            return;
+          }
+          if (payment.status === "in_process" || payment.status === "authorized") {
+            res.json({ status: "pending_payment", inProcess: true });
             return;
           }
         }
