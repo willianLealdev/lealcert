@@ -1970,10 +1970,11 @@ export default function ComprarPage() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {PROCESS_STEPS.filter(s => s.id !== "erro").map((ps, i) => {
-                          const done = processIdx > i;
-                          const active = processIdx === i;
+                          const isConcluido = ps.id === "concluido" && processStep === "concluido";
+                          const done = processIdx > i || isConcluido;
+                          const active = processIdx === i && !isConcluido;
                           return (
-                            <div key={ps.id} className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${active ? "bg-primary/5 border border-primary/20" : done ? "opacity-70" : "opacity-40"}`}>
+                            <div key={ps.id} className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${done ? "opacity-70" : active ? "bg-primary/5 border border-primary/20" : "opacity-40"}`}>
                               <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${done ? "bg-emerald-500" : active ? "bg-primary" : "bg-muted"}`}>
                                 {done ? <CheckCircle2 className="h-4 w-4 text-white" /> :
                                  active ? <Loader2 className="h-4 w-4 text-white animate-spin" /> :
@@ -1982,7 +1983,7 @@ export default function ComprarPage() {
                               <div>
                                 <p className={`text-sm font-semibold ${done ? "text-emerald-700" : active ? "text-primary" : "text-muted-foreground"}`}>{ps.label}</p>
                                 {active && <p className="text-xs text-muted-foreground mt-0.5">{ps.desc}</p>}
-                                {done && ps.id === "concluido" && processoProtocolo && (
+                                {isConcluido && processoProtocolo && (
                                   <p className="text-xs text-emerald-600 mt-0.5">Protocolo: <strong>{processoProtocolo}</strong></p>
                                 )}
                               </div>
@@ -1997,15 +1998,9 @@ export default function ComprarPage() {
                                 Sua senha temporária foi enviada por e-mail. Use-a para acessar o sistema.
                               </div>
                             )}
-                            {processHopeUrl && !processDocsConfirmed ? (
-                              <Button className="w-full" onClick={() => setProcessDocsModalOpen(true)}>
-                                <FileText className="h-4 w-4 mr-2" />Enviar Documentos Obrigatórios
-                              </Button>
-                            ) : (
-                              <Button className="w-full" onClick={() => { setStep("agenda"); window.scrollTo(0,0); }}>
-                                <Calendar className="h-4 w-4 mr-2" />Avançar para Agendamento
-                              </Button>
-                            )}
+                            <Button className="w-full" onClick={() => { setStep("docs"); window.scrollTo(0,0); }}>
+                              <Upload className="h-4 w-4 mr-2" />Avançar para Documentos
+                            </Button>
                           </div>
                         )}
                       </CardContent>
@@ -2021,37 +2016,46 @@ export default function ComprarPage() {
                         <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
                         <div>
                           <p className="font-semibold text-emerald-800">Pedido #{pay.orderNumber} criado!</p>
-                          <p className="text-sm text-emerald-700">Envie seus documentos abaixo ou faça isso pelo sistema após o login.</p>
+                          <p className="text-sm text-emerald-700">Protocolo emitido com sucesso. Agora envie os documentos obrigatórios.</p>
                         </div>
                       </CardContent>
                     </Card>
-                    <Card>
-                      <CardHeader><CardTitle className="flex items-center gap-2"><Upload className="h-5 w-5 text-primary" />Documentos</CardTitle></CardHeader>
-                      <CardContent className="space-y-4">
-                        {([
-                          { key: "rgFrente", label: "RG — Frente *" },
-                          { key: "rgVerso", label: "RG — Verso *" },
-                          { key: "selfie", label: "Selfie com documento" },
-                          ...(isCnpjCert ? [{ key: "extra", label: "Cartão CNPJ / Contrato Social" }] : []),
-                        ] as { key: keyof typeof docs; label: string }[]).map(({ key, label }) => (
-                          <div key={key}>
-                            <Label className="text-sm mb-1 block">{label}</Label>
-                            <label className={`flex items-center gap-3 border-2 border-dashed rounded-lg p-3 cursor-pointer transition-colors ${docs[key] ? "border-emerald-400 bg-emerald-50" : "border-muted hover:border-primary/40"}`}>
-                              <Upload className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="text-sm text-muted-foreground truncate">{docs[key] ? (docs[key] as File).name : "Clique para selecionar"}</span>
-                              <input type="file" className="hidden" accept="image/*,application/pdf" onChange={e => { const f = e.target.files?.[0] ?? null; setDocs(d => ({ ...d, [key]: f })); }} />
-                            </label>
-                          </div>
-                        ))}
-                      </CardContent>
-                    </Card>
-                    <Button className="w-full h-12 text-base" onClick={uploadDocs} disabled={docsLoading}>
-                      {docsLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Calendar className="h-4 w-4 mr-2" />}
-                      {docsLoading ? "Enviando..." : "Avançar para Agendamento"}
-                    </Button>
-                    <Button variant="ghost" className="w-full text-muted-foreground text-sm" onClick={() => { setStep("agenda"); window.scrollTo(0,0); }}>
-                      Pular — enviar depois pelo sistema
-                    </Button>
+
+                    {/* Link da URL Hope */}
+                    {processHopeUrl && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/40 border rounded-lg px-3 py-2">
+                        <FileText className="h-4 w-4 shrink-0" />
+                        <span className="shrink-0">URL Hope:</span>
+                        <a href={processHopeUrl} target="_blank" rel="noopener noreferrer"
+                          className="truncate text-primary underline underline-offset-2 hover:text-primary/80 transition-colors">
+                          {processHopeUrl}
+                        </a>
+                      </div>
+                    )}
+
+                    {!processDocsConfirmed ? (
+                      <Card className="border-amber-200 bg-amber-50">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-amber-800">
+                            <FileText className="h-5 w-5" />
+                            Envio de Documentos Obrigatório
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <p className="text-sm text-amber-800">
+                            Antes de agendar seu atendimento, você precisa enviar os documentos solicitados pelo portal de documentação.
+                          </p>
+                          <Button className="w-full" onClick={() => setProcessDocsModalOpen(true)} disabled={!processHopeUrl}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Enviar Documentos
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <Button className="w-full h-12 text-base" onClick={() => { setStep("agenda"); window.scrollTo(0,0); }}>
+                        <Calendar className="h-4 w-4 mr-2" />Avançar para Agendamento
+                      </Button>
+                    )}
                   </div>
                 )}
 
