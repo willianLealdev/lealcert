@@ -855,6 +855,12 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
       responses:
         "200":
           description: Payment preference
@@ -3842,16 +3848,46 @@ components:
           type: string
           nullable: true
 
+    PaymentInput:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [pix, boleto, cartao]
+        cardNumber:
+          type: string
+        cardName:
+          type: string
+        cardExpiry:
+          type: string
+        cardCvv:
+          type: string
+        installments:
+          type: integer
+
     PaymentPreference:
       type: object
-      required: [paymentId, pixQrCode, pixQrCodeBase64]
+      required: [paymentId, method]
       properties:
         paymentId:
           type: string
+        method:
+          type: string
         pixQrCode:
           type: string
+          nullable: true
         pixQrCodeBase64:
           type: string
+          nullable: true
+        boletoUrl:
+          type: string
+          nullable: true
+        boletoBarcode:
+          type: string
+          nullable: true
+        approved:
+          type: boolean
+          nullable: true
 
     Slot:
       type: object

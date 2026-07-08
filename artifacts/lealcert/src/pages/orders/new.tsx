@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useListCertificates, useCreateOrder, useConsultaPrevia, getCnpjLookupQueryOptions, useValidateCoupon } from "@workspace/api-client-react";
+import { useListCertificates, useCreateOrder, useCreatePayment, useConsultaPrevia, getCnpjLookupQueryOptions, useValidateCoupon } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ArrowRight, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, Building2, User, Tag, CheckCircle, XCircle, CreditCard, BadgeCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Search, MapPin, Upload, FileText, X, Info, ShieldCheck, ShieldAlert, Building2, User, Tag, CheckCircle, XCircle, CreditCard, BadgeCheck, Sparkles, QrCode, Receipt } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Link } from "wouter";
@@ -63,6 +63,17 @@ function parseBrDate(v: string): string {
   const parts = v.split("/");
   if (parts.length === 3 && parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
   return v;
+}
+
+function maskCardNumber(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 16);
+  return d.replace(/(\d{4})(?=\d)/g, "$1 ");
+}
+
+function maskExpiry(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 4);
+  if (d.length > 2) return d.slice(0, 2) + "/" + d.slice(2);
+  return d;
 }
 
 function formatBRL(v: number) {
@@ -340,6 +351,15 @@ export default function NewOrder() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; type: string; value: number } | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
 
+  // ── Payment method ──
+  type PayMethod = "pix" | "boleto" | "cartao";
+  const [selectedMethod, setSelectedMethod] = useState<PayMethod>("pix");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardName, setCardName] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [installments, setInstallments] = useState(1);
+
   // ── CEP ──
   const [repCepLoading, setRepCepLoading] = useState(false);
   const [repCepFilled, setRepCepFilled] = useState(false);
@@ -506,6 +526,7 @@ export default function NewOrder() {
       : Math.min(appliedCoupon.value, subtotal)
     : 0;
   const total = Math.max(0, subtotal - discount);
+  const allowedMethods: PayMethod[] = total >= 150 ? ["pix", "boleto", "cartao"] : total >= 125 ? ["pix", "boleto"] : ["pix"];
 
   function pickProduct(p: string) { setPickedProduct(p); setPickedIssuance(""); setPickedValidity(""); set("certificateId", ""); }
   function pickIssuance(i: string) { setPickedIssuance(i); setPickedValidity(""); set("certificateId", ""); }
@@ -567,19 +588,8 @@ export default function NewOrder() {
   }, [form.customerCpfCnpj, form.repCpf, form.repBirthDate, isCnpjCert]);
 
   // ── Mutations ──
-  const createOrder = useCreateOrder({
-    mutation: {
-      onSuccess: (data) => {
-        toast({ title: "Pedido criado!", description: `Pedido ${data.orderNumber} criado com sucesso.` });
-        try { localStorage.removeItem("lealcert_order_local"); } catch { /* ignore */ }
-        setLocation(`/orders/${data.id}`);
-      },
-      onError: (err: unknown) => {
-        const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao criar pedido.";
-        toast({ title: "Erro", description: msg, variant: "destructive" });
-      },
-    },
-  });
+  const createOrder = useCreateOrder();
+  const createPaymentMut = useCreatePayment();
 
   const checkPsbio = useConsultaPrevia({
     mutation: {
@@ -771,62 +781,91 @@ export default function NewOrder() {
     const hasPsbioValue = gateHasPsbioRef.current;
     const nfDigits = nfForm.nfCpfCnpj.replace(/\D/g, "");
 
-    createOrder.mutate({
-      data: {
-        certificateId: Number(form.certificateId),
-        clientType: isCnpjCert ? "cnpj" : "cpf",
-        customerName: isCnpjCert ? (form.repName || form.customerName) : form.customerName,
-        customerCpfCnpj: isCnpjCert ? form.customerCpfCnpj : form.customerCpfCnpj,
-        customerEmail: form.customerEmail,
-        customerPhone: form.customerPhone,
-        customerBirthDate: form.customerBirthDate ? parseBrDate(form.customerBirthDate) : undefined,
-        hasPsbio: hasPsbioValue,
-        companyName: form.companyName || undefined,
-        inssNumber: form.inssNumber || undefined,
-        extendedWarranty: form.extendedWarranty,
-        // Para e-CPF: endereço do representante (igual ao titular); para e-CNPJ: não coletamos endereço da empresa
-        addressZipcode: form.representanteAddressZipcode || form.addressZipcode || undefined,
-        addressStreet: form.representanteAddressStreet || form.addressStreet || undefined,
-        addressNumber: form.representanteAddressNumber || form.addressNumber || undefined,
-        addressComplement: form.representanteAddressComplement || form.addressComplement || undefined,
-        addressNeighborhood: form.representanteAddressNeighborhood || form.addressNeighborhood || undefined,
-        addressCity: form.representanteAddressCity || form.addressCity || undefined,
-        addressState: form.representanteAddressState || form.addressState || undefined,
-        addressIbge: form.addressIbge || undefined,
-        representanteCpf: form.repCpf || undefined,
-        representanteAddressZipcode: form.representanteAddressZipcode || undefined,
-        representanteAddressStreet: form.representanteAddressStreet || undefined,
-        representanteAddressNumber: form.representanteAddressNumber || undefined,
-        representanteAddressComplement: form.representanteAddressComplement || undefined,
-        representanteAddressNeighborhood: form.representanteAddressNeighborhood || undefined,
-        representanteAddressCity: form.representanteAddressCity || undefined,
-        representanteAddressState: form.representanteAddressState || undefined,
-        representanteNascimento: form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
-        cnhPath: undefined,
-        cnhVersoPath: undefined,
-        termsAccepted: termsAccepted,
-        cartaoCnpjPath: cartaoKey || undefined,
-        fichaCadastralPath: fichaKey || undefined,
-        customerCei: form.customerCei || undefined,
-        customerNis: form.customerNis || undefined,
-        outrosPath: outrosKey || undefined,
-        representanteDocTipo: form.repDocTipo !== "0" ? form.repDocTipo as "1" | "2" | "3" | "4" : undefined,
-        representanteDocNumero: form.repDocTipo !== "0" && form.repDocNumero ? form.repDocNumero : undefined,
-        representanteDocEmissor: form.repDocTipo !== "0" && form.repDocOrgan && form.repDocUf
-          ? (form.repDocOrgan + form.repDocUf).toUpperCase()
-          : undefined,
-        // NF fields from step 3
-        nfCnpj: nfDigits.length === 14 ? nfDigits : undefined,
-        nfNome: nfForm.nfNome || undefined,
-        nfZipcode: nfForm.nfZipcode.replace(/\D/g, "") || undefined,
-        nfStreet: nfForm.nfStreet || undefined,
-        nfNumber: nfForm.nfNumber || undefined,
-        nfComplement: nfForm.nfComplement || undefined,
-        nfNeighborhood: nfForm.nfNeighborhood || undefined,
-        nfCity: nfForm.nfCity || undefined,
-        nfState: nfForm.nfState || undefined,
-      },
-    });
+    if (selectedMethod === "cartao") {
+      if (cardNumber.replace(/\D/g, "").length < 13) { toast({ title: "Número do cartão inválido", variant: "destructive" }); return; }
+      if (!cardName.trim()) { toast({ title: "Nome no cartão obrigatório", variant: "destructive" }); return; }
+      if (cardExpiry.length !== 5) { toast({ title: "Validade inválida", variant: "destructive" }); return; }
+      if (cardCvv.length < 3) { toast({ title: "CVV inválido", variant: "destructive" }); return; }
+    }
+
+    try {
+      const orderData = await createOrder.mutateAsync({
+        data: {
+          certificateId: Number(form.certificateId),
+          clientType: isCnpjCert ? "cnpj" : "cpf",
+          customerName: isCnpjCert ? (form.repName || form.customerName) : form.customerName,
+          customerCpfCnpj: isCnpjCert ? form.customerCpfCnpj : form.customerCpfCnpj,
+          customerEmail: form.customerEmail,
+          customerPhone: form.customerPhone,
+          customerBirthDate: form.customerBirthDate ? parseBrDate(form.customerBirthDate) : undefined,
+          hasPsbio: hasPsbioValue,
+          companyName: form.companyName || undefined,
+          inssNumber: form.inssNumber || undefined,
+          extendedWarranty: form.extendedWarranty,
+          addressZipcode: form.representanteAddressZipcode || form.addressZipcode || undefined,
+          addressStreet: form.representanteAddressStreet || form.addressStreet || undefined,
+          addressNumber: form.representanteAddressNumber || form.addressNumber || undefined,
+          addressComplement: form.representanteAddressComplement || form.addressComplement || undefined,
+          addressNeighborhood: form.representanteAddressNeighborhood || form.addressNeighborhood || undefined,
+          addressCity: form.representanteAddressCity || form.addressCity || undefined,
+          addressState: form.representanteAddressState || form.addressState || undefined,
+          addressIbge: form.addressIbge || undefined,
+          representanteCpf: form.repCpf || undefined,
+          representanteAddressZipcode: form.representanteAddressZipcode || undefined,
+          representanteAddressStreet: form.representanteAddressStreet || undefined,
+          representanteAddressNumber: form.representanteAddressNumber || undefined,
+          representanteAddressComplement: form.representanteAddressComplement || undefined,
+          representanteAddressNeighborhood: form.representanteAddressNeighborhood || undefined,
+          representanteAddressCity: form.representanteAddressCity || undefined,
+          representanteAddressState: form.representanteAddressState || undefined,
+          representanteNascimento: form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
+          cnhPath: undefined,
+          cnhVersoPath: undefined,
+          termsAccepted: termsAccepted,
+          cartaoCnpjPath: cartaoKey || undefined,
+          fichaCadastralPath: fichaKey || undefined,
+          customerCei: form.customerCei || undefined,
+          customerNis: form.customerNis || undefined,
+          outrosPath: outrosKey || undefined,
+          representanteDocTipo: form.repDocTipo !== "0" ? form.repDocTipo as "1" | "2" | "3" | "4" : undefined,
+          representanteDocNumero: form.repDocTipo !== "0" && form.repDocNumero ? form.repDocNumero : undefined,
+          representanteDocEmissor: form.repDocTipo !== "0" && form.repDocOrgan && form.repDocUf
+            ? (form.repDocOrgan + form.repDocUf).toUpperCase()
+            : undefined,
+          nfCnpj: nfDigits.length === 14 ? nfDigits : undefined,
+          nfNome: nfForm.nfNome || undefined,
+          nfZipcode: nfForm.nfZipcode.replace(/\D/g, "") || undefined,
+          nfStreet: nfForm.nfStreet || undefined,
+          nfNumber: nfForm.nfNumber || undefined,
+          nfComplement: nfForm.nfComplement || undefined,
+          nfNeighborhood: nfForm.nfNeighborhood || undefined,
+          nfCity: nfForm.nfCity || undefined,
+          nfState: nfForm.nfState || undefined,
+        },
+      });
+
+      toast({ title: "Pedido criado!", description: `Pedido ${orderData.orderNumber} criado com sucesso.` });
+      try { localStorage.removeItem("lealcert_order_local"); } catch { /* ignore */ }
+
+      await createPaymentMut.mutateAsync({
+        id: orderData.id,
+        data: {
+          method: selectedMethod,
+          ...(selectedMethod === "cartao" ? {
+            cardNumber: cardNumber.replace(/\D/g, ""),
+            cardName: cardName.trim(),
+            cardExpiry,
+            cardCvv,
+            installments,
+          } : {}),
+        },
+      });
+
+      setLocation(`/orders/${orderData.id}`);
+    } catch (err: unknown) {
+      const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao processar pedido.";
+      toast({ title: "Erro", description: msg, variant: "destructive" });
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1897,25 +1936,88 @@ export default function NewOrder() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2"><CreditCard className="h-4 w-4 text-primary" />Forma de Pagamento</CardTitle>
-              <p className="text-sm text-muted-foreground">O link de pagamento será gerado após a confirmação do pedido.</p>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4 border rounded-xl p-4 bg-primary/5 border-primary/20">
-                <div className="h-12 w-12 rounded-xl bg-[#32BCAD]/10 flex items-center justify-center shrink-0">
+            <CardContent className="space-y-3">
+              {/* PIX — sempre disponível */}
+              <button type="button" onClick={() => setSelectedMethod("pix")}
+                className={`w-full flex items-center gap-4 border rounded-xl p-4 transition-all text-left ${selectedMethod === "pix" ? "bg-primary/5 border-primary ring-1 ring-primary" : "hover:bg-muted/40"}`}>
+                <div className="h-11 w-11 rounded-xl bg-[#32BCAD]/10 flex items-center justify-center shrink-0">
                   <svg viewBox="0 0 48 48" className="h-8 w-8" fill="none">
                     <path d="M11.7 36.3c1.9 1.9 4.4 2.9 7.1 2.9h10.4c2.6 0 5.2-1 7.1-2.9l7.3-7.3c3.9-3.9 3.9-10.2 0-14.1l-7.3-7.3c-1.9-1.9-4.4-2.9-7.1-2.9H18.8c-2.6 0-5.2 1-7.1 2.9L4.4 15c-3.9 3.9-3.9 10.2 0 14.1l7.3 7.2z" fill="#32BCAD"/>
                     <path d="M17.5 28.5l-3.5-3.5 3.5-3.5M30.5 28.5l3.5-3.5-3.5-3.5M21 30l6-12" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-base">PIX</p>
+                  <p className="font-semibold">PIX</p>
                   <p className="text-sm text-muted-foreground">Aprovação imediata · disponível 24h</p>
                 </div>
-                <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center shrink-0">
-                  <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                {selectedMethod === "pix" && <CheckCircle className="h-5 w-5 text-primary shrink-0" />}
+              </button>
+
+              {/* Boleto — disponível a partir de R$ 125 */}
+              {allowedMethods.includes("boleto") && (
+                <button type="button" onClick={() => setSelectedMethod("boleto")}
+                  className={`w-full flex items-center gap-4 border rounded-xl p-4 transition-all text-left ${selectedMethod === "boleto" ? "bg-primary/5 border-primary ring-1 ring-primary" : "hover:bg-muted/40"}`}>
+                  <div className="h-11 w-11 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                    <Receipt className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold">Boleto Bancário</p>
+                    <p className="text-sm text-muted-foreground">Compensação em até 3 dias úteis</p>
+                  </div>
+                  {selectedMethod === "boleto" && <CheckCircle className="h-5 w-5 text-primary shrink-0" />}
+                </button>
+              )}
+
+              {/* Cartão — disponível a partir de R$ 150 */}
+              {allowedMethods.includes("cartao") && (
+                <button type="button" onClick={() => setSelectedMethod("cartao")}
+                  className={`w-full flex items-center gap-4 border rounded-xl p-4 transition-all text-left ${selectedMethod === "cartao" ? "bg-primary/5 border-primary ring-1 ring-primary" : "hover:bg-muted/40"}`}>
+                  <div className="h-11 w-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <CreditCard className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold">Cartão de Crédito</p>
+                    <p className="text-sm text-muted-foreground">Aprovação imediata</p>
+                  </div>
+                  {selectedMethod === "cartao" && <CheckCircle className="h-5 w-5 text-primary shrink-0" />}
+                </button>
+              )}
+
+              {/* Formulário do cartão */}
+              {selectedMethod === "cartao" && (
+                <div className="space-y-3 pt-3 border-t">
+                  <div>
+                    <Label className="text-xs mb-1 block">Número do Cartão</Label>
+                    <Input value={cardNumber} onChange={e => setCardNumber(maskCardNumber(e.target.value))} placeholder="0000 0000 0000 0000" inputMode="numeric" maxLength={19} className="font-mono" />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Nome no Cartão</Label>
+                    <Input value={cardName} onChange={e => setCardName(e.target.value.toUpperCase())} placeholder="Nome impresso no cartão" className="uppercase" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs mb-1 block">Validade</Label>
+                      <Input value={cardExpiry} onChange={e => setCardExpiry(maskExpiry(e.target.value))} placeholder="MM/AA" maxLength={5} inputMode="numeric" />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1 block">CVV</Label>
+                      <Input value={cardCvv} onChange={e => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="000" inputMode="numeric" maxLength={4} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Parcelas</Label>
+                    <select value={installments} onChange={e => setInstallments(Number(e.target.value))}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
+                        <option key={n} value={n}>{n}x de {formatBRL(total / n)}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3 text-center">
+              )}
+
+              <p className="text-xs text-muted-foreground text-center pt-1">
                 Pagamento processado com segurança via <strong>Mercado Pago</strong>
               </p>
             </CardContent>
@@ -1928,10 +2030,12 @@ export default function NewOrder() {
           </div>
 
           {/* Confirmar */}
-          <Button className="w-full h-12 text-base" onClick={handleSubmit} disabled={createOrder.isPending}>
+          <Button className="w-full h-12 text-base" onClick={handleSubmit} disabled={createOrder.isPending || createPaymentMut.isPending}>
             {createOrder.isPending
               ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando pedido...</>
-              : <>Confirmar e Ir para Pagamento <ArrowRight className="h-4 w-4 ml-2" /></>}
+              : createPaymentMut.isPending
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processando pagamento...</>
+                : <>Confirmar e Ir para Pagamento <ArrowRight className="h-4 w-4 ml-2" /></>}
           </Button>
           <p className="text-xs text-center text-muted-foreground -mt-2">
             Ao confirmar, você concorda com a{" "}

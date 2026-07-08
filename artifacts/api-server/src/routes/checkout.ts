@@ -359,8 +359,8 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     extendedWarranty,
     // payment method: "pix" | "boleto" | "cartao"
     paymentMethod,
-    // cartão (tokenized by MP SDK — never raw card data)
-    mpCardToken, mpInstallments, mpPaymentMethodId,
+    // cartão — dados brutos, tokenizados server-side
+    cardNumber, cardName, cardExpiry, cardCvv, installments,
     // terms
     termsAccepted,
   } = req.body ?? {};
@@ -654,6 +654,14 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
           first_name: firstName,
           last_name: lastName,
           identification: { type: "CPF", number: cpfForPayer },
+          address: {
+            zip_code: String(addressZipcode ?? "").replace(/\D/g, ""),
+            street_name: String(addressStreet ?? ""),
+            street_number: String(addressNumber ?? ""),
+            neighborhood: String(addressNeighborhood ?? ""),
+            city: String(addressCity ?? ""),
+            federal_unit: String(addressState ?? "").slice(0, 2).toUpperCase(),
+          },
         },
       };
 
@@ -702,18 +710,36 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       });
 
     } else {
-      // Cartão — frontend envia token MP (nunca dados brutos)
-      if (!mpCardToken) {
-        res.status(400).json({ error: "Token do cartão não fornecido." });
-        return;
+      // Cartão — tokenização server-side via MP card_tokens
+      const cleanCard = String(cardNumber ?? "").replace(/\D/g, "");
+      const [expMonth, expYear] = String(cardExpiry ?? "").split("/");
+      if (cleanCard.length < 13) { res.status(400).json({ error: "Número do cartão inválido." }); return; }
+      if (!String(cardName ?? "").trim()) { res.status(400).json({ error: "Nome no cartão obrigatório." }); return; }
+      if (!expMonth || !expYear) { res.status(400).json({ error: "Validade do cartão inválida." }); return; }
+      if (String(cardCvv ?? "").length < 3) { res.status(400).json({ error: "CVV inválido." }); return; }
+
+      const tokenRes = await fetch("https://api.mercadopago.com/v1/card_tokens", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${mpToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          card_number: cleanCard,
+          expiration_month: parseInt(expMonth, 10),
+          expiration_year: parseInt(String(expYear).length === 2 ? `20${expYear}` : String(expYear), 10),
+          security_code: String(cardCvv),
+          cardholder: { name: String(cardName).toUpperCase() },
+        }),
+      });
+      const tokenData = await tokenRes.json() as { id?: string; payment_method_id?: string; message?: string; error?: string };
+      if (!tokenRes.ok || !tokenData.id) {
+        res.status(400).json({ error: tokenData.message ?? tokenData.error ?? "Não foi possível tokenizar o cartão." }); return;
       }
 
       const cardPayload = {
         transaction_amount: total,
-        token: mpCardToken,
+        token: tokenData.id,
         description: cert.name,
-        installments: Number(mpInstallments ?? 1),
-        payment_method_id: mpPaymentMethodId,
+        installments: Number(installments ?? 1),
+        payment_method_id: tokenData.payment_method_id ?? "visa",
         external_reference: orderNumber,
         notification_url: `${siteUrl}/api/mp/webhook`,
         payer: {

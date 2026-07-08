@@ -538,83 +538,147 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
     .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
     .where(eq(ordersTable.id, id))
     .limit(1);
-  if (!row) {
-    res.status(404).json({ error: "Pedido não encontrado." });
-    return;
-  }
+  if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
 
   const [settings] = await db.select().from(settingsTable).limit(1);
   const mpToken = settings?.mpAccessToken || "";
-
   if (!mpToken) {
-    res.status(400).json({ error: "Chaves do MercadoPago não configuradas. Acesse Configurações para inserir o MP Access Token." });
-    return;
+    res.status(400).json({ error: "Chaves do MercadoPago não configuradas." }); return;
   }
 
   const siteUrl = settings?.siteUrl || "https://lealcert.com.br";
-
+  const total = parseFloat(row.order.total);
   const cpfDigits = row.order.customerCpfCnpj.replace(/\D/g, "");
   const payerEmail = "naorespondamp@lealcert.com.br";
   const nameParts = (row.order.customerName || "Cliente").split(" ");
   const firstName = nameParts[0];
   const lastName = nameParts.slice(1).join(" ") || firstName;
-
-  const pixPayload = {
-    transaction_amount: parseFloat(row.order.total),
-    description: row.certName ?? "Certificado Digital",
-    payment_method_id: "pix",
-    external_reference: row.order.orderNumber,
-    notification_url: `${siteUrl}/api/mp/webhook`,
-    payer: {
-      email: payerEmail,
-      first_name: firstName,
-      last_name: lastName,
-      identification: {
-        type: cpfDigits.length === 14 ? "CNPJ" : "CPF",
-        number: cpfDigits,
-      },
-    },
-  };
-
-  const resp = await fetch("https://api.mercadopago.com/v1/payments", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${mpToken}`,
-      "Content-Type": "application/json",
-      "X-Idempotency-Key": `${row.order.orderNumber}-${Date.now()}`,
-    },
-    body: JSON.stringify(pixPayload),
-  });
-  const data = await resp.json() as {
-    id?: number;
-    status?: string;
-    point_of_interaction?: { transaction_data?: { qr_code?: string; qr_code_base64?: string } };
-    message?: string;
-    error?: string;
-  };
-  if (!resp.ok) {
-    res.status(400).json({ error: data.message ?? data.error ?? "Erro ao criar pagamento PIX no MercadoPago." });
-    return;
-  }
-
-  const txData = data.point_of_interaction?.transaction_data;
-  if (!txData?.qr_code) {
-    res.status(400).json({ error: "MercadoPago não retornou o QR Code PIX." });
-    return;
-  }
-
-  await db.update(ordersTable)
-    .set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") })
-    .where(eq(ordersTable.id, id));
+  const descricao = row.certName ?? "Certificado Digital";
+  const orderNumber = row.order.orderNumber;
 
   const { logEvent: logPayEv } = await import("../lib/order-events");
-  await logPayEv(id, "payment_initiated", `Pagamento PIX gerado via MercadoPago — R$ ${parseFloat(row.order.total).toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
 
-  res.json({
-    paymentId: String(data.id ?? ""),
-    pixQrCode: txData.qr_code,
-    pixQrCodeBase64: txData.qr_code_base64 ?? "",
-  });
+  // Método padrão: pix (retrocompatibilidade com detalhe do pedido que não envia body)
+  const method: string = (req.body?.method as string) ?? "pix";
+
+  // Regras de valor mínimo por método
+  if (method === "cartao" && total < 150) {
+    res.status(400).json({ error: "Cartão de crédito disponível apenas para valores acima de R$ 150,00." }); return;
+  }
+  if (method === "boleto" && total < 125) {
+    res.status(400).json({ error: "Boleto disponível apenas para valores acima de R$ 125,00." }); return;
+  }
+  if (!["pix", "boleto", "cartao"].includes(method)) {
+    res.status(400).json({ error: "Método de pagamento inválido." }); return;
+  }
+
+  const payer = {
+    email: payerEmail, first_name: firstName, last_name: lastName,
+    identification: { type: cpfDigits.length === 14 ? "CNPJ" : "CPF", number: cpfDigits },
+  };
+
+  try {
+    if (method === "pix") {
+      const mpRes = await fetch("https://api.mercadopago.com/v1/payments", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${mpToken}`, "Content-Type": "application/json", "X-Idempotency-Key": `${orderNumber}-pix-${Date.now()}` },
+        body: JSON.stringify({ transaction_amount: total, description: descricao, payment_method_id: "pix", external_reference: orderNumber, notification_url: `${siteUrl}/api/mp/webhook`, payer }),
+      });
+      const data = await mpRes.json() as { id?: number; status?: string; point_of_interaction?: { transaction_data?: { qr_code?: string; qr_code_base64?: string } }; message?: string; error?: string };
+      if (!mpRes.ok) { res.status(400).json({ error: data.message ?? data.error ?? "Erro ao gerar PIX." }); return; }
+      const txData = data.point_of_interaction?.transaction_data;
+      if (!txData?.qr_code) { res.status(400).json({ error: "MercadoPago não retornou o QR Code PIX." }); return; }
+      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") }).where(eq(ordersTable.id, id));
+      await logPayEv(id, "payment_initiated", `Pagamento PIX gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
+      res.json({ paymentId: String(data.id ?? ""), method: "pix", pixQrCode: txData.qr_code, pixQrCodeBase64: txData.qr_code_base64 ?? "" });
+
+    } else if (method === "boleto") {
+      const boletoPayer = {
+        ...payer,
+        address: {
+          zip_code: String(row.order.addressZipcode ?? "").replace(/\D/g, ""),
+          street_name: String(row.order.addressStreet ?? ""),
+          street_number: String(row.order.addressNumber ?? ""),
+          neighborhood: String(row.order.addressNeighborhood ?? ""),
+          city: String(row.order.addressCity ?? ""),
+          federal_unit: String(row.order.addressState ?? "").slice(0, 2).toUpperCase(),
+        },
+      };
+      const mpRes = await fetch("https://api.mercadopago.com/v1/payments", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${mpToken}`, "Content-Type": "application/json", "X-Idempotency-Key": `${orderNumber}-boleto-${Date.now()}` },
+        body: JSON.stringify({ transaction_amount: total, description: descricao, payment_method_id: "bolbradesco", external_reference: orderNumber, notification_url: `${siteUrl}/api/mp/webhook`, payer: boletoPayer }),
+      });
+      const data = await mpRes.json() as { id?: number; status?: string; barcode?: { content?: string }; transaction_details?: { external_resource_url?: string }; message?: string; error?: string };
+      if (!mpRes.ok) { res.status(400).json({ error: data.message ?? data.error ?? "Erro ao gerar boleto." }); return; }
+      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") }).where(eq(ordersTable.id, id));
+      await logPayEv(id, "payment_initiated", `Boleto gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
+      res.json({ paymentId: String(data.id ?? ""), method: "boleto", boletoUrl: data.transaction_details?.external_resource_url ?? null, boletoBarcode: data.barcode?.content ?? null });
+
+    } else {
+      // Cartão: tokenização server-side via MP
+      const { cardNumber = "", cardName = "", cardExpiry = "", cardCvv = "", installments = 1 } = req.body ?? {};
+      const cleanCard = String(cardNumber).replace(/\D/g, "");
+      const [expMonth, expYear] = String(cardExpiry).split("/");
+      if (cleanCard.length < 13) { res.status(400).json({ error: "Número do cartão inválido." }); return; }
+      if (!cardName?.trim()) { res.status(400).json({ error: "Nome no cartão obrigatório." }); return; }
+      if (!expMonth || !expYear) { res.status(400).json({ error: "Validade do cartão inválida." }); return; }
+      if (String(cardCvv).length < 3) { res.status(400).json({ error: "CVV inválido." }); return; }
+
+      // 1. Criar card token via MP
+      const tokenRes = await fetch("https://api.mercadopago.com/v1/card_tokens", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${mpToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          card_number: cleanCard,
+          expiration_month: parseInt(expMonth, 10),
+          expiration_year: parseInt(expYear.length === 2 ? `20${expYear}` : expYear, 10),
+          security_code: String(cardCvv),
+          cardholder: { name: String(cardName).toUpperCase() },
+        }),
+      });
+      const tokenData = await tokenRes.json() as { id?: string; first_six_digits?: string; payment_method_id?: string; message?: string; error?: string };
+      if (!tokenRes.ok || !tokenData.id) {
+        res.status(400).json({ error: tokenData.message ?? tokenData.error ?? "Não foi possível tokenizar o cartão." }); return;
+      }
+
+      // 2. Cobrar com o token
+      const mpRes = await fetch("https://api.mercadopago.com/v1/payments", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${mpToken}`, "Content-Type": "application/json", "X-Idempotency-Key": `${orderNumber}-card-${Date.now()}` },
+        body: JSON.stringify({
+          transaction_amount: total,
+          token: tokenData.id,
+          description: descricao,
+          installments: Number(installments ?? 1),
+          payment_method_id: tokenData.payment_method_id ?? "visa",
+          external_reference: orderNumber,
+          notification_url: `${siteUrl}/api/mp/webhook`,
+          payer: { email: payerEmail, identification: { type: cpfDigits.length === 14 ? "CNPJ" : "CPF", number: cpfDigits } },
+        }),
+      });
+      const data = await mpRes.json() as { id?: number; status?: string; status_detail?: string; message?: string; error?: string };
+      if (!mpRes.ok) { res.status(400).json({ error: data.message ?? data.error ?? "Erro ao processar cartão." }); return; }
+      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") }).where(eq(ordersTable.id, id));
+      await logPayEv(id, "payment_initiated", `Pagamento por cartão gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
+
+      const approved = data.status === "approved";
+      if (approved) {
+        await db.update(ordersTable).set({ status: "paid" }).where(eq(ordersTable.id, id));
+        await logPayEv(id, "payment_confirmed", `Pagamento por cartão aprovado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
+        const activeProvider = settings?.activeProvider ?? "gestaoar";
+        const { garAutoComprar } = await import("../lib/gar-auto");
+        const { swAutoComprar } = await import("../lib/sw-auto");
+        if (activeProvider === "safeweb") swAutoComprar(id).catch(() => {});
+        else garAutoComprar(id).catch(() => {});
+      }
+
+      res.json({ paymentId: String(data.id ?? ""), method: "cartao", approved });
+    }
+  } catch (err) {
+    req.log.error({ err }, "orders/:id/payment error");
+    res.status(500).json({ error: "Erro interno ao processar pagamento." });
+  }
 });
 
 router.post("/orders/:id/sync-payment", requireAuth, async (req, res): Promise<void> => {

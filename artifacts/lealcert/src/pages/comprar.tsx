@@ -761,6 +761,13 @@ export default function ComprarPage() {
       termsAccepted: true,
       extendedWarranty: dados.extendedWarranty,
       existingUserId: existingUserId ?? undefined,
+      ...(selectedMethod === "cartao" ? {
+        cardNumber: digits(cardNumber),
+        cardName: cardName.trim(),
+        cardExpiry,
+        cardCvv,
+        installments,
+      } : {}),
     };
 
     try {

@@ -985,10 +985,23 @@ export const CreatePaymentParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const CreatePaymentBody = zod.object({
+  "method": zod.enum(['pix', 'boleto', 'cartao']).optional(),
+  "cardNumber": zod.string().optional(),
+  "cardName": zod.string().optional(),
+  "cardExpiry": zod.string().optional(),
+  "cardCvv": zod.string().optional(),
+  "installments": zod.number().optional()
+})
+
 export const CreatePaymentResponse = zod.object({
   "paymentId": zod.string(),
-  "pixQrCode": zod.string(),
-  "pixQrCodeBase64": zod.string()
+  "method": zod.string(),
+  "pixQrCode": zod.string().nullish(),
+  "pixQrCodeBase64": zod.string().nullish(),
+  "boletoUrl": zod.string().nullish(),
+  "boletoBarcode": zod.string().nullish(),
+  "approved": zod.boolean().nullish()
 })
 
 

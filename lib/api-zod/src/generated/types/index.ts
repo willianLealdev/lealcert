@@ -162,6 +162,8 @@ export * from './ordersByDay';
 export * from './orderStatus';
 export * from './orderUpdate';
 export * from './orderUpdateStatus';
+export * from './paymentInput';
+export * from './paymentInputMethod';
 export * from './paymentPreference';
 export * from './profileUpdate';
 export * from './pushSubscribeBody';

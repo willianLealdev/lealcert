@@ -8,6 +8,10 @@
 
 export interface PaymentPreference {
   paymentId: string;
-  pixQrCode: string;
-  pixQrCodeBase64: string;
+  method: string;
+  pixQrCode?: string | null;
+  pixQrCodeBase64?: string | null;
+  boletoUrl?: string | null;
+  boletoBarcode?: string | null;
+  approved?: boolean | null;
 }

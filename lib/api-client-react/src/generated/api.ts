@@ -143,6 +143,7 @@ import type {
   OrderInput,
   OrderUpdate,
   OrdersByDay,
+  PaymentInput,
   PaymentPreference,
   ProfileUpdate,
   PushSubscribeBody,
@@ -3010,14 +3011,16 @@ export const getCreatePaymentUrl = (id: number,) => {
 /**
  * @summary Create MercadoPago payment preference for order
  */
-export const createPayment = async (id: number, options?: RequestInit): Promise<PaymentPreference> => {
+export const createPayment = async (id: number,
+    paymentInput?: PaymentInput, options?: RequestInit): Promise<PaymentPreference> => {
 
   return customFetch<PaymentPreference>(getCreatePaymentUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      paymentInput,)
   }
 );}
 
@@ -3025,8 +3028,8 @@ export const createPayment = async (id: number, options?: RequestInit): Promise<
 
 
 export const getCreatePaymentMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{id: number}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{id: number;data?: BodyType<PaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{id: number;data?: BodyType<PaymentInput>}, TContext> => {
 
 const mutationKey = ['createPayment'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -3038,10 +3041,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPayment>>, {id: number}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPayment>>, {id: number;data?: BodyType<PaymentInput>}> = (props) => {
+          const {id,data} = props ?? {};
 
-          return  createPayment(id,requestOptions)
+          return  createPayment(id,data,requestOptions)
         }
 
 
@@ -3052,18 +3055,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreatePaymentMutationResult = NonNullable<Awaited<ReturnType<typeof createPayment>>>
-
+    export type CreatePaymentMutationBody = BodyType<PaymentInput> | undefined
     export type CreatePaymentMutationError = ErrorType<unknown>
 
     /**
  * @summary Create MercadoPago payment preference for order
  */
 export const useCreatePayment = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{id: number;data?: BodyType<PaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createPayment>>,
         TError,
-        {id: number},
+        {id: number;data?: BodyType<PaymentInput>},
         TContext
       > => {
       return useMutation(getCreatePaymentMutationOptions(options));

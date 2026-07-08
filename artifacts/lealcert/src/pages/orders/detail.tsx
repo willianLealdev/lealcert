@@ -1378,7 +1378,7 @@ export default function OrderDetail() {
   const createPayment = useCreatePayment({
     mutation: {
       onSuccess: (data) => {
-        setPixData({ paymentId: data.paymentId, pixQrCode: data.pixQrCode, pixQrCodeBase64: data.pixQrCodeBase64 });
+        setPixData({ paymentId: data.paymentId, pixQrCode: data.pixQrCode ?? "", pixQrCodeBase64: data.pixQrCodeBase64 ?? "" });
       },
       onError: (err: unknown) => {
         const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao gerar pagamento.";
