@@ -128,14 +128,12 @@ function LealCertLogo({ small }: { small?: boolean }) {
 function ResumeLateral({
   cert, certPrice, extendedWarranty, couponDiscount, couponCode, couponValid,
   couponLoading, onCouponChange, onCouponApply, setCouponCode, setCouponDiscount, setCouponValid,
-  showCoupon,
 }: {
   cert: Certificate; certPrice: number; extendedWarranty: boolean;
   couponDiscount: number; couponCode: string; couponValid: boolean | null;
   couponLoading: boolean; onCouponChange: (v: string) => void;
   onCouponApply: () => void; setCouponCode: (v: string) => void;
   setCouponDiscount: (v: number) => void; setCouponValid: (v: boolean | null) => void;
-  showCoupon: boolean;
 }) {
   const subtotal = certPrice + (extendedWarranty ? 15 : 0);
   const total = Math.max(0, subtotal - couponDiscount);
@@ -174,25 +172,41 @@ function ResumeLateral({
         </div>
       </div>
 
-      {/* Cupom de desconto — só na etapa de pagamento */}
-      {showCoupon && (
-        <div className="bg-white rounded-2xl border shadow-sm p-4 space-y-3">
-          <p className="text-sm font-semibold">Cupom de desconto</p>
-          <div className="flex gap-2">
-            <Input
-              value={couponCode}
-              onChange={e => { onCouponChange(e.target.value.toUpperCase()); }}
-              placeholder="CÓDIGO"
-              className="font-mono uppercase text-sm"
-            />
-            <Button variant="outline" size="sm" onClick={onCouponApply} disabled={couponLoading || !couponCode.trim()}>
-              {couponLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Aplicar"}
-            </Button>
+      {/* Cupom de desconto — sempre visível na sidebar */}
+      <div className="bg-white rounded-2xl border shadow-sm p-4 space-y-3">
+        <p className="text-sm font-semibold">Cupom de desconto</p>
+        {couponValid === true ? (
+          <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2">
+            <div className="flex items-center gap-2 text-emerald-700 text-sm font-medium">
+              <CheckCircle className="h-4 w-4 shrink-0" />
+              <span className="font-mono">{couponCode}</span>
+              <span className="text-xs font-normal">aplicado</span>
+            </div>
+            <button
+              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+              onClick={() => { setCouponCode(""); setCouponDiscount(0); setCouponValid(null); }}
+            >
+              remover
+            </button>
           </div>
-          {couponValid === true && <p className="text-xs text-emerald-600 font-medium">✓ Desconto aplicado!</p>}
-          {couponValid === false && <p className="text-xs text-destructive">Cupom inválido ou expirado.</p>}
-        </div>
-      )}
+        ) : (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                value={couponCode}
+                onChange={e => { onCouponChange(e.target.value.toUpperCase()); }}
+                onKeyDown={e => e.key === "Enter" && onCouponApply()}
+                placeholder="CÓDIGO DO CUPOM"
+                className="font-mono uppercase text-sm"
+              />
+              <Button variant="outline" size="sm" onClick={onCouponApply} disabled={couponLoading || !couponCode.trim()}>
+                {couponLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Aplicar"}
+              </Button>
+            </div>
+            {couponValid === false && <p className="text-xs text-destructive">Cupom inválido ou expirado.</p>}
+          </div>
+        )}
+      </div>
 
       {/* Selos de segurança */}
       <div className="bg-white rounded-2xl border shadow-sm p-4 space-y-2.5">
@@ -2022,7 +2036,6 @@ export default function ComprarPage() {
                   couponLoading={couponLoading} onCouponChange={v => { setCouponCode(v); setCouponValid(null); setCouponDiscount(0); }}
                   onCouponApply={validateCoupon} setCouponCode={setCouponCode}
                   setCouponDiscount={setCouponDiscount} setCouponValid={setCouponValid}
-                  showCoupon={showCoupon}
                 />
               </div>
             </div>
