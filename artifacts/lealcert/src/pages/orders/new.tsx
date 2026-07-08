@@ -358,7 +358,6 @@ export default function NewOrder() {
   const [cardName, setCardName] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
-  const [installments, setInstallments] = useState(1);
 
   // ── CEP ──
   const [repCepLoading, setRepCepLoading] = useState(false);
@@ -856,7 +855,7 @@ export default function NewOrder() {
             cardName: cardName.trim(),
             cardExpiry,
             cardCvv,
-            installments,
+            installments: 1,
           } : {}),
         },
       });
@@ -2025,15 +2024,6 @@ export default function NewOrder() {
                       <Label className="text-xs mb-1 block">CVV</Label>
                       <Input value={cardCvv} onChange={e => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="000" inputMode="numeric" maxLength={4} />
                     </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1 block">Parcelas</Label>
-                    <select value={installments} onChange={e => setInstallments(Number(e.target.value))}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
-                        <option key={n} value={n}>{n}x de {formatBRL(total / n)}</option>
-                      ))}
-                    </select>
                   </div>
                 </div>
               )}
