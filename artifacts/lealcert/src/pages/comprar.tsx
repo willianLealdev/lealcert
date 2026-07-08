@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getGetMeQueryKey, useGetMe } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +15,7 @@ import {
   ShieldCheck, Loader2, ArrowRight, ArrowLeft, CheckCircle2, XCircle,
   FileText, CreditCard, Upload, Calendar, Lock, MapPin, Search,
   Fingerprint, User, Building2, QrCode, Receipt, Clock, AlertTriangle,
-  LogIn, UserPlus, Eye, EyeOff, CheckCircle, ChevronRight, RefreshCw, ExternalLink,
+  LogIn, UserPlus, Eye, EyeOff, CheckCircle, ChevronRight, RefreshCw, ExternalLink, Video,
 } from "lucide-react";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -254,19 +256,19 @@ function StepBar({ current }: { current: Step }) {
         const active = s.id === current || (current === "processando" && s.id === "pagamento");
         return (
           <div key={s.id} className="flex items-center shrink-0">
-            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors ${
               active ? "bg-primary text-white shadow-sm" :
               done ? "bg-emerald-500 text-white" :
               "bg-slate-100 text-slate-500"
             }`}>
               {done
-                ? <CheckCircle2 className="h-3.5 w-3.5" />
-                : <span className={`flex items-center justify-center w-4 h-4 rounded-full text-[11px] font-bold ${active ? "bg-white/20" : "bg-black/10"}`}>{i + 1}</span>
+                ? <CheckCircle2 className="h-3 w-3" />
+                : <span className={`flex items-center justify-center w-3.5 h-3.5 rounded-full text-[10px] font-bold ${active ? "bg-white/20" : "bg-black/10"}`}>{i + 1}</span>
               }
-              <span className="hidden md:inline">{s.label}</span>
+              <span className={active || done ? "inline" : "hidden sm:inline"}>{s.label}</span>
             </div>
             {i < visible.length - 1 && (
-              <div className={`h-px w-4 mx-0.5 shrink-0 ${done || (active && ci === si) ? "bg-emerald-400" : "bg-slate-200"}`} />
+              <div className={`h-px w-2 mx-0.5 shrink-0 ${done || (active && ci === si) ? "bg-emerald-400" : "bg-slate-200"}`} />
             )}
           </div>
         );
@@ -875,46 +877,70 @@ export default function ComprarPage() {
   /* ══════════════════════════════════════════════════════════════════════
      ETAPA 6 — Agendamento
   ══════════════════════════════════════════════════════════════════════ */
-  const [locais, setLocais] = useState<Array<{ id?: number; localAtendimentoId?: number; nome?: string; NomeLocalAtendimento?: string }>>([]);
+  type GarLocal = { HashLocal: string; NomeLocalAgendamento: string; NomeCidadeLocalAgendamento?: string; UF?: string; Endereco?: string };
+  type GarHorario = { HoraInicial: string; HoraFinal: string };
+
+  const [locais, setLocais] = useState<GarLocal[]>([]);
   const [locaisLoading, setLocaisLoading] = useState(false);
-  const [selLocal, setSelLocal] = useState<(typeof locais)[0] | null>(null);
+  const [agendaInnerStep, setAgendaInnerStep] = useState<"locais" | "data" | "confirm">("locais");
+  const [ufFiltro, setUfFiltro] = useState("");
+  const [municipioFiltro, setMunicipioFiltro] = useState("");
+  const [selLocal, setSelLocal] = useState<GarLocal | null>(null);
   const [agendaDate, setAgendaDate] = useState("");
-  const [slots, setSlots] = useState<Array<{ horario?: string; horarioInicio?: string; horarioFim?: string }>>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
-  const [selSlot, setSelSlot] = useState<(typeof slots)[0] | null>(null);
+  const [horarios, setHorarios] = useState<GarHorario[]>([]);
+  const [horariosLoading, setHorariosLoading] = useState(false);
+  const [selHorario, setSelHorario] = useState<GarHorario | null>(null);
   const [agendaLoading, setAgendaLoading] = useState(false);
   const [agendaDone, setAgendaDone] = useState(false);
+
+  const locaisFiltrados = useMemo(() => locais.filter(l => {
+    const ufOk = !ufFiltro || l.UF?.toLowerCase() === ufFiltro.toLowerCase();
+    const munOk = !municipioFiltro || l.NomeCidadeLocalAgendamento?.toLowerCase().includes(municipioFiltro.toLowerCase());
+    return ufOk && munOk;
+  }), [locais, ufFiltro, municipioFiltro]);
+
+  const ufsDisponiveis = useMemo(() => {
+    const s = new Set<string>();
+    locais.forEach(l => { if (l.UF) s.add(l.UF); });
+    return Array.from(s).sort();
+  }, [locais]);
+
+  const isVideoLocal = (nome: string) => /video/i.test(nome) || /videoconfer/i.test(nome);
 
   useEffect(() => {
     if (step !== "agenda" || !pay.orderId) return;
     setLocaisLoading(true);
+    setAgendaInnerStep("locais");
+    setSelLocal(null); setAgendaDate(""); setHorarios([]); setSelHorario(null);
     fetch(`/api/public/checkout/slots/${pay.orderId}`, { credentials: "include" })
       .then(r => r.json()).then(d => setLocais(d.locais ?? []))
       .catch(() => setLocais([])).finally(() => setLocaisLoading(false));
   }, [step, pay.orderId]);
 
-  const fetchSlots = async (local: typeof locais[0], date: string) => {
+  const fetchHorarios = async (local: GarLocal, date: string) => {
     if (!date || !local) return;
-    setSlotsLoading(true); setSlots([]);
+    setHorariosLoading(true); setHorarios([]); setSelHorario(null);
     try {
-      const idL = local.localAtendimentoId ?? local.id ?? 0;
-      const r = await fetch(`/api/public/checkout/slots/${pay.orderId}?idLocal=${idL}&date=${date}`, { credentials: "include" });
+      const r = await fetch(`/api/public/checkout/slots/${pay.orderId}?hashLocal=${encodeURIComponent(local.HashLocal)}&date=${date}`, { credentials: "include" });
       const d = await r.json();
-      setSlots(d.horarios ?? d.slots ?? []);
-    } finally { setSlotsLoading(false); }
+      setHorarios(d.horarios ?? []);
+    } finally { setHorariosLoading(false); }
   };
 
   const handleAgendar = async () => {
-    if (!selLocal || !agendaDate || !selSlot || !pay.orderId) return;
+    if (!selLocal || !agendaDate || !selHorario || !pay.orderId) return;
     setAgendaLoading(true);
     try {
-      const idLocal = selLocal.localAtendimentoId ?? selLocal.id ?? 0;
-      const localNome = selLocal.NomeLocalAtendimento ?? selLocal.nome ?? "";
-      const horarioInicio = selSlot.horarioInicio ?? selSlot.horario ?? "";
       const r = await fetch(`/api/public/checkout/agendar/${pay.orderId}`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idLocal, localNome, data: agendaDate, horarioInicio, horarioFim: selSlot.horarioFim ?? "" }),
+        body: JSON.stringify({
+          localHash: selLocal.HashLocal,
+          localNome: selLocal.NomeLocalAgendamento,
+          data: agendaDate,
+          horarioInicio: selHorario.HoraInicial,
+          horarioFim: selHorario.HoraFinal,
+        }),
       });
       if (r.ok) setAgendaDone(true);
       else toast({ title: "Erro ao agendar. Tente novamente.", variant: "destructive" });
@@ -2052,7 +2078,7 @@ export default function ComprarPage() {
                         </CardContent>
                       </Card>
                     ) : (
-                      <Button className="w-full h-12 text-base" onClick={() => { setStep("agenda"); window.scrollTo(0,0); }}>
+                      <Button className="w-full" onClick={() => { setStep("agenda"); window.scrollTo(0,0); }}>
                         <Calendar className="h-4 w-4 mr-2" />Avançar para Agendamento
                       </Button>
                     )}
@@ -2074,60 +2100,168 @@ export default function ComprarPage() {
                     ) : (
                       <>
                         <Card>
-                          <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" />Agendar Atendimento</CardTitle></CardHeader>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                              <Calendar className="h-5 w-5 text-primary" />
+                              Agendar Atendimento
+                            </CardTitle>
+                            {/* breadcrumb */}
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1">
+                              {(["locais", "data", "confirm"] as const).map((s, i) => (
+                                <span key={s} className="flex items-center gap-1">
+                                  {i > 0 && <ChevronRight className="h-3 w-3" />}
+                                  <span className={agendaInnerStep === s ? "text-primary font-semibold" : ""}>
+                                    {i + 1}. {s === "locais" ? "Local" : s === "data" ? "Data e Hora" : "Confirmar"}
+                                  </span>
+                                </span>
+                              ))}
+                            </div>
+                          </CardHeader>
                           <CardContent className="space-y-4">
-                            {locaisLoading ? (
-                              <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-                            ) : locais.length === 0 ? (
-                              <div className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                                <span>Nenhum local disponível. Agende pelo sistema após o login.</span>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="space-y-2">
-                                  <Label>Local de Atendimento</Label>
-                                  {locais.map((l, i) => (
-                                    <button key={i} type="button"
-                                      onClick={() => { setSelLocal(l); setSelSlot(null); setSlots([]); if (agendaDate) fetchSlots(l, agendaDate); }}
-                                      className={`w-full text-left border rounded-lg px-4 py-3 text-sm transition-colors ${selLocal === l ? "border-primary bg-primary/5 font-medium" : "hover:bg-muted/40"}`}>
-                                      <MapPin className="h-3.5 w-3.5 inline mr-1.5 text-primary" />
-                                      {l.NomeLocalAtendimento ?? l.nome}
-                                    </button>
-                                  ))}
+
+                            {/* PASSO 1 — Locais */}
+                            {agendaInnerStep === "locais" && (
+                              locaisLoading ? (
+                                <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
+                                  <Loader2 className="h-5 w-5 animate-spin" />Buscando locais disponíveis...
                                 </div>
-                                {selLocal && (
-                                  <div className="space-y-2">
-                                    <Label>Data</Label>
-                                    <Input type="date" value={agendaDate} min={new Date().toISOString().slice(0,10)}
-                                      onChange={e => { setAgendaDate(e.target.value); setSelSlot(null); fetchSlots(selLocal, e.target.value); }} />
+                              ) : (
+                                <div className="space-y-3">
+                                  <div className="flex gap-2 flex-wrap">
+                                    <Select value={ufFiltro || "__all__"} onValueChange={v => setUfFiltro(v === "__all__" ? "" : v)}>
+                                      <SelectTrigger className="w-28"><SelectValue placeholder="UF" /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="__all__">Todos</SelectItem>
+                                        {ufsDisponiveis.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                                      </SelectContent>
+                                    </Select>
+                                    <Input placeholder="Filtrar por cidade..." value={municipioFiltro} onChange={e => setMunicipioFiltro(e.target.value)} className="flex-1 min-w-40" />
                                   </div>
-                                )}
-                                {slotsLoading && <div className="flex justify-center py-3"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}
-                                {!slotsLoading && slots.length > 0 && (
-                                  <div className="space-y-2">
-                                    <Label>Horário</Label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                      {slots.map((sl, i) => (
-                                        <button key={i} type="button" onClick={() => setSelSlot(sl)}
-                                          className={`border rounded-lg px-3 py-2 text-sm font-medium transition-colors ${selSlot === sl ? "border-primary bg-primary text-white" : "hover:bg-muted/40"}`}>
-                                          {sl.horarioInicio ?? sl.horario}
+                                  {locaisFiltrados.length === 0 ? (
+                                    <div className="text-center py-10 text-muted-foreground text-sm">
+                                      Nenhum local encontrado com esse filtro.
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                                      {locaisFiltrados.map(local => {
+                                        const video = isVideoLocal(local.NomeLocalAgendamento);
+                                        return (
+                                          <button key={local.HashLocal} type="button"
+                                            className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary ${video ? "border-blue-200 bg-blue-50 hover:bg-blue-100" : "bg-background hover:bg-muted"}`}
+                                            onClick={() => { setSelLocal(local); setAgendaDate(""); setHorarios([]); setSelHorario(null); setAgendaInnerStep("data"); }}>
+                                            <div className="flex items-start gap-3">
+                                              <div className={`mt-0.5 rounded-full p-1.5 ${video ? "bg-blue-100 text-blue-700" : "bg-muted text-muted-foreground"}`}>
+                                                {video ? <Video className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                  <p className="text-sm font-semibold">{local.NomeLocalAgendamento}</p>
+                                                  {video && <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">Videoconferência</Badge>}
+                                                </div>
+                                                {(local.NomeCidadeLocalAgendamento || local.UF) && (
+                                                  <p className="text-xs text-muted-foreground mt-0.5">{[local.NomeCidadeLocalAgendamento, local.UF].filter(Boolean).join(" — ")}</p>
+                                                )}
+                                                {local.Endereco && !video && (
+                                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{local.Endereco}</p>
+                                                )}
+                                              </div>
+                                              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                            </div>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            )}
+
+                            {/* PASSO 2 — Data e Horário */}
+                            {agendaInnerStep === "data" && selLocal && (
+                              <div className="space-y-3">
+                                <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${isVideoLocal(selLocal.NomeLocalAgendamento) ? "bg-blue-50 text-blue-800" : "bg-muted"}`}>
+                                  {isVideoLocal(selLocal.NomeLocalAgendamento) ? <Video className="h-4 w-4 shrink-0" /> : <MapPin className="h-4 w-4 shrink-0" />}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold truncate">{selLocal.NomeLocalAgendamento}</p>
+                                    {selLocal.NomeCidadeLocalAgendamento && <p className="text-xs opacity-70">{selLocal.NomeCidadeLocalAgendamento} — {selLocal.UF}</p>}
+                                  </div>
+                                  <Button variant="ghost" size="sm" className="shrink-0 text-xs" onClick={() => setAgendaInnerStep("locais")}>Trocar</Button>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <Label className="text-sm shrink-0 font-medium">Data</Label>
+                                  <Input type="date" value={agendaDate} min={new Date().toISOString().slice(0,10)} className="flex-1 max-w-xs"
+                                    onChange={e => { setAgendaDate(e.target.value); fetchHorarios(selLocal, e.target.value); }} />
+                                </div>
+                                {agendaDate && (
+                                  horariosLoading ? (
+                                    <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
+                                      <Loader2 className="h-5 w-5 animate-spin" />Buscando horários...
+                                    </div>
+                                  ) : horarios.length === 0 ? (
+                                    <div className="text-center py-10 text-muted-foreground text-sm">Nenhum horário disponível para esta data. Tente outra data.</div>
+                                  ) : (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto pb-1">
+                                      {horarios.map(h => (
+                                        <button key={`${h.HoraInicial}-${h.HoraFinal}`} type="button"
+                                          className={`rounded-lg border p-3 text-center transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${selHorario?.HoraInicial === h.HoraInicial ? "border-primary bg-primary/10 ring-1 ring-primary" : "hover:bg-accent"}`}
+                                          onClick={() => { setSelHorario(h); setAgendaInnerStep("confirm"); }}>
+                                          <Clock className="h-4 w-4 text-primary mx-auto mb-1" />
+                                          <p className="text-sm font-semibold">{h.HoraInicial}</p>
+                                          {h.HoraFinal && <p className="text-xs text-muted-foreground">até {h.HoraFinal}</p>}
                                         </button>
                                       ))}
                                     </div>
+                                  )
+                                )}
+                              </div>
+                            )}
+
+                            {/* PASSO 3 — Confirmar */}
+                            {agendaInnerStep === "confirm" && selLocal && agendaDate && selHorario && (
+                              <div className="space-y-4">
+                                <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
+                                  <div className="flex items-start gap-3">
+                                    {isVideoLocal(selLocal.NomeLocalAgendamento) ? <Video className="h-5 w-5 text-primary mt-0.5 shrink-0" /> : <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />}
+                                    <div>
+                                      <p className="text-xs text-muted-foreground">Local</p>
+                                      <p className="font-semibold">{selLocal.NomeLocalAgendamento}</p>
+                                      {selLocal.NomeCidadeLocalAgendamento && <p className="text-sm text-muted-foreground">{selLocal.NomeCidadeLocalAgendamento} — {selLocal.UF}</p>}
+                                      {selLocal.Endereco && !isVideoLocal(selLocal.NomeLocalAgendamento) && <p className="text-sm text-muted-foreground">{selLocal.Endereco}</p>}
+                                    </div>
                                   </div>
-                                )}
-                                {!slotsLoading && agendaDate && slots.length === 0 && (
-                                  <p className="text-sm text-muted-foreground text-center py-2">Nenhum horário disponível nesta data.</p>
-                                )}
-                              </>
+                                  <div className="flex items-center gap-3">
+                                    <Clock className="h-5 w-5 text-primary shrink-0" />
+                                    <div>
+                                      <p className="text-xs text-muted-foreground">Data e horário</p>
+                                      <p className="font-semibold">
+                                        {new Date(agendaDate + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+                                        {" — "}{selHorario.HoraInicial}{selHorario.HoraFinal ? ` – ${selHorario.HoraFinal}` : ""}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                                  <strong>Importante:</strong> apresente documento de identificação original (RG ou CNH). Compareça com 10 minutos de antecedência.
+                                </div>
+                              </div>
                             )}
                           </CardContent>
                         </Card>
-                        <Button className="w-full h-12 text-base" onClick={handleAgendar} disabled={!selLocal || !agendaDate || !selSlot || agendaLoading}>
-                          {agendaLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                          {agendaLoading ? "Agendando..." : "Confirmar Agendamento"}
-                        </Button>
+
+                        {/* Botões de ação */}
+                        <div className="flex gap-2">
+                          {agendaInnerStep !== "locais" && (
+                            <Button variant="outline" className="flex-1" onClick={() => setAgendaInnerStep(agendaInnerStep === "confirm" ? "data" : "locais")}>
+                              Voltar
+                            </Button>
+                          )}
+                          {agendaInnerStep === "confirm" && (
+                            <Button className="flex-1" onClick={handleAgendar} disabled={agendaLoading}>
+                              {agendaLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                              {agendaLoading ? "Agendando..." : "Confirmar Agendamento"}
+                            </Button>
+                          )}
+                        </div>
                         <Button variant="ghost" className="w-full text-muted-foreground text-sm" onClick={() => setLocation("/entrar")}>
                           Pular — agendar depois pelo sistema
                         </Button>

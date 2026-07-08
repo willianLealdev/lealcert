@@ -809,7 +809,7 @@ router.get("/public/checkout/payment-status/:orderId", async (req, res): Promise
   res.json({ status: row.status, garProtocolo: row.garProtocolo, garHopeUploadUrl: row.garHopeUploadUrl, safewebSolicitacaoId: row.safewebSolicitacaoId, protocolNumber: row.protocolNumber });
 });
 
-// ── GET /public/checkout/slots/:orderId — lista horários disponíveis (sem auth) ─
+// ── GET /public/checkout/slots/:orderId — locais ou horários disponíveis ─────
 router.get("/public/checkout/slots/:orderId", async (req, res): Promise<void> => {
   const orderId = parseInt(req.params.orderId, 10);
   if (isNaN(orderId)) { res.status(400).json({ error: "ID inválido." }); return; }
@@ -820,24 +820,40 @@ router.get("/public/checkout/slots/:orderId", async (req, res): Promise<void> =>
   const [settings] = await db.select().from(settingsTable).limit(1);
   const activeProvider = settings?.activeProvider ?? "gestaoar";
 
+  // Se hashLocal + date fornecidos → retorna horários disponíveis (GAR)
+  const { hashLocal, date, idLocal } = req.query as Record<string, string>;
+
   try {
     if (activeProvider === "safeweb") {
-      // For safeweb slots, we need a localAtendimentoId — return locais list instead
-      const { swLocaisPorCnpjAr } = await import("../lib/safeweb");
+      const { swLocaisPorCnpjAr, swAgendaListarHorarios } = await import("../lib/safeweb");
       const sw = { url: settings!.safewebUrl!, username: settings!.safewebUsername!, password: settings!.safewebPassword! };
+      if (idLocal && date) {
+        const horarios = await swAgendaListarHorarios(sw, Number(idLocal), date);
+        res.json({ horarios: (horarios as { data?: unknown[] })?.data ?? [], provider: "safeweb" });
+        return;
+      }
       const locais = await swLocaisPorCnpjAr(sw, settings?.safewebCnpjAr ?? undefined);
       res.json({ locais: locais ?? [], provider: "safeweb", orderId: order.id, safewebSolicitacaoId: order.safewebSolicitacaoId });
     } else {
-      if (!order.garHashVenda) { res.json({ locais: [], provider: "gestaoar" }); return; }
-      const { garLocaisAgendamento } = await import("../lib/gestaoar");
       const [garSettings] = await db.select({ garApiKey: settingsTable.garApiKey }).from(settingsTable).limit(1);
       const apiKey = garSettings?.garApiKey ?? "";
+      if (hashLocal && date) {
+        const { garDisponibilidadeAgenda } = await import("../lib/gestaoar");
+        const dataInicial = `${date} 00:00`;
+        const dataFinal = `${date} 23:59`;
+        const result = await garDisponibilidadeAgenda(apiKey, dataInicial, dataFinal, hashLocal);
+        const horarios = result?.Datas?.[0]?.Horarios ?? [];
+        res.json({ horarios, provider: "gestaoar" });
+        return;
+      }
+      if (!order.garHashVenda) { res.json({ locais: [], provider: "gestaoar" }); return; }
+      const { garLocaisAgendamento } = await import("../lib/gestaoar");
       const locais = await garLocaisAgendamento(apiKey);
       res.json({ locais: locais ?? [], provider: "gestaoar", garHashVenda: order.garHashVenda });
     }
   } catch (err) {
     logger.error({ err }, "public/checkout/slots error");
-    res.status(502).json({ error: "Erro ao buscar locais de atendimento." });
+    res.status(502).json({ error: "Erro ao buscar disponibilidade." });
   }
 });
 
