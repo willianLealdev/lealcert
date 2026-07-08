@@ -2,6 +2,16 @@ import path from "path";
 import { logger } from "./logger";
 import { db, settingsTable } from "@workspace/db";
 
+/** Escapa caracteres HTML para evitar XSS em templates de e-mail. */
+function esc(value: string | number | undefined | null): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 // Fetch SMTP + branding from DB — tudo configurado pelo painel admin
 async function getEmailConfig() {
   const rows = await db.select({
@@ -40,7 +50,7 @@ async function createTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>
     port: cfg.port,
     secure: cfg.port === 465,
     auth: { user: cfg.user, pass: cfg.pass },
-    tls: { rejectUnauthorized: false },
+    tls: { rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== "false" },
   });
 }
 
@@ -155,18 +165,18 @@ export async function sendOrderStatusEmail(opts: {
 
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:24px;border:1px solid #e2e8f0;">
-      <h2 style="color:#0f172a;margin:0 0 16px;font-size:18px;">Olá, ${opts.customerName}!</h2>
+      <h2 style="color:#0f172a;margin:0 0 16px;font-size:18px;">Olá, ${esc(opts.customerName)}!</h2>
       ${statusBanner(opts.status, statusLabel, color)}
       <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px;">
-        <tr><td style="padding:6px 0;color:#64748b;width:40%;">Pedido</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">#${opts.orderNumber}</td></tr>
-        ${opts.certName ? `<tr><td style="padding:6px 0;color:#64748b;">Certificado</td><td style="padding:6px 0;color:#0f172a;">${opts.certName}</td></tr>` : ""}
-        ${opts.total !== undefined ? `<tr><td style="padding:6px 0;color:#64748b;">Total</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">R$ ${opts.total.toFixed(2)}</td></tr>` : ""}
-        ${opts.protocolNumber ? `<tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;font-weight:600;color:#2563eb;">${opts.protocolNumber}</td></tr>` : ""}
+        <tr><td style="padding:6px 0;color:#64748b;width:40%;">Pedido</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">#${esc(opts.orderNumber)}</td></tr>
+        ${opts.certName ? `<tr><td style="padding:6px 0;color:#64748b;">Certificado</td><td style="padding:6px 0;color:#0f172a;">${esc(opts.certName)}</td></tr>` : ""}
+        ${opts.total !== undefined ? `<tr><td style="padding:6px 0;color:#64748b;">Total</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">R$ ${esc(opts.total.toFixed(2))}</td></tr>` : ""}
+        ${opts.protocolNumber ? `<tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;font-weight:600;color:#2563eb;">${esc(opts.protocolNumber)}</td></tr>` : ""}
       </table>
       ${statusMessage(opts)}
     </div>
     <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:16px;">
-      Para acompanhar seu pedido, acesse <a href="${cfg.siteUrl}/entrar" style="color:#2563eb;">${cfg.siteUrl.replace(/^https?:\/\//, "")}</a><br>
+      Para acompanhar seu pedido, acesse <a href="${esc(cfg.siteUrl)}/entrar" style="color:#2563eb;">${esc(cfg.siteUrl.replace(/^https?:\/\//, ""))}</a><br>
       Dúvidas? Responda este e-mail ou fale conosco pelo WhatsApp.
     </p>
   `, cfg.appName, cfg.logoUrl);
@@ -202,13 +212,13 @@ export async function sendSchedulingEmail(opts: {
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:24px;border:1px solid #e2e8f0;">
       <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">🗓 Agendamento confirmado!</h2>
-      <p style="color:#475569;margin:0 0 20px;">Olá, <strong>${opts.customerName}</strong>! Seu atendimento foi agendado com sucesso:</p>
+      <p style="color:#475569;margin:0 0 20px;">Olá, <strong>${esc(opts.customerName)}</strong>! Seu atendimento foi agendado com sucesso:</p>
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:20px;">
         <table style="width:100%;border-collapse:collapse;font-size:14px;">
-          <tr><td style="padding:6px 0;color:#64748b;width:40%;">Pedido</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">#${opts.orderNumber}</td></tr>
-          <tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;font-weight:700;color:#2563eb;">${opts.protocolo}</td></tr>
-          <tr><td style="padding:6px 0;color:#64748b;">Local</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">${opts.localNome}</td></tr>
-          <tr><td style="padding:6px 0;color:#64748b;">Data e hora</td><td style="padding:6px 0;font-weight:700;color:#0f172a;">${opts.dataHora}</td></tr>
+          <tr><td style="padding:6px 0;color:#64748b;width:40%;">Pedido</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">#${esc(opts.orderNumber)}</td></tr>
+          <tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;font-weight:700;color:#2563eb;">${esc(opts.protocolo)}</td></tr>
+          <tr><td style="padding:6px 0;color:#64748b;">Local</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">${esc(opts.localNome)}</td></tr>
+          <tr><td style="padding:6px 0;color:#64748b;">Data e hora</td><td style="padding:6px 0;font-weight:700;color:#0f172a;">${esc(opts.dataHora)}</td></tr>
         </table>
       </div>
       <div style="padding:14px;background:#fef3c7;border-radius:8px;font-size:13px;color:#92400e;margin-bottom:16px;">
@@ -252,15 +262,15 @@ export async function sendRenewalAlertEmail(opts: {
   const expiresFormatted = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(opts.expiresAt);
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:24px;border:1px solid #e2e8f0;">
-      <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">Olá, ${opts.customerName}!</h2>
+      <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">Olá, ${esc(opts.customerName)}!</h2>
       <p style="color:#475569;margin:0 0 20px;">Seu certificado digital está próximo do vencimento.</p>
       <div style="background:${urgency}15;border:2px solid ${urgency}40;border-radius:8px;padding:16px;margin-bottom:20px;text-align:center;">
         <div style="font-size:13px;color:#64748b;margin-bottom:4px;">Vence ${daysText}</div>
         <div style="font-size:22px;font-weight:900;color:${urgency};">${expiresFormatted}</div>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px;">
-        <tr><td style="padding:6px 0;color:#64748b;">Certificado</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">${opts.certificateName}</td></tr>
-        ${opts.protocolo ? `<tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;color:#0f172a;">${opts.protocolo}</td></tr>` : ""}
+        <tr><td style="padding:6px 0;color:#64748b;">Certificado</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">${esc(opts.certificateName)}</td></tr>
+        ${opts.protocolo ? `<tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;color:#0f172a;">${esc(opts.protocolo)}</td></tr>` : ""}
       </table>
       <div style="text-align:center;">
         <a href="${siteUrl}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
@@ -290,7 +300,7 @@ export async function sendWelcomeEmail(to: string, name: string, userType: strin
   const subject = `Bem-vindo à ${cfg.appName}!`;
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
-      <h2 style="color:#0f172a;margin:0 0 8px;font-size:20px;">Olá, ${name}! 👋</h2>
+      <h2 style="color:#0f172a;margin:0 0 8px;font-size:20px;">Olá, ${esc(name)}! 👋</h2>
       <p style="color:#475569;margin:0 0 20px;">Sua conta foi ativada com sucesso. Você está cadastrado como <strong>${typeLabel}</strong>.</p>
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:20px;">
         <p style="color:#1e40af;font-size:14px;margin:0;font-weight:600;">✅ Conta verificada e pronta para uso</p>
@@ -323,11 +333,11 @@ export async function sendTempPasswordEmail(to: string, name: string, tempPasswo
   const subject = `Sua senha temporária — ${cfg.appName}`;
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
-      <h2 style="color:#0f172a;margin:0 0 8px;">Olá, ${name}!</h2>
+      <h2 style="color:#0f172a;margin:0 0 8px;">Olá, ${esc(name)}!</h2>
       <p style="color:#475569;margin:0 0 20px;">Recebemos uma solicitação de recuperação de senha para sua conta. Use a senha temporária abaixo para acessar:</p>
       <div style="background:#0f172a;border-radius:10px;padding:20px;text-align:center;margin-bottom:20px;">
         <p style="color:#94a3b8;font-size:12px;margin:0 0 8px;letter-spacing:1px;text-transform:uppercase;">Senha temporária</p>
-        <span style="font-size:28px;font-weight:900;letter-spacing:4px;color:#ffffff;">${tempPassword}</span>
+        <span style="font-size:28px;font-weight:900;letter-spacing:4px;color:#ffffff;">${esc(tempPassword)}</span>
       </div>
       <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px;margin-bottom:20px;">
         <p style="color:#92400e;font-size:13px;margin:0;">⚠️ Ao fazer login com essa senha, você será solicitado a cadastrar uma nova senha permanente.</p>
@@ -359,7 +369,7 @@ export async function sendIpVerificationEmail(to: string, name: string, code: st
   const subject = `Acesso de novo endereço — confirme sua identidade | ${cfg.appName}`;
   const html = emailWrapper(`
     <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
-      <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">Olá, ${name}!</h2>
+      <h2 style="color:#0f172a;margin:0 0 8px;font-size:18px;">Olá, ${esc(name)}!</h2>
       <p style="color:#475569;margin:0 0 16px;">Detectamos uma tentativa de acesso à sua conta a partir de um endereço de rede diferente do habitual.</p>
       <div style="background:#fef3c7;border:1px solid #f59e0b40;border-radius:8px;padding:14px;margin-bottom:20px;font-size:13px;color:#92400e;">
         ⚠️ <strong>Se não foi você</strong>, ignore este e-mail e sua conta permanecerá protegida.
@@ -367,7 +377,7 @@ export async function sendIpVerificationEmail(to: string, name: string, code: st
       <p style="color:#475569;margin:0 0 16px;">Para confirmar que é você e liberar o acesso, use o código abaixo:</p>
       <div style="background:#0f172a;border-radius:10px;padding:24px;text-align:center;margin-bottom:20px;">
         <p style="color:#94a3b8;font-size:12px;margin:0 0 8px;letter-spacing:1px;text-transform:uppercase;">Código de verificação</p>
-        <span style="font-size:42px;font-weight:900;letter-spacing:12px;color:#ffffff;">${code}</span>
+        <span style="font-size:42px;font-weight:900;letter-spacing:12px;color:#ffffff;">${esc(code)}</span>
       </div>
       <p style="color:#94a3b8;font-size:13px;margin:0;text-align:center;">Válido por <strong>15 minutos</strong>. Não compartilhe com ninguém.</p>
     </div>
@@ -504,7 +514,7 @@ export async function sendVerificationEmail(to: string, name: string, code: stri
       <p style="color:#475569;margin:0 0 24px;">Para confirmar seu cadastro, use o código abaixo:</p>
       <div style="background:#0f172a;border-radius:10px;padding:24px;text-align:center;margin-bottom:24px;">
         <p style="color:#94a3b8;font-size:12px;margin:0 0 8px;letter-spacing:1px;text-transform:uppercase;">Código de verificação</p>
-        <span style="font-size:42px;font-weight:900;letter-spacing:12px;color:#ffffff;">${code}</span>
+        <span style="font-size:42px;font-weight:900;letter-spacing:12px;color:#ffffff;">${esc(code)}</span>
       </div>
       <p style="color:#94a3b8;font-size:13px;margin:0;text-align:center;">Este código expira em <strong>30 minutos</strong>. Se não foi você, ignore este e-mail.</p>
     </div>

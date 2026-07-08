@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: lealcert
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Leal2024Xpto
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data_v2:/var/lib/postgresql/data
     healthcheck:
@@ -26,8 +26,8 @@ services:
       && chown -R 1001:1001 /app/uploads
       && su -s /bin/sh appuser -c 'node --enable-source-maps ./dist/index.mjs'"
     environment:
-      DATABASE_URL: postgresql://postgres:Leal2024Xpto@db:5432/lealcert
-      SESSION_SECRET: 21fc81ee4bf33b3ec7e768f0ffcac4172b0d0dfd46962a890e7d1d56c8024245
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
       PORT: "8080"
       NODE_ENV: production
       ALLOWED_ORIGINS: "https://lealcert.com.br"
