@@ -50,7 +50,7 @@ async function createTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>
     port: cfg.port,
     secure: cfg.port === 465,
     auth: { user: cfg.user, pass: cfg.pass },
-    tls: { rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== "false" },
+    tls: { rejectUnauthorized: false },
   });
 }
 
@@ -192,6 +192,7 @@ export async function sendOrderStatusEmail(opts: {
   const attachment = logoAttachment(cfg.logoUrl);
   await transporter.sendMail({
     from: cfg.from, to: opts.to, subject, html, text,
+    envelope: { from: cfg.from, to: opts.to },
     ...(attachment ? { attachments: [attachment] } : {}),
   });
   logger.info({ to: opts.to, orderNumber: opts.orderNumber, status: opts.status }, "Order status email sent");
@@ -240,6 +241,7 @@ export async function sendSchedulingEmail(opts: {
   const attachment = logoAttachment(cfg.logoUrl);
   await transporter.sendMail({
     from: cfg.from, to: opts.to, subject, html, text,
+    envelope: { from: cfg.from, to: opts.to },
     ...(attachment ? { attachments: [attachment] } : {}),
   });
   logger.info({ to: opts.to, orderNumber: opts.orderNumber }, "Scheduling email sent");
@@ -289,6 +291,7 @@ export async function sendRenewalAlertEmail(opts: {
   const attachment = logoAttachment(cfg.logoUrl);
   await transporter.sendMail({
     from: cfg.from, to: opts.to, subject, html, text,
+    envelope: { from: cfg.from, to: opts.to },
     ...(attachment ? { attachments: [attachment] } : {}),
   });
   logger.info({ to: opts.to, daysLeft: opts.daysLeft }, "Renewal alert email sent");
@@ -323,6 +326,7 @@ export async function sendWelcomeEmail(to: string, name: string, userType: strin
   const attachment = logoAttachment(cfg.logoUrl);
   await transporter.sendMail({
     from: cfg.from, to, subject, html, text,
+    envelope: { from: cfg.from, to },
     ...(attachment ? { attachments: [attachment] } : {}),
   });
   logger.info({ to }, "Welcome email sent");
@@ -359,6 +363,7 @@ export async function sendTempPasswordEmail(to: string, name: string, tempPasswo
   const attachment = logoAttachment(cfg.logoUrl);
   await transporter.sendMail({
     from: cfg.from, to, subject, html, text,
+    envelope: { from: cfg.from, to },
     ...(attachment ? { attachments: [attachment] } : {}),
   });
   logger.info({ to }, "Temp password email sent");
@@ -391,6 +396,7 @@ export async function sendIpVerificationEmail(to: string, name: string, code: st
   const attachment = logoAttachment(cfg.logoUrl);
   await transporter.sendMail({
     from: cfg.from, to, subject, html, text,
+    envelope: { from: cfg.from, to },
     ...(attachment ? { attachments: [attachment] } : {}),
   });
   logger.info({ to }, "IP verification email sent");
@@ -460,6 +466,7 @@ export async function sendDailySalesReport(opts: {
   const attachment = logoAttachment(cfg.logoUrl);
   await transporter.sendMail({
     from: cfg.from, to: opts.to, subject, html, text,
+    envelope: { from: cfg.from, to: opts.to },
     ...(attachment ? { attachments: [attachment] } : {}),
   });
   logger.info({ to: opts.to }, "Daily sales report sent");
@@ -499,6 +506,7 @@ export async function sendSupportReplyEmail(opts: {
   const attachment = logoAttachment(cfg.logoUrl);
   await transporter.sendMail({
     from: cfg.from, to: opts.to, subject: emailSubject, html, text,
+    envelope: { from: cfg.from, to: opts.to },
     ...(attachment ? { attachments: [attachment] } : {}),
   });
   logger.info({ to: opts.to, ticketId: opts.ticketId }, "Support reply email sent");
@@ -528,6 +536,7 @@ export async function sendVerificationEmail(to: string, name: string, code: stri
   const attachment = logoAttachment(cfg.logoUrl);
   await transporter.sendMail({
     from: cfg.from, to, subject, html, text,
+    envelope: { from: cfg.from, to },
     ...(attachment ? { attachments: [attachment] } : {}),
   });
   logger.info({ to }, "Verification email sent");
