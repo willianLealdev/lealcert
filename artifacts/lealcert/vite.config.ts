@@ -24,7 +24,7 @@ export default defineConfig({
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
-      includeAssets: ["favicon.svg", "logo.png", "icon-192.png", "icon-512.png", "apple-touch-icon.png"],
+      includeAssets: ["favicon.svg", "favicon-32.png", "logo.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "browserconfig.xml"],
       manifest: {
         name: "LealCert — Certificados Digitais",
         short_name: "LealCert",
