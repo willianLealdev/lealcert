@@ -74,7 +74,7 @@ function digits(v: string) { return (v || "").replace(/\D/g, ""); }
 const UF_LIST = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
 /* ── tipos ─────────────────────────────────────────────────────────────── */
-type Step = "lookup" | "bio" | "dados" | "nf" | "pagamento" | "processando" | "docs" | "agenda";
+type Step = "lookup" | "bio" | "dados" | "nf" | "lealplus" | "pagamento" | "processando" | "docs" | "agenda";
 type CnpjRfbState = null | "loading" | { ok: true; razaoSocial: string } | { ok: false; mensagem: string };
 type PayMethod = "pix" | "boleto" | "cartao";
 
@@ -126,16 +126,17 @@ function LealCertLogo({ small }: { small?: boolean }) {
 
 /* ── Resumo lateral fixo ────────────────────────────────────────────────── */
 function ResumeLateral({
-  cert, certPrice, extendedWarranty, couponDiscount, couponCode, couponValid,
+  cert, certPrice, extendedWarranty, lealPlusSelected, lealPlusPrice, couponDiscount, couponCode, couponValid,
   couponLoading, onCouponChange, onCouponApply, setCouponCode, setCouponDiscount, setCouponValid,
 }: {
   cert: Certificate; certPrice: number; extendedWarranty: boolean;
+  lealPlusSelected: boolean; lealPlusPrice: number;
   couponDiscount: number; couponCode: string; couponValid: boolean | null;
   couponLoading: boolean; onCouponChange: (v: string) => void;
   onCouponApply: () => void; setCouponCode: (v: string) => void;
   setCouponDiscount: (v: number) => void; setCouponValid: (v: boolean | null) => void;
 }) {
-  const subtotal = certPrice + (extendedWarranty ? 15 : 0);
+  const subtotal = certPrice + (extendedWarranty ? 15 : 0) + (lealPlusSelected ? lealPlusPrice : 0);
   const total = Math.max(0, subtotal - couponDiscount);
 
   return (
@@ -156,6 +157,14 @@ function ResumeLateral({
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Garantia estendida</span>
               <span className="font-medium">+{formatBRL(15)}</span>
+            </div>
+          )}
+          {lealPlusSelected && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Lock className="h-3 w-3 text-[#0d7c6b]" />Leal Plus
+              </span>
+              <span className="font-medium text-[#0d7c6b]">+{formatBRL(lealPlusPrice)}</span>
             </div>
           )}
           {couponDiscount > 0 && (
@@ -231,6 +240,7 @@ const STEP_LIST: { id: Step; label: string }[] = [
   { id: "bio", label: "Validação" },
   { id: "dados", label: "Dados" },
   { id: "nf", label: "Nota Fiscal" },
+  { id: "lealplus", label: "Leal Plus" },
   { id: "pagamento", label: "Pagamento" },
   { id: "processando", label: "Processando" },
   { id: "docs", label: "Documentos" },
@@ -615,14 +625,22 @@ export default function ComprarPage() {
     } finally { setNfCepLoading(false); }
   }, []);
 
-  const goToPagamento = () => {
+  const goToLealPlus = () => {
     if (!nf.sameAsHolder) {
       if (!nf.nfNome.trim()) { toast({ title: "Nome da NF obrigatório", variant: "destructive" }); return; }
       const c = digits(nf.nfCpfCnpj);
       if (!c || (c.length !== 11 && c.length !== 14)) { toast({ title: "CPF/CNPJ da NF inválido", variant: "destructive" }); return; }
     }
+    setStep("lealplus"); window.scrollTo(0, 0);
+  };
+
+  const goToPagamento = () => {
     setStep("pagamento"); window.scrollTo(0, 0);
   };
+
+  /* Leal Plus */
+  const LEALPLUS_PRICE = 29.90;
+  const [lealPlusSelected, setLealPlusSelected] = useState(false);
 
   /* ══════════════════════════════════════════════════════════════════════
      ETAPA 4 — Pagamento (seleciona método e preenche dados, depois submete)
@@ -661,7 +679,7 @@ export default function ComprarPage() {
     } finally { setCouponLoading(false); }
   };
 
-  const finalPrice = Math.max(0, certPrice + (dados.extendedWarranty ? 15 : 0) - couponDiscount);
+  const finalPrice = Math.max(0, certPrice + (dados.extendedWarranty ? 15 : 0) + (lealPlusSelected ? LEALPLUS_PRICE : 0) - couponDiscount);
   const allowedMethods: PayMethod[] = finalPrice >= 150 ? ["pix", "boleto", "cartao"] : finalPrice >= 125 ? ["pix", "boleto"] : ["pix"];
 
   const [pay, setPay] = useState<PayState>({
@@ -1705,7 +1723,90 @@ export default function ComprarPage() {
                     </Card>
                     <div className="flex gap-3">
                       <Button variant="outline" onClick={() => setStep("dados")} className="w-1/3"><ArrowLeft className="h-4 w-4 mr-1" />Voltar</Button>
-                      <Button className="flex-1 h-12 text-base" onClick={goToPagamento}>Avançar <ArrowRight className="h-4 w-4 ml-2" /></Button>
+                      <Button className="flex-1 h-12 text-base" onClick={goToLealPlus}>Avançar <ArrowRight className="h-4 w-4 ml-2" /></Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ══ LEAL PLUS ══ */}
+                {step === "lealplus" && (
+                  <div className="space-y-6">
+                    {/* Header */}
+                    <div>
+                      <h2 className="text-2xl font-bold text-[#0d7c6b]">Segurança</h2>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+                      {/* Título S.plus */}
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                          <Lock className="h-4 w-4 text-slate-600" />
+                        </div>
+                        <span className="font-bold text-base">S.plus</span>
+                        <div className="group relative">
+                          <button className="h-5 w-5 rounded-full border border-slate-300 text-slate-400 text-xs flex items-center justify-center hover:bg-slate-100 transition-colors">?</button>
+                          <div className="absolute left-6 top-0 z-10 hidden group-hover:block w-64 rounded-xl bg-slate-800 text-white text-xs p-3 shadow-xl">
+                            Garantia de reemissão simplificada do certificado em caso de perda, esquecimento de senha ou atualização de dados.
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Descrição */}
+                      <div className="space-y-2 text-sm text-slate-700">
+                        <p className="font-semibold">Reemissão simplificada do seu certificado digital em caso de perda ou atualização!</p>
+                        <p className="text-slate-500 leading-relaxed">
+                          Com o S.Plus, você pode garantir a segurança do seu Certificado Digital sem preocupações!
+                          Se você perder sua senha, esquecê-la ou precisar atualizar suas informações, a reemissão é
+                          gratuita! Tranquilidade e segurança digital na palma da sua mão.
+                        </p>
+                      </div>
+
+                      {/* Separador */}
+                      <Separator />
+
+                      {/* Seleção do produto */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold">Escolha para qual produto você quer o S.PLUS.</p>
+                        <label className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50 cursor-pointer hover:border-primary/40 transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            <input
+                              type="checkbox"
+                              checked={lealPlusSelected}
+                              onChange={e => setLealPlusSelected(e.target.checked)}
+                              className="h-4 w-4 accent-primary"
+                            />
+                            <span className="text-sm font-medium uppercase tracking-wide">
+                              {cert?.product?.toUpperCase().includes("CNPJ") || cert?.name?.toUpperCase().includes("CNPJ")
+                                ? "CERTIFICADO S. PLUS PJ A3"
+                                : "CERTIFICADO S. PLUS PF A1"}
+                            </span>
+                          </div>
+                          <span className="text-sm font-bold">{formatBRL(LEALPLUS_PRICE)}</span>
+                        </label>
+
+                        {/* Pular */}
+                        <button
+                          type="button"
+                          onClick={() => { setLealPlusSelected(false); goToPagamento(); }}
+                          className="w-full mt-1 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors"
+                        >
+                          Pular essa etapa
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Botão principal */}
+                    <div className="flex gap-3">
+                      <Button variant="outline" onClick={() => setStep("nf")} className="w-1/3">
+                        <ArrowLeft className="h-4 w-4 mr-1" />Voltar
+                      </Button>
+                      <Button
+                        className="flex-1 h-12 text-base bg-[#0d7c6b] hover:bg-[#0a6358] text-white"
+                        onClick={goToPagamento}
+                        disabled={!lealPlusSelected}
+                      >
+                        Adquirir o S.plus e prosseguir <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -1819,7 +1920,7 @@ export default function ComprarPage() {
                     )}
 
                     <div className="flex gap-3">
-                      <Button variant="outline" onClick={() => setStep("nf")} className="w-1/3" disabled={pay.loading}><ArrowLeft className="h-4 w-4 mr-1" />Voltar</Button>
+                      <Button variant="outline" onClick={() => setStep("lealplus")} className="w-1/3" disabled={pay.loading}><ArrowLeft className="h-4 w-4 mr-1" />Voltar</Button>
                       <Button className="flex-1 h-12 text-base bg-emerald-600 hover:bg-emerald-700" onClick={submitOrder} disabled={pay.loading || !selectedMethod}>
                         {pay.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
                         {pay.loading ? "Processando..." : "Finalizar compra"}
@@ -2050,6 +2151,7 @@ export default function ComprarPage() {
               <div className="lg:sticky lg:top-[73px]">
                 <ResumeLateral
                   cert={cert} certPrice={certPrice} extendedWarranty={dados.extendedWarranty}
+                  lealPlusSelected={lealPlusSelected} lealPlusPrice={LEALPLUS_PRICE}
                   couponDiscount={couponDiscount} couponCode={couponCode} couponValid={couponValid}
                   couponLoading={couponLoading} onCouponChange={v => { setCouponCode(v); setCouponValid(null); setCouponDiscount(0); }}
                   onCouponApply={validateCoupon} setCouponCode={setCouponCode}
