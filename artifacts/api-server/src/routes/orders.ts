@@ -639,8 +639,12 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
       });
       const tokenData = await tokenRes.json() as { id?: string; first_six_digits?: string; payment_method_id?: string; message?: string; error?: string };
       if (!tokenRes.ok || !tokenData.id) {
-        res.status(400).json({ error: tokenData.message ?? tokenData.error ?? "Não foi possível tokenizar o cartão." }); return;
+        const { mapMpError } = await import("../lib/mp-utils");
+        res.status(400).json({ error: mapMpError(tokenData.message ?? tokenData.error) }); return;
       }
+
+      const { getMpPaymentMethodId } = await import("../lib/mp-utils");
+      const paymentMethodId = tokenData.payment_method_id || await getMpPaymentMethodId(cleanCard, mpToken);
 
       // 2. Cobrar com o token
       const mpRes = await fetch("https://api.mercadopago.com/v1/payments", {
@@ -651,14 +655,17 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
           token: tokenData.id,
           description: descricao,
           installments: Number(installments ?? 1),
-          payment_method_id: tokenData.payment_method_id ?? "visa",
+          payment_method_id: paymentMethodId,
           external_reference: orderNumber,
           notification_url: `${siteUrl}/api/mp/webhook`,
           payer: { email: payerEmail, identification: { type: cpfDigits.length === 14 ? "CNPJ" : "CPF", number: cpfDigits } },
         }),
       });
       const data = await mpRes.json() as { id?: number; status?: string; status_detail?: string; message?: string; error?: string };
-      if (!mpRes.ok) { res.status(400).json({ error: data.message ?? data.error ?? "Erro ao processar cartão." }); return; }
+      if (!mpRes.ok) {
+        const { mapMpError } = await import("../lib/mp-utils");
+        res.status(400).json({ error: mapMpError(data.message ?? data.error) }); return;
+      }
       await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") }).where(eq(ordersTable.id, id));
       await logPayEv(id, "payment_initiated", `Pagamento por cartão gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
 

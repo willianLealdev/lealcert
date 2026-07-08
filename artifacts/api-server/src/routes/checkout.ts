@@ -731,15 +731,19 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       });
       const tokenData = await tokenRes.json() as { id?: string; payment_method_id?: string; message?: string; error?: string };
       if (!tokenRes.ok || !tokenData.id) {
-        res.status(400).json({ error: tokenData.message ?? tokenData.error ?? "Não foi possível tokenizar o cartão." }); return;
+        const { mapMpError } = await import("../lib/mp-utils");
+        res.status(400).json({ error: mapMpError(tokenData.message ?? tokenData.error) }); return;
       }
+
+      const { getMpPaymentMethodId } = await import("../lib/mp-utils");
+      const paymentMethodId = tokenData.payment_method_id || await getMpPaymentMethodId(cleanCard, mpToken);
 
       const cardPayload = {
         transaction_amount: total,
         token: tokenData.id,
         description: cert.name,
         installments: Number(installments ?? 1),
-        payment_method_id: tokenData.payment_method_id ?? "visa",
+        payment_method_id: paymentMethodId,
         external_reference: orderNumber,
         notification_url: `${siteUrl}/api/mp/webhook`,
         payer: {
@@ -763,7 +767,8 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       };
 
       if (!mpRes.ok) {
-        res.status(400).json({ error: mpData.message ?? mpData.error ?? "Erro ao processar cartão." });
+        const { mapMpError } = await import("../lib/mp-utils");
+        res.status(400).json({ error: mapMpError(mpData.message ?? mpData.error) });
         return;
       }
 
