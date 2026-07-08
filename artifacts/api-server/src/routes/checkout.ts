@@ -355,6 +355,8 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     nfCnpj, nfNome, nfZipcode, nfStreet, nfNumber, nfComplement, nfNeighborhood, nfCity, nfState,
     // coupon
     couponCode,
+    // Leal Plus
+    extendedWarranty,
     // payment method: "pix" | "boleto" | "cartao"
     paymentMethod,
     // cartão (tokenized by MP SDK — never raw card data)
@@ -362,6 +364,8 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     // terms
     termsAccepted,
   } = req.body ?? {};
+
+  const LEALPLUS_PRICE = 19.90;
 
   if (!certificateId || !customerName || !customerEmail || !cpf || !termsAccepted) {
     res.status(400).json({ error: "Campos obrigatórios faltando." });
@@ -401,7 +405,8 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     }
   }
 
-  const total = Math.max(0, basePrice - discount);
+  const lealplusPrice = extendedWarranty ? LEALPLUS_PRICE : 0;
+  const total = Math.max(0, basePrice + lealplusPrice - discount);
 
   // Enforce payment method rules
   if (paymentMethod === "cartao" && total < 150) {
@@ -536,6 +541,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     certNameSnapshot: cert.name,
     certProductSnapshot: cert.product || null,
     termsAcceptedAt: termsAccepted ? new Date() : null,
+    extendedWarranty: extendedWarranty ? true : false,
   }).returning();
 
   // Increment coupon usage
