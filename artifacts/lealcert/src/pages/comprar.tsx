@@ -288,11 +288,10 @@ export default function ComprarPage() {
 
   useEffect(() => {
     if (meLoading || !meData || step !== "lookup") return;
-    // Usuário já autenticado — pré-preenche dados e pula para bio
+    // Usuário já autenticado — pré-preenche apenas email (nome vem obrigatoriamente da RFB no bio)
     setExistingUserId(meData.id);
     setDados(prev => ({
       ...prev,
-      nome: prev.nome || meData.name || "",
       email: prev.email || meData.email || "",
     }));
     setTermsAccepted(true);
@@ -456,8 +455,9 @@ export default function ComprarPage() {
       setBio(b => ({ ...b, loading: false, validated: true, customerName: data.customerName, hasPsbio: data.hasPsbio }));
       setDados(d => ({
         ...d,
-        nome: d.nome || data.customerName || "",
-        repNome: d.repNome || data.customerName || "",
+        // Nome SEMPRE vem da RFB (retorno do PSBio) — nunca do banco de dados
+        nome: data.customerName || "",
+        repNome: data.customerName || "",
         cpfCnpj: isCnpjCert ? d.cpfCnpj : (d.cpfCnpj || maskCpf(bio.cpf)),
         customerBirthDate: !isCnpjCert ? (d.customerBirthDate || bio.dataNascimento) : d.customerBirthDate,
         repBirthDate: isCnpjCert ? (d.repBirthDate || bio.dataNascimento) : d.repBirthDate,
