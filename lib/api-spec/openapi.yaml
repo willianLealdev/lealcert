@@ -3610,6 +3610,12 @@ components:
         mpPaymentId:
           type: string
           nullable: true
+        mpBoletoUrl:
+          type: string
+          nullable: true
+        mpBoletoBarcode:
+          type: string
+          nullable: true
         garPedido:
           type: string
           nullable: true

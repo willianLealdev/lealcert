@@ -55,6 +55,8 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     representanteAddressCity: o.representanteAddressCity,
     representanteAddressState: o.representanteAddressState,
     mpPaymentId: o.mpPaymentId,
+    mpBoletoUrl: o.mpBoletoUrl ?? null,
+    mpBoletoBarcode: o.mpBoletoBarcode ?? null,
     // Gestão AR
     garPedido: o.garPedido,
     garProtocolo: o.garProtocolo,
@@ -617,9 +619,11 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
         await logPayEv(id, "payment_failed", `Erro ao gerar boleto: ${data.message ?? data.error ?? "resposta inválida do MP"}`, { mpError: data.message ?? data.error });
         res.status(400).json({ error: data.message ?? data.error ?? "Erro ao gerar boleto." }); return;
       }
-      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") }).where(eq(ordersTable.id, id));
+      const boletoUrl = data.transaction_details?.external_resource_url ?? null;
+      const boletoBarcode = data.barcode?.content ?? null;
+      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? ""), mpBoletoUrl: boletoUrl, mpBoletoBarcode: boletoBarcode }).where(eq(ordersTable.id, id));
       await logPayEv(id, "payment_initiated", `Boleto gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
-      res.json({ paymentId: String(data.id ?? ""), method: "boleto", boletoUrl: data.transaction_details?.external_resource_url ?? null, boletoBarcode: data.barcode?.content ?? null });
+      res.json({ paymentId: String(data.id ?? ""), method: "boleto", boletoUrl, boletoBarcode });
 
     } else {
       // Cartão: tokenização server-side via MP

@@ -1956,29 +1956,36 @@ export default function OrderDetail() {
                 : <><CreditCard className="h-4 w-4 mr-2" />Pagar com Cartão</>}
             </Button>
 
-            {/* Boleto gerado */}
-            {boletoData && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
-                <p className="text-sm font-semibold text-amber-800 flex items-center gap-2"><Receipt className="h-4 w-4" />Boleto gerado — validade: 3 dias úteis</p>
-                {boletoData.url && (
-                  <a href={boletoData.url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-primary font-medium underline underline-offset-2">
-                    <ExternalLink className="h-4 w-4" />Acessar / imprimir boleto
-                  </a>
-                )}
-                {boletoData.barcode && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Código de barras:</p>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs bg-white border rounded px-2 py-1 flex-1 break-all font-mono">{boletoData.barcode}</code>
-                      <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(boletoData.barcode ?? ""); setBarcodeCopied(true); setTimeout(() => setBarcodeCopied(false), 2000); }}>
-                        {barcodeCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-                      </Button>
+            {/* Boleto gerado — mostra tanto do estado (recém gerado) quanto do pedido (persistente) */}
+            {(() => {
+              const bUrl = boletoData?.url ?? order.mpBoletoUrl ?? null;
+              const bBarcode = boletoData?.barcode ?? order.mpBoletoBarcode ?? null;
+              if (!bUrl && !bBarcode) return null;
+              return (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-amber-800 flex items-center gap-2">
+                    <Receipt className="h-4 w-4" />Boleto gerado — validade: 3 dias úteis
+                  </p>
+                  {bUrl && (
+                    <a href={bUrl} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary font-medium underline underline-offset-2">
+                      <ExternalLink className="h-4 w-4" />Acessar / imprimir boleto
+                    </a>
+                  )}
+                  {bBarcode && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Código de barras:</p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs bg-white border rounded px-2 py-1 flex-1 break-all font-mono">{bBarcode}</code>
+                        <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(bBarcode); setBarcodeCopied(true); setTimeout(() => setBarcodeCopied(false), 2000); }}>
+                          {barcodeCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}

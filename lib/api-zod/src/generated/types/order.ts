@@ -52,6 +52,8 @@ export interface Order {
   representanteAddressCity?: string | null;
   representanteAddressState?: string | null;
   mpPaymentId: string | null;
+  mpBoletoUrl?: string | null;
+  mpBoletoBarcode?: string | null;
   garPedido?: string | null;
   garProtocolo?: string | null;
   garHashVenda?: string | null;

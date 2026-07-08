@@ -62,6 +62,8 @@ export const ordersTable = pgTable("orders", {
   chatDocuments: text("chat_documents"),
   mpPreferenceId: text("mp_preference_id"),
   mpPaymentId: text("mp_payment_id"),
+  mpBoletoUrl: text("mp_boleto_url"),
+  mpBoletoBarcode: text("mp_boleto_barcode"),
   // Gestão AR integration fields
   garPedido: text("gar_pedido"),
   garProtocolo: text("gar_protocolo"),
