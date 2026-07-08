@@ -2060,14 +2060,15 @@ export default function ComprarPage() {
                       </CardContent>
                     </Card>
 
-                    {/* Link da URL Hope */}
+                    {/* Link da URL Hope — compacto para não esticar o layout */}
                     {processHopeUrl && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/40 border rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/40 border rounded-lg px-3 py-2 min-w-0 overflow-hidden">
                         <FileText className="h-4 w-4 shrink-0" />
                         <span className="shrink-0">URL Hope:</span>
                         <a href={processHopeUrl} target="_blank" rel="noopener noreferrer"
-                          className="truncate text-primary underline underline-offset-2 hover:text-primary/80 transition-colors">
-                          {processHopeUrl}
+                          title={processHopeUrl}
+                          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors truncate min-w-0 max-w-[180px] sm:max-w-xs">
+                          {processHopeUrl.replace(/^https?:\/\//, "").slice(0, 40)}…
                         </a>
                       </div>
                     )}
@@ -2084,8 +2085,8 @@ export default function ComprarPage() {
                           <p className="text-sm text-amber-800">
                             Antes de agendar seu atendimento, você precisa enviar os documentos solicitados pelo portal de documentação.
                           </p>
-                          <Button size="sm" onClick={() => setProcessDocsModalOpen(true)} disabled={!processHopeUrl}>
-                            <FileText className="h-4 w-4 mr-2" />
+                          <Button className="w-full" size="lg" onClick={() => setProcessDocsModalOpen(true)} disabled={!processHopeUrl}>
+                            <FileText className="h-5 w-5 mr-2" />
                             Enviar Documentos
                           </Button>
                         </CardContent>
