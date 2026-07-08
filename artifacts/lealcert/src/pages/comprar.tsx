@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getGetMeQueryKey } from "@workspace/api-client-react";
+import { getGetMeQueryKey, useGetMe } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -282,6 +282,24 @@ export default function ComprarPage() {
   const [step, setStep] = useState<Step>("lookup");
   const [showTerms, setShowTerms] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+
+  // Sessão ativa — pula o lookup se já autenticado
+  const { data: meData, isLoading: meLoading } = useGetMe();
+
+  useEffect(() => {
+    if (meLoading || !meData || step !== "lookup") return;
+    // Usuário já autenticado — pré-preenche dados e pula para bio
+    setExistingUserId(meData.id);
+    setDados(prev => ({
+      ...prev,
+      nome: prev.nome || meData.name || "",
+      email: prev.email || meData.email || "",
+    }));
+    setTermsAccepted(true);
+    setStep("bio");
+    window.scrollTo(0, 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meData, meLoading]);
 
   // Lookup flow
   const [lookupMode, setLookupMode] = useState<null | "cliente" | "novo">(null);
