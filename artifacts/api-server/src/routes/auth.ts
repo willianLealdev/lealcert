@@ -677,7 +677,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     try {
       await sendIpVerificationEmail(user.email, user.name, code);
     } catch (err) {
-      logger.error({ err }, "Falha ao enviar e-mail de verificação de IP");
+      logger.error({ err, to: user.email, reason: (err as Error).message }, "verify-ip: falha ao enviar e-mail — verifique SMTP em Admin → Configurações");
     }
     if (user.phone) {
       try {
@@ -809,7 +809,7 @@ router.post("/auth/resend-ip-verification", async (req, res): Promise<void> => {
   try {
     await sendIpVerificationEmail(user.email, user.name, code);
   } catch (err) {
-    logger.error({ err }, "Falha ao reenviar e-mail de verificação de IP");
+    logger.error({ err, to: user.email, reason: (err as Error).message }, "resend-ip-verification: falha ao enviar e-mail — verifique SMTP em Admin → Configurações");
   }
   if (user.phone) {
     try {

@@ -41,7 +41,7 @@ async function getEmailConfig() {
 
 async function createTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
   if (!cfg.host || !cfg.user || !cfg.pass) {
-    logger.warn("SMTP not configured — emails will be logged only");
+    logger.warn({ host: !!cfg.host, user: !!cfg.user, pass: !!cfg.pass }, "SMTP not configured — configure no painel Admin → Configurações");
     return null;
   }
   const nodemailer = (await import("nodemailer")).default;
@@ -386,8 +386,7 @@ export async function sendIpVerificationEmail(to: string, name: string, code: st
 
   const transporter = await createTransporter(cfg);
   if (!transporter) {
-    logger.info({ to, code }, "📧 [DEV] IP verification email (SMTP not configured)");
-    return;
+    throw new Error("SMTP não configurado — acesse Admin → Configurações para preencher host, usuário e senha SMTP");
   }
   const attachment = logoAttachment(cfg.logoUrl);
   await transporter.sendMail({

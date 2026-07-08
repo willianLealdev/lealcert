@@ -473,8 +473,7 @@ export async function garExcluirAgendamento(
   hashVenda: string,
   garPedidoNumero?: string | null,
 ): Promise<{ Status?: number; Erros?: { Ocorrencia: string }[] }> {
-  // Novo contrato da GAR: id (número do pedido) + HashUsuario (hashpessoa/hashVenda)
-  // Ref: suporte GAR, 07/07/2026
+  // Usa HashVenda — mesmo padrão do endpoint Agendamento
   const raw = await garPost<
     { Status?: number; Erros?: { Ocorrencia: string }[] } |
     { ErrorCode?: string; ErrorDescription?: string }[]
@@ -482,8 +481,8 @@ export async function garExcluirAgendamento(
     "ExcluirAgendamento",
     {
       apiKey,
-      id: garPedidoNumero ?? hashVenda,
-      HashUsuario: hashVenda,
+      HashVenda: hashVenda,
+      ...(garPedidoNumero ? { Pedido: garPedidoNumero } : {}),
     },
   );
 
