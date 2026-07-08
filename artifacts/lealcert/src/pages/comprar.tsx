@@ -379,9 +379,8 @@ export default function ComprarPage() {
           phone: data.phone ? maskPhone(data.phone) : prev.phone,
         }));
       }
-      setTermsAccepted(true);
-      setStep("bio");
-      window.scrollTo(0, 0);
+      // Mostra os termos antes de avançar para bio
+      setShowTerms(true);
     } catch { setLookupError("Erro de rede. Tente novamente."); }
     finally { setLoginLoading(false); }
   };
@@ -392,8 +391,8 @@ export default function ComprarPage() {
     setLookupPassword("");
     setLookupDoc("");
     setLookupError("");
-    setStep("bio");
-    window.scrollTo(0, 0);
+    // Mostra os termos antes de avançar para bio
+    setShowTerms(true);
   };
 
   /* ══════════════════════════════════════════════════════════════════════
@@ -431,6 +430,15 @@ export default function ComprarPage() {
         customerBirthDate: !isCnpjCert ? (d.customerBirthDate || bio.dataNascimento) : d.customerBirthDate,
         repBirthDate: isCnpjCert ? (d.repBirthDate || bio.dataNascimento) : d.repBirthDate,
       }));
+      // Verifica se há pedido anterior com dados de endereço para oferecer reutilização
+      setPrevOrderData(null); setPrevOrderUsed(null);
+      try {
+        const prRes = await fetch(`/api/public/checkout/previous-order?cpf=${digits(bio.cpf)}`, { credentials: "include" });
+        if (prRes.ok) {
+          const prJson = await prRes.json();
+          if (prJson.found) setPrevOrderData(prJson.data);
+        }
+      } catch { /* silencioso */ }
       setStep("dados");
       window.scrollTo(0, 0);
     } catch {
@@ -452,6 +460,10 @@ export default function ComprarPage() {
     extendedWarranty: false,
   });
   const setD = (k: keyof DadosForm, v: string | boolean) => setDados(d => ({ ...d, [k]: v }));
+
+  /* Pedido anterior — para oferecer reutilização de dados */
+  const [prevOrderData, setPrevOrderData] = useState<Record<string, string | null> | null>(null);
+  const [prevOrderUsed, setPrevOrderUsed] = useState<boolean | null>(null); // null=não decidiu, true=sim, false=não
 
   /* RFB */
   const [cnpjRfbState, setCnpjRfbState] = useState<CnpjRfbState>(null);
@@ -1295,6 +1307,54 @@ export default function ComprarPage() {
                 {/* ══ DADOS ══ */}
                 {step === "dados" && (
                   <div className="space-y-4">
+                    {/* Banner de dados anteriores */}
+                    {prevOrderData && prevOrderUsed === null && (
+                      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="shrink-0 mt-0.5 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                            <User className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-blue-900 text-sm">Dados de pedido anterior encontrados</p>
+                            <p className="text-xs text-blue-700 mt-0.5">Encontramos endereço e documento de um pedido anterior para este CPF. Deseja utilizar os mesmos dados?</p>
+                            <div className="flex gap-2 mt-3">
+                              <Button size="sm" className="h-8 text-xs" onClick={() => {
+                                const p = prevOrderData;
+                                setDados(d => ({
+                                  ...d,
+                                  email: p.customerEmail || d.email,
+                                  phone: p.customerPhone ? maskPhone(p.customerPhone) : d.phone,
+                                  repDocTipo: p.representanteDocTipo || d.repDocTipo,
+                                  repDocNumero: p.representanteDocNumero || d.repDocNumero,
+                                  repDocOrgan: p.representanteDocEmissor || d.repDocOrgan,
+                                  repAddressZipcode: p.addressZipcode ? maskCep(p.addressZipcode) : d.repAddressZipcode,
+                                  repAddressStreet: p.addressStreet || d.repAddressStreet,
+                                  repAddressNumber: p.addressNumber || d.repAddressNumber,
+                                  repAddressComplement: p.addressComplement || d.repAddressComplement,
+                                  repAddressNeighborhood: p.addressNeighborhood || d.repAddressNeighborhood,
+                                  repAddressCity: p.addressCity || d.repAddressCity,
+                                  repAddressState: p.addressState || d.repAddressState,
+                                }));
+                                setRepCepFilled(true);
+                                setPrevOrderUsed(true);
+                              }}>
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Sim, usar esses dados
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setPrevOrderUsed(false)}>
+                                Não, preencher manualmente
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {prevOrderData && prevOrderUsed === true && (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-2 text-sm text-emerald-700">
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                        <span>Dados do pedido anterior aplicados. Confira e ajuste se necessário.</span>
+                        <button className="ml-auto text-xs underline text-emerald-600 hover:text-emerald-800" onClick={() => setPrevOrderUsed(null)}>desfazer</button>
+                      </div>
+                    )}
                     {!isCnpjCert ? (
                       <Card>
                         <CardHeader>
@@ -1312,8 +1372,11 @@ export default function ComprarPage() {
                               <Input value={bio.dataNascimento} readOnly className="bg-muted/50 cursor-not-allowed" />
                             </div>
                             <div className="space-y-2 sm:col-span-2">
-                              <Label>Nome Completo *</Label>
-                              <Input value={dados.nome} onChange={e => setD("nome", e.target.value)} placeholder="Como no RG" />
+                              <Label className="flex items-center gap-1.5">Nome Completo *
+                                <span className="text-xs text-emerald-600 font-normal">(Receita Federal)</span>
+                              </Label>
+                              <Input value={dados.nome} readOnly className="bg-muted/50 cursor-not-allowed" />
+                              <p className="text-xs text-muted-foreground">Preenchido automaticamente pela consulta RFB.</p>
                             </div>
                             <div className="space-y-2">
                               <Label>E-mail *</Label>
@@ -1322,11 +1385,6 @@ export default function ComprarPage() {
                             <div className="space-y-2">
                               <Label>Telefone / WhatsApp *</Label>
                               <Input value={dados.phone} onChange={e => setD("phone", maskPhone(e.target.value))} placeholder="(11) 99999-9999" inputMode="numeric" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Data de Nascimento do Titular *</Label>
-                              <Input value={dados.customerBirthDate} onChange={e => setD("customerBirthDate", maskDate(e.target.value))} placeholder="DD/MM/AAAA" maxLength={10} inputMode="numeric" />
-                              <p className="text-xs text-muted-foreground">Confirme a data de nascimento para o certificado.</p>
                             </div>
                           </div>
                           {/* CEI/NIS/PIS */}
@@ -1398,8 +1456,11 @@ export default function ComprarPage() {
                                 <p className="text-xs text-muted-foreground">Da validação biométrica.</p>
                               </div>
                               <div className="space-y-2 sm:col-span-2">
-                                <Label>Nome Completo *</Label>
-                                <Input value={dados.repNome} onChange={e => setD("repNome", e.target.value)} placeholder="Nome completo" />
+                                <Label className="flex items-center gap-1.5">Nome Completo *
+                                  <span className="text-xs text-emerald-600 font-normal">(Receita Federal)</span>
+                                </Label>
+                                <Input value={dados.repNome} readOnly className="bg-muted/50 cursor-not-allowed" />
+                                <p className="text-xs text-muted-foreground">Preenchido automaticamente pela consulta RFB.</p>
                               </div>
                               {/* Status RFB */}
                               {cnpjRfbState === "loading" && (
@@ -2013,7 +2074,12 @@ export default function ComprarPage() {
           </div>
           <div className="flex gap-3 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => setShowTerms(false)}>Cancelar</Button>
-            <Button className="flex-1" onClick={() => { setTermsAccepted(true); setShowTerms(false); }}>
+            <Button className="flex-1" onClick={() => {
+              setTermsAccepted(true);
+              setShowTerms(false);
+              // Se veio do lookup (login ou novo cliente), avança para bio
+              if (step === "lookup") { setStep("bio"); window.scrollTo(0, 0); }
+            }}>
               <ShieldCheck className="h-4 w-4 mr-2" />Aceitar e Continuar
             </Button>
           </div>

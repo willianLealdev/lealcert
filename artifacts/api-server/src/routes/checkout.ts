@@ -3,7 +3,7 @@
  * All sensitive operations (PSBio, coupon, user creation, payment) are server-side only.
  */
 import { Router } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, isNotNull } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, ordersTable, usersTable, certificatesTable, settingsTable, couponsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
@@ -223,6 +223,43 @@ router.post("/public/checkout/bio", async (req, res): Promise<void> => {
     logger.error({ err }, "public/checkout/bio error");
     res.status(422).json({ ok: false, mensagem: "Não foi possível validar o CPF. Tente novamente." });
   }
+});
+
+// ── GET /public/checkout/previous-order — último pedido do CPF (sem auth) ────
+router.get("/public/checkout/previous-order", async (req, res): Promise<void> => {
+  const cpf = String(req.query.cpf ?? "").replace(/\D/g, "");
+  if (cpf.length !== 11) { res.json({ found: false }); return; }
+
+  // Localiza usuário pelo CPF
+  const [user] = await db.select({ id: usersTable.id })
+    .from(usersTable).where(eq(usersTable.cpfCnpj, cpf)).limit(1);
+  if (!user) { res.json({ found: false }); return; }
+
+  // Busca último pedido com dados de endereço preenchidos
+  const [order] = await db.select({
+    customerName: ordersTable.customerName,
+    customerEmail: ordersTable.customerEmail,
+    customerPhone: ordersTable.customerPhone,
+    customerBirthDate: ordersTable.customerBirthDate,
+    companyName: ordersTable.companyName,
+    addressZipcode: ordersTable.addressZipcode,
+    addressStreet: ordersTable.addressStreet,
+    addressNumber: ordersTable.addressNumber,
+    addressComplement: ordersTable.addressComplement,
+    addressNeighborhood: ordersTable.addressNeighborhood,
+    addressCity: ordersTable.addressCity,
+    addressState: ordersTable.addressState,
+    representanteNascimento: ordersTable.representanteNascimento,
+    representanteDocTipo: ordersTable.representanteDocTipo,
+    representanteDocNumero: ordersTable.representanteDocNumero,
+    representanteDocEmissor: ordersTable.representanteDocEmissor,
+  }).from(ordersTable)
+    .where(and(eq(ordersTable.userId, user.id), isNotNull(ordersTable.addressZipcode)))
+    .orderBy(desc(ordersTable.createdAt))
+    .limit(1);
+
+  if (!order) { res.json({ found: false }); return; }
+  res.json({ found: true, data: order });
 });
 
 // ── POST /public/checkout/cnpj-rfb — consulta CNPJ (sem auth) ───────────────
