@@ -125,18 +125,19 @@ function LealCertLogo({ small }: { small?: boolean }) {
 }
 
 /* ── Resumo lateral fixo ────────────────────────────────────────────────── */
+const LEALPLUS_SIDEBAR_PRICE = 19.90;
+
 function ResumeLateral({
-  cert, certPrice, extendedWarranty, lealPlusSelected, lealPlusPrice, couponDiscount, couponCode, couponValid,
+  cert, certPrice, extendedWarranty, couponDiscount, couponCode, couponValid,
   couponLoading, onCouponChange, onCouponApply, setCouponCode, setCouponDiscount, setCouponValid,
 }: {
   cert: Certificate; certPrice: number; extendedWarranty: boolean;
-  lealPlusSelected: boolean; lealPlusPrice: number;
   couponDiscount: number; couponCode: string; couponValid: boolean | null;
   couponLoading: boolean; onCouponChange: (v: string) => void;
   onCouponApply: () => void; setCouponCode: (v: string) => void;
   setCouponDiscount: (v: number) => void; setCouponValid: (v: boolean | null) => void;
 }) {
-  const subtotal = certPrice + (extendedWarranty ? 15 : 0) + (lealPlusSelected ? lealPlusPrice : 0);
+  const subtotal = certPrice + (extendedWarranty ? LEALPLUS_SIDEBAR_PRICE : 0);
   const total = Math.max(0, subtotal - couponDiscount);
 
   return (
@@ -155,16 +156,10 @@ function ResumeLateral({
           </div>
           {extendedWarranty && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Garantia estendida</span>
-              <span className="font-medium">+{formatBRL(15)}</span>
-            </div>
-          )}
-          {lealPlusSelected && (
-            <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground flex items-center gap-1">
                 <Lock className="h-3 w-3 text-[#0d7c6b]" />Leal Plus
               </span>
-              <span className="font-medium text-[#0d7c6b]">+{formatBRL(lealPlusPrice)}</span>
+              <span className="font-medium text-[#0d7c6b]">+{formatBRL(LEALPLUS_SIDEBAR_PRICE)}</span>
             </div>
           )}
           {couponDiscount > 0 && (
@@ -638,9 +633,8 @@ export default function ComprarPage() {
     setStep("pagamento"); window.scrollTo(0, 0);
   };
 
-  /* Leal Plus */
+  /* Leal Plus — salvo como extendedWarranty no banco */
   const LEALPLUS_PRICE = 19.90;
-  const [lealPlusSelected, setLealPlusSelected] = useState(false);
 
   /* ══════════════════════════════════════════════════════════════════════
      ETAPA 4 — Pagamento (seleciona método e preenche dados, depois submete)
@@ -679,7 +673,7 @@ export default function ComprarPage() {
     } finally { setCouponLoading(false); }
   };
 
-  const finalPrice = Math.max(0, certPrice + (dados.extendedWarranty ? 15 : 0) + (lealPlusSelected ? LEALPLUS_PRICE : 0) - couponDiscount);
+  const finalPrice = Math.max(0, certPrice + (dados.extendedWarranty ? LEALPLUS_PRICE : 0) - couponDiscount);
   const allowedMethods: PayMethod[] = finalPrice >= 150 ? ["pix", "boleto", "cartao"] : finalPrice >= 125 ? ["pix", "boleto"] : ["pix"];
 
   const [pay, setPay] = useState<PayState>({
@@ -1634,20 +1628,6 @@ export default function ComprarPage() {
                       </CardContent>
                     </Card>
 
-                    {/* Garantia estendida */}
-                    <Card>
-                      <CardHeader><CardTitle className="text-base">Opcionais</CardTitle></CardHeader>
-                      <CardContent>
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <input type="checkbox" className="h-4 w-4 mt-0.5 accent-primary" checked={dados.extendedWarranty} onChange={e => setD("extendedWarranty", e.target.checked)} />
-                          <div>
-                            <span className="font-medium text-sm">Garantia Estendida (+{formatBRL(15)})</span>
-                            <p className="text-xs text-muted-foreground mt-0.5">Reemissão gratuita em caso de problema técnico por 90 dias.</p>
-                          </div>
-                        </label>
-                      </CardContent>
-                    </Card>
-
                     <div className="flex gap-3">
                       <Button variant="outline" onClick={() => setStep("bio")} className="w-1/3"><ArrowLeft className="h-4 w-4 mr-1" />Voltar</Button>
                       <Button className="flex-1 h-12 text-base" onClick={goToNf} disabled={isCnpjCert && cnpjRfbState === "loading"}>
@@ -1771,8 +1751,8 @@ export default function ComprarPage() {
                           <div className="flex items-center gap-2.5">
                             <input
                               type="checkbox"
-                              checked={lealPlusSelected}
-                              onChange={e => setLealPlusSelected(e.target.checked)}
+                              checked={dados.extendedWarranty}
+                              onChange={e => setD("extendedWarranty", e.target.checked)}
                               className="h-4 w-4 accent-primary"
                             />
                             <span className="text-sm font-medium uppercase tracking-wide">
@@ -1787,7 +1767,7 @@ export default function ComprarPage() {
                         {/* Pular */}
                         <button
                           type="button"
-                          onClick={() => { setLealPlusSelected(false); goToPagamento(); }}
+                          onClick={() => { setD("extendedWarranty", false); goToPagamento(); }}
                           className="w-full mt-1 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors"
                         >
                           Pular essa etapa
@@ -1803,7 +1783,7 @@ export default function ComprarPage() {
                       <Button
                         className="flex-1 h-12 text-base bg-[#0d7c6b] hover:bg-[#0a6358] text-white"
                         onClick={goToPagamento}
-                        disabled={!lealPlusSelected}
+                        disabled={!dados.extendedWarranty}
                       >
                         Adquirir o Leal Plus e prosseguir <ArrowRight className="h-4 w-4 ml-2" />
                       </Button>
@@ -2151,7 +2131,6 @@ export default function ComprarPage() {
               <div className="lg:sticky lg:top-[73px]">
                 <ResumeLateral
                   cert={cert} certPrice={certPrice} extendedWarranty={dados.extendedWarranty}
-                  lealPlusSelected={lealPlusSelected} lealPlusPrice={LEALPLUS_PRICE}
                   couponDiscount={couponDiscount} couponCode={couponCode} couponValid={couponValid}
                   couponLoading={couponLoading} onCouponChange={v => { setCouponCode(v); setCouponValid(null); setCouponDiscount(0); }}
                   onCouponApply={validateCoupon} setCouponCode={setCouponCode}
