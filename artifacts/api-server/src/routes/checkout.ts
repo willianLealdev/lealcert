@@ -887,6 +887,10 @@ router.post("/public/checkout/agendar/:orderId", async (req, res): Promise<void>
         safewebAgendamentoDataHora: dataHoraStr || null,
         safewebAgendamentoLocalNome: localNome || null,
       }).where(eq(ordersTable.id, orderId));
+      const { logEvent } = await import("../lib/order-events");
+      await logEvent(orderId, "scheduling_confirmed",
+        `Atendimento agendado (Safeweb): ${localNome || "—"} — ${dataHoraStr || "—"}`,
+        { localNome, dataHora: dataHoraStr, provider: "safeweb", via: "checkout" });
     } else {
       const { garAgendar } = await import("../lib/gestaoar");
       const [garSettings] = await db.select({ garApiKey: settingsTable.garApiKey }).from(settingsTable).limit(1);
@@ -903,6 +907,10 @@ router.post("/public/checkout/agendar/:orderId", async (req, res): Promise<void>
         garAgendamentoSlotHash: slotHash || null,
         garAgendamentoDataHora: dataHoraStr || null,
       }).where(eq(ordersTable.id, orderId));
+      const { logEvent } = await import("../lib/order-events");
+      await logEvent(orderId, "scheduling_confirmed",
+        `Atendimento agendado (GAR): ${localNome || "—"} — ${dataHoraStr || "—"}`,
+        { localHash, localNome, dataHora: dataHoraStr, dataFim, provider: "gestaoar", via: "checkout" });
     }
     res.json({ ok: true });
   } catch (err) {

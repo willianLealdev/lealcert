@@ -353,8 +353,8 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
     setDocsModalOpen(false);
   }
 
-  // Gate: se existe URL do Hope e docs ainda não confirmados, exibe step de envio de documentos
-  if (garHopeUploadUrl && !docsConfirmed) {
+  // Gate: só pede documentos se ainda não confirmados E ainda não há agendamento feito
+  if (garHopeUploadUrl && !docsConfirmed && !garAgendamentoDataHora) {
     return (
       <>
         <Card className="border-amber-200 bg-amber-50">
