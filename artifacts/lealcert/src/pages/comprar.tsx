@@ -639,7 +639,7 @@ export default function ComprarPage() {
   };
 
   /* Leal Plus */
-  const LEALPLUS_PRICE = 29.90;
+  const LEALPLUS_PRICE = 19.90;
   const [lealPlusSelected, setLealPlusSelected] = useState(false);
 
   /* ══════════════════════════════════════════════════════════════════════
@@ -1737,12 +1737,12 @@ export default function ComprarPage() {
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
-                      {/* Título S.plus */}
+                      {/* Título Leal Plus */}
                       <div className="flex items-center gap-2">
                         <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
                           <Lock className="h-4 w-4 text-slate-600" />
                         </div>
-                        <span className="font-bold text-base">S.plus</span>
+                        <span className="font-bold text-base">Leal Plus</span>
                         <div className="group relative">
                           <button className="h-5 w-5 rounded-full border border-slate-300 text-slate-400 text-xs flex items-center justify-center hover:bg-slate-100 transition-colors">?</button>
                           <div className="absolute left-6 top-0 z-10 hidden group-hover:block w-64 rounded-xl bg-slate-800 text-white text-xs p-3 shadow-xl">
@@ -1755,7 +1755,7 @@ export default function ComprarPage() {
                       <div className="space-y-2 text-sm text-slate-700">
                         <p className="font-semibold">Reemissão simplificada do seu certificado digital em caso de perda ou atualização!</p>
                         <p className="text-slate-500 leading-relaxed">
-                          Com o S.Plus, você pode garantir a segurança do seu Certificado Digital sem preocupações!
+                          Com o Leal Plus, você pode garantir a segurança do seu Certificado Digital sem preocupações!
                           Se você perder sua senha, esquecê-la ou precisar atualizar suas informações, a reemissão é
                           gratuita! Tranquilidade e segurança digital na palma da sua mão.
                         </p>
@@ -1766,7 +1766,7 @@ export default function ComprarPage() {
 
                       {/* Seleção do produto */}
                       <div className="space-y-2">
-                        <p className="text-sm font-semibold">Escolha para qual produto você quer o S.PLUS.</p>
+                        <p className="text-sm font-semibold">Escolha para qual produto você quer o Leal Plus.</p>
                         <label className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50 cursor-pointer hover:border-primary/40 transition-colors">
                           <div className="flex items-center gap-2.5">
                             <input
@@ -1777,8 +1777,8 @@ export default function ComprarPage() {
                             />
                             <span className="text-sm font-medium uppercase tracking-wide">
                               {cert?.product?.toUpperCase().includes("CNPJ") || cert?.name?.toUpperCase().includes("CNPJ")
-                                ? "CERTIFICADO S. PLUS PJ A3"
-                                : "CERTIFICADO S. PLUS PF A1"}
+                                ? "CERTIFICADO LEAL PLUS PJ A3"
+                                : "CERTIFICADO LEAL PLUS PF A1"}
                             </span>
                           </div>
                           <span className="text-sm font-bold">{formatBRL(LEALPLUS_PRICE)}</span>
@@ -1805,7 +1805,7 @@ export default function ComprarPage() {
                         onClick={goToPagamento}
                         disabled={!lealPlusSelected}
                       >
-                        Adquirir o S.plus e prosseguir <ArrowRight className="h-4 w-4 ml-2" />
+                        Adquirir o Leal Plus e prosseguir <ArrowRight className="h-4 w-4 ml-2" />
                       </Button>
                     </div>
                   </div>
