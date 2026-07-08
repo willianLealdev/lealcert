@@ -650,7 +650,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
         external_reference: orderNumber,
         notification_url: `${siteUrl}/api/mp/webhook`,
         payer: {
-          email: String(customerEmail).toLowerCase().trim(),
+          email: payerEmail,
           first_name: firstName,
           last_name: lastName,
           identification: { type: "CPF", number: cpfForPayer },
@@ -747,7 +747,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
         external_reference: orderNumber,
         notification_url: `${siteUrl}/api/mp/webhook`,
         payer: {
-          email: String(customerEmail).toLowerCase().trim(),
+          email: payerEmail,
           identification: { type: "CPF", number: cpfForPayer },
         },
       };
