@@ -1001,7 +1001,10 @@ export const CreatePaymentResponse = zod.object({
   "pixQrCodeBase64": zod.string().nullish(),
   "boletoUrl": zod.string().nullish(),
   "boletoBarcode": zod.string().nullish(),
-  "approved": zod.boolean().nullish()
+  "approved": zod.boolean().nullish(),
+  "inProcess": zod.boolean().nullish(),
+  "rejected": zod.boolean().nullish(),
+  "mpStatusDetail": zod.string().nullish()
 })
 
 

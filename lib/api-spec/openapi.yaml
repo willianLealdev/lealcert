@@ -3888,6 +3888,15 @@ components:
         approved:
           type: boolean
           nullable: true
+        inProcess:
+          type: boolean
+          nullable: true
+        rejected:
+          type: boolean
+          nullable: true
+        mpStatusDetail:
+          type: string
+          nullable: true
 
     Slot:
       type: object

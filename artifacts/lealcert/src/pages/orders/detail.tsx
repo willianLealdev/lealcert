@@ -42,7 +42,7 @@ import {
   ArrowLeft, QrCode, Loader2, FileText, Download, RefreshCw,
   ShoppingBag, CheckCircle2, Calendar, MapPin, Video, Clock, ChevronRight, Check,
   Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag, Copy, Ban, ExternalLink,
-  AlertTriangle,
+  AlertTriangle, CreditCard, Receipt, XCircle,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -71,6 +71,9 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
   completed: "default",
   cancelled: "destructive",
 };
+
+function maskCardNumber(v: string) { return v.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19); }
+function maskExpiry(v: string) { const d = v.replace(/\D/g, ""); return d.length > 2 ? d.slice(0, 2) + "/" + d.slice(2, 4) : d; }
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
@@ -1275,6 +1278,14 @@ export default function OrderDetail() {
   const [garHashProduto, setGarHashProduto] = useState("");
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
+  type PayMethod = "pix" | "boleto" | "cartao";
+  const [selectedPayMethod, setSelectedPayMethod] = useState<PayMethod>("pix");
+  const [payCardNumber, setPayCardNumber] = useState("");
+  const [payCardName, setPayCardName] = useState("");
+  const [payCardExpiry, setPayCardExpiry] = useState("");
+  const [payCardCvv, setPayCardCvv] = useState("");
+  const [boletoData, setBoletoData] = useState<{ url: string | null; barcode: string | null } | null>(null);
+  const [barcodeCopied, setBarcodeCopied] = useState(false);
   const [showProtocolLoading, setShowProtocolLoading] = useState(false);
   const [protocolLoadingStep, setProtocolLoadingStep] = useState(0);
   const [protocolLoadingError, setProtocolLoadingError] = useState<string | null>(null);
@@ -1378,11 +1389,25 @@ export default function OrderDetail() {
   const createPayment = useCreatePayment({
     mutation: {
       onSuccess: (data) => {
-        setPixData({ paymentId: data.paymentId, pixQrCode: data.pixQrCode ?? "", pixQrCodeBase64: data.pixQrCodeBase64 ?? "" });
+        refetch();
+        if (!data.method || data.method === "pix") {
+          setPixData({ paymentId: data.paymentId, pixQrCode: data.pixQrCode ?? "", pixQrCodeBase64: data.pixQrCodeBase64 ?? "" });
+        } else if (data.method === "boleto") {
+          setBoletoData({ url: data.boletoUrl ?? null, barcode: data.boletoBarcode ?? null });
+          toast({ title: "Boleto gerado!", description: "Clique no link abaixo para acessar ou copie o código de barras." });
+        } else if (data.method === "cartao") {
+          if (data.rejected) {
+            toast({ title: "Cartão recusado", description: "Verifique os dados ou tente com outro cartão.", variant: "destructive" });
+          } else if (data.inProcess) {
+            toast({ title: "Pagamento em análise", description: "O banco está verificando. A confirmação chegará em breve." });
+          } else if (data.approved) {
+            toast({ title: "Pagamento aprovado!", description: "Pedido pago e em processamento." });
+          }
+        }
       },
       onError: (err: unknown) => {
         const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao gerar pagamento.";
-        toast({ title: "Erro", description: msg, variant: "destructive" });
+        toast({ title: "Erro no pagamento", description: msg, variant: "destructive" });
       },
     },
   });
@@ -1537,6 +1562,8 @@ export default function OrderDetail() {
 
   const isAdmin = user?.role === "admin";
   const isPayable = order.status === "pending_payment" || order.status === "created";
+  const orderTotal = parseFloat(String(order.total ?? 0));
+  const allowedPayMethods: PayMethod[] = orderTotal >= 150 ? ["pix", "boleto", "cartao"] : orderTotal >= 125 ? ["pix", "boleto"] : ["pix"];
 
   // GAR fields (now properly typed in the schema)
   const orderExt = order as typeof order & {
@@ -1770,31 +1797,21 @@ export default function OrderDetail() {
         </div>
       )}
 
-      {/* Barra de pagamento fixa no rodapé — só mobile */}
+      {/* Barra fixa no rodapé — só mobile, apenas para verificar pagamento */}
       {isPayable && (
         <div className="fixed bottom-0 left-0 right-0 z-20 px-4 py-3 bg-background/95 backdrop-blur-sm border-t shadow-xl md:hidden">
           <div className="flex gap-2">
             <Button
               className="flex-1"
               size="lg"
-              onClick={() => createPayment.mutate({ id: Number(id) })}
-              disabled={createPayment.isPending}
-            >
-              {createPayment.isPending
-                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                : <QrCode className="h-4 w-4 mr-2" />}
-              Pagar PIX
-            </Button>
-            <Button
               variant="outline"
-              size="lg"
               onClick={() => syncPayment.mutate({ id: Number(id) })}
               disabled={syncPayment.isPending}
-              title="Verificar se pagamento foi confirmado no MercadoPago"
             >
               {syncPayment.isPending
                 ? <Loader2 className="h-5 w-5 animate-spin" />
-                : <RefreshCw className="h-5 w-5" />}
+                : <RefreshCw className="h-5 w-5 mr-2" />}
+              Verificar Pagamento
             </Button>
           </div>
         </div>
@@ -1839,18 +1856,9 @@ export default function OrderDetail() {
           )}
           <p className="text-muted-foreground text-sm">Criado em {formatDateTime(order.createdAt)}</p>
         </div>
-        {/* Botões de pagamento — apenas desktop */}
+        {/* Verificar pagamento — desktop */}
         {isPayable && (
           <div className="hidden md:flex items-center gap-2 shrink-0">
-            <Button
-              onClick={() => createPayment.mutate({ id: Number(id) })}
-              disabled={createPayment.isPending}
-            >
-              {createPayment.isPending
-                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                : <QrCode className="h-4 w-4 mr-2" />}
-              Pagamento com PIX
-            </Button>
             <Button
               variant="outline"
               onClick={() => syncPayment.mutate({ id: Number(id) })}
@@ -1859,12 +1867,121 @@ export default function OrderDetail() {
             >
               {syncPayment.isPending
                 ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <RefreshCw className="h-4 w-4" />}
-              {!syncPayment.isPending && <span className="ml-2">Verificar Pagamento</span>}
+                : <RefreshCw className="h-4 w-4 mr-2" />}
+              {!syncPayment.isPending && "Verificar Pagamento"}
             </Button>
           </div>
         )}
       </div>
+
+      {/* ── Painel de Pagamento ─────────────────────────────────────────── */}
+      {isPayable && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <PayIcon className="h-5 w-5 text-primary" />
+              Escolher forma de pagamento
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">Selecione como deseja pagar e confirme abaixo.</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Seletor de método */}
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${allowedPayMethods.length}, 1fr)` }}>
+              {allowedPayMethods.includes("pix") && (
+                <button type="button" onClick={() => setSelectedPayMethod("pix")}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all ${selectedPayMethod === "pix" ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5"}`}>
+                  <QrCode className="h-5 w-5" />
+                  PIX
+                </button>
+              )}
+              {allowedPayMethods.includes("boleto") && (
+                <button type="button" onClick={() => setSelectedPayMethod("boleto")}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all ${selectedPayMethod === "boleto" ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5"}`}>
+                  <Receipt className="h-5 w-5" />
+                  Boleto
+                </button>
+              )}
+              {allowedPayMethods.includes("cartao") && (
+                <button type="button" onClick={() => setSelectedPayMethod("cartao")}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all ${selectedPayMethod === "cartao" ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5"}`}>
+                  <CreditCard className="h-5 w-5" />
+                  Cartão
+                </button>
+              )}
+            </div>
+
+            {/* Formulário do cartão */}
+            {selectedPayMethod === "cartao" && (
+              <div className="space-y-3 pt-1">
+                <div className="space-y-1">
+                  <Label className="text-xs">Número do cartão</Label>
+                  <Input value={payCardNumber} onChange={e => setPayCardNumber(maskCardNumber(e.target.value))} placeholder="0000 0000 0000 0000" inputMode="numeric" maxLength={19} className="font-mono" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Nome impresso no cartão</Label>
+                  <Input value={payCardName} onChange={e => setPayCardName(e.target.value.toUpperCase())} placeholder="NOME SOBRENOME" className="uppercase" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Validade</Label>
+                    <Input value={payCardExpiry} onChange={e => setPayCardExpiry(maskExpiry(e.target.value))} placeholder="MM/AA" maxLength={5} inputMode="numeric" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">CVV</Label>
+                    <Input value={payCardCvv} onChange={e => setPayCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="000" inputMode="numeric" maxLength={4} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Botão de pagamento */}
+            <Button className="w-full" disabled={createPayment.isPending}
+              onClick={() => {
+                if (selectedPayMethod === "pix") {
+                  createPayment.mutate({ id: Number(id), data: { method: "pix" } });
+                } else if (selectedPayMethod === "boleto") {
+                  createPayment.mutate({ id: Number(id), data: { method: "boleto" } });
+                } else {
+                  if (payCardNumber.replace(/\D/g, "").length < 13) { toast({ title: "Número do cartão inválido", variant: "destructive" }); return; }
+                  if (!payCardName.trim()) { toast({ title: "Nome no cartão obrigatório", variant: "destructive" }); return; }
+                  if (payCardExpiry.length !== 5) { toast({ title: "Validade inválida", variant: "destructive" }); return; }
+                  if (payCardCvv.length < 3) { toast({ title: "CVV inválido", variant: "destructive" }); return; }
+                  createPayment.mutate({ id: Number(id), data: { method: "cartao", cardNumber: payCardNumber.replace(/\D/g, ""), cardName: payCardName.trim(), cardExpiry: payCardExpiry, cardCvv: payCardCvv, installments: 1 } });
+                }
+              }}>
+              {createPayment.isPending
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processando...</>
+                : selectedPayMethod === "pix" ? <><QrCode className="h-4 w-4 mr-2" />Gerar QR Code PIX</>
+                : selectedPayMethod === "boleto" ? <><Receipt className="h-4 w-4 mr-2" />{boletoData ? "Reemitir Boleto" : "Gerar Boleto"}</>
+                : <><CreditCard className="h-4 w-4 mr-2" />Pagar com Cartão</>}
+            </Button>
+
+            {/* Boleto gerado */}
+            {boletoData && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+                <p className="text-sm font-semibold text-amber-800 flex items-center gap-2"><Receipt className="h-4 w-4" />Boleto gerado — validade: 3 dias úteis</p>
+                {boletoData.url && (
+                  <a href={boletoData.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-primary font-medium underline underline-offset-2">
+                    <ExternalLink className="h-4 w-4" />Acessar / imprimir boleto
+                  </a>
+                )}
+                {boletoData.barcode && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Código de barras:</p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs bg-white border rounded px-2 py-1 flex-1 break-all font-mono">{boletoData.barcode}</code>
+                      <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(boletoData.barcode ?? ""); setBarcodeCopied(true); setTimeout(() => setBarcodeCopied(false), 2000); }}>
+                        {barcodeCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">

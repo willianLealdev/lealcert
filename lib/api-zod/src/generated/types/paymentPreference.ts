@@ -14,4 +14,7 @@ export interface PaymentPreference {
   boletoUrl?: string | null;
   boletoBarcode?: string | null;
   approved?: boolean | null;
+  inProcess?: boolean | null;
+  rejected?: boolean | null;
+  mpStatusDetail?: string | null;
 }

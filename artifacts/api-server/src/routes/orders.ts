@@ -585,7 +585,10 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
         body: JSON.stringify({ transaction_amount: total, description: descricao, payment_method_id: "pix", external_reference: orderNumber, notification_url: `${siteUrl}/api/mp/webhook`, payer }),
       });
       const data = await mpRes.json() as { id?: number; status?: string; point_of_interaction?: { transaction_data?: { qr_code?: string; qr_code_base64?: string } }; message?: string; error?: string };
-      if (!mpRes.ok) { res.status(400).json({ error: data.message ?? data.error ?? "Erro ao gerar PIX." }); return; }
+      if (!mpRes.ok) {
+        await logPayEv(id, "payment_failed", `Erro ao gerar PIX: ${data.message ?? data.error ?? "resposta inválida do MP"}`, { mpError: data.message ?? data.error });
+        res.status(400).json({ error: data.message ?? data.error ?? "Erro ao gerar PIX." }); return;
+      }
       const txData = data.point_of_interaction?.transaction_data;
       if (!txData?.qr_code) { res.status(400).json({ error: "MercadoPago não retornou o QR Code PIX." }); return; }
       await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") }).where(eq(ordersTable.id, id));
@@ -596,7 +599,7 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
       const boletoPayer = {
         ...payer,
         address: {
-          zip_code: String(row.order.addressZipcode ?? "").replace(/\D/g, ""),
+          zip_code: String(row.order.addressZipcode ?? row.order.representanteAddressZipcode ?? "").replace(/\D/g, ""),
           street_name: String(row.order.addressStreet ?? ""),
           street_number: String(row.order.addressNumber ?? ""),
           neighborhood: String(row.order.addressNeighborhood ?? ""),
@@ -610,7 +613,10 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
         body: JSON.stringify({ transaction_amount: total, description: descricao, payment_method_id: "bolbradesco", external_reference: orderNumber, notification_url: `${siteUrl}/api/mp/webhook`, payer: boletoPayer }),
       });
       const data = await mpRes.json() as { id?: number; status?: string; barcode?: { content?: string }; transaction_details?: { external_resource_url?: string }; message?: string; error?: string };
-      if (!mpRes.ok) { res.status(400).json({ error: data.message ?? data.error ?? "Erro ao gerar boleto." }); return; }
+      if (!mpRes.ok) {
+        await logPayEv(id, "payment_failed", `Erro ao gerar boleto: ${data.message ?? data.error ?? "resposta inválida do MP"}`, { mpError: data.message ?? data.error });
+        res.status(400).json({ error: data.message ?? data.error ?? "Erro ao gerar boleto." }); return;
+      }
       await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") }).where(eq(ordersTable.id, id));
       await logPayEv(id, "payment_initiated", `Boleto gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
       res.json({ paymentId: String(data.id ?? ""), method: "boleto", boletoUrl: data.transaction_details?.external_resource_url ?? null, boletoBarcode: data.barcode?.content ?? null });
