@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -210,7 +211,7 @@ function ResumeLateral({
   );
 }
 
-/* ── Step indicator compacto ─────────────────────────────────────────────── */
+/* ── Step indicator ─────────────────────────────────────────────────────── */
 const STEP_LIST: { id: Step; label: string }[] = [
   { id: "lookup", label: "Identificação" },
   { id: "bio", label: "Validação" },
@@ -227,22 +228,27 @@ function StepBar({ current }: { current: Step }) {
   const ci = STEP_ORDER.indexOf(current);
   const visible = STEP_LIST.filter(s => s.id !== "processando");
   return (
-    <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+    <div className="flex items-center overflow-x-auto pb-1 scrollbar-none gap-0">
       {visible.map((s, i) => {
         const si = STEP_ORDER.indexOf(s.id);
         const done = ci > si;
         const active = s.id === current || (current === "processando" && s.id === "pagamento");
         return (
-          <div key={s.id} className="flex items-center gap-1 shrink-0">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              active ? "bg-primary text-white" :
-              done ? "bg-emerald-100 text-emerald-700" :
-              "bg-muted text-muted-foreground"
+          <div key={s.id} className="flex items-center shrink-0">
+            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              active ? "bg-primary text-white shadow-sm" :
+              done ? "bg-emerald-500 text-white" :
+              "bg-slate-100 text-slate-500"
             }`}>
-              {done ? <CheckCircle2 className="h-3 w-3" /> : <span>{i + 1}</span>}
-              <span className="hidden sm:inline">{s.label}</span>
+              {done
+                ? <CheckCircle2 className="h-3.5 w-3.5" />
+                : <span className={`flex items-center justify-center w-4 h-4 rounded-full text-[11px] font-bold ${active ? "bg-white/20" : "bg-black/10"}`}>{i + 1}</span>
+              }
+              <span className="hidden md:inline">{s.label}</span>
             </div>
-            {i < visible.length - 1 && <div className={`h-px w-3 ${done ? "bg-emerald-400" : "bg-muted"}`} />}
+            {i < visible.length - 1 && (
+              <div className={`h-px w-4 mx-0.5 shrink-0 ${done || (active && ci === si) ? "bg-emerald-400" : "bg-slate-200"}`} />
+            )}
           </div>
         );
       })}
@@ -257,10 +263,15 @@ export default function ComprarPage() {
   const { certId } = useParams<{ certId: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [step, setStep] = useState<Step>("lookup");
   const [showTerms, setShowTerms] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+
+  // Lookup flow
+  const [lookupMode, setLookupMode] = useState<null | "cliente" | "novo">(null);
+  const [newClientType, setNewClientType] = useState<"cpf" | "cnpj">("cpf");
 
   /* ── certificado ─────────────────────────────────────────────────────── */
   const { data: cert, isLoading: certLoading, isError: certError } = useQuery<Certificate>({
@@ -325,6 +336,8 @@ export default function ComprarPage() {
         setLookupError(data.error || "Senha incorreta."); return;
       }
       setExistingUserId(data.userId ?? null);
+      // Invalida cache de auth — o usuário já está autenticado na sessão
+      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       /* pré-preenche dados com info do cadastro */
       if (data.prefill) {
         const pf = data.prefill;
@@ -377,6 +390,8 @@ export default function ComprarPage() {
     setExistingUserId(null);
     setLookupResult(null);
     setLookupPassword("");
+    setLookupDoc("");
+    setLookupError("");
     setStep("bio");
     window.scrollTo(0, 0);
   };
@@ -708,6 +723,8 @@ export default function ComprarPage() {
         isNewUser: data.isNewUser ?? false,
         loading: false, error: null,
       });
+      // Após o submit o usuário já está autenticado na sessão — atualiza o contexto de auth
+      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       /* Cartão aprovado diretamente → vai pra tela de processando */
       if (selectedMethod === "cartao" && data.approved) {
         setStep("processando");
@@ -867,7 +884,7 @@ export default function ComprarPage() {
   );
 
   const showCoupon = step === "pagamento";
-  const showSidebar = !["lookup", "bio"].includes(step);
+  const showSidebar = true; // sempre 2 colunas
 
   /* ══════════════════════════════════════════════════════════════════════
      RENDER
@@ -891,7 +908,9 @@ export default function ComprarPage() {
             <Lock className="h-3.5 w-3.5 text-emerald-600" />
             <span>Compra 100% segura · criptografada</span>
           </div>
-          <a href="/entrar" className="text-sm font-medium text-primary hover:underline shrink-0">Área do Cliente</a>
+          <a href="/dashboard" className="text-sm font-medium text-primary hover:underline shrink-0 flex items-center gap-1">
+            Área do Cliente <ArrowRight className="h-3.5 w-3.5" />
+          </a>
         </div>
       </header>
 
@@ -899,15 +918,14 @@ export default function ComprarPage() {
       <main className="flex-1">
         <div className="max-w-6xl mx-auto px-4 py-6">
 
-          {/* Identificação e bio — tela centralizada sem sidebar */}
-          {!showSidebar && (
+          {/* ── Bloco antigo de lookup/bio (substituído pelo layout 2 colunas abaixo) ── */}
+          {false && (
             <div className="max-w-md mx-auto space-y-5">
-              {/* resumo compacto */}
               <div className="flex items-center justify-between bg-white rounded-xl border px-5 py-4 shadow-sm">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Certificado</p>
-                  <p className="font-bold text-foreground">{cert.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{cert.validityMonths} meses</p>
+                  <p className="font-bold text-foreground">{cert?.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{cert?.validityMonths} meses</p>
                 </div>
                 <p className="text-2xl font-extrabold text-primary">{formatBRL(certPrice)}</p>
               </div>
@@ -948,7 +966,7 @@ export default function ComprarPage() {
                           <CheckCircle2 className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                           <div>
                             <p className="font-semibold text-blue-900 text-sm">Cadastro encontrado</p>
-                            {lookupResult.name && <p className="text-xs text-blue-700 mt-0.5">Olá, <strong>{lookupResult.name}</strong>!</p>}
+                            {lookupResult?.name && <p className="text-xs text-blue-700 mt-0.5">Olá, <strong>{lookupResult?.name}</strong>!</p>}
                             <p className="text-xs text-blue-700 mt-1">Deseja usar seus dados já cadastrados?</p>
                           </div>
                         </div>
@@ -1049,6 +1067,230 @@ export default function ComprarPage() {
               {/* ── Coluna esquerda (formulário) ── */}
               <div className="space-y-5">
                 <StepBar current={step} />
+
+                {/* ══ LOOKUP ══ */}
+                {step === "lookup" && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <User className="h-5 w-5 text-primary" />Identificação
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">Selecione uma opção para começar.</p>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+
+                      {/* Escolha inicial */}
+                      {!lookupMode && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => { setLookupMode("cliente"); setLookupResult(null); setLookupError(""); }}
+                            className="flex flex-col items-center gap-2.5 p-5 rounded-xl border-2 border-muted bg-white hover:border-primary hover:bg-blue-50/50 transition-all text-center"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <LogIn className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-sm">Já sou cliente</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">Já tenho cadastro</p>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setLookupMode("novo"); setLookupResult(null); setLookupError(""); }}
+                            className="flex flex-col items-center gap-2.5 p-5 rounded-xl border-2 border-muted bg-white hover:border-primary hover:bg-blue-50/50 transition-all text-center"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                              <UserPlus className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-sm">Novo cliente</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">Primeiro acesso</p>
+                            </div>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Fluxo: já sou cliente */}
+                      {lookupMode === "cliente" && (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => { setLookupMode(null); setLookupResult(null); setLookupError(""); setLookupDoc(""); }} className="text-muted-foreground hover:text-foreground">
+                              <ArrowLeft className="h-4 w-4" />
+                            </button>
+                            <p className="text-sm font-medium text-muted-foreground">Já sou cliente — entrar</p>
+                          </div>
+
+                          {/* Fase 1: digitar documento */}
+                          {!lookupResult && (
+                            <div className="space-y-3">
+                              <div className="space-y-2">
+                                <Label>CPF ou CNPJ *</Label>
+                                <Input
+                                  value={lookupDoc}
+                                  onChange={e => { setLookupDoc(maskCpfCnpj(e.target.value)); setLookupResult(null); setLookupError(""); }}
+                                  placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                                  inputMode="numeric"
+                                  onKeyDown={e => e.key === "Enter" && doLookup()}
+                                  autoFocus
+                                />
+                              </div>
+                              {lookupError && (
+                                <p className="text-sm text-destructive flex items-center gap-1.5"><XCircle className="h-4 w-4 shrink-0" />{lookupError}</p>
+                              )}
+                              <Button className="w-full h-11" onClick={doLookup} disabled={lookupLoading || digits(lookupDoc).length < 11}>
+                                {lookupLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ChevronRight className="h-4 w-4 mr-2" />}
+                                {lookupLoading ? "Verificando..." : "Verificar cadastro"}
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Fase 2: cadastro encontrado → senha */}
+                          {lookupResult?.found && (
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                                <div>
+                                  <p className="text-sm font-semibold text-emerald-800">Cadastro encontrado!</p>
+                                  {lookupResult.name && <p className="text-xs text-emerald-700">Olá, <strong>{lookupResult.name}</strong>!</p>}
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Senha *</Label>
+                                <div className="relative">
+                                  <Input
+                                    type={showPwd ? "text" : "password"}
+                                    value={lookupPassword}
+                                    onChange={e => { setLookupPassword(e.target.value); setLookupError(""); }}
+                                    placeholder="Sua senha de acesso"
+                                    className="pr-10"
+                                    onKeyDown={e => e.key === "Enter" && doLogin()}
+                                    autoFocus
+                                  />
+                                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowPwd(v => !v)}>
+                                    {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                  </button>
+                                </div>
+                              </div>
+                              {lookupError && (
+                                <p className="text-sm text-destructive flex items-center gap-1.5"><XCircle className="h-4 w-4 shrink-0" />{lookupError}</p>
+                              )}
+                              <Button className="w-full h-11" onClick={doLogin} disabled={loginLoading}>
+                                {loginLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LogIn className="h-4 w-4 mr-2" />}
+                                {loginLoading ? "Entrando..." : "Entrar e continuar"}
+                              </Button>
+                              <button type="button" className="w-full text-xs text-muted-foreground hover:text-foreground text-center" onClick={() => { setLookupResult(null); setLookupDoc(""); }}>
+                                Usar outro documento
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Fase 2b: cadastro não encontrado */}
+                          {lookupResult?.found === false && (
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                                <p className="text-sm text-amber-800">Nenhum cadastro encontrado para este documento.</p>
+                              </div>
+                              <Button className="w-full h-11" onClick={() => { setLookupMode("novo"); setLookupResult(null); setLookupError(""); }}>
+                                <UserPlus className="h-4 w-4 mr-2" />Criar novo cadastro
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Fluxo: novo cliente */}
+                      {lookupMode === "novo" && (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => setLookupMode(null)} className="text-muted-foreground hover:text-foreground">
+                              <ArrowLeft className="h-4 w-4" />
+                            </button>
+                            <p className="text-sm font-medium text-muted-foreground">Novo cliente</p>
+                          </div>
+                          <p className="text-sm text-foreground font-medium">Deseja se cadastrar com:</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setNewClientType("cpf")}
+                              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${newClientType === "cpf" ? "border-primary bg-blue-50 text-primary" : "border-muted bg-white text-muted-foreground hover:border-primary/50"}`}
+                            >
+                              <User className="h-6 w-6" />
+                              <div className="text-center">
+                                <p className="font-semibold text-sm">CPF</p>
+                                <p className="text-xs mt-0.5">Pessoa Física</p>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNewClientType("cnpj")}
+                              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${newClientType === "cnpj" ? "border-primary bg-blue-50 text-primary" : "border-muted bg-white text-muted-foreground hover:border-primary/50"}`}
+                            >
+                              <Building2 className="h-6 w-6" />
+                              <div className="text-center">
+                                <p className="font-semibold text-sm">CNPJ</p>
+                                <p className="text-xs mt-0.5">Pessoa Jurídica</p>
+                              </div>
+                            </button>
+                          </div>
+                          <p className="text-xs text-muted-foreground bg-slate-50 rounded-lg px-3 py-2">
+                            {newClientType === "cpf"
+                              ? "Você precisará do seu CPF e data de nascimento para a validação biométrica ICP-Brasil."
+                              : "Você precisará do CPF do representante legal da empresa e data de nascimento para validação ICP-Brasil."}
+                          </p>
+                          <Button className="w-full h-11" onClick={continueAsNew}>
+                            Continuar <ArrowRight className="h-4 w-4 ml-2" />
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* ══ BIO ══ */}
+                {step === "bio" && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Fingerprint className="h-5 w-5 text-primary" />Validação Biométrica
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">CPF e data de nascimento do {isCnpjCert ? "representante legal" : "titular"}.</p>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>CPF *</Label>
+                        <Input value={bio.cpf} onChange={e => setBio(b => ({ ...b, cpf: maskCpf(e.target.value), error: null }))} placeholder="000.000.000-00" maxLength={14} inputMode="numeric" autoFocus />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Data de Nascimento *</Label>
+                        <Input value={bio.dataNascimento} onChange={e => setBio(b => ({ ...b, dataNascimento: maskDate(e.target.value), error: null }))} placeholder="DD/MM/AAAA" maxLength={10} inputMode="numeric" />
+                      </div>
+                      {bio.error && (
+                        <p className="text-sm text-destructive flex items-center gap-1.5">
+                          <XCircle className="h-4 w-4 shrink-0" />{bio.error}
+                        </p>
+                      )}
+                      <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                        <Lock className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                        <p className="text-xs text-blue-700">Dados usados exclusivamente para validação ICP-Brasil. Não compartilhados com terceiros.</p>
+                      </div>
+                      <div className="flex gap-3">
+                        <Button variant="outline" onClick={() => setStep("lookup")} className="w-1/3"><ArrowLeft className="h-4 w-4 mr-1" />Voltar</Button>
+                        {!termsAccepted ? (
+                          <Button className="flex-1 h-11" onClick={() => setShowTerms(true)} disabled={bio.loading}>
+                            <ShieldCheck className="h-4 w-4 mr-2" />Aceitar Termos
+                          </Button>
+                        ) : (
+                          <Button className="flex-1 h-11" onClick={handleBioSubmit} disabled={bio.loading}>
+                            {bio.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-2" />}
+                            {bio.loading ? "Validando..." : "Validar e Continuar"}
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* ══ DADOS ══ */}
                 {step === "dados" && (

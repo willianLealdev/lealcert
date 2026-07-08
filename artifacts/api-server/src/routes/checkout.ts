@@ -13,7 +13,7 @@ import {
   swConsultaCNPJ,
   type SafewebSettings,
 } from "../lib/safeweb";
-import { sendTempPasswordEmail } from "../lib/email";
+import { sendTempPasswordEmail, sendOrderStatusEmail, sendWelcomeEmail } from "../lib/email";
 
 const router = Router();
 
@@ -86,6 +86,8 @@ router.post("/public/checkout/lookup", async (req, res): Promise<void> => {
       passwordHash: usersTable.passwordHash,
       personType: usersTable.personType,
       isActive: usersTable.isActive,
+      role: usersTable.role,
+      userType: usersTable.userType,
     })
     .from(usersTable)
     .where(eq(usersTable.cpfCnpj, doc))
@@ -134,6 +136,17 @@ router.post("/public/checkout/lookup", async (req, res): Promise<void> => {
       .where(eq(ordersTable.userId, user.id))
       .orderBy(ordersTable.createdAt)
       .limit(1);
+
+    // Autentica a sessão para que o usuário já esteja logado no painel
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((err) => {
+        if (err) { reject(err); return; }
+        req.session.userId = user.id;
+        req.session.role = user.role as string;
+        req.session.userType = user.userType as string;
+        req.session.save((saveErr) => { if (saveErr) reject(saveErr); else resolve(); });
+      });
+    });
 
     res.json({
       found: true,
@@ -378,13 +391,25 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
   let tempPassword: string | null = null;
 
   const existingUser = await db
-    .select({ id: usersTable.id, email: usersTable.email })
+    .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, role: usersTable.role, userType: usersTable.userType })
     .from(usersTable)
     .where(eq(usersTable.cpfCnpj, cpfDigits))
     .limit(1);
 
   if (existingUser.length > 0) {
     userId = existingUser[0].id;
+    // Garante que a sessão está ativa para o usuário (caso não tenha feito lookup com senha)
+    if (!req.session.userId) {
+      await new Promise<void>((resolve, reject) => {
+        req.session.regenerate((err) => {
+          if (err) { reject(err); return; }
+          req.session.userId = existingUser[0].id;
+          req.session.role = existingUser[0].role as string;
+          req.session.userType = existingUser[0].userType as string;
+          req.session.save((saveErr) => { if (saveErr) reject(saveErr); else resolve(); });
+        });
+      });
+    }
   } else {
     // Create new user with temp password
     isNewUser = true;
@@ -402,10 +427,21 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       userType: "cliente",
       personType: resolvedPersonType,
       isActive: true,
-      emailVerified: true, // receiving the temp password IS the activation
+      emailVerified: true,
       mustChangePassword: true,
     }).returning({ id: usersTable.id });
     userId = newUser.id;
+
+    // Loga o novo usuário automaticamente
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((err) => {
+        if (err) { reject(err); return; }
+        req.session.userId = userId;
+        req.session.role = "contador";
+        req.session.userType = "cliente";
+        req.session.save((saveErr) => { if (saveErr) reject(saveErr); else resolve(); });
+      });
+    });
   }
 
   // Create order
@@ -470,6 +506,16 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     await db.update(couponsTable)
       .set({ usageCount: (await db.select({ c: couponsTable.usageCount }).from(couponsTable).where(eq(couponsTable.id, usedCouponId)).limit(1))[0].c + 1 })
       .where(eq(couponsTable.id, usedCouponId));
+  }
+
+  // Envio de email: pedido criado + boas-vindas para novo usuário
+  const emailTo = String(customerEmail).toLowerCase().trim();
+  const emailName = String(customerName).trim();
+  sendOrderStatusEmail({ to: emailTo, customerName: emailName, orderNumber, status: "created", certName: cert.name, total })
+    .catch((err: unknown) => logger.error({ err }, "checkout: erro ao enviar email pedido criado"));
+  if (isNewUser) {
+    sendWelcomeEmail(emailTo, emailName, "cliente")
+      .catch((err: unknown) => logger.error({ err }, "checkout: erro ao enviar email boas-vindas"));
   }
 
   // Generate payment
