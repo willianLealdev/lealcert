@@ -2189,11 +2189,18 @@ export default function OrderDetail() {
               </div>
               {order.protocolNumber && <InfoRow label="Protocolo" value={order.protocolNumber} />}
               {garProtocolo && !order.protocolNumber && <InfoRow label="Protocolo GAR" value={garProtocolo} />}
-              {order.extendedWarranty && (
-                <p className="text-xs font-medium text-amber-700">🔒 Leal Plus incluído (+R$19,90)</p>
-              )}
-              <div className="border-t pt-3">
-                <div className="flex justify-between items-center">
+              <div className="border-t pt-3 space-y-1.5">
+                <div className="flex justify-between items-center text-sm text-muted-foreground">
+                  <span>Certificado</span>
+                  <span>{formatBRL(parseFloat(String(order.total)) - (order.extendedWarranty ? 19.90 : 0))}</span>
+                </div>
+                {order.extendedWarranty && (
+                  <div className="flex justify-between items-center text-sm text-amber-700 font-medium">
+                    <span>🔒 Leal Plus</span>
+                    <span>+R$19,90</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-1 border-t">
                   <span className="text-sm font-medium">Total</span>
                   <span className="text-xl font-bold text-primary">{formatBRL(order.total)}</span>
                 </div>
