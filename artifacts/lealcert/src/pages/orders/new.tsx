@@ -519,7 +519,7 @@ export default function NewOrder() {
     ? (selectedCert.product === "e-CNPJ" || selectedCert.product === "e-PJ" || /cnpj/i.test(selectedCert.name))
     : false;
 
-  const subtotal = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? 15 : 0);
+  const subtotal = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? 19.90 : 0);
   const discount = appliedCoupon
     ? appliedCoupon.type === "percent"
       ? Math.round(subtotal * appliedCoupon.value) / 100
@@ -1282,7 +1282,7 @@ export default function NewOrder() {
                     className="w-full grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3.5 text-left">
                     <div>
                       <p className="font-semibold text-sm flex items-center gap-2">
-                        Garantia Estendida
+                        LealPlus
                         <button type="button" onClick={e => { e.stopPropagation(); setWarrantyInfoOpen(true); }}
                           className="text-muted-foreground hover:text-primary transition-colors">
                           <Info className="h-3.5 w-3.5" />
@@ -1290,7 +1290,7 @@ export default function NewOrder() {
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">Suporte completo por 12 meses em caso de problemas</p>
                     </div>
-                    <p className="font-bold text-amber-600 text-sm">+ {formatBRL(15)}</p>
+                    <p className="font-bold text-amber-600 text-sm">+ {formatBRL(19.90)}</p>
                     <div className={["h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
                       form.extendedWarranty ? "border-amber-500 bg-amber-500" : "border-muted-foreground/30"].join(" ")}>
                       {form.extendedWarranty && <div className="h-2 w-2 rounded-full bg-white" />}
@@ -1883,8 +1883,8 @@ export default function NewOrder() {
                   </div>
                   {form.extendedWarranty && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Garantia Estendida</span>
-                      <span className="font-medium">{formatBRL(15)}</span>
+                      <span className="text-muted-foreground">LealPlus</span>
+                      <span className="font-medium">{formatBRL(19.90)}</span>
                     </div>
                   )}
                   {appliedCoupon && (
@@ -2050,17 +2050,17 @@ export default function NewOrder() {
       <Dialog open={warrantyInfoOpen} onOpenChange={setWarrantyInfoOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Garantia Estendida</DialogTitle>
+            <DialogTitle>LealPlus</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
-            <p>A Garantia Estendida oferece suporte completo por <strong>12 meses</strong> em caso de qualquer problema com o certificado digital:</p>
+            <p>O LealPlus oferece suporte completo por <strong>12 meses</strong> em caso de qualquer problema com o certificado digital:</p>
             <ul className="list-disc ml-5 space-y-1">
               <li>Revogação por motivo de perda ou roubo do dispositivo</li>
               <li>Problemas técnicos na instalação do certificado</li>
               <li>Suporte prioritário via WhatsApp e e-mail</li>
               <li>Re-emissão sem custo adicional em caso de falha técnica comprovada</li>
             </ul>
-            <p className="text-xs">Valor: R$ 15,00 (único, pago junto com o certificado).</p>
+            <p className="text-xs">Valor: R$ 19,90 (único, pago junto com o certificado).</p>
           </div>
         </DialogContent>
       </Dialog>
