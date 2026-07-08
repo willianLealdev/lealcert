@@ -936,15 +936,21 @@ router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res
     const garResult = await garExcluirAgendamento(settings.garApiKey, hashVenda, order.garPedido);
     req.log.info({ orderId: id, hashVenda, garResult }, "gar-cancelar-agendamento: cancelado na GAR");
   } catch (garErr) {
-    const garMsg = (garErr as Error).message ?? "";
-    req.log.warn({ err: garErr, orderId: id, hashVenda }, "gar-cancelar-agendamento: GAR rejeitou — agendamento NÃO removido do sistema");
-    res.status(502).json({
-      error: `Não foi possível cancelar o agendamento na Gestão AR: ${garMsg}. O agendamento permanece ativo no sistema. Cancele diretamente no portal da AR e tente novamente.`,
-    });
-    return;
+    const garMsg = ((garErr as Error).message ?? "").toLowerCase();
+    // Se a GAR disser que o agendamento já foi excluído, tratamos como sucesso
+    // (o estado na GAR já é o desejado — sem agendamento)
+    const jaExcluido = garMsg.includes("já exclu") || garMsg.includes("ja exclu") || garMsg.includes("already") || garMsg.includes("não encontrado") || garMsg.includes("nao encontrado");
+    if (!jaExcluido) {
+      req.log.warn({ err: garErr, orderId: id, hashVenda }, "gar-cancelar-agendamento: GAR rejeitou — agendamento NÃO removido do sistema");
+      res.status(502).json({
+        error: `Não foi possível cancelar o agendamento na Gestão AR: ${(garErr as Error).message ?? ""}. O agendamento permanece ativo no sistema. Cancele diretamente no portal da AR e tente novamente.`,
+      });
+      return;
+    }
+    req.log.info({ orderId: id }, "gar-cancelar-agendamento: GAR informou agendamento já excluído — prosseguindo com limpeza local");
   }
 
-  // GAR confirmou — agora remove do nosso banco
+  // GAR confirmou (ou agendamento já estava excluído lá) — remove do nosso banco
   try {
     await db.update(ordersTable).set({
       garAgendamentoDataHora: null,
