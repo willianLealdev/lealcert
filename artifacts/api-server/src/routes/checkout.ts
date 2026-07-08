@@ -544,6 +544,12 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     extendedWarranty: extendedWarranty ? true : false,
   }).returning();
 
+  // Registrar evento de criação no histórico
+  const { logEvent: logEv } = await import("../lib/order-events");
+  await logEv(order.id, "order_created",
+    `Pedido criado — ${cert.name} — R$${total.toFixed(2)}`,
+    { orderNumber, certName: cert.name, total, via: "checkout" });
+
   // Increment coupon usage
   if (usedCouponId) {
     await db.update(couponsTable)
@@ -614,6 +620,10 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
         .set({ mpPreferenceId: String(mpData.id ?? ""), mpPaymentId: String(mpData.id ?? "") })
         .where(eq(ordersTable.id, order.id));
 
+      await logEv(order.id, "payment_initiated",
+        `Pagamento PIX gerado via MercadoPago — R$ ${total.toFixed(2).replace(".", ",")}`,
+        { mpPaymentId: mpData.id, via: "checkout" });
+
       // Send temp password email AFTER payment is generated (but before confirmation)
       if (isNewUser && tempPassword) {
         sendTempPasswordEmail(String(customerEmail).toLowerCase().trim(), String(customerName), tempPassword)
@@ -669,6 +679,10 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       await db.update(ordersTable)
         .set({ mpPreferenceId: String(mpData.id ?? ""), mpPaymentId: String(mpData.id ?? "") })
         .where(eq(ordersTable.id, order.id));
+
+      await logEv(order.id, "payment_initiated",
+        `Boleto gerado via MercadoPago — R$ ${total.toFixed(2).replace(".", ",")}`,
+        { mpPaymentId: mpData.id, via: "checkout" });
 
       if (isNewUser && tempPassword) {
         sendTempPasswordEmail(String(customerEmail).toLowerCase().trim(), String(customerName), tempPassword)
@@ -731,6 +745,10 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
         .set({ mpPreferenceId: String(mpData.id ?? ""), mpPaymentId: String(mpData.id ?? "") })
         .where(eq(ordersTable.id, order.id));
 
+      await logEv(order.id, "payment_initiated",
+        `Pagamento por cartão gerado via MercadoPago — R$ ${total.toFixed(2).replace(".", ",")}`,
+        { mpPaymentId: mpData.id, via: "checkout" });
+
       if (isNewUser && tempPassword) {
         sendTempPasswordEmail(String(customerEmail).toLowerCase().trim(), String(customerName), tempPassword)
           .catch((err: unknown) => logger.error({ err }, "checkout: erro ao enviar email senha temporária"));
@@ -739,6 +757,9 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       const approved = mpData.status === "approved";
       if (approved) {
         await db.update(ordersTable).set({ status: "paid" }).where(eq(ordersTable.id, order.id));
+        await logEv(order.id, "payment_confirmed",
+          `Pagamento por cartão aprovado imediatamente — R$ ${total.toFixed(2).replace(".", ",")}`,
+          { mpPaymentId: mpData.id, via: "checkout" });
         const { garAutoComprar } = await import("../lib/gar-auto");
         const { swAutoComprar } = await import("../lib/sw-auto");
         const activeProvider = settings?.activeProvider ?? "gestaoar";

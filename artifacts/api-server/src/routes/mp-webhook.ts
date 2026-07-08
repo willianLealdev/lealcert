@@ -15,6 +15,7 @@ import { db, ordersTable, settingsTable, certificatesTable, usersTable } from "@
 import { logger } from "../lib/logger";
 import { garAutoComprar } from "../lib/gar-auto";
 import { swAutoComprar } from "../lib/sw-auto";
+import { logEvent } from "../lib/order-events";
 import { notifyOrderStatus } from "../lib/notify";
 import { sendPushToUser, sendPushToAdmins } from "../lib/push";
 
@@ -152,6 +153,9 @@ router.post("/mp/webhook", async (req, res): Promise<void> => {
     }).where(eq(ordersTable.id, order.id));
 
     logger.info({ orderId: order.id, orderNumber }, "mp/webhook: pedido marcado como PAGO");
+    await logEvent(order.id, "payment_confirmed",
+      `Pagamento aprovado via MercadoPago — ID #${payment.id ?? paymentId}`,
+      { mpPaymentId: String(payment.id ?? paymentId), orderNumber, via: "mercadopago_webhook" });
 
     // 2a. Push notification ao cliente (se app instalado)
     if (order.userId) {
