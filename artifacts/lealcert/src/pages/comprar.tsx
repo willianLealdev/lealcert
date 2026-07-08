@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getGetMeQueryKey, useGetMe } from "@workspace/api-client-react";
+import { getGetMeQueryKey, useGetMe, confirmDocs } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -2357,6 +2357,7 @@ export default function ComprarPage() {
                 try { if (pay.orderId) localStorage.setItem(`checkout_docs_${pay.orderId}`, "1"); } catch { /* ignore */ }
                 setProcessDocsConfirmed(true);
                 setProcessDocsModalOpen(false);
+                if (pay.orderId) confirmDocs(pay.orderId).catch(() => {});
               }} className="shrink-0">
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Concluir Envio

@@ -1696,6 +1696,23 @@ paths:
                   ok: { type: boolean }
                   warning: { type: string, description: "Aviso quando a GAR rejeitou o cancelamento — ação manual necessária no portal da AR" }
 
+  /orders/{id}/confirm-docs:
+    post:
+      operationId: confirmDocs
+      tags: [orders]
+      summary: Marca documentos Hope como confirmados (enviados pelo cliente)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Confirmado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+
   /orders/{id}/hope-solicitation:
     post:
       operationId: hopeCreateSolicitation
@@ -3604,6 +3621,9 @@ components:
           nullable: true
         garHopeUploadUrl:
           type: string
+          nullable: true
+        garDocsConfirmed:
+          type: boolean
           nullable: true
         garSyncedAt:
           type: string

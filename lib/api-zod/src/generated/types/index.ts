@@ -45,6 +45,7 @@ export * from './checkAlertsResult';
 export * from './checkAlertsResultResultsItem';
 export * from './cnpjLookupParams';
 export * from './cnpjLookupResult';
+export * from './confirmDocs200';
 export * from './consultaPreviaInput';
 export * from './consultaPreviaResult';
 export * from './coupon';

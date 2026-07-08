@@ -55,6 +55,7 @@ import type {
   CheckAlertsResult,
   CnpjLookupParams,
   CnpjLookupResult,
+  ConfirmDocs200,
   ConsultaPreviaInput,
   ConsultaPreviaResult,
   Coupon,
@@ -6523,6 +6524,76 @@ export const useGarCancelarAgendamento = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getGarCancelarAgendamentoMutationOptions(options));
+    }
+
+export const getConfirmDocsUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/confirm-docs`
+}
+
+/**
+ * @summary Marca documentos Hope como confirmados (enviados pelo cliente)
+ */
+export const confirmDocs = async (id: number, options?: RequestInit): Promise<ConfirmDocs200> => {
+
+  return customFetch<ConfirmDocs200>(getConfirmDocsUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getConfirmDocsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmDocs>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmDocs>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['confirmDocs'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmDocs>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmDocs(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmDocsMutationResult = NonNullable<Awaited<ReturnType<typeof confirmDocs>>>
+
+    export type ConfirmDocsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Marca documentos Hope como confirmados (enviados pelo cliente)
+ */
+export const useConfirmDocs = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmDocs>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmDocs>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getConfirmDocsMutationOptions(options));
     }
 
 export const getHopeCreateSolicitationUrl = (id: number,) => {

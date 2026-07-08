@@ -689,6 +689,7 @@ export const ListOrdersResponseItem = zod.object({
   "garStatus": zod.string().nullish(),
   "garAgendamentoLink": zod.string().nullish(),
   "garHopeUploadUrl": zod.string().nullish(),
+  "garDocsConfirmed": zod.boolean().nullish(),
   "garSyncedAt": zod.string().nullish(),
   "garAgendamentoLocalNome": zod.string().nullish(),
   "garAgendamentoLocalHash": zod.string().nullish(),
@@ -865,6 +866,7 @@ export const GetOrderResponse = zod.object({
   "garStatus": zod.string().nullish(),
   "garAgendamentoLink": zod.string().nullish(),
   "garHopeUploadUrl": zod.string().nullish(),
+  "garDocsConfirmed": zod.boolean().nullish(),
   "garSyncedAt": zod.string().nullish(),
   "garAgendamentoLocalNome": zod.string().nullish(),
   "garAgendamentoLocalHash": zod.string().nullish(),
@@ -952,6 +954,7 @@ export const UpdateOrderResponse = zod.object({
   "garStatus": zod.string().nullish(),
   "garAgendamentoLink": zod.string().nullish(),
   "garHopeUploadUrl": zod.string().nullish(),
+  "garDocsConfirmed": zod.boolean().nullish(),
   "garSyncedAt": zod.string().nullish(),
   "garAgendamentoLocalNome": zod.string().nullish(),
   "garAgendamentoLocalHash": zod.string().nullish(),
@@ -1818,6 +1821,18 @@ export const GarCancelarAgendamentoResponse = zod.object({
 
 
 /**
+ * @summary Marca documentos Hope como confirmados (enviados pelo cliente)
+ */
+export const ConfirmDocsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ConfirmDocsResponse = zod.object({
+  "ok": zod.boolean().optional()
+})
+
+
+/**
  * @summary Cria solicitação no Hope (Safeweb) e retorna URL de envio de documentos
  */
 export const HopeCreateSolicitationParams = zod.object({
@@ -2442,6 +2457,7 @@ export const GetRecentOrdersResponseItem = zod.object({
   "garStatus": zod.string().nullish(),
   "garAgendamentoLink": zod.string().nullish(),
   "garHopeUploadUrl": zod.string().nullish(),
+  "garDocsConfirmed": zod.boolean().nullish(),
   "garSyncedAt": zod.string().nullish(),
   "garAgendamentoLocalNome": zod.string().nullish(),
   "garAgendamentoLocalHash": zod.string().nullish(),

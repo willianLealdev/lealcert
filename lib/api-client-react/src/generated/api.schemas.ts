@@ -401,6 +401,7 @@ export interface Order {
   garStatus?: string | null;
   garAgendamentoLink?: string | null;
   garHopeUploadUrl?: string | null;
+  garDocsConfirmed?: boolean | null;
   garSyncedAt?: string | null;
   garAgendamentoLocalNome?: string | null;
   garAgendamentoLocalHash?: string | null;
@@ -1777,6 +1778,10 @@ export type GarCancelarAgendamento200 = {
   ok?: boolean;
   /** Aviso quando a GAR rejeitou o cancelamento — ação manual necessária no portal da AR */
   warning?: string;
+};
+
+export type ConfirmDocs200 = {
+  ok?: boolean;
 };
 
 export type HopeCreateSolicitation200 = {

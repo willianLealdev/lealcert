@@ -24,6 +24,7 @@ import {
   useHopeCreateSolicitation,
   useApprovePaymentManual,
   useTriggerProtocolManual,
+  useConfirmDocs,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -199,13 +200,14 @@ function OrderTimeline({ orderId, onEventsChange }: { orderId: number; onEventsC
 }
 
 // ── Componente de Agendamento ─────────────────────────────────────────────────
-function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgendamentoLocalNome, garAgendamentoLink, garHopeUploadUrl, onSuccess }: {
+function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgendamentoLocalNome, garAgendamentoLink, garHopeUploadUrl, garDocsConfirmedDb, onSuccess }: {
   orderId: number;
   garProtocolo: string;
   garAgendamentoDataHora?: string;
   garAgendamentoLocalNome?: string;
   garAgendamentoLink?: string;
   garHopeUploadUrl?: string;
+  garDocsConfirmedDb?: boolean | null;
   onSuccess: () => void;
 }) {
   const { toast } = useToast();
@@ -215,8 +217,12 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
     try { return localStorage.getItem(`gar_docs_opened_${orderId}`) === "1"; } catch { return false; }
   });
   const [docsConfirmed, setDocsConfirmed] = useState(() => {
-    try { return localStorage.getItem(`gar_docs_submitted_${orderId}`) === "1"; } catch { return false; }
+    try {
+      return localStorage.getItem(`gar_docs_submitted_${orderId}`) === "1"
+          || localStorage.getItem(`checkout_docs_${orderId}`) === "1";
+    } catch { return false; }
   });
+  const confirmDocsMutation = useConfirmDocs();
   const [step, setStep] = useState<"locais" | "data" | "confirm">("locais");
   const [ufFiltro, setUfFiltro] = useState("");
   const [municipioFiltro, setMunicipioFiltro] = useState("");
@@ -351,10 +357,12 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
     try { localStorage.setItem(`gar_docs_submitted_${orderId}`, "1"); } catch { /* ignore */ }
     setDocsConfirmed(true);
     setDocsModalOpen(false);
+    confirmDocsMutation.mutate({ id: orderId });
   }
 
-  // Gate: só pede documentos se ainda não confirmados E ainda não há agendamento feito
-  if (garHopeUploadUrl && !docsConfirmed && !garAgendamentoDataHora) {
+  // Gate: só pede documentos se ainda não confirmados (localStorage OU banco) E não há agendamento ativo
+  const docsOk = docsConfirmed || !!garDocsConfirmedDb;
+  if (garHopeUploadUrl && !docsOk && !garAgendamentoDataHora) {
     return (
       <>
         <Card className="border-amber-200 bg-amber-50">
@@ -1540,6 +1548,7 @@ export default function OrderDetail() {
     garAgendamentoLocalNome?: string | null;
     garAgendamentoLink?: string | null;
     garHopeUploadUrl?: string | null;
+    garDocsConfirmed?: boolean | null;
     safewebSolicitacaoId?: string | null;
     safewebStatus?: string | null;
     safewebSyncedAt?: string | null;
@@ -1556,6 +1565,7 @@ export default function OrderDetail() {
   const garAgendamentoLocalNome = orderExt.garAgendamentoLocalNome ?? undefined;
   const garAgendamentoLink = orderExt.garAgendamentoLink ?? undefined;
   const garHopeUploadUrl = orderExt.garHopeUploadUrl ?? undefined;
+  const garDocsConfirmedDb = orderExt.garDocsConfirmed ?? false;
 
   const hasSafeweb = !!orderExt.safewebSolicitacaoId;
   const safewebSolicitacaoId = orderExt.safewebSolicitacaoId ?? undefined;
@@ -1982,6 +1992,7 @@ export default function OrderDetail() {
               garAgendamentoLocalNome={garAgendamentoLocalNome}
               garAgendamentoLink={garAgendamentoLink}
               garHopeUploadUrl={garHopeUploadUrl}
+              garDocsConfirmedDb={garDocsConfirmedDb}
               onSuccess={refetch}
             />
           )}

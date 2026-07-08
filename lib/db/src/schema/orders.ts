@@ -69,6 +69,7 @@ export const ordersTable = pgTable("orders", {
   garStatus: text("gar_status"),
   garAgendamentoLink: text("gar_agendamento_link"),
   garHopeUploadUrl: text("gar_hope_upload_url"),
+  garDocsConfirmed: boolean("gar_docs_confirmed").default(false),
   garSyncedAt: timestamp("gar_synced_at", { withTimezone: true }),
   // GAR scheduling (booked inside the panel)
   garAgendamentoLocalNome: text("gar_agendamento_local_nome"),

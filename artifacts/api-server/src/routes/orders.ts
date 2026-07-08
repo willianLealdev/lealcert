@@ -62,6 +62,7 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     garStatus: o.garStatus,
     garAgendamentoLink: o.garAgendamentoLink,
     garHopeUploadUrl: o.garHopeUploadUrl,
+    garDocsConfirmed: o.garDocsConfirmed,
     garSyncedAt: o.garSyncedAt,
     garAgendamentoLocalNome: o.garAgendamentoLocalNome,
     garAgendamentoLocalHash: o.garAgendamentoLocalHash,
@@ -984,6 +985,23 @@ router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res
     req.log.error({ err, orderId: id }, "gar-cancelar-agendamento: erro ao atualizar banco após cancelar na GAR");
     res.status(500).json({ error: `Agendamento cancelado na GAR mas erro interno ao atualizar sistema: ${msg}` });
   }
+});
+
+// ── POST /orders/:id/confirm-docs — marca documentos como enviados ────────────
+router.post("/orders/:id/confirm-docs", async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+
+  const [order] = await db.select({ id: ordersTable.id, userId: ordersTable.userId }).from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+
+  // Permite o próprio cliente ou admin confirmar
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  const isOwner = req.session.userId && order.userId === req.session.userId;
+  if (!isAdmin && !isOwner) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  await db.update(ordersTable).set({ garDocsConfirmed: true }).where(eq(ordersTable.id, id));
+  res.json({ ok: true });
 });
 
 // ── POST /orders/:id/hope-solicitation — gera URL de envio de documentos via Hope ──
