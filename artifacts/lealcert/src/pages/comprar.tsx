@@ -248,31 +248,34 @@ const STEP_ORDER = STEP_LIST.map(s => s.id);
 function StepBar({ current }: { current: Step }) {
   const ci = STEP_ORDER.indexOf(current);
   const visible = STEP_LIST.filter(s => s.id !== "processando");
+  const activeLabel = STEP_LIST.find(s => s.id === current || (current === "processando" && s.id === "pagamento"))?.label ?? "";
+  const activeNum = visible.findIndex(s => s.id === current || (current === "processando" && s.id === "pagamento")) + 1;
   return (
-    <div className="flex items-center overflow-x-auto pb-1 scrollbar-none gap-0">
-      {visible.map((s, i) => {
-        const si = STEP_ORDER.indexOf(s.id);
-        const done = ci > si;
-        const active = s.id === current || (current === "processando" && s.id === "pagamento");
-        return (
-          <div key={s.id} className="flex items-center shrink-0">
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors ${
-              active ? "bg-primary text-white shadow-sm" :
-              done ? "bg-emerald-500 text-white" :
-              "bg-slate-100 text-slate-500"
-            }`}>
-              {done
-                ? <CheckCircle2 className="h-3 w-3" />
-                : <span className={`flex items-center justify-center w-3.5 h-3.5 rounded-full text-[10px] font-bold ${active ? "bg-white/20" : "bg-black/10"}`}>{i + 1}</span>
-              }
-              <span className={active || done ? "inline" : "hidden sm:inline"}>{s.label}</span>
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-0">
+        {visible.map((s, i) => {
+          const si = STEP_ORDER.indexOf(s.id);
+          const done = ci > si;
+          const active = s.id === current || (current === "processando" && s.id === "pagamento");
+          return (
+            <div key={s.id} className="flex items-center shrink-0">
+              <div className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold transition-colors ${
+                active ? "bg-primary text-white shadow-sm ring-2 ring-primary/30" :
+                done ? "bg-emerald-500 text-white" :
+                "bg-slate-100 text-slate-400"
+              }`}>
+                {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+              </div>
+              {i < visible.length - 1 && (
+                <div className={`h-px w-3 shrink-0 ${done ? "bg-emerald-400" : "bg-slate-200"}`} />
+              )}
             </div>
-            {i < visible.length - 1 && (
-              <div className={`h-px w-2 mx-0.5 shrink-0 ${done || (active && ci === si) ? "bg-emerald-400" : "bg-slate-200"}`} />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Etapa {activeNum} de {visible.length} — <span className="font-medium text-foreground">{activeLabel}</span>
+      </p>
     </div>
   );
 }
@@ -806,6 +809,16 @@ export default function ComprarPage() {
   const [processHopeUrl, setProcessHopeUrl] = useState<string | null>(null);
   const [processDocsConfirmed, setProcessDocsConfirmed] = useState(false);
   const [processDocsModalOpen, setProcessDocsModalOpen] = useState(false);
+
+  // Restore docs confirmation from localStorage when orderId is known
+  useEffect(() => {
+    if (!pay.orderId) return;
+    try {
+      if (localStorage.getItem(`checkout_docs_${pay.orderId}`) === "1") {
+        setProcessDocsConfirmed(true);
+      }
+    } catch { /* ignore */ }
+  }, [pay.orderId]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -2071,7 +2084,7 @@ export default function ComprarPage() {
                           <p className="text-sm text-amber-800">
                             Antes de agendar seu atendimento, você precisa enviar os documentos solicitados pelo portal de documentação.
                           </p>
-                          <Button className="w-full" onClick={() => setProcessDocsModalOpen(true)} disabled={!processHopeUrl}>
+                          <Button size="sm" onClick={() => setProcessDocsModalOpen(true)} disabled={!processHopeUrl}>
                             <FileText className="h-4 w-4 mr-2" />
                             Enviar Documentos
                           </Button>
@@ -2341,6 +2354,7 @@ export default function ComprarPage() {
                 Após enviar todos os documentos no portal acima, clique em "Concluir Envio".
               </p>
               <Button onClick={() => {
+                try { if (pay.orderId) localStorage.setItem(`checkout_docs_${pay.orderId}`, "1"); } catch { /* ignore */ }
                 setProcessDocsConfirmed(true);
                 setProcessDocsModalOpen(false);
               }} className="shrink-0">
