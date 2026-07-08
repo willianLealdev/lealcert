@@ -13,7 +13,7 @@ import {
   ShieldCheck, Loader2, ArrowRight, ArrowLeft, CheckCircle2, XCircle,
   FileText, CreditCard, Upload, Calendar, Lock, MapPin, Search,
   Fingerprint, User, Building2, QrCode, Receipt, Clock, AlertTriangle,
-  LogIn, UserPlus, Eye, EyeOff, CheckCircle, ChevronRight, RefreshCw,
+  LogIn, UserPlus, Eye, EyeOff, CheckCircle, ChevronRight, RefreshCw, ExternalLink,
 } from "lucide-react";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -801,6 +801,9 @@ export default function ComprarPage() {
 
   const [processStep, setProcessStep] = useState<ProcessStep>("aguardando_pagamento");
   const [processoProtocolo, setProcessoProtocolo] = useState<string | null>(null);
+  const [processHopeUrl, setProcessHopeUrl] = useState<string | null>(null);
+  const [processDocsConfirmed, setProcessDocsConfirmed] = useState(false);
+  const [processDocsModalOpen, setProcessDocsModalOpen] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -814,7 +817,7 @@ export default function ComprarPage() {
       try {
         const r = await fetch(`/api/public/checkout/payment-status/${pay.orderId}`, { credentials: "include" });
         if (!r.ok) return;
-        const data: { status: string; garProtocolo?: string | null; safewebSolicitacaoId?: string | null } = await r.json();
+        const data: { status: string; garProtocolo?: string | null; safewebSolicitacaoId?: string | null; garHopeUploadUrl?: string | null; protocolNumber?: string | null } = await r.json();
         const s = data.status;
 
         if (s === "pending_payment" || s === "created") {
@@ -822,14 +825,11 @@ export default function ComprarPage() {
         } else if (s === "paid") {
           setProcessStep("processando_pagamento");
         } else if (s === "protocol_assigned" || s === "aguardando_validacao" || s === "emitido" || s === "completed") {
-          const prot = data.garProtocolo || data.safewebSolicitacaoId || null;
-          if (prot) {
-            setProcessoProtocolo(prot);
-            setProcessStep("concluido");
-            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-          } else {
-            setProcessStep("gerando_protocolo");
-          }
+          const prot = data.garProtocolo || data.safewebSolicitacaoId || data.protocolNumber || null;
+          setProcessoProtocolo(prot);
+          if (data.garHopeUploadUrl) setProcessHopeUrl(data.garHopeUploadUrl);
+          setProcessStep("concluido");
+          if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
         }
       } catch { /* ignore */ }
     };
@@ -1997,9 +1997,15 @@ export default function ComprarPage() {
                                 Sua senha temporária foi enviada por e-mail. Use-a para acessar o sistema.
                               </div>
                             )}
-                            <Button className="w-full" onClick={() => { setStep("docs"); window.scrollTo(0,0); }}>
-                              <Upload className="h-4 w-4 mr-2" />Enviar documentos
-                            </Button>
+                            {processHopeUrl && !processDocsConfirmed ? (
+                              <Button className="w-full" onClick={() => setProcessDocsModalOpen(true)}>
+                                <FileText className="h-4 w-4 mr-2" />Enviar Documentos Obrigatórios
+                              </Button>
+                            ) : (
+                              <Button className="w-full" onClick={() => { setStep("agenda"); window.scrollTo(0,0); }}>
+                                <Calendar className="h-4 w-4 mr-2" />Avançar para Agendamento
+                              </Button>
+                            )}
                           </div>
                         )}
                       </CardContent>
@@ -2166,6 +2172,47 @@ export default function ComprarPage() {
           </div>
         </div>
       </footer>
+
+      {/* Modal Hope — Envio de Documentos */}
+      {processHopeUrl && (
+        <Dialog open={processDocsModalOpen} onOpenChange={setProcessDocsModalOpen}>
+          <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0 gap-0">
+            <DialogHeader className="px-4 py-3 border-b shrink-0 flex flex-row items-center justify-between">
+              <DialogTitle className="text-base">Portal de Envio de Documentos</DialogTitle>
+              <a
+                href={processHopeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                title="Abrir em nova aba"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Abrir em nova aba
+              </a>
+            </DialogHeader>
+            <div className="flex-1 min-h-0">
+              <iframe
+                src={processHopeUrl}
+                className="w-full h-full border-0"
+                title="Portal de Envio de Documentos"
+                allow="camera; microphone"
+              />
+            </div>
+            <div className="px-4 py-3 border-t shrink-0 flex items-center justify-between gap-3 bg-muted/30">
+              <p className="text-xs text-muted-foreground">
+                Após enviar todos os documentos no portal acima, clique em "Concluir Envio".
+              </p>
+              <Button onClick={() => {
+                setProcessDocsConfirmed(true);
+                setProcessDocsModalOpen(false);
+              }} className="shrink-0">
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Concluir Envio
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Modal Termos */}
       <Dialog open={showTerms} onOpenChange={setShowTerms}>

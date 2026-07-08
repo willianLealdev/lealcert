@@ -763,7 +763,7 @@ router.get("/public/checkout/payment-status/:orderId", async (req, res): Promise
   if (isNaN(orderId)) { res.status(400).json({ error: "ID inválido." }); return; }
 
   const [row] = await db
-    .select({ status: ordersTable.status, mpPaymentId: ordersTable.mpPaymentId, garProtocolo: ordersTable.garProtocolo, garHopeUploadUrl: ordersTable.garHopeUploadUrl })
+    .select({ status: ordersTable.status, mpPaymentId: ordersTable.mpPaymentId, garProtocolo: ordersTable.garProtocolo, garHopeUploadUrl: ordersTable.garHopeUploadUrl, safewebSolicitacaoId: ordersTable.safewebSolicitacaoId, protocolNumber: ordersTable.protocolNumber })
     .from(ordersTable)
     .where(eq(ordersTable.id, orderId))
     .limit(1);
@@ -792,7 +792,7 @@ router.get("/public/checkout/payment-status/:orderId", async (req, res): Promise
               const { garAutoComprar } = await import("../lib/gar-auto");
               garAutoComprar(orderId).catch(() => {});
             }
-            res.json({ status: "paid", garProtocolo: row.garProtocolo, garHopeUploadUrl: row.garHopeUploadUrl });
+            res.json({ status: "paid", garProtocolo: row.garProtocolo, garHopeUploadUrl: row.garHopeUploadUrl, safewebSolicitacaoId: row.safewebSolicitacaoId, protocolNumber: row.protocolNumber });
             return;
           }
         }
@@ -800,7 +800,7 @@ router.get("/public/checkout/payment-status/:orderId", async (req, res): Promise
     } catch { /* best-effort */ }
   }
 
-  res.json({ status: row.status, garProtocolo: row.garProtocolo, garHopeUploadUrl: row.garHopeUploadUrl });
+  res.json({ status: row.status, garProtocolo: row.garProtocolo, garHopeUploadUrl: row.garHopeUploadUrl, safewebSolicitacaoId: row.safewebSolicitacaoId, protocolNumber: row.protocolNumber });
 });
 
 // ── GET /public/checkout/slots/:orderId — lista horários disponíveis (sem auth) ─

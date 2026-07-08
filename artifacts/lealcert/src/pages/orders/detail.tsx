@@ -2190,7 +2190,7 @@ export default function OrderDetail() {
               {order.protocolNumber && <InfoRow label="Protocolo" value={order.protocolNumber} />}
               {garProtocolo && !order.protocolNumber && <InfoRow label="Protocolo GAR" value={garProtocolo} />}
               {order.extendedWarranty && (
-                <p className="text-xs text-muted-foreground">Garantia estendida incluída</p>
+                <p className="text-xs font-medium text-amber-700">🔒 Leal Plus incluído (+R$19,90)</p>
               )}
               <div className="border-t pt-3">
                 <div className="flex justify-between items-center">
