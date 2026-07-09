@@ -438,11 +438,11 @@ router.get("/marketing/bounces", async (_req, res): Promise<void> => {
 
 router.patch("/marketing/bounces/:id/restore", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const [updated] = await db.update(marketingContactsTable)
-    .set({ bounced: false, emailStatus: "unknown", emailInvalidReason: null, emailValidatedAt: null })
-    .where(eq(marketingContactsTable.id, id))
-    .returning({ id: marketingContactsTable.id });
-  if (!updated) { res.status(404).json({ error: "Contato não encontrado." }); return; }
+  // Só atualiza bounced=false — não toca em colunas opcionais que podem não existir na DB
+  const result = await db.execute<{ id: number }>(sql`
+    UPDATE marketing_contacts SET bounced = false WHERE id = ${id} RETURNING id
+  `);
+  if (!result.rows.length) { res.status(404).json({ error: "Contato não encontrado." }); return; }
   // Remove os sends falhados para que o contato saia da lista de bounces
   await db.execute(sql`UPDATE marketing_sends SET status = 'ignored' WHERE contact_id = ${id} AND status = 'failed'`);
   res.json({ message: "Contato restaurado." });
@@ -457,12 +457,11 @@ router.delete("/marketing/bounces/:id", async (req, res): Promise<void> => {
 router.patch("/marketing/bounces/restore-all", async (_req, res): Promise<void> => {
   // Restaura todos os contatos que aparecem na lista de bounces:
   // tanto os com bounced=true quanto os que têm envios falhados
+  // Restaura contatos com bounced=true OU com sends falhados — só altera bounced=false
+  // (não toca em colunas opcionais que podem não existir na DB da VPS)
   const result = await db.execute<{ id: number }>(sql`
     UPDATE marketing_contacts
-    SET bounced = false,
-        email_status = 'unknown',
-        email_invalid_reason = NULL,
-        email_validated_at = NULL
+    SET bounced = false
     WHERE bounced = true
        OR id IN (
          SELECT DISTINCT contact_id FROM marketing_sends
@@ -470,16 +469,10 @@ router.patch("/marketing/bounces/restore-all", async (_req, res): Promise<void> 
        )
     RETURNING id
   `);
-  const ids = result.rows.map(r => r.id);
-  // Remove os sends falhados de todos os contatos restaurados
-  if (ids.length > 0) {
-    await db.execute(sql`
-      UPDATE marketing_sends SET status = 'ignored'
-      WHERE status = 'failed'
-        AND contact_id = ANY(ARRAY[${sql.raw(ids.join(","))}]::int[])
-    `);
-  }
-  res.json({ message: `${ids.length} contato(s) restaurado(s).`, count: ids.length });
+  const count = result.rows.length;
+  // Limpa todos os sends falhados para tirá-los da lista de bounces
+  await db.execute(sql`UPDATE marketing_sends SET status = 'ignored' WHERE status = 'failed'`);
+  res.json({ message: `${count} contato(s) restaurado(s).`, count });
 });
 
 router.delete("/marketing/bounces", async (_req, res): Promise<void> => {
