@@ -1216,6 +1216,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [emailStatusFilter, setEmailStatusFilter] = useState<EmailStatusFilter>("all");
+  const [contactStatusFilter, setContactStatusFilter] = useState<"all" | "active" | "unsubscribed" | "bounced">("all");
   const [showAdd, setShowAdd] = useState(false);
   const [editContact, setEditContact] = useState<{ id: number; name: string; email: string; phone?: string | null; tags?: string | null } | null>(null);
   const [importing, setImporting] = useState(false);
@@ -1241,11 +1242,13 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
     page,
     search: search || undefined,
     type,
+    status: contactStatusFilter !== "all" ? contactStatusFilter : undefined,
     emailStatus: emailStatusFilter !== "all" ? emailStatusFilter : undefined,
   });
 
   function handleSearchChange(val: string) { setSearch(val); setPage(1); setSelectedIds(new Set()); }
   function handleEmailStatusChange(val: EmailStatusFilter) { setEmailStatusFilter(val); setPage(1); setSelectedIds(new Set()); }
+  function handleContactStatusChange(val: "all" | "active" | "unsubscribed" | "bounced") { setContactStatusFilter(val); setPage(1); setSelectedIds(new Set()); }
   const contacts = data?.data ?? [];
   const total = data?.total ?? 0;
 
@@ -1342,9 +1345,35 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
         </Button>
       </div>
 
+      {/* Contact status filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Status:</span>
+        {([
+          { id: "all",          label: "Todos",           color: "" },
+          { id: "active",       label: "Ativos",          color: "text-emerald-600" },
+          { id: "unsubscribed", label: "Descadastrados",  color: "text-slate-500" },
+          { id: "bounced",      label: "Bounce",          color: "text-amber-600" },
+        ] as const).map(opt => (
+          <button
+            key={opt.id}
+            onClick={() => handleContactStatusChange(opt.id)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+              contactStatusFilter === opt.id
+                ? "bg-primary text-white border-primary shadow-sm"
+                : `border-border hover:border-muted-foreground/50 ${opt.color}`
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-muted-foreground">
+          <strong>{total}</strong> {labelPl} {(contactStatusFilter !== "all" || emailStatusFilter !== "all") ? "filtrados" : "no total"}
+        </span>
+      </div>
+
       {/* Email status filter */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-muted-foreground font-medium">Filtrar e-mail:</span>
+        <span className="text-xs text-muted-foreground font-medium">E-mail:</span>
         {emailFilterOptions.map(opt => (
           <button
             key={opt.id}
@@ -1358,9 +1387,6 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
             {opt.label}
           </button>
         ))}
-        <span className="ml-auto text-xs text-muted-foreground">
-          <strong>{total}</strong> {labelPl} {emailStatusFilter !== "all" ? "filtrados" : "no total"}
-        </span>
       </div>
 
       {/* Bulk action bar */}
