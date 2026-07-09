@@ -66,6 +66,32 @@ function genToken() {
 
 const PIXEL = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
 
+// ─── Unsubscribe (público — sem auth) ─────────────────────────────────────────
+router.get("/marketing/unsubscribe", async (req, res): Promise<void> => {
+  const token = req.query.token as string | undefined;
+  if (!token) { res.status(400).json({ error: "Token ausente." }); return; }
+
+  const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.trackingToken, token)).limit(1);
+  if (!send) { res.status(404).json({ error: "Link inválido ou expirado." }); return; }
+
+  let already = false;
+  if (send.contactId) {
+    const result = await db.execute<{ updated: number }>(sql`
+      WITH updated AS (
+        UPDATE marketing_contacts
+        SET status = 'unsubscribed', unsubscribed_at = NOW()
+        WHERE id = ${send.contactId}
+          AND status != 'unsubscribed'
+        RETURNING 1
+      )
+      SELECT count(*)::int AS updated FROM updated
+    `);
+    already = (result.rows[0]?.updated ?? 0) === 0;
+  }
+
+  res.json({ message: "Descadastro realizado com sucesso.", already });
+});
+
 router.get("/marketing/track/:token", async (req, res): Promise<void> => {
   const token = req.params.token;
   const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.trackingToken, token)).limit(1);

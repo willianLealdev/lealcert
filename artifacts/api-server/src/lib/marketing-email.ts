@@ -68,6 +68,8 @@ export async function sendMarketingEmail({ campaign, contact, trackingToken }: S
   const baseUrl = cfg.siteUrl;
   const pixelUrl = `${baseUrl}/api/marketing/track/${trackingToken}`;
   const unsubUrl = `${baseUrl}/unsubscribe?token=${trackingToken}`;
+  // URL de unsubscribe direto na API (One-Click, exigência Google fev/2024)
+  const unsubApiUrl = `${baseUrl}/api/marketing/unsubscribe?token=${trackingToken}`;
 
   const bodyWithVars = campaign.bodyHtml
     .replace(/{{nome}}/gi, contact.name)
@@ -76,21 +78,35 @@ export async function sendMarketingEmail({ campaign, contact, trackingToken }: S
   const bodyWithLinks = wrapLinks(bodyWithVars, baseUrl, trackingToken);
 
   const html = bodyWithLinks + `
-    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;">
-      <p style="font-size:11px;color:#94a3b8;">
-        Para cancelar o recebimento de e-mails, <a href="${unsubUrl}" style="color:#94a3b8;">clique aqui</a>.
+    <div style="margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;font-family:sans-serif;">
+      <p style="font-size:12px;color:#94a3b8;margin:0 0 12px;">
+        Você está recebendo este e-mail pois faz parte da nossa lista de contatos.
+      </p>
+      <a href="${unsubUrl}"
+         style="display:inline-block;padding:8px 20px;background-color:#f1f5f9;color:#64748b;font-size:12px;text-decoration:none;border-radius:6px;border:1px solid #e2e8f0;">
+        Cancelar recebimento de e-mails
+      </a>
+      <p style="font-size:10px;color:#cbd5e1;margin:12px 0 0;">
+        ${cfg.appName} · ${baseUrl}
       </p>
     </div>
     <img src="${pixelUrl}" width="1" height="1" style="display:none;" alt="" />`;
 
   const text = (campaign.bodyText ?? campaign.bodyHtml.replace(/<[^>]*>/g, " "))
     .replace(/{{nome}}/gi, contact.name)
-    .replace(/{{email}}/gi, contact.email);
+    .replace(/{{email}}/gi, contact.email)
+    + `\n\n---\nPara cancelar o recebimento de e-mails acesse: ${unsubUrl}`;
 
   const from = `${campaign.fromName} <${campaign.fromEmail}>`;
   const replyTo = campaign.replyTo ?? undefined;
 
-  await transport.sendMail({ from, to: `${contact.name} <${contact.email}>`, subject: campaign.subject, html, text, replyTo });
+  // Headers List-Unsubscribe exigidos pelo Google (fev/2024) para remetentes de alto volume
+  const headers: Record<string, string> = {
+    "List-Unsubscribe": `<${unsubApiUrl}>, <mailto:${campaign.fromEmail}?subject=unsubscribe>`,
+    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+  };
+
+  await transport.sendMail({ from, to: `${contact.name} <${contact.email}>`, subject: campaign.subject, html, text, replyTo, headers });
 }
 
 interface SendReplyEmailOptions {
