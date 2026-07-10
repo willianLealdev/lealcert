@@ -14,4 +14,5 @@ search?: string;
 status?: string;
 type?: ListMarketingContactsType;
 emailStatus?: ListMarketingContactsEmailStatus;
+isNew?: boolean;
 };

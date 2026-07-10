@@ -2423,6 +2423,10 @@ paths:
           schema:
             type: string
             enum: [unknown, valid, invalid, disposable]
+        - name: isNew
+          in: query
+          schema:
+            type: boolean
       responses:
         "200":
           description: Contacts list
@@ -5041,6 +5045,8 @@ components:
           nullable: true
         bounced:
           type: boolean
+        isNew:
+          type: boolean
         unsubscribedAt:
           type: string
           nullable: true
@@ -5354,7 +5360,7 @@ components:
           type: string
         targetOverride:
           type: string
-          enum: [all, cliente, contador, specific, manual, opened_all, opened_cliente, opened_contador, clicked_all, clicked_cliente, clicked_contador, not_opened_cliente, not_opened_contador]
+          enum: [all, cliente, contador, new_contacts, specific, manual, opened_all, opened_cliente, opened_contador, clicked_all, clicked_cliente, clicked_contador, not_opened_cliente, not_opened_contador]
           description: Override campaign targetType for this send
         specificContactIds:
           type: array

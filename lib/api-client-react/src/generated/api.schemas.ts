@@ -1289,6 +1289,7 @@ export interface MarketingContact {
   emailInvalidReason?: string | null;
   emailValidatedAt?: string | null;
   bounced: boolean;
+  isNew?: boolean;
   unsubscribedAt?: string | null;
   createdAt: string;
 }
@@ -1471,6 +1472,7 @@ export const SendCampaignInputTargetOverride = {
   all: 'all',
   cliente: 'cliente',
   contador: 'contador',
+  new_contacts: 'new_contacts',
   specific: 'specific',
   manual: 'manual',
   opened_all: 'opened_all',
@@ -1966,6 +1968,7 @@ search?: string;
 status?: string;
 type?: ListMarketingContactsType;
 emailStatus?: ListMarketingContactsEmailStatus;
+isNew?: boolean;
 };
 
 export type ListMarketingContactsType = typeof ListMarketingContactsType[keyof typeof ListMarketingContactsType];

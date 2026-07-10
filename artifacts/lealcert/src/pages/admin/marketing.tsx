@@ -48,7 +48,7 @@ import {
   Megaphone, Users, Mail, MailOpen, MailX, Send, Upload, Plus, Trash2, Pencil,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
   ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy, MousePointerClick,
-  AlertTriangle, RotateCcw,
+  AlertTriangle, RotateCcw, Sparkles,
 } from "lucide-react";
 
 type Tab = "overview" | "campanhas" | "clientes" | "contadores" | "respostas" | "bounces";
@@ -788,7 +788,7 @@ function CampaignBouncesModal({ campaignId, campaignName, onClose }: {
 }
 
 // ─── Send Campaign Dialog ─────────────────────────────────────────────────────
-type SendTarget = "all" | "cliente" | "contador" | "specific" | "manual"
+type SendTarget = "all" | "cliente" | "contador" | "specific" | "manual" | "new_contacts"
   | "opened_all" | "opened_cliente" | "opened_contador"
   | "clicked_all" | "clicked_cliente" | "clicked_contador"
   | "not_opened_cliente" | "not_opened_contador";
@@ -865,6 +865,7 @@ function SendCampaignDialog({
     { id: "all",              label: "Todos os contatos",        desc: "Clientes e contadores ativos",              icon: Users },
     { id: "cliente",          label: "Clientes",                 desc: "Apenas clientes ativos da base",            icon: Users },
     { id: "contador",         label: "Contadores",               desc: "Apenas contadores ativos da base",          icon: Users },
+    { id: "new_contacts",     label: "Novos contatos",           desc: "Contatos marcados como novos (ainda não receberam e-mail)", icon: Sparkles },
     { id: "opened_all",       label: "Quem abriu — Todos",       desc: "Contatos que abriram qualquer campanha",    icon: MailOpen, group: "engajamento" },
     { id: "opened_cliente",   label: "Quem abriu — Clientes",    desc: "Clientes que abriram qualquer campanha",    icon: MailOpen, group: "engajamento" },
     { id: "opened_contador",  label: "Quem abriu — Contadores",  desc: "Contadores que abriram qualquer campanha",  icon: MailOpen, group: "engajamento" },
@@ -1217,6 +1218,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
   const [page, setPage] = useState(1);
   const [emailStatusFilter, setEmailStatusFilter] = useState<EmailStatusFilter>("all");
   const [contactStatusFilter, setContactStatusFilter] = useState<"all" | "active" | "unsubscribed" | "bounced">("all");
+  const [isNewFilter, setIsNewFilter] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editContact, setEditContact] = useState<{ id: number; name: string; email: string; phone?: string | null; tags?: string | null } | null>(null);
   const [importing, setImporting] = useState(false);
@@ -1244,11 +1246,18 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
     type,
     status: contactStatusFilter !== "all" ? contactStatusFilter : undefined,
     emailStatus: emailStatusFilter !== "all" ? emailStatusFilter : undefined,
+    isNew: isNewFilter ? true : undefined,
   });
 
   function handleSearchChange(val: string) { setSearch(val); setPage(1); setSelectedIds(new Set()); }
   function handleEmailStatusChange(val: EmailStatusFilter) { setEmailStatusFilter(val); setPage(1); setSelectedIds(new Set()); }
-  function handleContactStatusChange(val: "all" | "active" | "unsubscribed" | "bounced") { setContactStatusFilter(val); setPage(1); setSelectedIds(new Set()); }
+  function handleContactStatusChange(val: "all" | "active" | "unsubscribed" | "bounced") {
+    setContactStatusFilter(val);
+    if (val !== "all") setIsNewFilter(false);
+    setPage(1);
+    setSelectedIds(new Set());
+  }
+  function toggleIsNewFilter() { setIsNewFilter(p => !p); setContactStatusFilter("all"); setPage(1); setSelectedIds(new Set()); }
   const contacts = data?.data ?? [];
   const total = data?.total ?? 0;
 
@@ -1358,7 +1367,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
             key={opt.id}
             onClick={() => handleContactStatusChange(opt.id)}
             className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-              contactStatusFilter === opt.id
+              contactStatusFilter === opt.id && !isNewFilter
                 ? "bg-primary text-white border-primary shadow-sm"
                 : `border-border hover:border-muted-foreground/50 ${opt.color}`
             }`}
@@ -1366,8 +1375,18 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
             {opt.label}
           </button>
         ))}
+        <button
+          onClick={toggleIsNewFilter}
+          className={`text-xs px-3 py-1.5 rounded-full border transition-all flex items-center gap-1 ${
+            isNewFilter
+              ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+              : "border-border hover:border-muted-foreground/50 text-amber-600"
+          }`}
+        >
+          <Sparkles className="h-3 w-3" /> Novos
+        </button>
         <span className="ml-auto text-xs text-muted-foreground">
-          <strong>{total}</strong> {labelPl} {(contactStatusFilter !== "all" || emailStatusFilter !== "all") ? "filtrados" : "no total"}
+          <strong>{total}</strong> {labelPl} {(contactStatusFilter !== "all" || emailStatusFilter !== "all" || isNewFilter) ? "filtrados" : "no total"}
         </span>
       </div>
 
@@ -1464,7 +1483,14 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
                   className="h-4 w-4 rounded border-border cursor-pointer accent-primary"
                 />
               </span>
-              <span className="font-medium text-sm truncate">{c.name}</span>
+              <span className="font-medium text-sm truncate flex items-center gap-1.5">
+                {c.name}
+                {c.isNew && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 shrink-0">
+                    <Sparkles className="h-2.5 w-2.5" /> Novo
+                  </span>
+                )}
+              </span>
               <span className="text-sm text-muted-foreground truncate">{c.email}</span>
               {!isCliente && <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>}
               <span>{contactStatusBadge(c.status, c.bounced)}</span>

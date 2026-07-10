@@ -15,6 +15,7 @@ export const marketingContactsTable = pgTable("marketing_contacts", {
   emailValidatedAt: timestamp("email_validated_at", { withTimezone: true }),
   unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
   bounced: boolean("bounced").notNull().default(false),
+  isNew: boolean("is_new").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [unique().on(t.email, t.type)]);
 

@@ -228,11 +228,15 @@ router.get("/marketing/contacts", async (req, res): Promise<void> => {
   const limit = 50;
   const offset = (page - 1) * limit;
 
+  const isNewFilter = req.query.isNew as string | undefined;
+
   const conditions = [];
   if (search) conditions.push(or(ilike(marketingContactsTable.name, `%${search}%`), ilike(marketingContactsTable.email, `%${search}%`)));
   if (status) conditions.push(eq(marketingContactsTable.status, status));
   if (type) conditions.push(eq(marketingContactsTable.type, type));
   if (emailStatus) conditions.push(eq(marketingContactsTable.emailStatus, emailStatus));
+  if (isNewFilter === "true") conditions.push(eq(marketingContactsTable.isNew, true));
+  else if (isNewFilter === "false") conditions.push(eq(marketingContactsTable.isNew, false));
 
   const where = conditions.length ? and(...conditions) : undefined;
 
@@ -536,7 +540,7 @@ router.post("/marketing/campaigns", async (req, res): Promise<void> => {
     fromName: fromName ?? "LealCert Marketing",
     fromEmail: fromEmail ?? "mkt@lealcert.com.br",
     replyTo, filterTags,
-    targetType: (targetType === "cliente" || targetType === "contador") ? targetType : "all",
+    targetType: (["cliente","contador","new_contacts","not_opened_cliente","not_opened_contador","opened_all","opened_cliente","opened_contador","clicked_all","clicked_cliente","clicked_contador"].includes(targetType)) ? targetType : "all",
     scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
     status: scheduledAt ? "scheduled" : "draft",
   }).returning();
@@ -548,7 +552,7 @@ router.put("/marketing/campaigns/:id", async (req, res): Promise<void> => {
   const { name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, scheduledAt, filterTags, targetType } = req.body ?? {};
   const [campaign] = await db.update(marketingCampaignsTable).set({
     name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, filterTags,
-    targetType: (targetType === "cliente" || targetType === "contador") ? targetType : "all",
+    targetType: (["cliente","contador","new_contacts","not_opened_cliente","not_opened_contador","opened_all","opened_cliente","opened_contador","clicked_all","clicked_cliente","clicked_contador"].includes(targetType)) ? targetType : "all",
     scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
   }).where(eq(marketingCampaignsTable.id, id)).returning();
   res.json(campaign);
@@ -754,13 +758,17 @@ export interface DispatchOptions {
   manualRecipients?: { name: string; email: string }[];
 }
 
-type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date };
-type RawContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; created_at: Date };
+type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; isNew: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date };
+type RawContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; is_new: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; created_at: Date };
+
+// Domínios de email gratuito que devem ser enviados por último e em lotes menores
+const FREE_EMAIL_DOMAINS = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "hotmail.com.br", "live.com", "msn.com"]);
+function isFreeEmail(email: string) { return FREE_EMAIL_DOMAINS.has(email.split("@")[1]?.toLowerCase() ?? ""); }
 
 function mapContact(r: RawContactRow): ContactRow {
   return {
     id: r.id, name: r.name, email: r.email, phone: r.phone, type: r.type, status: r.status,
-    bounced: r.bounced, tags: r.tags, emailStatus: r.email_status,
+    bounced: r.bounced, isNew: r.is_new ?? false, tags: r.tags, emailStatus: r.email_status,
     emailInvalidReason: r.email_invalid_reason, emailValidatedAt: r.email_validated_at,
     unsubscribedAt: r.unsubscribed_at, createdAt: r.created_at,
   };
@@ -782,7 +790,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     }
     contacts = opts.manualRecipients.map((r, i) => ({
       id: -(i + 1), name: r.name, email: r.email, phone: null,
-      type: "manual", status: "active", bounced: false, tags: null,
+      type: "manual", status: "active", bounced: false, isNew: false, tags: null,
       emailStatus: "unknown", emailInvalidReason: null, emailValidatedAt: null,
       unsubscribedAt: null, createdAt: new Date(),
     }));
@@ -834,6 +842,12 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     `);
     contacts = rawContacts.rows.map(mapContact);
     logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded (engagement)");
+  } else if (effectiveTarget === "new_contacts") {
+    const rawContacts = await db.execute<RawContactRow>(
+      sql`SELECT * FROM marketing_contacts WHERE is_new = true AND status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')`
+    );
+    contacts = rawContacts.rows.map(mapContact);
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded (new_contacts)");
   } else {
     const typeFilter = effectiveTarget === "cliente" ? "cliente" : effectiveTarget === "contador" ? "contador" : null;
     const rawContacts = await db.execute<RawContactRow>(
@@ -863,7 +877,12 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   );
 
   // Filter out contacts already successfully sent
-  const remaining = contacts.filter(c => c.id <= 0 || !sentContactIds.has(c.id));
+  const allRemaining = contacts.filter(c => c.id <= 0 || !sentContactIds.has(c.id));
+
+  // ── Ordenação: domínios gratuitos (Gmail, Outlook, Hotmail) vão por último ──
+  const normalContacts = allRemaining.filter(c => !isFreeEmail(c.email));
+  const freeContacts   = allRemaining.filter(c =>  isFreeEmail(c.email));
+  const remaining = [...normalContacts, ...freeContacts];
 
   // Mark campaign as sending with total count
   await db.update(marketingCampaignsTable).set({
@@ -874,10 +893,13 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
 
   let sent = alreadySentCount;
   let bounced = campaign.totalBounced;
+  let freeEmailsSentInBatch = 0;
+  const FREE_BATCH_SIZE = 5;
+  const FREE_BATCH_DELAY_MS = 60_000; // 60 segundos entre lotes
 
-  logger.info({ campaignId, total: contacts.length, alreadySent: alreadySentCount, remaining: remaining.length }, "Campaign dispatch started");
+  logger.info({ campaignId, total: contacts.length, alreadySent: alreadySentCount, normal: normalContacts.length, freeEmail: freeContacts.length, remaining: remaining.length }, "Campaign dispatch started");
 
-  for (const contact of remaining) {
+  async function sendOne(contact: ContactRow): Promise<void> {
     const token = genToken();
     try {
       await db.insert(marketingSendsTable).values({
@@ -897,36 +919,51 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
           ON CONFLICT DO NOTHING
         `);
         const check = await db.execute<{ id: number }>(sql`SELECT id FROM marketing_sends WHERE tracking_token = ${token}`);
-        if (!check.rows.length) continue;
-      } catch { continue; }
+        if (!check.rows.length) return;
+      } catch { return; }
     }
 
     try {
       await sendMarketingEmail({ campaign, contact, trackingToken: token });
       await db.update(marketingSendsTable).set({ status: "sent", sentAt: new Date() }).where(eq(marketingSendsTable.trackingToken, token));
       sent++;
-      // Update progress incrementally so the frontend can poll it
-      await db.update(marketingCampaignsTable)
-        .set({ totalSent: sent })
-        .where(eq(marketingCampaignsTable.id, campaignId));
+      await db.update(marketingCampaignsTable).set({ totalSent: sent }).where(eq(marketingCampaignsTable.id, campaignId));
+      // Se for campanha de novos contatos, remove a flag após envio bem-sucedido
+      if (effectiveTarget === "new_contacts" && contact.id > 0) {
+        await db.update(marketingContactsTable).set({ isNew: false }).where(eq(marketingContactsTable.id, contact.id));
+      }
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       await db.update(marketingSendsTable).set({ status: "failed", error }).where(eq(marketingSendsTable.trackingToken, token));
       bounced++;
       logger.warn({ email: contact.email, error }, "Failed to send marketing email");
-
       if (contact.id > 0) {
         const isPermanentBounce = /550|551|552|553|554|user.unknown|does not exist|invalid|no such user|mailbox.*not.*found|bounce/i.test(error);
         if (isPermanentBounce) {
-          await db.update(marketingContactsTable)
-            .set({ bounced: true })
-            .where(eq(marketingContactsTable.id, contact.id));
+          await db.update(marketingContactsTable).set({ bounced: true }).where(eq(marketingContactsTable.id, contact.id));
           logger.info({ contactId: contact.id, email: contact.email }, "Contato marcado como bloqueado por bounce permanente");
         }
       }
     }
+  }
 
-    await new Promise(r => setTimeout(r, 100));
+  for (const contact of remaining) {
+    const isFree = isFreeEmail(contact.email);
+
+    // Throttling especial para domínios gratuitos: lotes de 5 com 60s de pausa
+    if (isFree) {
+      if (freeEmailsSentInBatch > 0 && freeEmailsSentInBatch % FREE_BATCH_SIZE === 0) {
+        logger.info({ campaignId, freeEmailsSentInBatch }, `Gmail/Outlook batch completo — aguardando ${FREE_BATCH_DELAY_MS / 1000}s`);
+        await new Promise(r => setTimeout(r, FREE_BATCH_DELAY_MS));
+      }
+      await sendOne(contact);
+      freeEmailsSentInBatch++;
+      // Delay de 10s entre cada email de domínio gratuito
+      await new Promise(r => setTimeout(r, 10_000));
+    } else {
+      await sendOne(contact);
+      await new Promise(r => setTimeout(r, 100));
+    }
   }
 
   await db.update(marketingCampaignsTable).set({

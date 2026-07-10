@@ -2655,7 +2655,8 @@ export const ListMarketingContactsQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
   "status": zod.coerce.string().optional(),
   "type": zod.enum(['cliente', 'contador']).optional(),
-  "emailStatus": zod.enum(['unknown', 'valid', 'invalid', 'disposable']).optional()
+  "emailStatus": zod.enum(['unknown', 'valid', 'invalid', 'disposable']).optional(),
+  "isNew": zod.coerce.boolean().optional()
 })
 
 export const ListMarketingContactsResponse = zod.object({
@@ -2671,6 +2672,7 @@ export const ListMarketingContactsResponse = zod.object({
   "emailInvalidReason": zod.string().nullish().describe('Reason why email is invalid (bad_format, no_mx, disposable_domain)'),
   "emailValidatedAt": zod.string().nullish(),
   "bounced": zod.boolean(),
+  "isNew": zod.boolean().optional(),
   "unsubscribedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })),
@@ -2761,6 +2763,7 @@ export const UpdateMarketingContactResponse = zod.object({
   "emailInvalidReason": zod.string().nullish().describe('Reason why email is invalid (bad_format, no_mx, disposable_domain)'),
   "emailValidatedAt": zod.string().nullish(),
   "bounced": zod.boolean(),
+  "isNew": zod.boolean().optional(),
   "unsubscribedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -2913,7 +2916,7 @@ export const SendMarketingCampaignParams = zod.object({
 
 export const SendMarketingCampaignBody = zod.object({
   "scheduledAt": zod.string().optional(),
-  "targetOverride": zod.enum(['all', 'cliente', 'contador', 'specific', 'manual', 'opened_all', 'opened_cliente', 'opened_contador', 'clicked_all', 'clicked_cliente', 'clicked_contador', 'not_opened_cliente', 'not_opened_contador']).optional().describe('Override campaign targetType for this send'),
+  "targetOverride": zod.enum(['all', 'cliente', 'contador', 'new_contacts', 'specific', 'manual', 'opened_all', 'opened_cliente', 'opened_contador', 'clicked_all', 'clicked_cliente', 'clicked_contador', 'not_opened_cliente', 'not_opened_contador']).optional().describe('Override campaign targetType for this send'),
   "specificContactIds": zod.array(zod.number()).optional().describe('Contact IDs to send to when targetOverride=specific'),
   "manualRecipients": zod.array(zod.object({
   "name": zod.string(),

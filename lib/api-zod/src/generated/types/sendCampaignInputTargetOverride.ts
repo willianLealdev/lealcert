@@ -16,6 +16,7 @@ export const SendCampaignInputTargetOverride = {
   all: 'all',
   cliente: 'cliente',
   contador: 'contador',
+  new_contacts: 'new_contacts',
   specific: 'specific',
   manual: 'manual',
   opened_all: 'opened_all',
