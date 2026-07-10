@@ -448,7 +448,7 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
     res.status(400).json({ error: "Arquivo inválido. Use CSV ou XLSX." }); return;
   }
 
-  type ContactRow = { name: string; email: string; phone?: string; tags?: string; type: string };
+  type ContactRow = { name: string; email: string; phone?: string; tags?: string; type: string; isNew: boolean };
   const validRows: ContactRow[] = [];
   let parseSkipped = 0;
 
@@ -491,7 +491,7 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
     const finalType = (rowType === "contador" || rowType === "cliente") ? rowType : contactType;
 
     if (!email || !name) { parseSkipped++; continue; }
-    validRows.push({ name, email, phone, tags, type: finalType });
+    validRows.push({ name, email, phone, tags, type: finalType, isNew: true });
   }
 
   // Responde imediatamente para não sofrer timeout do proxy (VPS)
