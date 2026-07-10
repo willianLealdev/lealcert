@@ -1229,16 +1229,41 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
   const label = isCliente ? "cliente" : "contador";
   const labelPl = isCliente ? "clientes" : "contadores";
 
-  const validateMutation = useValidateContactEmails({ mutation: {
-    onSuccess: (result) => {
+  const validateMutation = useValidateContactEmails();
+  const [validating, setValidating] = useState(false);
+  const [validateProgress, setValidateProgress] = useState<{ done: number; batches: number } | null>(null);
+
+  async function runValidateAll() {
+    if (validating) return;
+    setValidating(true);
+    setValidateProgress({ done: 0, batches: 0 });
+    let totalDone = 0;
+    let batches = 0;
+    let totalValid = 0, totalInvalid = 0, totalDisposable = 0;
+    try {
+      while (true) {
+        const result = await validateMutation.mutateAsync({ data: { type, limit: 500 } });
+        batches++;
+        totalDone += result.processed;
+        totalValid += result.valid;
+        totalInvalid += result.invalid ?? 0;
+        totalDisposable += result.disposable ?? 0;
+        setValidateProgress({ done: totalDone, batches });
+        invalidate();
+        if (result.processed === 0) break;
+      }
       toast({
         title: "Validação concluída!",
-        description: `${result.processed} e-mails processados — ${result.valid} válidos, ${result.invalid} inválidos, ${result.disposable} descartáveis.`,
+        description: `${totalDone} e-mails processados em ${batches} lote(s) — ${totalValid} válidos, ${totalInvalid} inválidos, ${totalDisposable} descartáveis.`,
       });
+    } catch {
+      toast({ title: "Erro na validação", variant: "destructive" });
+    } finally {
+      setValidating(false);
+      setValidateProgress(null);
       invalidate();
-    },
-    onError: () => toast({ title: "Erro na validação", variant: "destructive" }),
-  }});
+    }
+  }
 
   const { data, isLoading } = useListMarketingContacts({
     page,
@@ -1341,13 +1366,17 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
         </Button>
         <Button
           variant="outline"
-          onClick={() => validateMutation.mutate({ data: { type, limit: 500 } })}
-          disabled={validateMutation.isPending}
+          onClick={runValidateAll}
+          disabled={validating}
           className="gap-2 shrink-0"
-          title="Valida MX, domínios descartáveis e formato dos e-mails ainda não validados"
+          title="Valida todos os e-mails não validados automaticamente em lotes de 500"
         >
-          {validateMutation.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-          {validateMutation.isPending ? "Validando…" : "Validar E-mails"}
+          {validating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+          {validating
+            ? validateProgress && validateProgress.done > 0
+              ? `Validando… ${validateProgress.done} feitos`
+              : "Iniciando…"
+            : "Validar E-mails"}
         </Button>
         <Button onClick={() => setShowAdd(true)} className="gap-2 shrink-0">
           <Plus className="h-4 w-4" /> Adicionar
