@@ -723,6 +723,7 @@ export interface AppSettings {
   deepseekModel?: string | null;
   claudeApiKey?: string | null;
   claudeModel?: string | null;
+  zeroBounceApiKey?: string | null;
   updatedAt?: string;
 }
 
@@ -783,6 +784,7 @@ export interface AppSettingsUpdate {
   deepseekModel?: string;
   claudeApiKey?: string;
   claudeModel?: string;
+  zeroBounceApiKey?: string;
 }
 
 export type PushSubscribeBodyKeys = {

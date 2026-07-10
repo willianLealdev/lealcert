@@ -63,4 +63,5 @@ export interface AppSettingsUpdate {
   deepseekModel?: string;
   claudeApiKey?: string;
   claudeModel?: string;
+  zeroBounceApiKey?: string;
 }

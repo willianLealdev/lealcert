@@ -47,10 +47,44 @@ async function hasMxRecord(domain: string): Promise<boolean> {
   }
 }
 
+async function getZeroBounceApiKey(): Promise<string | null> {
+  try {
+    const rows = await db.select({ zeroBounceApiKey: settingsTable.zeroBounceApiKey }).from(settingsTable).limit(1);
+    return rows[0]?.zeroBounceApiKey ?? null;
+  } catch { return null; }
+}
+
+const zbCache = new Map<string, { status: "valid" | "invalid" | "disposable"; ts: number }>();
+const ZB_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 dias
+
+async function validateEmailZeroBounce(email: string, apiKey: string): Promise<"valid" | "invalid" | "disposable"> {
+  const cached = zbCache.get(email);
+  if (cached && Date.now() - cached.ts < ZB_CACHE_TTL) return cached.status;
+  try {
+    const url = `https://api.zerobounce.net/v2/validate?api_key=${encodeURIComponent(apiKey)}&email=${encodeURIComponent(email)}&ip_address=`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`ZeroBounce HTTP ${res.status}`);
+    const data = await res.json() as { status: string; sub_status: string };
+    let status: "valid" | "invalid" | "disposable";
+    if (data.status === "valid") status = "valid";
+    else if (data.sub_status === "disposable") status = "disposable";
+    else status = "invalid";
+    zbCache.set(email, { status, ts: Date.now() });
+    return status;
+  } catch {
+    // Fallback to MX check on ZeroBounce failure
+    const domain = email.split("@")[1]?.toLowerCase() ?? "";
+    const mx = await hasMxRecord(domain);
+    return mx ? "valid" : "invalid";
+  }
+}
+
 async function validateEmail(email: string): Promise<"valid" | "invalid" | "disposable"> {
   if (!EMAIL_REGEX.test(email)) return "invalid";
   const domain = email.split("@")[1].toLowerCase();
   if (DISPOSABLE_DOMAINS.has(domain)) return "disposable";
+  const zbKey = await getZeroBounceApiKey();
+  if (zbKey) return validateEmailZeroBounce(email, zbKey);
   const mx = await hasMxRecord(domain);
   return mx ? "valid" : "invalid";
 }
@@ -343,7 +377,8 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
     .where(and(...conditions))
     .limit(batchLimit);
 
-  const stats = { processed: 0, valid: 0, invalid: 0, disposable: 0, badFormat: 0, noMx: 0, alreadyValidated: 0, skipped: 0 };
+  const zbKey = await getZeroBounceApiKey();
+  const stats = { processed: 0, valid: 0, invalid: 0, disposable: 0, badFormat: 0, noMx: 0, alreadyValidated: 0, skipped: 0, zeroBounce: !!zbKey };
 
   for (const contact of contacts) {
     try {
@@ -359,6 +394,11 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
         status = "disposable";
         reason = "disposable_domain";
         stats.disposable++;
+      } else if (zbKey) {
+        status = await validateEmailZeroBounce(contact.email, zbKey);
+        if (status === "valid") stats.valid++;
+        else if (status === "disposable") { stats.disposable++; reason = "disposable_domain"; }
+        else { stats.noMx++; reason = "zerobounce_invalid"; }
       } else {
         const mx = await hasMxRecord(domain);
         if (mx) {

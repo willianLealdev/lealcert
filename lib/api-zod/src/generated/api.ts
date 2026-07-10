@@ -2299,6 +2299,7 @@ export const GetSettingsResponse = zod.object({
   "deepseekModel": zod.string().nullish(),
   "claudeApiKey": zod.string().nullish(),
   "claudeModel": zod.string().nullish(),
+  "zeroBounceApiKey": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 
@@ -2362,7 +2363,8 @@ export const UpdateSettingsBody = zod.object({
   "deepseekApiKey": zod.string().optional(),
   "deepseekModel": zod.string().optional(),
   "claudeApiKey": zod.string().optional(),
-  "claudeModel": zod.string().optional()
+  "claudeModel": zod.string().optional(),
+  "zeroBounceApiKey": zod.string().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -2423,6 +2425,7 @@ export const UpdateSettingsResponse = zod.object({
   "deepseekModel": zod.string().nullish(),
   "claudeApiKey": zod.string().nullish(),
   "claudeModel": zod.string().nullish(),
+  "zeroBounceApiKey": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 

@@ -117,6 +117,7 @@ export default function AdminSettings() {
     deepseekModel: "deepseek-chat",
     claudeApiKey: "",
     claudeModel: "claude-3-5-haiku-20241022",
+    zeroBounceApiKey: "",
   });
 
   useEffect(() => {
@@ -136,6 +137,7 @@ export default function AdminSettings() {
         aiProvider?: string;
         deepseekApiKey?: string; deepseekModel?: string;
         claudeApiKey?: string; claudeModel?: string;
+        zeroBounceApiKey?: string;
       };
       setForm({
         appName: s.appName ?? "",
@@ -188,6 +190,7 @@ export default function AdminSettings() {
         deepseekApiKey: s.deepseekApiKey ?? "",
         deepseekModel: s.deepseekModel ?? "deepseek-chat",
         claudeApiKey: s.claudeApiKey ?? "",
+        zeroBounceApiKey: s.zeroBounceApiKey ?? "",
         claudeModel: s.claudeModel ?? "claude-3-5-haiku-20241022",
       });
     }
@@ -645,6 +648,29 @@ export default function AdminSettings() {
                     Campanhas de marketing e respostas serão enviadas pelo servidor de marketing configurado acima.
                   </div>
                 )}
+                <div className="border-t pt-4 space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    ZeroBounce — API Key
+                    <span className="text-xs font-normal text-muted-foreground">(validação de e-mails)</span>
+                  </Label>
+                  <MaskedInput value={form.zeroBounceApiKey} onChange={v => set("zeroBounceApiKey", v)} placeholder="Chave da API ZeroBounce" />
+                  <p className="text-xs text-muted-foreground">
+                    Quando configurada, a validação de contatos usa ZeroBounce para verificar cada e-mail com precisão.
+                    Sem a chave, usa apenas verificação MX local.
+                  </p>
+                  {form.zeroBounceApiKey && form.zeroBounceApiKey !== "***" && (
+                    <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                      ZeroBounce ativo — validação profissional habilitada.
+                    </div>
+                  )}
+                  {form.zeroBounceApiKey === "***" && (
+                    <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                      ZeroBounce ativo — chave salva.
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 

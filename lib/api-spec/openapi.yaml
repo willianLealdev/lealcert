@@ -4225,6 +4225,9 @@ components:
         claudeModel:
           type: string
           nullable: true
+        zeroBounceApiKey:
+          type: string
+          nullable: true
         updatedAt:
           type: string
 
@@ -4342,6 +4345,8 @@ components:
         claudeApiKey:
           type: string
         claudeModel:
+          type: string
+        zeroBounceApiKey:
           type: string
 
     PushSubscribeBody:

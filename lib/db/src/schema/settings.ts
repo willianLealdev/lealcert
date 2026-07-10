@@ -70,6 +70,8 @@ export const settingsTable = pgTable("settings", {
   deepseekModel: text("deepseek_model").default("deepseek-chat"),
   claudeApiKey: text("claude_api_key"),
   claudeModel: text("claude_model").default("claude-3-5-haiku-20241022"),
+  // ZeroBounce — validação de emails de marketing
+  zeroBounceApiKey: text("zero_bounce_api_key"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

@@ -41,6 +41,7 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     deepseekModel: s.deepseekModel ?? "deepseek-chat",
     claudeApiKey: mask(s.claudeApiKey),
     claudeModel: s.claudeModel ?? "claude-3-5-haiku-20241022",
+    zeroBounceApiKey: mask(s.zeroBounceApiKey),
     // Non-secret fields
     mailFrom: s.mailFrom,
     siteUrl: s.siteUrl,
@@ -106,6 +107,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     openaiApiKey, openaiModel,
     deepseekApiKey, deepseekModel,
     claudeApiKey, claudeModel,
+    zeroBounceApiKey,
     aiProvider,
   } = req.body ?? {};
 
@@ -172,6 +174,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("openaiApiKey", openaiApiKey);
   set("deepseekApiKey", deepseekApiKey);
   set("claudeApiKey", claudeApiKey);
+  set("zeroBounceApiKey", zeroBounceApiKey);
 
   const [updated] = await db
     .update(settingsTable)
