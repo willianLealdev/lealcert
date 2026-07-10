@@ -894,8 +894,8 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   let sent = alreadySentCount;
   let bounced = campaign.totalBounced;
   let freeEmailsSentInBatch = 0;
-  const FREE_BATCH_SIZE = 5;
-  const FREE_BATCH_DELAY_MS = 60_000; // 60 segundos entre lotes
+  const FREE_BATCH_SIZE = 20;
+  const FREE_BATCH_DELAY_MS = 30_000; // 30 segundos entre lotes
 
   logger.info({ campaignId, total: contacts.length, alreadySent: alreadySentCount, normal: normalContacts.length, freeEmail: freeContacts.length, remaining: remaining.length }, "Campaign dispatch started");
 
@@ -958,8 +958,8 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       }
       await sendOne(contact);
       freeEmailsSentInBatch++;
-      // Delay de 10s entre cada email de domínio gratuito
-      await new Promise(r => setTimeout(r, 10_000));
+      // Delay de 2s entre cada email de domínio gratuito
+      await new Promise(r => setTimeout(r, 2_000));
     } else {
       await sendOne(contact);
       await new Promise(r => setTimeout(r, 100));
