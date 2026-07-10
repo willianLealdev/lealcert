@@ -2,31 +2,44 @@ import { logger } from "./logger";
 import { db, settingsTable } from "@workspace/db";
 import type { MarketingCampaign, MarketingContact } from "@workspace/db";
 
-async function getSmtpConfig() {
+async function getSmtpConfig(marketing = false) {
   const rows = await db.select({
-    appName:    settingsTable.appName,
-    siteUrl:    settingsTable.siteUrl,
-    mailFrom:   settingsTable.mailFrom,
-    smtpHostDb: settingsTable.smtpHostDb,
-    smtpPortDb: settingsTable.smtpPortDb,
-    smtpUserDb: settingsTable.smtpUserDb,
-    smtpPassDb: settingsTable.smtpPassDb,
+    appName:       settingsTable.appName,
+    siteUrl:       settingsTable.siteUrl,
+    mailFrom:      settingsTable.mailFrom,
+    smtpHostDb:    settingsTable.smtpHostDb,
+    smtpPortDb:    settingsTable.smtpPortDb,
+    smtpUserDb:    settingsTable.smtpUserDb,
+    smtpPassDb:    settingsTable.smtpPassDb,
+    mktSmtpHostDb: settingsTable.mktSmtpHostDb,
+    mktSmtpPortDb: settingsTable.mktSmtpPortDb,
+    mktSmtpUserDb: settingsTable.mktSmtpUserDb,
+    mktSmtpPassDb: settingsTable.mktSmtpPassDb,
+    mktMailFrom:   settingsTable.mktMailFrom,
   }).from(settingsTable).limit(1);
 
   const s = rows[0];
+
+  // When marketing=true, prefer the dedicated marketing SMTP; fall back to main SMTP
+  const useHost = marketing ? (s?.mktSmtpHostDb || s?.smtpHostDb) : s?.smtpHostDb;
+  const usePort = marketing ? (s?.mktSmtpPortDb || s?.smtpPortDb) : s?.smtpPortDb;
+  const useUser = marketing ? (s?.mktSmtpUserDb || s?.smtpUserDb) : s?.smtpUserDb;
+  const usePass = marketing ? (s?.mktSmtpPassDb || s?.smtpPassDb) : s?.smtpPassDb;
+  const useFrom = marketing ? (s?.mktMailFrom || s?.mailFrom) : s?.mailFrom;
+
   return {
     appName: s?.appName ?? "LealCert",
     siteUrl: s?.siteUrl || "https://lealcert.com.br",
-    mailFrom: s?.mailFrom ?? null,
-    host: s?.smtpHostDb ?? null,
-    port: parseInt(s?.smtpPortDb ?? "587", 10),
-    user: s?.smtpUserDb ?? null,
-    pass: s?.smtpPassDb ?? null,
+    mailFrom: useFrom ?? null,
+    host: useHost ?? null,
+    port: parseInt(usePort ?? "587", 10),
+    user: useUser ?? null,
+    pass: usePass ?? null,
   };
 }
 
-async function createTransporter() {
-  const cfg = await getSmtpConfig();
+async function createTransporter(marketing = false) {
+  const cfg = await getSmtpConfig(marketing);
   if (!cfg.host || !cfg.user || !cfg.pass) return null;
   const nodemailer = (await import("nodemailer")).default;
   return {
@@ -59,7 +72,8 @@ function wrapLinks(html: string, baseUrl: string, trackingToken: string): string
 }
 
 export async function sendMarketingEmail({ campaign, contact, trackingToken }: SendMarketingEmailOptions): Promise<void> {
-  const result = await createTransporter();
+  // Use dedicated marketing SMTP when configured
+  const result = await createTransporter(true);
   if (!result) {
     logger.info({ to: contact.email, subject: campaign.subject, trackingToken }, "📧 [DEV] Marketing email (SMTP não configurado no painel)");
     return;
@@ -68,7 +82,6 @@ export async function sendMarketingEmail({ campaign, contact, trackingToken }: S
   const baseUrl = cfg.siteUrl;
   const pixelUrl = `${baseUrl}/api/marketing/track/${trackingToken}`;
   const unsubUrl = `${baseUrl}/unsubscribe?token=${trackingToken}`;
-  // URL de unsubscribe direto na API (One-Click, exigência Google fev/2024)
   const unsubApiUrl = `${baseUrl}/api/marketing/unsubscribe?token=${trackingToken}`;
 
   const bodyWithVars = campaign.bodyHtml
@@ -100,7 +113,6 @@ export async function sendMarketingEmail({ campaign, contact, trackingToken }: S
   const from = `${campaign.fromName} <${campaign.fromEmail}>`;
   const replyTo = campaign.replyTo ?? undefined;
 
-  // Headers List-Unsubscribe exigidos pelo Google (fev/2024) para remetentes de alto volume
   const headers: Record<string, string> = {
     "List-Unsubscribe": `<${unsubApiUrl}>, <mailto:${campaign.fromEmail}?subject=unsubscribe>`,
     "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
@@ -117,7 +129,8 @@ interface SendReplyEmailOptions {
 }
 
 export async function sendReplyEmail({ to, toName, subject, body }: SendReplyEmailOptions): Promise<void> {
-  const result = await createTransporter();
+  // Replies to marketing contacts use the marketing SMTP (dedicated subdomain)
+  const result = await createTransporter(true);
   if (!result) {
     logger.info({ to, subject }, "📧 [DEV] Reply email (SMTP não configurado no painel)");
     return;
@@ -130,7 +143,8 @@ export async function sendReplyEmail({ to, toName, subject, body }: SendReplyEma
 }
 
 export async function sendSystemEmail(opts: { to: string; toName?: string; subject: string; html: string; text?: string }): Promise<void> {
-  const result = await createTransporter();
+  // System/transactional emails use the main SMTP
+  const result = await createTransporter(false);
   if (!result) {
     logger.info({ to: opts.to, subject: opts.subject }, "📧 [DEV] System email (SMTP não configurado no painel)");
     return;

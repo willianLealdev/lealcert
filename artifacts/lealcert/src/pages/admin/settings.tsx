@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight,
-  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff, Bot,
+  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff, Bot, Megaphone,
 } from "lucide-react";
 import { useSendTestPush } from "@workspace/api-client-react";
 import { usePush } from "@/lib/use-push";
@@ -102,6 +102,11 @@ export default function AdminSettings() {
     smtpPortDb: "587",
     smtpUserDb: "",
     smtpPassDb: "",
+    mktSmtpHostDb: "",
+    mktSmtpPortDb: "587",
+    mktSmtpUserDb: "",
+    mktSmtpPassDb: "",
+    mktMailFrom: "",
     vapidSubject: "mailto:contato@lealcert.com.br",
     vapidPublicKey: "",
     vapidPrivateKey: "",
@@ -125,6 +130,7 @@ export default function AdminSettings() {
         safewebUsernameHomologacao?: string; safewebPasswordHomologacao?: string;
         evolutionUrl?: string; evolutionApiKey?: string; evolutionInstance?: string;
         smtpHostDb?: string; smtpPortDb?: string; smtpUserDb?: string; smtpPassDb?: string;
+        mktSmtpHostDb?: string; mktSmtpPortDb?: string; mktSmtpUserDb?: string; mktSmtpPassDb?: string; mktMailFrom?: string;
         vapidSubject?: string; vapidPublicKey?: string; vapidPrivateKey?: string;
         openaiApiKey?: string; openaiModel?: string;
         aiProvider?: string;
@@ -168,6 +174,11 @@ export default function AdminSettings() {
         smtpPortDb: s.smtpPortDb ?? "587",
         smtpUserDb: s.smtpUserDb ?? "",
         smtpPassDb: s.smtpPassDb ?? "",
+        mktSmtpHostDb: s.mktSmtpHostDb ?? "",
+        mktSmtpPortDb: s.mktSmtpPortDb ?? "587",
+        mktSmtpUserDb: s.mktSmtpUserDb ?? "",
+        mktSmtpPassDb: s.mktSmtpPassDb ?? "",
+        mktMailFrom: s.mktMailFrom ?? "",
         vapidSubject: s.vapidSubject ?? "mailto:contato@lealcert.com.br",
         vapidPublicKey: s.vapidPublicKey ?? "",
         vapidPrivateKey: s.vapidPrivateKey ?? "",
@@ -580,6 +591,60 @@ export default function AdminSettings() {
                     {testEmailMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-2" />Enviar teste</>}
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Marketing SMTP Card */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Megaphone className="h-5 w-5 text-primary" />
+                  <CardTitle>E-mail de Marketing</CardTitle>
+                </div>
+                <CardDescription>
+                  Configure um servidor SMTP exclusivo para campanhas de marketing. Se deixado em branco, usa o SMTP principal acima.
+                  Use um subdomínio dedicado (ex: <code>mkt.lealcert.com.br</code>) para proteger a reputação do domínio principal.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Servidor SMTP — Marketing (Host)</Label>
+                    <Input value={form.mktSmtpHostDb} onChange={e => set("mktSmtpHostDb", e.target.value)} placeholder="smtp.mkt.seudominio.com.br" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Porta</Label>
+                    <Select value={form.mktSmtpPortDb} onValueChange={v => set("mktSmtpPortDb", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="587">587 — STARTTLS (recomendado)</SelectItem>
+                        <SelectItem value="465">465 — SSL/TLS</SelectItem>
+                        <SelectItem value="25">25 — Sem criptografia</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Usuário SMTP — Marketing</Label>
+                    <Input value={form.mktSmtpUserDb} onChange={e => set("mktSmtpUserDb", e.target.value)} placeholder="mkt@seudominio.com.br" autoComplete="off" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Senha SMTP — Marketing</Label>
+                    <MaskedInput value={form.mktSmtpPassDb} onChange={v => set("mktSmtpPassDb", v)} placeholder="Senha do servidor de marketing" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>E-mail remetente de Marketing (From)</Label>
+                  <Input value={form.mktMailFrom} onChange={e => set("mktMailFrom", e.target.value)} placeholder='LealCert Marketing <mkt@seudominio.com.br>' />
+                  <p className="text-xs text-muted-foreground">Formato: <code>Nome Exibido &lt;email@dominio.com&gt;</code></p>
+                </div>
+                {form.mktSmtpHostDb && (
+                  <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    Campanhas de marketing e respostas serão enviadas pelo servidor de marketing configurado acima.
+                  </div>
+                )}
               </CardContent>
             </Card>
 

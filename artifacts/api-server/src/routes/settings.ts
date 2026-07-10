@@ -32,6 +32,7 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     safewebPasswordHomologacao: mask(s.safewebPasswordHomologacao),
     evolutionApiKey: mask(s.evolutionApiKey),
     smtpPassDb: mask(s.smtpPassDb),
+    mktSmtpPassDb: mask(s.mktSmtpPassDb),
     vapidPrivateKey: mask(s.vapidPrivateKey),             // crypto private key — never expose
     aiProvider: s.aiProvider ?? "openai",
     openaiApiKey: mask(s.openaiApiKey),
@@ -70,6 +71,10 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     smtpHostDb: s.smtpHostDb,
     smtpPortDb: s.smtpPortDb ?? "587",
     smtpUserDb: s.smtpUserDb,
+    mktSmtpHostDb: s.mktSmtpHostDb,
+    mktSmtpPortDb: s.mktSmtpPortDb ?? "587",
+    mktSmtpUserDb: s.mktSmtpUserDb,
+    mktMailFrom: s.mktMailFrom,
     vapidSubject: s.vapidSubject,
     vapidPublicKey: s.vapidPublicKey,
     updatedAt: s.updatedAt,
@@ -96,6 +101,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     logoUrl, primaryColor,
     contactPhone, contactWhatsapp, contactEmailSupport, contactAddress,
     smtpHostDb, smtpPortDb, smtpUserDb, smtpPassDb,
+    mktSmtpHostDb, mktSmtpPortDb, mktSmtpUserDb, mktSmtpPassDb, mktMailFrom,
     vapidSubject, vapidPublicKey, vapidPrivateKey,
     openaiApiKey, openaiModel,
     deepseekApiKey, deepseekModel,
@@ -140,6 +146,10 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (smtpHostDb !== undefined) u.smtpHostDb = smtpHostDb;
   if (smtpPortDb !== undefined) u.smtpPortDb = smtpPortDb;
   if (smtpUserDb !== undefined) u.smtpUserDb = smtpUserDb;
+  if (mktSmtpHostDb !== undefined) u.mktSmtpHostDb = mktSmtpHostDb;
+  if (mktSmtpPortDb !== undefined) u.mktSmtpPortDb = mktSmtpPortDb;
+  if (mktSmtpUserDb !== undefined) u.mktSmtpUserDb = mktSmtpUserDb;
+  if (mktMailFrom !== undefined) u.mktMailFrom = mktMailFrom;
   if (vapidSubject !== undefined) u.vapidSubject = vapidSubject;
   if (vapidPublicKey !== undefined) u.vapidPublicKey = vapidPublicKey;
   if (aiProvider !== undefined) u.aiProvider = aiProvider;
@@ -157,6 +167,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("safewebPasswordHomologacao", safewebPasswordHomologacao);
   set("evolutionApiKey", evolutionApiKey);
   set("smtpPassDb", smtpPassDb);
+  set("mktSmtpPassDb", mktSmtpPassDb);
   set("vapidPrivateKey", vapidPrivateKey);
   set("openaiApiKey", openaiApiKey);
   set("deepseekApiKey", deepseekApiKey);

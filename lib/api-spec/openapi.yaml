@@ -4180,6 +4180,21 @@ components:
         smtpPassDb:
           type: string
           nullable: true
+        mktSmtpHostDb:
+          type: string
+          nullable: true
+        mktSmtpPortDb:
+          type: string
+          nullable: true
+        mktSmtpUserDb:
+          type: string
+          nullable: true
+        mktSmtpPassDb:
+          type: string
+          nullable: true
+        mktMailFrom:
+          type: string
+          nullable: true
         vapidSubject:
           type: string
           nullable: true
@@ -4297,6 +4312,16 @@ components:
         smtpUserDb:
           type: string
         smtpPassDb:
+          type: string
+        mktSmtpHostDb:
+          type: string
+        mktSmtpPortDb:
+          type: string
+        mktSmtpUserDb:
+          type: string
+        mktSmtpPassDb:
+          type: string
+        mktMailFrom:
           type: string
         vapidSubject:
           type: string

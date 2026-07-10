@@ -48,6 +48,11 @@ export interface AppSettingsUpdate {
   smtpPortDb?: string;
   smtpUserDb?: string;
   smtpPassDb?: string;
+  mktSmtpHostDb?: string;
+  mktSmtpPortDb?: string;
+  mktSmtpUserDb?: string;
+  mktSmtpPassDb?: string;
+  mktMailFrom?: string;
   vapidSubject?: string;
   vapidPublicKey?: string;
   vapidPrivateKey?: string;

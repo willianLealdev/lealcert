@@ -708,6 +708,11 @@ export interface AppSettings {
   smtpPortDb?: string | null;
   smtpUserDb?: string | null;
   smtpPassDb?: string | null;
+  mktSmtpHostDb?: string | null;
+  mktSmtpPortDb?: string | null;
+  mktSmtpUserDb?: string | null;
+  mktSmtpPassDb?: string | null;
+  mktMailFrom?: string | null;
   vapidSubject?: string | null;
   vapidPublicKey?: string | null;
   vapidPrivateKey?: string | null;
@@ -763,6 +768,11 @@ export interface AppSettingsUpdate {
   smtpPortDb?: string;
   smtpUserDb?: string;
   smtpPassDb?: string;
+  mktSmtpHostDb?: string;
+  mktSmtpPortDb?: string;
+  mktSmtpUserDb?: string;
+  mktSmtpPassDb?: string;
+  mktMailFrom?: string;
   vapidSubject?: string;
   vapidPublicKey?: string;
   vapidPrivateKey?: string;

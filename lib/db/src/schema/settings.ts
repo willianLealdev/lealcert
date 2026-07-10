@@ -52,6 +52,12 @@ export const settingsTable = pgTable("settings", {
   smtpPortDb: text("smtp_port_db").default("587"),
   smtpUserDb: text("smtp_user_db"),
   smtpPassDb: text("smtp_pass_db"),
+  // SMTP exclusivo para e-mails de marketing (subdomínio dedicado)
+  mktSmtpHostDb: text("mkt_smtp_host_db"),
+  mktSmtpPortDb: text("mkt_smtp_port_db").default("587"),
+  mktSmtpUserDb: text("mkt_smtp_user_db"),
+  mktSmtpPassDb: text("mkt_smtp_pass_db"),
+  mktMailFrom: text("mkt_mail_from"),
   // VAPID (Web Push notifications)
   vapidSubject: text("vapid_subject"),
   vapidPublicKey: text("vapid_public_key"),
