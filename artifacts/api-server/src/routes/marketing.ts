@@ -439,10 +439,10 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
       records = xlsx.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
     } else {
       const text = req.file.buffer.toString("utf-8");
-      // Auto-detecta separador: ponto-e-vírgula (Excel BR) ou vírgula
+      // Auto-detecta separador: tab, ponto-e-vírgula (Excel BR) ou vírgula
       const firstLine = text.split(/\r?\n/)[0] ?? "";
-      const delimiter = firstLine.includes(";") ? ";" : ",";
-      records = parse(text, { columns: true, skip_empty_lines: true, trim: true, bom: true, delimiter }) as Record<string, string>[];
+      const delimiter = firstLine.includes("\t") ? "\t" : firstLine.includes(";") ? ";" : ",";
+      records = parse(text, { columns: true, skip_empty_lines: true, trim: true, bom: true, delimiter, relax_column_count: true }) as Record<string, string>[];
     }
   } catch {
     res.status(400).json({ error: "Arquivo inválido. Use CSV ou XLSX." }); return;
@@ -451,6 +451,11 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
   type ContactRow = { name: string; email: string; phone?: string; tags?: string; type: string };
   const validRows: ContactRow[] = [];
   let parseSkipped = 0;
+
+  // Loga os cabeçalhos encontrados para diagnóstico
+  if (records.length > 0) {
+    logger.info({ headers: Object.keys(records[0]), total: records.length }, "Import: cabeçalhos detectados");
+  }
 
   for (const row of records) {
     // Normaliza chaves: trim + lowercase para comparação tolerante a espaços e capitalização
