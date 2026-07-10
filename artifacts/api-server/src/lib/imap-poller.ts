@@ -41,12 +41,16 @@ async function pollInbox(): Promise<void> {
       smtpHostDb: settingsTable.smtpHostDb,
       smtpUserDb: settingsTable.smtpUserDb,
       smtpPassDb: settingsTable.smtpPassDb,
+      mktSmtpHostDb: settingsTable.mktSmtpHostDb,
+      mktSmtpUserDb: settingsTable.mktSmtpUserDb,
+      mktSmtpPassDb: settingsTable.mktSmtpPassDb,
       webhookSecret: settingsTable.webhookSecret,
     }).from(settingsTable).limit(1);
 
-    const host = s?.smtpHostDb ?? process.env.SMTP_HOST;
-    const user = s?.smtpUserDb ?? process.env.SMTP_USER;
-    const pass = s?.smtpPassDb ?? process.env.SMTP_PASS;
+    // Usa conta de marketing dedicada se configurada, senão cai na geral
+    const host = s?.mktSmtpHostDb || s?.smtpHostDb || process.env.SMTP_HOST;
+    const user = s?.mktSmtpUserDb || s?.smtpUserDb || process.env.SMTP_USER;
+    const pass = s?.mktSmtpPassDb || s?.smtpPassDb || process.env.SMTP_PASS;
 
     if (!host || !user || !pass) {
       logger.warn("IMAP poller: credenciais não configuradas, pulando");
