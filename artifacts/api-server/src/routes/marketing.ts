@@ -453,8 +453,16 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
   let parseSkipped = 0;
 
   for (const row of records) {
+    // Normaliza chaves: trim + lowercase para comparação tolerante a espaços e capitalização
+    const normalizedRow: Record<string, string> = {};
+    for (const [k, v] of Object.entries(row)) {
+      normalizedRow[k.trim().toLowerCase()] = String(v ?? "");
+    }
     const pick = (...keys: string[]) => {
-      for (const k of keys) if (row[k] !== undefined && row[k] !== "") return String(row[k]);
+      for (const k of keys) {
+        const val = normalizedRow[k.trim().toLowerCase()];
+        if (val !== undefined && val !== "") return val;
+      }
       return "";
     };
 
