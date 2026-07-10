@@ -579,7 +579,12 @@ router.patch("/marketing/contacts/:id", async (req, res): Promise<void> => {
   const { name, email, phone, status, tags } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = String(name).trim();
-  if (email !== undefined) updates.email = String(email).toLowerCase().trim();
+  if (email !== undefined) {
+    updates.email = String(email).toLowerCase().trim();
+    updates.emailStatus = "unknown";
+    updates.emailValidatedAt = null;
+    updates.emailInvalidReason = null;
+  }
   if (phone !== undefined) updates.phone = String(phone).replace(/\D/g, "").slice(0, 20) || null;
   if (tags !== undefined) updates.tags = tags || null;
   if (status !== undefined) {
