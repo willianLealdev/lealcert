@@ -452,9 +452,10 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
   let skipped = 0;
   const errors: string[] = [];
 
+  type ContactRow = { name: string; email: string; phone?: string; tags?: string; type: string };
+  const validRows: ContactRow[] = [];
+
   for (const row of records) {
-    // Suporta: planilha exportada do sistema (Nome/Email/Telefone/Tipo),
-    // planilha de clientes (NOME/EMAIL), planilha de contadores (CONTATO/E-MAIL/TELEFONE)
     const pick = (...keys: string[]) => {
       for (const k of keys) if (row[k] !== undefined && row[k] !== "") return String(row[k]);
       return "";
@@ -471,27 +472,40 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
     );
     const rawPhone = pick("Telefone","telefone","TELEFONE","Fone","fone","FONE","phone","Phone","PHONE","Celular","celular","CELULAR");
     const phone = rawPhone.replace(/\D/g, "").slice(0, 20) || undefined;
-    // Estado/Cidade armazenados como tags para consulta futura
     const estado = pick("Estado","estado","ESTADO","UF","uf");
     const cidade = pick("Cidade","cidade","CIDADE","Município","municipio");
     const rawTags = pick("Tags","tags","TAGS");
     const tagsArr = [rawTags, estado, cidade].filter(Boolean);
     const tags = tagsArr.length > 0 ? tagsArr.join(", ") : undefined;
-
-    // Tipo da linha pode vir do CSV (exportado) ou do campo do formulário
     const rowType = pick("Tipo","tipo","type","Type");
     const finalType = (rowType === "contador" || rowType === "cliente") ? rowType : contactType;
 
     if (!email || !name) { skipped++; continue; }
+    validRows.push({ name, email, phone, tags, type: finalType });
+  }
 
+  // Insere em lotes de 500 para performance (100k registros em ~30s em vez de 20min)
+  const BATCH = 500;
+  for (let i = 0; i < validRows.length; i += BATCH) {
+    const batch = validRows.slice(i, i + BATCH);
     try {
-      await db.insert(marketingContactsTable)
-        .values({ name, email, phone, tags, type: finalType })
-        .onConflictDoNothing();
-      imported++;
+      const result = await db.insert(marketingContactsTable)
+        .values(batch)
+        .onConflictDoNothing()
+        .returning({ id: marketingContactsTable.id });
+      imported += result.length;
+      skipped += batch.length - result.length;
     } catch {
-      errors.push(email);
-      skipped++;
+      // Se o lote inteiro falhar, tenta um a um para identificar o problemático
+      for (const row of batch) {
+        try {
+          const r = await db.insert(marketingContactsTable).values(row).onConflictDoNothing().returning({ id: marketingContactsTable.id });
+          if (r.length > 0) imported++; else skipped++;
+        } catch {
+          errors.push(row.email);
+          skipped++;
+        }
+      }
     }
   }
 
