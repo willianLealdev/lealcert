@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, desc, ilike, or, sql, and, isNull, ne, inArray } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { promises as dns } from "dns";
+import * as net from "net";
 import multer from "multer";
 import { parse } from "csv-parse/sync";
 import * as xlsx from "xlsx";
@@ -30,21 +31,141 @@ const DISPOSABLE_DOMAINS = new Set([
   "zetgets.com","zippymail.info","t.lol","binkmail.com","bobmurchison.com",
 ]);
 
-const mxCache = new Map<string, { result: boolean; ts: number }>();
+// ── MX cache ──────────────────────────────────────────────────────────────────
+const mxCache = new Map<string, { hosts: string[]; ts: number }>();
 const MX_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
 
-async function hasMxRecord(domain: string): Promise<boolean> {
+async function getMxHosts(domain: string): Promise<string[]> {
   const cached = mxCache.get(domain);
-  if (cached && Date.now() - cached.ts < MX_CACHE_TTL) return cached.result;
+  if (cached && Date.now() - cached.ts < MX_CACHE_TTL) return cached.hosts;
   try {
     const records = await dns.resolveMx(domain);
-    const result = records.length > 0;
-    mxCache.set(domain, { result, ts: Date.now() });
-    return result;
+    const hosts = records.sort((a, b) => a.priority - b.priority).map(r => r.exchange);
+    mxCache.set(domain, { hosts, ts: Date.now() });
+    return hosts;
   } catch {
-    mxCache.set(domain, { result: false, ts: Date.now() });
-    return false;
+    mxCache.set(domain, { hosts: [], ts: Date.now() });
+    return [];
   }
+}
+
+// ── SMTP mailbox verification ─────────────────────────────────────────────────
+// Connects directly to the MX server and checks if the mailbox exists
+// using RCPT TO — same technique used by ZeroBounce, NeverBounce, etc.
+//
+// Limitation: Gmail, Outlook, Yahoo are "catch-all" — they accept any RCPT TO
+// to prevent email enumeration, so they'll always return "valid" here.
+// For corporate/business domains this works very well.
+
+const smtpCache = new Map<string, { result: "valid" | "invalid" | "unknown"; ts: number }>();
+const SMTP_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 dias
+
+// Free email providers are catch-all — skip SMTP check, they're always "valid"
+const CATCHALL_DOMAINS = new Set([
+  "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "hotmail.com.br",
+  "live.com", "msn.com", "yahoo.com", "yahoo.com.br", "icloud.com", "me.com",
+  "uol.com.br", "bol.com.br", "terra.com.br", "ig.com.br", "globo.com",
+  "protonmail.com", "pm.me",
+]);
+
+async function smtpVerifyMailbox(email: string, mxHost: string): Promise<"valid" | "invalid" | "unknown"> {
+  return new Promise((resolve) => {
+    let buf = "";
+    let step = 0;
+    let done = false;
+
+    const finish = (result: "valid" | "invalid" | "unknown") => {
+      if (done) return;
+      done = true;
+      try { socket.destroy(); } catch { /* ignore */ }
+      resolve(result);
+    };
+
+    const socket = net.createConnection({ host: mxHost, port: 25 });
+    socket.setTimeout(9000);
+    socket.setEncoding("utf8");
+
+    socket.on("timeout", () => finish("unknown"));
+    socket.on("error", () => finish("unknown"));
+    socket.on("close", () => finish("unknown"));
+
+    socket.on("data", (chunk: string) => {
+      buf += chunk;
+      // Process all complete lines
+      const lines = buf.split(/\r?\n/);
+      buf = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const code = parseInt(line.slice(0, 3), 10);
+        const isFinal = line[3] !== "-"; // multi-line response continues with "-"
+        if (!isFinal) continue; // wait for final line of multi-line response
+
+        if (step === 0) {
+          // Waiting for banner (220)
+          if (code === 220) {
+            socket.write("EHLO mail-verify.local\r\n");
+            step = 1;
+          } else {
+            finish("unknown");
+          }
+        } else if (step === 1) {
+          // Waiting for EHLO response (250)
+          if (code === 250) {
+            socket.write("MAIL FROM:<verify@mail-verify.local>\r\n");
+            step = 2;
+          } else {
+            finish("unknown");
+          }
+        } else if (step === 2) {
+          // Waiting for MAIL FROM response (250)
+          if (code === 250) {
+            socket.write(`RCPT TO:<${email}>\r\n`);
+            step = 3;
+          } else {
+            finish("unknown");
+          }
+        } else if (step === 3) {
+          // This is the key check — response to RCPT TO
+          if (code === 250 || code === 251) {
+            finish("valid");
+          } else if (code >= 550 && code <= 554) {
+            // 550 user unknown, 551 user not local, 552 mailbox full, 553 bad address, 554 rejected
+            finish("invalid");
+          } else {
+            // 4xx = temporary error, 421 = service unavailable → inconclusive
+            finish("unknown");
+          }
+          socket.write("QUIT\r\n");
+        }
+      }
+    });
+  });
+}
+
+async function validateEmailSmtp(email: string): Promise<"valid" | "invalid" | "unknown"> {
+  const cached = smtpCache.get(email);
+  if (cached && Date.now() - cached.ts < SMTP_CACHE_TTL) return cached.result;
+
+  const domain = email.split("@")[1].toLowerCase();
+  const mxHosts = await getMxHosts(domain);
+  if (!mxHosts.length) {
+    smtpCache.set(email, { result: "invalid", ts: Date.now() });
+    return "invalid";
+  }
+
+  // Try first two MX hosts
+  for (const host of mxHosts.slice(0, 2)) {
+    const result = await smtpVerifyMailbox(email, host);
+    if (result !== "unknown") {
+      smtpCache.set(email, { result, ts: Date.now() });
+      return result;
+    }
+  }
+
+  // Inconclusive — MX exists but SMTP check wasn't conclusive
+  smtpCache.set(email, { result: "unknown", ts: Date.now() });
+  return "unknown";
 }
 
 async function getZeroBounceApiKey(): Promise<string | null> {
@@ -72,10 +193,9 @@ async function validateEmailZeroBounce(email: string, apiKey: string): Promise<"
     zbCache.set(email, { status, ts: Date.now() });
     return status;
   } catch {
-    // Fallback to MX check on ZeroBounce failure
-    const domain = email.split("@")[1]?.toLowerCase() ?? "";
-    const mx = await hasMxRecord(domain);
-    return mx ? "valid" : "invalid";
+    // ZeroBounce failed — fall back to SMTP
+    const smtpResult = await validateEmailSmtp(email);
+    return smtpResult === "invalid" ? "invalid" : "valid";
   }
 }
 
@@ -83,10 +203,23 @@ async function validateEmail(email: string): Promise<"valid" | "invalid" | "disp
   if (!EMAIL_REGEX.test(email)) return "invalid";
   const domain = email.split("@")[1].toLowerCase();
   if (DISPOSABLE_DOMAINS.has(domain)) return "disposable";
+
+  // ZeroBounce API — se configurada, usa ela (mais precisa para catch-all domains)
   const zbKey = await getZeroBounceApiKey();
   if (zbKey) return validateEmailZeroBounce(email, zbKey);
-  const mx = await hasMxRecord(domain);
-  return mx ? "valid" : "invalid";
+
+  // Verificação SMTP nativa — igual ao ZeroBounce por baixo
+  if (!CATCHALL_DOMAINS.has(domain)) {
+    const smtpResult = await validateEmailSmtp(email);
+    if (smtpResult === "invalid") return "invalid";
+    if (smtpResult === "valid") return "valid";
+    // "unknown" → server bloqueou ou timeout → assume válido se MX existe
+  }
+
+  // Para domínios catch-all (Gmail, Outlook) e fallback de SMTP inconclusivo:
+  // só verifica se o domínio tem MX (não tem como saber se a caixa existe)
+  const hosts = await getMxHosts(domain);
+  return hosts.length > 0 ? "valid" : "invalid";
 }
 
 const router = Router();
@@ -400,8 +533,8 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
         else if (status === "disposable") { stats.disposable++; reason = "disposable_domain"; }
         else { stats.noMx++; reason = "zerobounce_invalid"; }
       } else {
-        const mx = await hasMxRecord(domain);
-        if (mx) {
+        const hosts = await getMxHosts(domain);
+        if (hosts.length > 0) {
           status = "valid";
           stats.valid++;
         } else {
