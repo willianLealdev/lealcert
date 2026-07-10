@@ -223,7 +223,7 @@ async function validateEmail(email: string): Promise<"valid" | "invalid" | "disp
 }
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 function genToken() {
   return randomBytes(24).toString("hex");
@@ -448,12 +448,9 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
     res.status(400).json({ error: "Arquivo inválido. Use CSV ou XLSX." }); return;
   }
 
-  let imported = 0;
-  let skipped = 0;
-  const errors: string[] = [];
-
   type ContactRow = { name: string; email: string; phone?: string; tags?: string; type: string };
   const validRows: ContactRow[] = [];
+  let parseSkipped = 0;
 
   for (const row of records) {
     const pick = (...keys: string[]) => {
@@ -480,36 +477,28 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
     const rowType = pick("Tipo","tipo","type","Type");
     const finalType = (rowType === "contador" || rowType === "cliente") ? rowType : contactType;
 
-    if (!email || !name) { skipped++; continue; }
+    if (!email || !name) { parseSkipped++; continue; }
     validRows.push({ name, email, phone, tags, type: finalType });
   }
 
-  // Insere em lotes de 500 para performance (100k registros em ~30s em vez de 20min)
+  // Responde imediatamente para não sofrer timeout do proxy (VPS)
+  res.json({ started: true, total: records.length, valid: validRows.length, skipped: parseSkipped });
+
+  // Processa inserções em background (lotes de 500)
   const BATCH = 500;
-  for (let i = 0; i < validRows.length; i += BATCH) {
-    const batch = validRows.slice(i, i + BATCH);
-    try {
-      const result = await db.insert(marketingContactsTable)
-        .values(batch)
-        .onConflictDoNothing()
-        .returning({ id: marketingContactsTable.id });
-      imported += result.length;
-      skipped += batch.length - result.length;
-    } catch {
-      // Se o lote inteiro falhar, tenta um a um para identificar o problemático
-      for (const row of batch) {
-        try {
-          const r = await db.insert(marketingContactsTable).values(row).onConflictDoNothing().returning({ id: marketingContactsTable.id });
-          if (r.length > 0) imported++; else skipped++;
-        } catch {
-          errors.push(row.email);
-          skipped++;
+  (async () => {
+    for (let i = 0; i < validRows.length; i += BATCH) {
+      const batch = validRows.slice(i, i + BATCH);
+      try {
+        await db.insert(marketingContactsTable).values(batch).onConflictDoNothing();
+      } catch {
+        for (const row of batch) {
+          try { await db.insert(marketingContactsTable).values(row).onConflictDoNothing(); } catch { /* ignora duplicatas */ }
         }
       }
     }
-  }
-
-  res.json({ imported, skipped, total: records.length, errors: errors.slice(0, 20) });
+    logger.info({ total: validRows.length }, "Import background: concluído");
+  })().catch(err => logger.error({ err }, "Import background: erro"));
 });
 
 router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {

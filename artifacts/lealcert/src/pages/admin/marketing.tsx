@@ -1326,9 +1326,13 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
       fd.append("file", file);
       fd.append("type", type);
       const res = await fetch("/api/marketing/contacts/import", { method: "POST", body: fd, credentials: "include" });
-      const result = await res.json() as { imported: number; skipped: number; total: number; errors?: string[] };
-      toast({ title: `Importação concluída!`, description: `${result.imported} importados, ${result.skipped} ignorados de ${result.total} registros.` });
-      invalidate();
+      const result = await res.json() as { started?: boolean; valid?: number; total: number; skipped?: number; imported?: number; errors?: string[] };
+      if (result.started) {
+        toast({ title: `Importação iniciada!`, description: `${result.valid} contatos válidos de ${result.total} registros sendo processados em background. Aguarde alguns segundos e atualize a lista.` });
+      } else {
+        toast({ title: `Importação concluída!`, description: `${result.imported} importados, ${result.skipped} ignorados de ${result.total} registros.` });
+      }
+      setTimeout(() => invalidate(), 5000);
     } catch {
       toast({ title: "Erro na importação", variant: "destructive" });
     } finally {
