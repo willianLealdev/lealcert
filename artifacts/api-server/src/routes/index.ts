@@ -23,6 +23,7 @@ import ipSecurityRouter from "./ip-security";
 import agentesRouter from "./agentes";
 import agenteDocsRouter from "./agente-docs";
 import publicRouter from "./public";
+import reviewsRouter from "./reviews";
 import checkoutRouter from "./checkout";
 
 const router: IRouter = Router();
@@ -33,6 +34,7 @@ router.use(healthRouter);
 router.use(mpWebhookRouter);
 router.use(chatRouter);
 router.use(authRouter);
+router.use(reviewsRouter);
 router.use(usersRouter);
 router.use(certificatesRouter);
 router.use(ordersRouter);

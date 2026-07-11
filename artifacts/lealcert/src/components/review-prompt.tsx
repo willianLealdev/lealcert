@@ -33,6 +33,7 @@ export function ReviewPrompt() {
   const [visible, setVisible] = useState(false);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({ name: "", role: "", text: "", stars: 5 });
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export function ReviewPrompt() {
     e.preventDefault();
     if (!form.text.trim()) return;
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/reviews", {
         method: "POST",
@@ -70,8 +72,13 @@ export function ReviewPrompt() {
         setDone(true);
         localStorage.setItem(STORAGE_KEY, "1");
         setTimeout(() => setVisible(false), 3000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Erro ao enviar. Tente novamente.");
       }
-    } catch {}
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+    }
     setLoading(false);
   }
 
@@ -128,6 +135,9 @@ export function ReviewPrompt() {
                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 resize-none"
               />
             </div>
+            {error && (
+              <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+            )}
             <div className="flex gap-2">
               <button
                 type="submit"
