@@ -3,7 +3,7 @@
  * All sensitive operations (PSBio, coupon, user creation, payment) are server-side only.
  */
 import { Router } from "express";
-import { eq, and, desc, isNotNull } from "drizzle-orm";
+import { eq, and, desc, isNotNull, count } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, ordersTable, usersTable, certificatesTable, settingsTable, couponsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
@@ -365,6 +365,34 @@ router.post("/public/checkout/coupon", async (req, res): Promise<void> => {
     res.status(400).json({ ok: false, error: "Este cupom atingiu o limite de uso." }); return;
   }
 
+  // ── Target enforcement (quando usuário está logado) ──────────────────────
+  const userId = req.session.userId;
+  const sessionRole = (req.session.role as string | undefined);
+  const sessionUserType = (req.session.userType as string | undefined);
+  if (coupon.target !== "all" && sessionRole !== "admin" && userId) {
+    const isContador = sessionRole === "contador" && sessionUserType !== "cliente";
+    if (coupon.target === "cliente" && isContador) {
+      res.status(403).json({ ok: false, error: "Este cupom é exclusivo para clientes." }); return;
+    }
+    if (coupon.target === "contador" && !isContador) {
+      res.status(403).json({ ok: false, error: "Este cupom é exclusivo para contadores." }); return;
+    }
+  }
+
+  // ── Limite por usuário ───────────────────────────────────────────────────
+  if (coupon.perUserLimit !== null && userId) {
+    const [{ count: used }] = await db
+      .select({ count: count() })
+      .from(ordersTable)
+      .where(and(eq(ordersTable.userId, userId), eq(ordersTable.couponId, coupon.id)));
+    if (Number(used) >= coupon.perUserLimit) {
+      res.status(400).json({
+        ok: false,
+        error: `Você já utilizou este cupom o máximo de ${coupon.perUserLimit} vez${coupon.perUserLimit > 1 ? "es" : ""}.`
+      }); return;
+    }
+  }
+
   const subtotal = parseFloat(String(total ?? 0));
   const discount = coupon.type === "percent"
     ? Math.round(subtotal * parseFloat(String(coupon.value))) / 100
@@ -441,7 +469,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
 
   const basePrice = parseFloat(String(cert.price));
 
-  // Validate/apply coupon (server-side only)
+  // Validate/apply coupon (server-side only) — after user is known
   let discount = 0;
   let usedCouponId: number | null = null;
   if (couponCode) {
@@ -450,13 +478,22 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       .from(couponsTable)
       .where(and(eq(couponsTable.code, String(couponCode).toUpperCase().trim()), eq(couponsTable.active, true)))
       .limit(1);
-    if (coupon && !(coupon.expiresAt && new Date(coupon.expiresAt) < new Date())
-      && !(coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit)) {
-      discount = coupon.type === "percent"
-        ? Math.round(basePrice * parseFloat(String(coupon.value))) / 100
-        : Math.min(parseFloat(String(coupon.value)), basePrice);
-      usedCouponId = coupon.id;
+
+    if (!coupon) {
+      res.status(400).json({ error: "Cupom inválido ou inativo." }); return;
     }
+    if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+      res.status(400).json({ error: "Este cupom está expirado." }); return;
+    }
+    if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
+      res.status(400).json({ error: "Este cupom atingiu o limite de uso." }); return;
+    }
+
+    // will be filled after user lookup — moved coupon application to post-user block
+    usedCouponId = coupon.id;
+    discount = coupon.type === "percent"
+      ? Math.round(basePrice * parseFloat(String(coupon.value))) / 100
+      : Math.min(parseFloat(String(coupon.value)), basePrice);
   }
 
   const lealplusPrice = extendedWarranty ? LEALPLUS_PRICE : 0;
@@ -494,6 +531,32 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
 
   if (existingUser.length > 0) {
     userId = existingUser[0].id;
+
+    // ── Target enforcement (existing user) ───────────────────────────────────
+    if (usedCouponId && existingUser[0].role !== "admin") {
+      const [appliedCoupon] = await db.select().from(couponsTable).where(eq(couponsTable.id, usedCouponId)).limit(1);
+      if (appliedCoupon && appliedCoupon.target !== "all") {
+        const isContador = existingUser[0].role === "contador" && existingUser[0].userType !== "cliente";
+        if (appliedCoupon.target === "cliente" && isContador) {
+          res.status(403).json({ error: "Este cupom é exclusivo para clientes." }); return;
+        }
+        if (appliedCoupon.target === "contador" && !isContador) {
+          res.status(403).json({ error: "Este cupom é exclusivo para contadores." }); return;
+        }
+        // ── Per-user limit check ──────────────────────────────────────────
+        if (appliedCoupon.perUserLimit !== null) {
+          const [{ count: used }] = await db
+            .select({ count: count() })
+            .from(ordersTable)
+            .where(and(eq(ordersTable.userId, userId), eq(ordersTable.couponId, usedCouponId)));
+          if (Number(used) >= appliedCoupon.perUserLimit) {
+            res.status(400).json({
+              error: `Você já utilizou este cupom o máximo de ${appliedCoupon.perUserLimit} vez${appliedCoupon.perUserLimit > 1 ? "es" : ""}.`
+            }); return;
+          }
+        }
+      }
+    }
   } else {
     // Create new user with temp password
     isNewUser = true;
@@ -569,6 +632,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     nfNeighborhood: nfNeighborhood || null,
     nfCity: nfCity || null,
     nfState: nfState || null,
+    couponId: usedCouponId,
     certNameSnapshot: cert.name,
     certProductSnapshot: cert.product || null,
     termsAcceptedAt: termsAccepted ? new Date() : null,

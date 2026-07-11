@@ -20,6 +20,7 @@ export const ListCouponsResponseItem = zod.object({
   "expiresAt": zod.coerce.date().nullable(),
   "active": zod.boolean(),
   "usageLimit": zod.number().nullable(),
+  "perUserLimit": zod.number().nullable(),
   "usageCount": zod.number(),
   "createdAt": zod.coerce.date()
 })
@@ -36,7 +37,8 @@ export const CreateCouponBody = zod.object({
   "target": zod.enum(['all', 'cliente', 'contador']),
   "expiresAt": zod.coerce.date().nullish(),
   "active": zod.boolean().optional(),
-  "usageLimit": zod.number().nullish()
+  "usageLimit": zod.number().nullish(),
+  "perUserLimit": zod.number().nullish()
 })
 
 
@@ -56,6 +58,7 @@ export const ValidateCouponResponse = zod.object({
   "expiresAt": zod.coerce.date().nullable(),
   "active": zod.boolean(),
   "usageLimit": zod.number().nullable(),
+  "perUserLimit": zod.number().nullable(),
   "usageCount": zod.number(),
   "createdAt": zod.coerce.date()
 })
@@ -75,7 +78,8 @@ export const UpdateCouponBody = zod.object({
   "target": zod.enum(['all', 'cliente', 'contador']),
   "expiresAt": zod.coerce.date().nullish(),
   "active": zod.boolean().optional(),
-  "usageLimit": zod.number().nullish()
+  "usageLimit": zod.number().nullish(),
+  "perUserLimit": zod.number().nullish()
 })
 
 export const UpdateCouponResponse = zod.object({
@@ -87,6 +91,7 @@ export const UpdateCouponResponse = zod.object({
   "expiresAt": zod.coerce.date().nullable(),
   "active": zod.boolean(),
   "usageLimit": zod.number().nullable(),
+  "perUserLimit": zod.number().nullable(),
   "usageCount": zod.number(),
   "createdAt": zod.coerce.date()
 })

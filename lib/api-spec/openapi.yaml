@@ -5439,7 +5439,7 @@ components:
 
     Coupon:
       type: object
-      required: [id, code, type, value, target, expiresAt, active, usageLimit, usageCount, createdAt]
+      required: [id, code, type, value, target, expiresAt, active, usageLimit, perUserLimit, usageCount, createdAt]
       properties:
         id:
           type: integer
@@ -5460,6 +5460,9 @@ components:
         active:
           type: boolean
         usageLimit:
+          type: integer
+          nullable: true
+        perUserLimit:
           type: integer
           nullable: true
         usageCount:
@@ -5496,6 +5499,9 @@ components:
         active:
           type: boolean
         usageLimit:
+          type: integer
+          nullable: true
+        perUserLimit:
           type: integer
           nullable: true
 

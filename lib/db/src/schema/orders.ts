@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { certificatesTable } from "./certificates";
+import { couponsTable } from "./coupons";
 
 export const orderStatusEnum = pgEnum("order_status", [
   "created",
@@ -100,6 +101,7 @@ export const ordersTable = pgTable("orders", {
   nfState: text("nf_state"),
   // Snapshot do certificado no momento da criação do pedido
   // Garante que nome e tipo fiquem preservados mesmo se o catálogo for alterado/excluído
+  couponId: integer("coupon_id").references(() => couponsTable.id, { onDelete: "set null" }),
   certNameSnapshot: text("cert_name_snapshot"),
   certProductSnapshot: text("cert_product_snapshot"),
   // Safeweb integration fields

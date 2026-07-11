@@ -1554,6 +1554,7 @@ export interface Coupon {
   expiresAt: string | null;
   active: boolean;
   usageLimit: number | null;
+  perUserLimit: number | null;
   usageCount: number;
   createdAt: string;
 }
@@ -1587,6 +1588,7 @@ export interface CouponInput {
   expiresAt?: string | null;
   active?: boolean;
   usageLimit?: number | null;
+  perUserLimit?: number | null;
 }
 
 export interface OpenaiConversation {

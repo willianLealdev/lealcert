@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, Tag, Percent, DollarSign, Users, User, Building2, CalendarClock, Infinity } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
+type LimitMode = "none" | "total" | "per_user";
+
 type CouponForm = {
   code: string;
   type: "percent" | "fixed";
@@ -23,7 +25,8 @@ type CouponForm = {
   expiresMode: "never" | "date";
   expiresAt: string;
   active: boolean;
-  usageLimit: string;
+  limitMode: LimitMode;
+  limitValue: string;
 };
 
 const EMPTY: CouponForm = {
@@ -34,7 +37,8 @@ const EMPTY: CouponForm = {
   expiresMode: "never",
   expiresAt: "",
   active: true,
-  usageLimit: "",
+  limitMode: "none",
+  limitValue: "",
 };
 
 function formatBRL(v: number) {
@@ -49,6 +53,12 @@ function formatDate(d: string | null | undefined) {
 function isExpired(d: string | null | undefined) {
   if (!d) return false;
   return new Date(d) < new Date();
+}
+
+function getLimitMode(c: Coupon): LimitMode {
+  if (c.perUserLimit != null) return "per_user";
+  if (c.usageLimit != null) return "total";
+  return "none";
 }
 
 export default function AdminCoupons() {
@@ -69,6 +79,7 @@ export default function AdminCoupons() {
 
   function openCreate() { setForm(EMPTY); setEditId(null); setOpen(true); }
   function openEdit(c: Coupon) {
+    const mode = getLimitMode(c);
     setForm({
       code: c.code,
       type: c.type as "percent" | "fixed",
@@ -77,7 +88,8 @@ export default function AdminCoupons() {
       expiresMode: c.expiresAt ? "date" : "never",
       expiresAt: c.expiresAt ? c.expiresAt.slice(0, 10) : "",
       active: c.active,
-      usageLimit: c.usageLimit != null ? String(c.usageLimit) : "",
+      limitMode: mode,
+      limitValue: mode === "per_user" ? String(c.perUserLimit ?? "") : mode === "total" ? String(c.usageLimit ?? "") : "",
     });
     setEditId(c.id);
     setOpen(true);
@@ -85,6 +97,7 @@ export default function AdminCoupons() {
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    const limitNum = form.limitValue ? parseInt(form.limitValue, 10) : null;
     const data = {
       code: form.code.toUpperCase().trim(),
       type: form.type,
@@ -92,7 +105,8 @@ export default function AdminCoupons() {
       target: form.target,
       expiresAt: form.expiresMode === "date" && form.expiresAt ? new Date(form.expiresAt + "T23:59:59").toISOString() : null,
       active: form.active,
-      usageLimit: form.usageLimit ? parseInt(form.usageLimit, 10) : null,
+      usageLimit: form.limitMode === "total" ? limitNum : null,
+      perUserLimit: form.limitMode === "per_user" ? limitNum : null,
     };
     if (editId !== null) update.mutate({ id: editId, data: data as Parameters<typeof update.mutate>[0]["data"] });
     else create.mutate({ data: data as Parameters<typeof create.mutate>[0]["data"] });
@@ -104,6 +118,12 @@ export default function AdminCoupons() {
     all: { label: "Todos", icon: <Users className="h-3 w-3" /> },
     cliente: { label: "Clientes", icon: <User className="h-3 w-3" /> },
     contador: { label: "Contadores", icon: <Building2 className="h-3 w-3" /> },
+  };
+
+  const limitModeLabel: Record<LimitMode, string> = {
+    none: "Ilimitado",
+    total: "Limite total",
+    per_user: "Por cadastro",
   };
 
   return (
@@ -134,6 +154,7 @@ export default function AdminCoupons() {
             const expired = isExpired(c.expiresAt);
             const exhausted = c.usageLimit !== null && c.usageCount >= c.usageLimit;
             const statusOk = c.active && !expired && !exhausted;
+            const mode = getLimitMode(c);
 
             return (
               <Card key={c.id} className={`transition-all ${!statusOk ? "opacity-70" : ""}`}>
@@ -161,7 +182,11 @@ export default function AdminCoupons() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Tag className="h-3.5 w-3.5" />
-                          {c.usageLimit !== null ? `${c.usageCount}/${c.usageLimit} usos` : `${c.usageCount} usos (ilimitado)`}
+                          {mode === "per_user"
+                            ? `${c.usageCount} usos · máx ${c.perUserLimit}×/cadastro`
+                            : mode === "total"
+                            ? `${c.usageCount}/${c.usageLimit} usos (total)`
+                            : `${c.usageCount} usos (ilimitado)`}
                         </span>
                       </div>
                     </div>
@@ -278,16 +303,52 @@ export default function AdminCoupons() {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Limite de usos <span className="text-muted-foreground text-xs">(deixe vazio para ilimitado)</span></Label>
-              <Input
-                type="number"
-                min="1"
-                step="1"
-                value={form.usageLimit}
-                onChange={e => set("usageLimit", e.target.value)}
-                placeholder="Ilimitado"
-              />
+            {/* ── Limite de uso ─────────────────────────────────────────────────── */}
+            <div className="space-y-3">
+              <Label>Limite de uso</Label>
+              <RadioGroup
+                value={form.limitMode}
+                onValueChange={v => { set("limitMode", v as LimitMode); set("limitValue", ""); }}
+                className="flex flex-col gap-2"
+              >
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-2.5 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5 transition-all">
+                  <RadioGroupItem value="none" id="lim-none" />
+                  <Label htmlFor="lim-none" className="cursor-pointer font-normal flex items-center gap-1.5">
+                    <Infinity className="h-3.5 w-3.5" /> Sem limite — qualquer um pode usar à vontade
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-2.5 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5 transition-all">
+                  <RadioGroupItem value="total" id="lim-total" />
+                  <Label htmlFor="lim-total" className="cursor-pointer font-normal flex items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5" /> Limite total — X usos no total (primeiro a usar aproveita)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2 border rounded-lg px-3 py-2.5 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5 transition-all">
+                  <RadioGroupItem value="per_user" id="lim-per-user" />
+                  <Label htmlFor="lim-per-user" className="cursor-pointer font-normal flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5" /> Por cadastro — cada cliente/contador usa no máximo X vezes
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {form.limitMode !== "none" && (
+                <div className="pl-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={form.limitValue}
+                    onChange={e => set("limitValue", e.target.value)}
+                    placeholder={form.limitMode === "total" ? "Ex: 100 usos no total" : "Ex: 2 usos por pessoa"}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {form.limitMode === "total"
+                      ? "Após esse número de pedidos, o cupom é automaticamente bloqueado para todos."
+                      : "Cada CPF/CNPJ cadastrado poderá usar este cupom no máximo esse número de vezes."}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3">

@@ -16,4 +16,5 @@ export interface CouponInput {
   expiresAt?: Date | null;
   active?: boolean;
   usageLimit?: number | null;
+  perUserLimit?: number | null;
 }
