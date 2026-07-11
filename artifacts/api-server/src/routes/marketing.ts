@@ -415,6 +415,60 @@ router.get("/marketing/contacts", async (req, res): Promise<void> => {
   res.json({ data, total: count });
 });
 
+// ─── Export contacts as XLSX ──────────────────────────────────────────────────
+router.get("/marketing/contacts/export", async (req, res): Promise<void> => {
+  const search = req.query.search as string | undefined;
+  const status = req.query.status as string | undefined;
+  const type = req.query.type as string | undefined;
+  const emailStatus = req.query.emailStatus as string | undefined;
+  const isNewFilter = req.query.isNew as string | undefined;
+  const bounced = req.query.bounced as string | undefined;
+
+  const conditions = [];
+  if (search) conditions.push(or(ilike(marketingContactsTable.name, `%${search}%`), ilike(marketingContactsTable.email, `%${search}%`)));
+  if (status) conditions.push(eq(marketingContactsTable.status, status));
+  if (type) conditions.push(eq(marketingContactsTable.type, type));
+  if (emailStatus) conditions.push(eq(marketingContactsTable.emailStatus, emailStatus));
+  if (isNewFilter === "true") conditions.push(eq(marketingContactsTable.isNew, true));
+  if (bounced === "true") conditions.push(eq(marketingContactsTable.bounced, true));
+  else if (bounced === "had") conditions.push(eq(marketingContactsTable.hadBounce, true));
+
+  const where = conditions.length ? and(...conditions) : undefined;
+
+  const rows = await db.select().from(marketingContactsTable).where(where).orderBy(desc(marketingContactsTable.createdAt));
+
+  const EMAIL_STATUS_LABELS: Record<string, string> = {
+    unknown: "Não validado", valid: "Válido", invalid: "Inválido", disposable: "Descartável",
+  };
+  const INVALID_REASON_LABELS: Record<string, string> = {
+    bad_format: "Formato inválido", no_mx: "Sem servidor MX", disposable_domain: "Domínio descartável",
+  };
+
+  const sheetData = rows.map(r => ({
+    "Nome": r.name,
+    "E-mail": r.email,
+    "Telefone": r.phone ?? "",
+    "Tipo": r.type === "contador" ? "Contador" : "Cliente",
+    "Status": r.bounced ? "Bounce" : r.status === "unsubscribed" ? "Descadastrado" : "Ativo",
+    "E-mail Válido": EMAIL_STATUS_LABELS[r.emailStatus] ?? r.emailStatus,
+    "Motivo Inválido": r.emailInvalidReason ? (INVALID_REASON_LABELS[r.emailInvalidReason] ?? r.emailInvalidReason) : "",
+    "Tags": r.tags ?? "",
+    "Bounce Anterior": r.hadBounce ? "Sim" : "Não",
+    "Novo": r.isNew ? "Sim" : "Não",
+    "Cadastrado em": r.createdAt ? new Date(r.createdAt).toLocaleDateString("pt-BR") : "",
+  }));
+
+  const wb = xlsx.utils.book_new();
+  const ws = xlsx.utils.json_to_sheet(sheetData);
+  xlsx.utils.book_append_sheet(wb, ws, "Contatos");
+  const buf = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+
+  const filename = `contatos_${type ?? "todos"}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(buf);
+});
+
 router.post("/marketing/contacts", async (req, res): Promise<void> => {
   const { name, email, phone, tags, type } = req.body ?? {};
   if (!name || !email) { res.status(400).json({ error: "Nome e e-mail são obrigatórios." }); return; }
@@ -952,8 +1006,8 @@ export interface DispatchOptions {
   manualRecipients?: { name: string; email: string }[];
 }
 
-type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; isNew: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date };
-type RawContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; is_new: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; created_at: Date };
+type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; hadBounce: boolean; isNew: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date };
+type RawContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; had_bounce: boolean; is_new: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; created_at: Date };
 
 // Domínios de email gratuito que devem ser enviados por último e em lotes menores
 const FREE_EMAIL_DOMAINS = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "hotmail.com.br", "live.com", "msn.com"]);
@@ -962,7 +1016,7 @@ function isFreeEmail(email: string) { return FREE_EMAIL_DOMAINS.has(email.split(
 function mapContact(r: RawContactRow): ContactRow {
   return {
     id: r.id, name: r.name, email: r.email, phone: r.phone, type: r.type, status: r.status,
-    bounced: r.bounced, isNew: r.is_new ?? false, tags: r.tags, emailStatus: r.email_status,
+    bounced: r.bounced, hadBounce: r.had_bounce ?? false, isNew: r.is_new ?? false, tags: r.tags, emailStatus: r.email_status,
     emailInvalidReason: r.email_invalid_reason, emailValidatedAt: r.email_validated_at,
     unsubscribedAt: r.unsubscribed_at, createdAt: r.created_at,
   };
@@ -984,7 +1038,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     }
     contacts = opts.manualRecipients.map((r, i) => ({
       id: -(i + 1), name: r.name, email: r.email, phone: null,
-      type: "manual", status: "active", bounced: false, isNew: false, tags: null,
+      type: "manual", status: "active", bounced: false, hadBounce: false, isNew: false, tags: null,
       emailStatus: "unknown", emailInvalidReason: null, emailValidatedAt: null,
       unsubscribedAt: null, createdAt: new Date(),
     }));
@@ -1134,7 +1188,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       if (contact.id > 0) {
         const isPermanentBounce = /550|551|552|553|554|user.unknown|does not exist|invalid|no such user|mailbox.*not.*found|bounce/i.test(error);
         if (isPermanentBounce) {
-          await db.update(marketingContactsTable).set({ bounced: true }).where(eq(marketingContactsTable.id, contact.id));
+          await db.update(marketingContactsTable).set({ bounced: true, hadBounce: true }).where(eq(marketingContactsTable.id, contact.id));
           logger.info({ contactId: contact.id, email: contact.email }, "Contato marcado como bloqueado por bounce permanente");
         }
       }

@@ -21,6 +21,7 @@ export interface MarketingContact {
   emailInvalidReason?: string | null;
   emailValidatedAt?: string | null;
   bounced: boolean;
+  hadBounce?: boolean;
   isNew?: boolean;
   unsubscribedAt?: string | null;
   createdAt: string;

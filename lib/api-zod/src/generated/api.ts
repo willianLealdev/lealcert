@@ -2690,6 +2690,7 @@ export const ListMarketingContactsResponse = zod.object({
   "emailInvalidReason": zod.string().nullish().describe('Reason why email is invalid (bad_format, no_mx, disposable_domain)'),
   "emailValidatedAt": zod.string().nullish(),
   "bounced": zod.boolean(),
+  "hadBounce": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "unsubscribedAt": zod.string().nullish(),
   "createdAt": zod.string()
@@ -2781,6 +2782,7 @@ export const UpdateMarketingContactResponse = zod.object({
   "emailInvalidReason": zod.string().nullish().describe('Reason why email is invalid (bad_format, no_mx, disposable_domain)'),
   "emailValidatedAt": zod.string().nullish(),
   "bounced": zod.boolean(),
+  "hadBounce": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "unsubscribedAt": zod.string().nullish(),
   "createdAt": zod.string()

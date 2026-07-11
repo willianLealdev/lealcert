@@ -48,7 +48,7 @@ import {
   Megaphone, Users, Mail, MailOpen, MailX, Send, Upload, Plus, Trash2, Pencil,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
   ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy, MousePointerClick,
-  AlertTriangle, RotateCcw, Sparkles,
+  AlertTriangle, RotateCcw, Sparkles, Download,
 } from "lucide-react";
 
 type Tab = "overview" | "campanhas" | "clientes" | "contadores" | "respostas" | "bounces";
@@ -79,9 +79,15 @@ function statusBadge(status: string) {
   return <Badge variant={s.variant}>{s.label}</Badge>;
 }
 
-function contactStatusBadge(status: string, bounced: boolean) {
+function contactStatusBadge(status: string, bounced: boolean, hadBounce?: boolean) {
   if (bounced) return <Badge variant="destructive">Bounce</Badge>;
   if (status === "unsubscribed") return <Badge variant="outline">Descadastrado</Badge>;
+  if (hadBounce) return (
+    <span className="inline-flex flex-col gap-0.5">
+      <Badge className="bg-emerald-500/15 text-emerald-600">Ativo</Badge>
+      <span className="text-[10px] font-semibold text-red-500 leading-none flex items-center gap-0.5">⚠ bounce anterior</span>
+    </span>
+  );
   return <Badge className="bg-emerald-500/15 text-emerald-600">Ativo</Badge>;
 }
 
@@ -1382,6 +1388,22 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
               : "Iniciando…"
             : "Validar E-mails"}
         </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            const params = new URLSearchParams();
+            if (type) params.set("type", type);
+            if (search) params.set("search", search);
+            if (contactStatusFilter !== "all") params.set("status", contactStatusFilter);
+            if (emailStatusFilter !== "all") params.set("emailStatus", emailStatusFilter);
+            if (isNewFilter) params.set("isNew", "true");
+            window.open(`/api/marketing/contacts/export?${params.toString()}`, "_blank");
+          }}
+          className="gap-2 shrink-0"
+          title="Exporta os contatos com os filtros atuais"
+        >
+          <Download className="h-4 w-4" /> Exportar
+        </Button>
         <Button onClick={() => setShowAdd(true)} className="gap-2 shrink-0">
           <Plus className="h-4 w-4" /> Adicionar
         </Button>
@@ -1526,7 +1548,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
               </span>
               <span className="text-sm text-muted-foreground truncate">{c.email}</span>
               {!isCliente && <span className="text-sm text-muted-foreground">{c.phone ?? "—"}</span>}
-              <span>{contactStatusBadge(c.status, c.bounced)}</span>
+              <span>{contactStatusBadge(c.status, c.bounced, c.hadBounce)}</span>
               <span>{emailStatusBadge(c.emailStatus, c.emailInvalidReason)}</span>
               <div className="flex items-center gap-1">
                 {c.status === "active" && (
