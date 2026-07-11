@@ -16,4 +16,8 @@ export interface SendCampaignInput {
   specificContactIds?: number[];
   /** Ad-hoc recipients when targetOverride=manual */
   manualRecipients?: SendCampaignInputManualRecipientsItem[];
+  /** Quantos e-mails enviar por lote (override para este disparo) */
+  sendBatchSize?: number;
+  /** Segundos de espera entre lotes (override para este disparo) */
+  sendIntervalSecs?: number;
 }

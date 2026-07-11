@@ -814,7 +814,7 @@ router.delete("/marketing/campaigns/:id", async (req, res): Promise<void> => {
 
 router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const { scheduledAt, targetOverride, specificContactIds, manualRecipients } = req.body ?? {};
+  const { scheduledAt, targetOverride, specificContactIds, manualRecipients, sendBatchSize, sendIntervalSecs } = req.body ?? {};
 
   const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
@@ -837,6 +837,12 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
   }
   if (Array.isArray(manualRecipients) && manualRecipients.length > 0) {
     dispatchOpts.manualRecipients = manualRecipients;
+  }
+  if (sendBatchSize && Number(sendBatchSize) > 0) {
+    dispatchOpts.sendBatchSize = Number(sendBatchSize);
+  }
+  if (sendIntervalSecs && Number(sendIntervalSecs) > 0) {
+    dispatchOpts.sendIntervalSecs = Number(sendIntervalSecs);
   }
 
   if (scheduledAt) {
@@ -1004,6 +1010,8 @@ export interface DispatchOptions {
     | "not_opened_cliente" | "not_opened_contador";
   specificContactIds?: number[];
   manualRecipients?: { name: string; email: string }[];
+  sendBatchSize?: number;
+  sendIntervalSecs?: number;
 }
 
 type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; hadBounce: boolean; isNew: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date };
@@ -1145,9 +1153,11 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   const FREE_BATCH_SIZE = 20;
   const FREE_BATCH_DELAY_MS = 30_000; // 30 segundos entre lotes
 
-  // ── Rate control definido na campanha ─────────────────────────────────────
-  const userBatchSize = campaign.sendBatchSize ?? null;   // null = sem limite de lote
-  const userIntervalMs = campaign.sendIntervalSecs != null ? campaign.sendIntervalSecs * 1000 : null;
+  // ── Rate control: prioriza opts (do modal de envio), fallback para valor salvo na campanha ──
+  const userBatchSize = opts.sendBatchSize ?? campaign.sendBatchSize ?? null;
+  const userIntervalMs = opts.sendIntervalSecs != null
+    ? opts.sendIntervalSecs * 1000
+    : campaign.sendIntervalSecs != null ? campaign.sendIntervalSecs * 1000 : null;
 
   logger.info({ campaignId, total: contacts.length, alreadySent: alreadySentCount, normal: normalContacts.length, freeEmail: freeContacts.length, remaining: remaining.length, userBatchSize, userIntervalMs }, "Campaign dispatch started");
 

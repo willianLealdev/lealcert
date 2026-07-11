@@ -5355,12 +5355,6 @@ components:
         targetType:
           type: string
           enum: [all, cliente, contador]
-        sendBatchSize:
-          type: integer
-          description: Quantos e-mails enviar por lote
-        sendIntervalSecs:
-          type: integer
-          description: Segundos de espera entre lotes
 
     SendReplyInput:
       type: object
@@ -5424,6 +5418,12 @@ components:
                 type: string
               email:
                 type: string
+        sendBatchSize:
+          type: integer
+          description: Quantos e-mails enviar por lote (override para este disparo)
+        sendIntervalSecs:
+          type: integer
+          description: Segundos de espera entre lotes (override para este disparo)
 
     InboundWebhookInput:
       type: object

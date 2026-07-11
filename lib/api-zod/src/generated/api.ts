@@ -2834,9 +2834,7 @@ export const CreateMarketingCampaignBody = zod.object({
   "replyTo": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
   "filterTags": zod.string().optional(),
-  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
-  "sendBatchSize": zod.number().optional().describe('Quantos e-mails enviar por lote'),
-  "sendIntervalSecs": zod.number().optional().describe('Segundos de espera entre lotes')
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional()
 })
 
 
@@ -2892,9 +2890,7 @@ export const UpdateMarketingCampaignBody = zod.object({
   "replyTo": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
   "filterTags": zod.string().optional(),
-  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
-  "sendBatchSize": zod.number().optional().describe('Quantos e-mails enviar por lote'),
-  "sendIntervalSecs": zod.number().optional().describe('Segundos de espera entre lotes')
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional()
 })
 
 export const UpdateMarketingCampaignResponse = zod.object({
@@ -2951,7 +2947,9 @@ export const SendMarketingCampaignBody = zod.object({
   "manualRecipients": zod.array(zod.object({
   "name": zod.string(),
   "email": zod.string()
-})).optional().describe('Ad-hoc recipients when targetOverride=manual')
+})).optional().describe('Ad-hoc recipients when targetOverride=manual'),
+  "sendBatchSize": zod.number().optional().describe('Quantos e-mails enviar por lote (override para este disparo)'),
+  "sendIntervalSecs": zod.number().optional().describe('Segundos de espera entre lotes (override para este disparo)')
 })
 
 export const SendMarketingCampaignResponse = zod.object({

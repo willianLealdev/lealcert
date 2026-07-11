@@ -1449,10 +1449,6 @@ export interface CreateCampaignInput {
   scheduledAt?: string;
   filterTags?: string;
   targetType?: CreateCampaignInputTargetType;
-  /** Quantos e-mails enviar por lote */
-  sendBatchSize?: number;
-  /** Segundos de espera entre lotes */
-  sendIntervalSecs?: number;
 }
 
 export interface SendReplyInput {
@@ -1519,6 +1515,10 @@ export interface SendCampaignInput {
   specificContactIds?: number[];
   /** Ad-hoc recipients when targetOverride=manual */
   manualRecipients?: SendCampaignInputManualRecipientsItem[];
+  /** Quantos e-mails enviar por lote (override para este disparo) */
+  sendBatchSize?: number;
+  /** Segundos de espera entre lotes (override para este disparo) */
+  sendIntervalSecs?: number;
 }
 
 export interface InboundWebhookInput {

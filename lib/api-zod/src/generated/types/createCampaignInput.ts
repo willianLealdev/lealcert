@@ -18,8 +18,4 @@ export interface CreateCampaignInput {
   scheduledAt?: string;
   filterTags?: string;
   targetType?: CreateCampaignInputTargetType;
-  /** Quantos e-mails enviar por lote */
-  sendBatchSize?: number;
-  /** Segundos de espera entre lotes */
-  sendIntervalSecs?: number;
 }

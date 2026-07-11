@@ -814,6 +814,8 @@ function SendCampaignDialog({
   const [contactSearch, setContactSearch] = useState("");
   const [selectedContacts, setSelectedContacts] = useState<{ id: number; name: string; email: string }[]>([]);
   const [manualList, setManualList] = useState<ManualRecipient[]>([{ name: "", email: "" }]);
+  const [sendBatchSize, setSendBatchSize] = useState("");
+  const [sendIntervalMins, setSendIntervalMins] = useState("");
 
   const { data: searchResult } = useListMarketingContacts({
     search: contactSearch.length >= 2 ? contactSearch : undefined,
@@ -843,12 +845,21 @@ function SendCampaignDialog({
   function removeManualRow(idx: number) { setManualList(prev => prev.filter((_, i) => i !== idx)); }
 
   function handleSend() {
+    const batchSize = sendBatchSize ? parseInt(sendBatchSize, 10) : undefined;
+    const intervalSecs = sendIntervalMins ? parseInt(sendIntervalMins, 10) * 60 : undefined;
     const body: {
       scheduledAt?: string;
       targetOverride: SendTarget;
       specificContactIds?: number[];
       manualRecipients?: ManualRecipient[];
-    } = { targetOverride: target, scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined };
+      sendBatchSize?: number;
+      sendIntervalSecs?: number;
+    } = {
+      targetOverride: target,
+      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+      sendBatchSize: batchSize && batchSize > 0 ? batchSize : undefined,
+      sendIntervalSecs: intervalSecs && intervalSecs > 0 ? intervalSecs : undefined,
+    };
 
     if (target === "specific") {
       if (!selectedContacts.length) {
@@ -1022,6 +1033,46 @@ function SendCampaignDialog({
             </div>
           )}
 
+          {/* Velocidade de Envio */}
+          <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+              <Send className="h-4 w-4 text-primary" /> Velocidade de Envio
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Enviar em lotes controlados para evitar bloqueio do servidor de e-mail.
+              Deixe em branco para enviar sem limite de velocidade.
+              <br />
+              <span className="text-amber-600 font-medium">Gmail, Outlook e Hotmail seguem regra própria independente desta configuração.</span>
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">E-mails por lote</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={sendBatchSize}
+                  onChange={e => setSendBatchSize(e.target.value)}
+                  placeholder="Ex: 1000"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Intervalo entre lotes (minutos)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={sendIntervalMins}
+                  onChange={e => setSendIntervalMins(e.target.value)}
+                  placeholder="Ex: 2"
+                />
+              </div>
+            </div>
+            {sendBatchSize && sendIntervalMins && (
+              <p className="text-xs text-primary font-medium">
+                → Vai enviar {parseInt(sendBatchSize).toLocaleString("pt-BR")} e-mails a cada {sendIntervalMins} minuto(s)
+              </p>
+            )}
+          </div>
+
           {/* Schedule */}
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">Data e hora de envio <span className="font-normal text-muted-foreground">(opcional)</span></Label>
@@ -1098,8 +1149,6 @@ function CampaignFormDialog({
     replyTo: existing?.replyTo ?? "",
     filterTags: existing?.filterTags ?? "",
     targetType: existing?.targetType ?? "all",
-    sendBatchSize: existing?.sendBatchSize?.toString() ?? "",
-    sendIntervalMins: existing?.sendIntervalSecs != null ? Math.round(existing.sendIntervalSecs / 60).toString() : "",
   });
 
   function set(k: keyof typeof form, v: string) { setForm(p => ({ ...p, [k]: v })); }
@@ -1109,15 +1158,11 @@ function CampaignFormDialog({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const batchSize = form.sendBatchSize ? parseInt(form.sendBatchSize, 10) : undefined;
-    const intervalMins = form.sendIntervalMins ? parseInt(form.sendIntervalMins, 10) : undefined;
     const data = {
       ...form,
       replyTo: form.replyTo || undefined,
       bodyText: form.bodyText || undefined,
       filterTags: form.filterTags || undefined,
-      sendBatchSize: batchSize && batchSize > 0 ? batchSize : undefined,
-      sendIntervalSecs: intervalMins && intervalMins > 0 ? intervalMins * 60 : undefined,
     };
     if (campaignId) updateMutation.mutate({ id: campaignId, data });
     else createMutation.mutate({ data });
@@ -1195,45 +1240,6 @@ function CampaignFormDialog({
             </div>
           </div>
 
-          {/* Controle de velocidade de envio */}
-          <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
-            <p className="text-sm font-semibold flex items-center gap-1.5">
-              <Send className="h-4 w-4 text-primary" /> Velocidade de Envio
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Enviar em lotes controlados para evitar bloqueio do servidor de e-mail.
-              Deixe em branco para enviar sem limite de velocidade.
-              <br />
-              <span className="text-amber-600 font-medium">Gmail, Outlook e Hotmail seguem regra própria independente desta configuração.</span>
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">E-mails por lote</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={form.sendBatchSize}
-                  onChange={e => set("sendBatchSize", e.target.value)}
-                  placeholder="Ex: 1000"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Intervalo entre lotes (minutos)</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={form.sendIntervalMins}
-                  onChange={e => set("sendIntervalMins", e.target.value)}
-                  placeholder="Ex: 2"
-                />
-              </div>
-            </div>
-            {form.sendBatchSize && form.sendIntervalMins && (
-              <p className="text-xs text-primary font-medium">
-                → Vai enviar {parseInt(form.sendBatchSize).toLocaleString("pt-BR")} e-mails a cada {form.sendIntervalMins} minuto(s)
-              </p>
-            )}
-          </div>
           <div className="space-y-1.5">
             <Label>Corpo do E-mail (HTML) *</Label>
             <Textarea
