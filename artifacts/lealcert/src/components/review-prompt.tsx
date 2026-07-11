@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Star, X, Send, Loader2, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
-const STORAGE_KEY = "lc_review_dismissed";
+const STORAGE_KEY = "lc_review_done";
 
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hover, setHover] = useState(0);
@@ -38,6 +38,7 @@ export function ReviewPrompt() {
 
   useEffect(() => {
     if (!user || user.role === "admin" || user.role === "agente") return;
+    // Se já avaliou nesta sessão do navegador, não mostrar
     if (localStorage.getItem(STORAGE_KEY)) return;
 
     fetch("/api/reviews/my-status", { credentials: "include" })
@@ -46,13 +47,16 @@ export function ReviewPrompt() {
         if (!data.hasReviewed) {
           setForm(f => ({ ...f, name: user.name || "", role: "Contador" }));
           setTimeout(() => setVisible(true), 2500);
+        } else {
+          // Já avaliou no banco — salva localmente pra evitar chamada futura
+          localStorage.setItem(STORAGE_KEY, "1");
         }
       })
       .catch(() => {});
   }, [user]);
 
   function dismiss() {
-    localStorage.setItem(STORAGE_KEY, "1");
+    // Fecha só por agora — na próxima vez que logar vai aparecer de novo
     setVisible(false);
   }
 
