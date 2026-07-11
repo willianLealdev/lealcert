@@ -1145,7 +1145,11 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   const FREE_BATCH_SIZE = 20;
   const FREE_BATCH_DELAY_MS = 30_000; // 30 segundos entre lotes
 
-  logger.info({ campaignId, total: contacts.length, alreadySent: alreadySentCount, normal: normalContacts.length, freeEmail: freeContacts.length, remaining: remaining.length }, "Campaign dispatch started");
+  // ── Rate control definido na campanha ─────────────────────────────────────
+  const userBatchSize = campaign.sendBatchSize ?? null;   // null = sem limite de lote
+  const userIntervalMs = campaign.sendIntervalSecs != null ? campaign.sendIntervalSecs * 1000 : null;
+
+  logger.info({ campaignId, total: contacts.length, alreadySent: alreadySentCount, normal: normalContacts.length, freeEmail: freeContacts.length, remaining: remaining.length, userBatchSize, userIntervalMs }, "Campaign dispatch started");
 
   async function sendOne(contact: ContactRow): Promise<void> {
     const token = genToken();
@@ -1195,10 +1199,13 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     }
   }
 
-  for (const contact of remaining) {
+  let normalSentInBatch = 0; // contador para rate control do usuário
+
+  for (let i = 0; i < remaining.length; i++) {
+    const contact = remaining[i];
     const isFree = isFreeEmail(contact.email);
 
-    // Throttling especial para domínios gratuitos: lotes de 5 com 60s de pausa
+    // Throttling especial para domínios gratuitos (Gmail, Outlook, etc.) — regra imutável
     if (isFree) {
       if (freeEmailsSentInBatch > 0 && freeEmailsSentInBatch % FREE_BATCH_SIZE === 0) {
         logger.info({ campaignId, freeEmailsSentInBatch }, `Gmail/Outlook batch completo — aguardando ${FREE_BATCH_DELAY_MS / 1000}s`);
@@ -1206,11 +1213,19 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       }
       await sendOne(contact);
       freeEmailsSentInBatch++;
-      // Delay de 2s entre cada email de domínio gratuito
       await new Promise(r => setTimeout(r, 2_000));
     } else {
       await sendOne(contact);
+      normalSentInBatch++;
       await new Promise(r => setTimeout(r, 100));
+
+      // Rate control definido pelo usuário (só para domínios não-gratuitos)
+      const isLastContact = i === remaining.length - 1;
+      if (userBatchSize && userIntervalMs && normalSentInBatch >= userBatchSize && !isLastContact) {
+        logger.info({ campaignId, normalSentInBatch, waitSecs: userIntervalMs / 1000 }, "Rate control: lote completo — aguardando intervalo");
+        await new Promise(r => setTimeout(r, userIntervalMs));
+        normalSentInBatch = 0;
+      }
     }
   }
 

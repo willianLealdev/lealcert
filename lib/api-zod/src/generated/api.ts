@@ -2813,6 +2813,8 @@ export const ListMarketingCampaignsResponseItem = zod.object({
   "totalContacts": zod.number(),
   "filterTags": zod.string().nullish(),
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
+  "sendBatchSize": zod.number().nullish().describe('Quantos e-mails enviar por lote (null = sem limite)'),
+  "sendIntervalSecs": zod.number().nullish().describe('Segundos de espera entre lotes (null = sem pausa)'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -2832,7 +2834,9 @@ export const CreateMarketingCampaignBody = zod.object({
   "replyTo": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
   "filterTags": zod.string().optional(),
-  "targetType": zod.enum(['all', 'cliente', 'contador']).optional()
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
+  "sendBatchSize": zod.number().optional().describe('Quantos e-mails enviar por lote'),
+  "sendIntervalSecs": zod.number().optional().describe('Segundos de espera entre lotes')
 })
 
 
@@ -2864,6 +2868,8 @@ export const GetMarketingCampaignResponse = zod.object({
   "totalContacts": zod.number(),
   "filterTags": zod.string().nullish(),
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
+  "sendBatchSize": zod.number().nullish().describe('Quantos e-mails enviar por lote (null = sem limite)'),
+  "sendIntervalSecs": zod.number().nullish().describe('Segundos de espera entre lotes (null = sem pausa)'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -2886,7 +2892,9 @@ export const UpdateMarketingCampaignBody = zod.object({
   "replyTo": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
   "filterTags": zod.string().optional(),
-  "targetType": zod.enum(['all', 'cliente', 'contador']).optional()
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
+  "sendBatchSize": zod.number().optional().describe('Quantos e-mails enviar por lote'),
+  "sendIntervalSecs": zod.number().optional().describe('Segundos de espera entre lotes')
 })
 
 export const UpdateMarketingCampaignResponse = zod.object({
@@ -2910,6 +2918,8 @@ export const UpdateMarketingCampaignResponse = zod.object({
   "totalContacts": zod.number(),
   "filterTags": zod.string().nullish(),
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
+  "sendBatchSize": zod.number().nullish().describe('Quantos e-mails enviar por lote (null = sem limite)'),
+  "sendIntervalSecs": zod.number().nullish().describe('Segundos de espera entre lotes (null = sem pausa)'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })

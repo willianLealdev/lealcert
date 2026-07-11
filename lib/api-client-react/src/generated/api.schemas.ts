@@ -1358,6 +1358,10 @@ export interface MarketingCampaign {
   totalContacts: number;
   filterTags?: string | null;
   targetType?: MarketingCampaignTargetType;
+  /** Quantos e-mails enviar por lote (null = sem limite) */
+  sendBatchSize?: number | null;
+  /** Segundos de espera entre lotes (null = sem pausa) */
+  sendIntervalSecs?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1445,6 +1449,10 @@ export interface CreateCampaignInput {
   scheduledAt?: string;
   filterTags?: string;
   targetType?: CreateCampaignInputTargetType;
+  /** Quantos e-mails enviar por lote */
+  sendBatchSize?: number;
+  /** Segundos de espera entre lotes */
+  sendIntervalSecs?: number;
 }
 
 export interface SendReplyInput {

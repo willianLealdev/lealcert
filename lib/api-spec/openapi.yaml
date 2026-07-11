@@ -5179,6 +5179,14 @@ components:
         targetType:
           type: string
           enum: [all, cliente, contador]
+        sendBatchSize:
+          type: integer
+          nullable: true
+          description: Quantos e-mails enviar por lote (null = sem limite)
+        sendIntervalSecs:
+          type: integer
+          nullable: true
+          description: Segundos de espera entre lotes (null = sem pausa)
         createdAt:
           type: string
         updatedAt:
@@ -5347,6 +5355,12 @@ components:
         targetType:
           type: string
           enum: [all, cliente, contador]
+        sendBatchSize:
+          type: integer
+          description: Quantos e-mails enviar por lote
+        sendIntervalSecs:
+          type: integer
+          description: Segundos de espera entre lotes
 
     SendReplyInput:
       type: object

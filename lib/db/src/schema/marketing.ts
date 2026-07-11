@@ -41,6 +41,8 @@ export const marketingCampaignsTable = pgTable("marketing_campaigns", {
   totalContacts: integer("total_contacts").notNull().default(0),
   filterTags: text("filter_tags"),
   targetType: text("target_type").notNull().default("all"),
+  sendBatchSize: integer("send_batch_size"),
+  sendIntervalSecs: integer("send_interval_secs"),
   scheduledTargetOverride: text("scheduled_target_override"),
   scheduledContactIds: text("scheduled_contact_ids"),
   scheduledManualRecipients: text("scheduled_manual_recipients"),
