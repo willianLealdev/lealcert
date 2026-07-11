@@ -15,7 +15,7 @@ import {
   ShieldCheck, Loader2, ArrowRight, ArrowLeft, CheckCircle2, XCircle,
   FileText, CreditCard, Upload, Calendar, Lock, MapPin, Search,
   Fingerprint, User, Building2, QrCode, Receipt, Clock, AlertTriangle,
-  LogIn, UserPlus, Eye, EyeOff, CheckCircle, ChevronRight, RefreshCw, ExternalLink, Video,
+  LogIn, UserPlus, Eye, EyeOff, CheckCircle, ChevronRight, RefreshCw, ExternalLink, Video, Info,
 } from "lucide-react";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -1977,7 +1977,12 @@ export default function ComprarPage() {
                                 <Receipt className="h-5 w-5 text-amber-600" />
                               </div>
                               <div className="flex-1">
-                                <p className="font-semibold">Pagamento com Boleto</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-semibold">Pagamento com Boleto</p>
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200">
+                                    <Info className="h-2.5 w-2.5" /> a partir de R$ 125,00
+                                  </span>
+                                </div>
                                 <p className="text-xs text-muted-foreground">Prazo de até 3 dias úteis</p>
                               </div>
                             </button>
@@ -2001,7 +2006,12 @@ export default function ComprarPage() {
                                 <CreditCard className="h-5 w-5 text-blue-600" />
                               </div>
                               <div className="flex-1">
-                                <p className="font-semibold">Pagamento com Cartão de Crédito</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-semibold">Pagamento com Cartão de Crédito</p>
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full border border-blue-200">
+                                    <Info className="h-2.5 w-2.5" /> a partir de R$ 150,00
+                                  </span>
+                                </div>
                                 <p className="text-xs text-muted-foreground">Aprovação imediata</p>
                               </div>
                             </button>
@@ -2456,6 +2466,62 @@ export default function ComprarPage() {
               <a href="/politica-de-privacidade" className="hover:text-white transition-colors">Privacidade</a>
             </div>
           </div>
+
+          {/* Pagamentos aceitos */}
+          <div className="border-t border-white/10 pt-6">
+            <p className="text-gray-500 text-xs uppercase tracking-widest font-semibold mb-4 text-center">Pagamentos Aceitos</p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {/* PIX */}
+              <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors rounded-lg px-4 py-2.5 border border-white/10">
+                <svg viewBox="0 0 48 48" className="h-5 w-5" fill="none">
+                  <path d="M11.7 36.3c1.9 1.9 4.4 2.9 7.1 2.9h10.4c2.6 0 5.2-1 7.1-2.9l7.3-7.3c3.9-3.9 3.9-10.2 0-14.1l-7.3-7.3c-1.9-1.9-4.4-2.9-7.1-2.9H18.8c-2.6 0-5.2 1-7.1 2.9L4.4 15c-3.9 3.9-3.9 10.2 0 14.1l7.3 7.2z" fill="#32BCAD"/>
+                  <path d="M17.5 28.5l-3.5-3.5 3.5-3.5M30.5 28.5l3.5-3.5-3.5-3.5M21 30l6-12" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span className="text-xs font-bold text-[#32BCAD]">PIX</span>
+              </div>
+              {/* Boleto */}
+              <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors rounded-lg px-4 py-2.5 border border-white/10">
+                <svg viewBox="0 0 32 20" className="h-5 w-8" fill="none">
+                  <rect x="0" y="2" width="2" height="16" fill="white" opacity="0.9"/>
+                  <rect x="3" y="2" width="1" height="16" fill="white" opacity="0.9"/>
+                  <rect x="5" y="2" width="3" height="16" fill="white" opacity="0.9"/>
+                  <rect x="9" y="2" width="1" height="16" fill="white" opacity="0.9"/>
+                  <rect x="11" y="2" width="2" height="16" fill="white" opacity="0.9"/>
+                  <rect x="14" y="2" width="1" height="16" fill="white" opacity="0.9"/>
+                  <rect x="16" y="2" width="3" height="16" fill="white" opacity="0.9"/>
+                  <rect x="20" y="2" width="1" height="16" fill="white" opacity="0.9"/>
+                  <rect x="22" y="2" width="2" height="16" fill="white" opacity="0.9"/>
+                  <rect x="25" y="2" width="1" height="16" fill="white" opacity="0.9"/>
+                  <rect x="27" y="2" width="3" height="16" fill="white" opacity="0.9"/>
+                  <rect x="31" y="2" width="1" height="16" fill="white" opacity="0.9"/>
+                </svg>
+                <span className="text-xs font-bold text-gray-300">Boleto</span>
+              </div>
+              {/* Visa */}
+              <div className="flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors rounded-lg px-4 py-2.5 border border-white/10 min-w-[72px]">
+                <span className="text-sm font-black tracking-tight italic" style={{ color: "#fff", fontFamily: "serif", letterSpacing: "-0.5px" }}>
+                  <span style={{ color: "#1a1f71", background: "white", padding: "0 3px", borderRadius: 2 }}>VISA</span>
+                </span>
+              </div>
+              {/* Mastercard */}
+              <div className="flex items-center gap-0.5 bg-white/5 hover:bg-white/10 transition-colors rounded-lg px-4 py-2.5 border border-white/10">
+                <div className="relative w-9 h-6 flex items-center">
+                  <div className="absolute left-0 w-6 h-6 rounded-full bg-[#EB001B] opacity-90" />
+                  <div className="absolute right-0 w-6 h-6 rounded-full bg-[#F79E1B] opacity-90" />
+                </div>
+                <span className="text-[10px] font-bold text-gray-300 ml-1">Mastercard</span>
+              </div>
+              {/* Cartão de Crédito genérico */}
+              <div className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors rounded-lg px-4 py-2.5 border border-white/10">
+                <CreditCard className="h-4 w-4 text-gray-400" />
+                <span className="text-xs font-semibold text-gray-300">Cartão de Crédito</span>
+              </div>
+            </div>
+            <p className="text-center text-gray-600 text-[10px] mt-3">
+              PIX: qualquer valor &nbsp;·&nbsp; Boleto: a partir de R$ 125,00 &nbsp;·&nbsp; Cartão: a partir de R$ 150,00
+            </p>
+          </div>
+
           <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-gray-500 text-xs">© {new Date().getFullYear()} LealCert. Todos os direitos reservados.</p>
             <div className="flex items-center gap-3">

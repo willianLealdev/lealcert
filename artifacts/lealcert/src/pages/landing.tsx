@@ -58,7 +58,7 @@ const PRODUCT_INFO: Record<string, { label: string; sub: string; desc: string; c
 
 const STEPS = [
   { n: "01", icon: FileText, title: "Faça seu cadastro", desc: "Acesse o sistema, crie seu cadastro com CPF ou CNPJ e escolha o certificado ideal para o seu caso." },
-  { n: "02", icon: CreditCard, title: "Realize o pagamento", desc: "Pagamento rápido via PIX. Confirmação automática e instantânea assim que o pagamento é identificado." },
+  { n: "02", icon: CreditCard, title: "Realize o pagamento", desc: "Aceito PIX (qualquer valor), Boleto (a partir de R$ 125) e Cartão de Crédito (a partir de R$ 150). Confirmação automática e instantânea via PIX." },
   { n: "03", icon: CalendarCheck, title: "Agende a videoconferência", desc: "Escolha o melhor horário para uma breve videochamada com nosso agente credenciado ICP-Brasil." },
   { n: "04", icon: BadgeCheck, title: "Receba seu certificado", desc: "Após a verificação, seu certificado é emitido e entregue digitalmente em minutos." },
 ];
@@ -314,7 +314,7 @@ export default function Landing() {
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-blue-200/70">
               <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-green-400" /> Sem deslocamento</span>
-              <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-green-400" /> Pagamento via PIX</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-green-400" /> PIX · Boleto · Cartão</span>
               <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-green-400" /> Emissão em até 24h</span>
             </div>
           </div>
@@ -560,6 +560,49 @@ export default function Landing() {
               <a href="/politica-de-privacidade" className="hover:text-white transition-colors">Privacidade</a>
             </div>
           </div>
+          {/* Pagamentos aceitos */}
+          <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <span className="text-gray-500 text-xs uppercase tracking-wider">Pagamentos aceitos</span>
+              <div className="flex items-center gap-3">
+                {/* PIX */}
+                <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5">
+                  <svg viewBox="0 0 32 32" className="h-4 w-4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7.8 12.4l4.2-4.2a5.66 5.66 0 018 0l4.2 4.2 1.4-1.4-4.2-4.2a7.66 7.66 0 00-10.8 0L6.4 11z" fill="#2dd4bf"/>
+                    <path d="M24.2 19.6l-4.2 4.2a5.66 5.66 0 01-8 0l-4.2-4.2-1.4 1.4 4.2 4.2a7.66 7.66 0 0010.8 0l4.2-4.2z" fill="#2dd4bf"/>
+                    <path d="M8 16H4M28 16h-4M16 4V8M16 24v4" stroke="#2dd4bf" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M10.4 16l5.6-5.6 5.6 5.6-5.6 5.6z" fill="#2dd4bf"/>
+                  </svg>
+                  <span className="text-gray-300 text-xs font-medium">PIX</span>
+                </div>
+                {/* Boleto */}
+                <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="4" width="2" height="16" rx="0.5" fill="#94a3b8"/>
+                    <rect x="5" y="4" width="1" height="16" rx="0.5" fill="#94a3b8"/>
+                    <rect x="7" y="4" width="2" height="16" rx="0.5" fill="#94a3b8"/>
+                    <rect x="10" y="4" width="1" height="16" rx="0.5" fill="#94a3b8"/>
+                    <rect x="12" y="4" width="3" height="16" rx="0.5" fill="#94a3b8"/>
+                    <rect x="16" y="4" width="1" height="16" rx="0.5" fill="#94a3b8"/>
+                    <rect x="18" y="4" width="2" height="16" rx="0.5" fill="#94a3b8"/>
+                    <rect x="21" y="4" width="1" height="16" rx="0.5" fill="#94a3b8"/>
+                  </svg>
+                  <span className="text-gray-300 text-xs font-medium">Boleto</span>
+                </div>
+                {/* Cartão */}
+                <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="5" width="20" height="14" rx="2" stroke="#94a3b8" strokeWidth="1.5"/>
+                    <path d="M2 9h20" stroke="#94a3b8" strokeWidth="1.5"/>
+                    <rect x="5" y="13" width="4" height="2" rx="0.5" fill="#94a3b8"/>
+                  </svg>
+                  <span className="text-gray-300 text-xs font-medium">Cartão</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-gray-500 text-xs">PIX: qualquer valor · Boleto: a partir de R$ 125 · Cartão: a partir de R$ 150</p>
+          </div>
+
           <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-gray-500 text-xs order-2 sm:order-1">
               © {new Date().getFullYear()} LealCert. Todos os direitos reservados.

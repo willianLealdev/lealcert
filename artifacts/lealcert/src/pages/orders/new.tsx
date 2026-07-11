@@ -1982,7 +1982,12 @@ export default function NewOrder() {
                     <Receipt className="h-6 w-6 text-amber-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold">Boleto Bancário</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold">Boleto Bancário</p>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200">
+                        <Info className="h-2.5 w-2.5" /> a partir de R$ 125,00
+                      </span>
+                    </div>
                     <p className="text-sm text-muted-foreground">Compensação em até 3 dias úteis</p>
                   </div>
                   {selectedMethod === "boleto" && <CheckCircle className="h-5 w-5 text-primary shrink-0" />}
@@ -1997,7 +2002,12 @@ export default function NewOrder() {
                     <CreditCard className="h-6 w-6 text-blue-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold">Cartão de Crédito</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold">Cartão de Crédito</p>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full border border-blue-200">
+                        <Info className="h-2.5 w-2.5" /> a partir de R$ 150,00
+                      </span>
+                    </div>
                     <p className="text-sm text-muted-foreground">Aprovação imediata</p>
                   </div>
                   {selectedMethod === "cartao" && <CheckCircle className="h-5 w-5 text-primary shrink-0" />}
