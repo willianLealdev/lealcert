@@ -1017,9 +1017,23 @@ export interface DispatchOptions {
 type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; hadBounce: boolean; isNew: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date };
 type RawContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; had_bounce: boolean; is_new: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; created_at: Date };
 
-// Domínios de email gratuito que devem ser enviados por último e em lotes menores
-const FREE_EMAIL_DOMAINS = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "hotmail.com.br", "live.com", "msn.com"]);
-function isFreeEmail(email: string) { return FREE_EMAIL_DOMAINS.has(email.split("@")[1]?.toLowerCase() ?? ""); }
+// ── Filas de provedores (regras fixas — não editáveis pelo painel) ────────────
+const PROVIDER_QUEUES = {
+  gmail:   { domains: new Set(["gmail.com", "googlemail.com"]),                                    batchSize: 1000, pauseMs: 120_000 },
+  outlook: { domains: new Set(["outlook.com", "hotmail.com", "hotmail.com.br", "live.com", "msn.com"]), batchSize: 1500, pauseMs: 120_000 },
+  yahoo:   { domains: new Set(["yahoo.com", "yahoo.com.br", "yahoo.com.ar", "ymail.com"]),          batchSize: 1000, pauseMs:  60_000 },
+  uolbol:  { domains: new Set(["uol.com.br", "bol.com.br"]),                                        batchSize: 2000, pauseMs:  60_000 },
+} as const;
+
+type ProviderKey = keyof typeof PROVIDER_QUEUES | "outros";
+
+function getProviderKey(email: string): ProviderKey {
+  const domain = email.split("@")[1]?.toLowerCase() ?? "";
+  for (const [key, cfg] of Object.entries(PROVIDER_QUEUES)) {
+    if ((cfg.domains as Set<string>).has(domain)) return key as ProviderKey;
+  }
+  return "outros";
+}
 
 function mapContact(r: RawContactRow): ContactRow {
   return {
@@ -1135,10 +1149,14 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   // Filter out contacts already successfully sent
   const allRemaining = contacts.filter(c => c.id <= 0 || !sentContactIds.has(c.id));
 
-  // ── Ordenação: domínios gratuitos (Gmail, Outlook, Hotmail) vão por último ──
-  const normalContacts = allRemaining.filter(c => !isFreeEmail(c.email));
-  const freeContacts   = allRemaining.filter(c =>  isFreeEmail(c.email));
-  const remaining = [...normalContacts, ...freeContacts];
+  // ── Separar contatos: "outros" primeiro, depois filas fixas por provedor ────
+  const buckets = {
+    outros:  allRemaining.filter(c => getProviderKey(c.email) === "outros"),
+    gmail:   allRemaining.filter(c => getProviderKey(c.email) === "gmail"),
+    outlook: allRemaining.filter(c => getProviderKey(c.email) === "outlook"),
+    yahoo:   allRemaining.filter(c => getProviderKey(c.email) === "yahoo"),
+    uolbol:  allRemaining.filter(c => getProviderKey(c.email) === "uolbol"),
+  };
 
   // Mark campaign as sending with total count
   await db.update(marketingCampaignsTable).set({
@@ -1149,17 +1167,19 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
 
   let sent = alreadySentCount;
   let bounced = campaign.totalBounced;
-  let freeEmailsSentInBatch = 0;
-  const FREE_BATCH_SIZE = 20;
-  const FREE_BATCH_DELAY_MS = 30_000; // 30 segundos entre lotes
 
-  // ── Rate control: prioriza opts (do modal de envio), fallback para valor salvo na campanha ──
+  // ── Rate control para "outros": vem do modal de envio ou do que foi salvo na campanha ──
   const userBatchSize = opts.sendBatchSize ?? campaign.sendBatchSize ?? null;
   const userIntervalMs = opts.sendIntervalSecs != null
     ? opts.sendIntervalSecs * 1000
     : campaign.sendIntervalSecs != null ? campaign.sendIntervalSecs * 1000 : null;
 
-  logger.info({ campaignId, total: contacts.length, alreadySent: alreadySentCount, normal: normalContacts.length, freeEmail: freeContacts.length, remaining: remaining.length, userBatchSize, userIntervalMs }, "Campaign dispatch started");
+  logger.info({
+    campaignId, total: contacts.length, alreadySent: alreadySentCount,
+    outros: buckets.outros.length, gmail: buckets.gmail.length,
+    outlook: buckets.outlook.length, yahoo: buckets.yahoo.length,
+    uolbol: buckets.uolbol.length, userBatchSize, userIntervalMs,
+  }, "Campaign dispatch started");
 
   async function sendOne(contact: ContactRow): Promise<void> {
     const token = genToken();
@@ -1209,35 +1229,49 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     }
   }
 
-  let normalSentInBatch = 0; // contador para rate control do usuário
-
-  for (let i = 0; i < remaining.length; i++) {
-    const contact = remaining[i];
-    const isFree = isFreeEmail(contact.email);
-
-    // Throttling especial para domínios gratuitos (Gmail, Outlook, etc.) — regra imutável
-    if (isFree) {
-      if (freeEmailsSentInBatch > 0 && freeEmailsSentInBatch % FREE_BATCH_SIZE === 0) {
-        logger.info({ campaignId, freeEmailsSentInBatch }, `Gmail/Outlook batch completo — aguardando ${FREE_BATCH_DELAY_MS / 1000}s`);
-        await new Promise(r => setTimeout(r, FREE_BATCH_DELAY_MS));
-      }
-      await sendOne(contact);
-      freeEmailsSentInBatch++;
-      await new Promise(r => setTimeout(r, 2_000));
-    } else {
-      await sendOne(contact);
-      normalSentInBatch++;
-      await new Promise(r => setTimeout(r, 100));
-
-      // Rate control definido pelo usuário (só para domínios não-gratuitos)
-      const isLastContact = i === remaining.length - 1;
-      if (userBatchSize && userIntervalMs && normalSentInBatch >= userBatchSize && !isLastContact) {
-        logger.info({ campaignId, normalSentInBatch, waitSecs: userIntervalMs / 1000 }, "Rate control: lote completo — aguardando intervalo");
-        await new Promise(r => setTimeout(r, userIntervalMs));
-        normalSentInBatch = 0;
+  // ── Helper: envia uma fila com lote fixo e pausa ─────────────────────────
+  async function sendProviderQueue(queue: ContactRow[], providerName: string, batchSize: number, pauseMs: number): Promise<void> {
+    if (!queue.length) return;
+    logger.info({ campaignId, provider: providerName, total: queue.length, batchSize, pauseSecs: pauseMs / 1000 }, "Iniciando fila de provedor");
+    let sentInBatch = 0;
+    for (let i = 0; i < queue.length; i++) {
+      await sendOne(queue[i]);
+      sentInBatch++;
+      const isLast = i === queue.length - 1;
+      if (sentInBatch >= batchSize && !isLast) {
+        logger.info({ campaignId, provider: providerName, sentInBatch, pauseSecs: pauseMs / 1000 }, "Lote completo — aguardando pausa");
+        await new Promise(r => setTimeout(r, pauseMs));
+        sentInBatch = 0;
       }
     }
+    logger.info({ campaignId, provider: providerName, total: queue.length }, "Fila de provedor concluída");
   }
+
+  // ── 1. Outros (config do painel) ─────────────────────────────────────────
+  let normalSentInBatch = 0;
+  for (let i = 0; i < buckets.outros.length; i++) {
+    await sendOne(buckets.outros[i]);
+    normalSentInBatch++;
+    await new Promise(r => setTimeout(r, 100));
+    const isLast = i === buckets.outros.length - 1;
+    if (userBatchSize && userIntervalMs && normalSentInBatch >= userBatchSize && !isLast) {
+      logger.info({ campaignId, normalSentInBatch, waitSecs: userIntervalMs / 1000 }, "Outros: lote completo — aguardando intervalo");
+      await new Promise(r => setTimeout(r, userIntervalMs));
+      normalSentInBatch = 0;
+    }
+  }
+
+  // ── 2. Gmail: lotes de 1.000 · pausa 2 min ───────────────────────────────
+  await sendProviderQueue(buckets.gmail, "Gmail", PROVIDER_QUEUES.gmail.batchSize, PROVIDER_QUEUES.gmail.pauseMs);
+
+  // ── 3. Outlook / Hotmail / Live / MSN: lotes de 1.500 · pausa 2 min ──────
+  await sendProviderQueue(buckets.outlook, "Outlook", PROVIDER_QUEUES.outlook.batchSize, PROVIDER_QUEUES.outlook.pauseMs);
+
+  // ── 4. Yahoo: lotes de 1.000 · pausa 1 min ───────────────────────────────
+  await sendProviderQueue(buckets.yahoo, "Yahoo", PROVIDER_QUEUES.yahoo.batchSize, PROVIDER_QUEUES.yahoo.pauseMs);
+
+  // ── 5. UOL / BOL: lotes de 2.000 · pausa 1 min ───────────────────────────
+  await sendProviderQueue(buckets.uolbol, "UOL/BOL", PROVIDER_QUEUES.uolbol.batchSize, PROVIDER_QUEUES.uolbol.pauseMs);
 
   await db.update(marketingCampaignsTable).set({
     status: "sent", sentAt: new Date(), totalSent: sent, totalDelivered: sent, totalBounced: bounced,
