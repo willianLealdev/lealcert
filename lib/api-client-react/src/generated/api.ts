@@ -10090,6 +10090,76 @@ export function useListCampaignBounces<TData = Awaited<ReturnType<typeof listCam
 
 
 
+export const getPauseMarketingCampaignUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/campaigns/${id}/pause`
+}
+
+/**
+ * @summary Pause an in-progress campaign dispatch
+ */
+export const pauseMarketingCampaign = async (id: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getPauseMarketingCampaignUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPauseMarketingCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pauseMarketingCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pauseMarketingCampaign>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['pauseMarketingCampaign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pauseMarketingCampaign>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  pauseMarketingCampaign(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PauseMarketingCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof pauseMarketingCampaign>>>
+
+    export type PauseMarketingCampaignMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Pause an in-progress campaign dispatch
+ */
+export const usePauseMarketingCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pauseMarketingCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pauseMarketingCampaign>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getPauseMarketingCampaignMutationOptions(options));
+    }
+
 export const getResumeMarketingCampaignUrl = (id: number,) => {
 
 

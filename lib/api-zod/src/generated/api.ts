@@ -3037,6 +3037,18 @@ export const ListCampaignBouncesResponse = zod.array(ListCampaignBouncesResponse
 
 
 /**
+ * @summary Pause an in-progress campaign dispatch
+ */
+export const PauseMarketingCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const PauseMarketingCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Resume an interrupted campaign dispatch
  */
 export const ResumeMarketingCampaignParams = zod.object({

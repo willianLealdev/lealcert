@@ -2742,6 +2742,25 @@ paths:
                 items:
                   $ref: "#/components/schemas/CampaignBounceEntry"
 
+  /marketing/campaigns/{id}/pause:
+    post:
+      operationId: pauseMarketingCampaign
+      tags: [marketing]
+      summary: Pause an in-progress campaign dispatch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Paused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   /marketing/campaigns/{id}/resume:
     post:
       operationId: resumeMarketingCampaign

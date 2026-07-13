@@ -23,6 +23,7 @@ import {
   useGetMarketingCampaignProgress,
   getGetMarketingCampaignProgressQueryKey,
   useResumeMarketingCampaign,
+  usePauseMarketingCampaign,
   useListCampaignBounces,
   useListCampaignSends,
   useListMarketingBounces,
@@ -48,7 +49,7 @@ import {
   Megaphone, Users, Mail, MailOpen, MailX, Send, Upload, Plus, Trash2, Pencil,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
   ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy, MousePointerClick,
-  AlertTriangle, RotateCcw, Sparkles, Download,
+  AlertTriangle, RotateCcw, Sparkles, Download, PauseCircle, PlayCircle,
 } from "lucide-react";
 
 type Tab = "overview" | "campanhas" | "clientes" | "contadores" | "respostas" | "bounces";
@@ -72,6 +73,7 @@ function statusBadge(status: string) {
     draft: { label: "Rascunho", variant: "secondary" },
     scheduled: { label: "Agendada", variant: "outline" },
     sending: { label: "Enviando…", variant: "default" },
+    paused: { label: "Pausada", variant: "outline" },
     sent: { label: "Enviada", variant: "default" },
     cancelled: { label: "Cancelada", variant: "destructive" },
   };
@@ -255,7 +257,7 @@ function OverviewTab({ stats }: { stats: MarketingStats | undefined }) {
   );
 }
 
-// ─── Campaign Progress Bar (polls while sending) ──────────────────────────────
+// ─── Campaign Progress Bar (polls while sending or paused) ───────────────────
 function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
   campaignId: number;
   onComplete: () => void;
@@ -265,15 +267,22 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
   const { user } = useAuth();
   const [tick, setTick] = useState(0);
   const { data: progress } = useGetMarketingCampaignProgress(campaignId);
+
+  const pauseMutation = usePauseMarketingCampaign({ mutation: {
+    onSuccess: () => { toast({ title: "Campanha pausada." }); invalidate(); qc.invalidateQueries({ queryKey: getGetMarketingCampaignProgressQueryKey(campaignId) }); },
+    onError: () => toast({ title: "Erro ao pausar", variant: "destructive" }),
+  }});
   const resumeMutation = useResumeMarketingCampaign({ mutation: {
-    onSuccess: () => toast({ title: "Envio retomado!", description: "Continuando de onde parou." }),
+    onSuccess: () => { toast({ title: "Envio retomado!", description: "Continuando de onde parou." }); invalidate(); qc.invalidateQueries({ queryKey: getGetMarketingCampaignProgressQueryKey(campaignId) }); },
     onError: () => toast({ title: "Erro ao retomar", variant: "destructive" }),
   }});
 
+  const qc = useQueryClient();
+
   useEffect(() => {
-    // Parar polling se não autenticado (evita consumir rate limit quando sessão expira)
     if (!user) return;
-    if (progress?.status !== "sending") {
+    const isActive = progress?.status === "sending" || progress?.status === "paused";
+    if (!isActive) {
       if (progress) { onComplete(); invalidate(); }
       return;
     }
@@ -281,8 +290,6 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
     return () => clearInterval(id);
   }, [progress?.status, user]);
 
-  // Re-fetch on tick — usa a query key exata do hook gerado para não invalidar a lista de campanhas
-  const qc = useQueryClient();
   useEffect(() => {
     if (tick > 0) qc.invalidateQueries({ queryKey: getGetMarketingCampaignProgressQueryKey(campaignId) });
   }, [tick]);
@@ -290,13 +297,16 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
   const total = progress?.totalContacts ?? 0;
   const sent = progress?.totalSent ?? 0;
   const pct = total > 0 ? Math.min(100, Math.round((sent / total) * 100)) : 0;
+  const isPaused = progress?.status === "paused";
 
   return (
     <div className="mt-4 pt-4 border-t space-y-3">
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-2 text-muted-foreground">
-          <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />
-          Enviando em andamento…
+          {isPaused
+            ? <PauseCircle className="h-3.5 w-3.5 text-amber-500" />
+            : <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />}
+          {isPaused ? "Envio pausado" : "Enviando em andamento…"}
         </span>
         <span className="font-semibold tabular-nums">
           {sent.toLocaleString("pt-BR")} / {total.toLocaleString("pt-BR")} e-mails
@@ -305,25 +315,39 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
       </div>
       <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
         <div
-          className="h-full bg-primary rounded-full transition-all duration-700"
+          className={`h-full rounded-full transition-all duration-700 ${isPaused ? "bg-amber-400" : "bg-primary"}`}
           style={{ width: `${pct}%` }}
         />
       </div>
       {(progress?.totalBounced ?? 0) > 0 && (
         <p className="text-xs text-red-500">{progress!.totalBounced} bounce(s) detectados</p>
       )}
-      <div className="flex justify-end">
-        <Button
-          size="sm" variant="outline"
-          disabled={resumeMutation.isPending}
-          onClick={() => resumeMutation.mutate({ id: campaignId })}
-          className="gap-1.5 text-xs"
-        >
-          {resumeMutation.isPending
-            ? <RefreshCw className="h-3 w-3 animate-spin" />
-            : <RefreshCw className="h-3 w-3" />}
-          Retomar se pausado
-        </Button>
+      <div className="flex justify-end gap-2">
+        {!isPaused ? (
+          <Button
+            size="sm" variant="outline"
+            disabled={pauseMutation.isPending}
+            onClick={() => pauseMutation.mutate({ id: campaignId })}
+            className="gap-1.5 text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+          >
+            {pauseMutation.isPending
+              ? <RefreshCw className="h-3 w-3 animate-spin" />
+              : <PauseCircle className="h-3 w-3" />}
+            Pausar envio
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            disabled={resumeMutation.isPending}
+            onClick={() => resumeMutation.mutate({ id: campaignId })}
+            className="gap-1.5 text-xs"
+          >
+            {resumeMutation.isPending
+              ? <RefreshCw className="h-3 w-3 animate-spin" />
+              : <PlayCircle className="h-3 w-3" />}
+            Continuar envio
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -401,13 +425,13 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {(c.status === "sent" || c.status === "sending") && (
+                  {(c.status === "sent" || c.status === "sending" || c.status === "paused") && (
                     <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowSendsModal(c.id)}>
                       <Users className="h-3.5 w-3.5" />
                       Ver Envios
                     </Button>
                   )}
-                  {c.status !== "sending" && (
+                  {c.status !== "sending" && c.status !== "paused" && (
                     <>
                       <Button size="sm" variant="outline" onClick={() => { setEditCampaign(c.id); setShowForm(true); }}>Editar</Button>
                       <Button size="sm" onClick={() => setShowSendDialog(c.id)} className="gap-1">
@@ -418,6 +442,12 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
                         <Button size="sm" variant="outline" onClick={() => cancelMutation.mutate({ id: c.id })}>Cancelar</Button>
                       )}
                     </>
+                  )}
+                  {c.status === "paused" && (
+                    <Button size="sm" variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/5"
+                      onClick={() => { if (confirm("Cancelar campanha pausada? Ela voltará para rascunho.")) cancelMutation.mutate({ id: c.id }); }}>
+                      Cancelar
+                    </Button>
                   )}
                   <Button
                     size="sm" variant="ghost"
@@ -437,7 +467,7 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
                 </div>
               </div>
 
-              {c.status === "sending" && (
+              {(c.status === "sending" || c.status === "paused") && (
                 <CampaignProgress
                   campaignId={c.id}
                   onComplete={() => {}}

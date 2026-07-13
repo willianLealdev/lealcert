@@ -892,10 +892,25 @@ router.post("/marketing/campaigns/:id/duplicate", async (req, res): Promise<void
   res.status(201).json(copy);
 });
 
+// ── Pause state (in-memory — fast; DB status = source of truth for display) ──
+const pausedCampaigns = new Set<number>();
+
 router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
+  pausedCampaigns.delete(id);
   await db.update(marketingCampaignsTable).set({ status: "draft", scheduledAt: null }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Campanha cancelada." });
+});
+
+router.post("/marketing/campaigns/:id/pause", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const [campaign] = await db.select({ status: marketingCampaignsTable.status })
+    .from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
+  if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
+  if (campaign.status !== "sending") { res.status(400).json({ error: "Campanha não está em andamento." }); return; }
+  pausedCampaigns.add(id);
+  await db.update(marketingCampaignsTable).set({ status: "paused" }).where(eq(marketingCampaignsTable.id, id));
+  res.json({ message: "Campanha pausada." });
 });
 
 router.get("/marketing/campaigns/:id/sends", async (req, res): Promise<void> => {
@@ -997,8 +1012,14 @@ router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> =
   const [campaign] = await db.select({ status: marketingCampaignsTable.status })
     .from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
-  if (campaign.status !== "sending") { res.status(400).json({ error: "Campanha não está em andamento." }); return; }
+  if (campaign.status !== "paused" && campaign.status !== "sending") {
+    res.status(400).json({ error: "Campanha não está pausada ou em andamento." }); return;
+  }
+  // Remove from paused set so the in-progress dispatch loop wakes up (if still running)
+  pausedCampaigns.delete(id);
+  await db.update(marketingCampaignsTable).set({ status: "sending" }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Retomando envio…" });
+  // Also start a fresh dispatch in case the server restarted (loop is gone)
   dispatchCampaign(id).catch(err => logger.error({ campaignId: id, err }, "Resume dispatch error"));
 });
 
@@ -1229,12 +1250,31 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     }
   }
 
+  // ── Pausa: aguarda enquanto a campanha estiver no Set pausedCampaigns ─────
+  async function waitIfPaused(): Promise<boolean> {
+    if (!pausedCampaigns.has(campaignId)) return true; // not paused, continue
+    logger.info({ campaignId }, "Campanha pausada — aguardando retomada");
+    while (pausedCampaigns.has(campaignId)) {
+      await new Promise(r => setTimeout(r, 2_000));
+      // Check if cancelled (status reverted to draft while waiting)
+      const [check] = await db.select({ status: marketingCampaignsTable.status })
+        .from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, campaignId)).limit(1);
+      if (!check || check.status === "draft" || check.status === "cancelled") {
+        logger.info({ campaignId }, "Campanha cancelada durante pausa — abortando dispatch");
+        return false; // signal to stop
+      }
+    }
+    logger.info({ campaignId }, "Campanha retomada — continuando envio");
+    return true;
+  }
+
   // ── Helper: envia uma fila com lote fixo e pausa ─────────────────────────
   async function sendProviderQueue(queue: ContactRow[], providerName: string, batchSize: number, pauseMs: number): Promise<void> {
     if (!queue.length) return;
     logger.info({ campaignId, provider: providerName, total: queue.length, batchSize, pauseSecs: pauseMs / 1000 }, "Iniciando fila de provedor");
     let sentInBatch = 0;
     for (let i = 0; i < queue.length; i++) {
+      if (!await waitIfPaused()) return;
       await sendOne(queue[i]);
       sentInBatch++;
       const isLast = i === queue.length - 1;
@@ -1250,6 +1290,10 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   // ── 1. Outros (config do painel) ─────────────────────────────────────────
   let normalSentInBatch = 0;
   for (let i = 0; i < buckets.outros.length; i++) {
+    if (!await waitIfPaused()) {
+      await db.update(marketingCampaignsTable).set({ status: "sent", sentAt: new Date(), totalSent: sent, totalDelivered: sent, totalBounced: bounced }).where(eq(marketingCampaignsTable.id, campaignId));
+      return;
+    }
     await sendOne(buckets.outros[i]);
     normalSentInBatch++;
     await new Promise(r => setTimeout(r, 100));
