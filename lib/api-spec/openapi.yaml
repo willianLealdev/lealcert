@@ -5206,6 +5206,18 @@ components:
           type: integer
           nullable: true
           description: Segundos de espera entre lotes (null = sem pausa)
+        sendStartHour:
+          type: integer
+          nullable: true
+          description: Hora de início (0-23) BRT para horário comercial
+        sendEndHour:
+          type: integer
+          nullable: true
+          description: Hora de fim (1-24) BRT para horário comercial
+        sendDays:
+          type: string
+          nullable: true
+          description: Dias permitidos separados por vírgula (ex "1,2,3,4,5")
         createdAt:
           type: string
         updatedAt:
@@ -5419,7 +5431,7 @@ components:
           type: string
         targetOverride:
           type: string
-          enum: [all, cliente, contador, new_contacts, specific, manual, opened_all, opened_cliente, opened_contador, clicked_all, clicked_cliente, clicked_contador, not_opened_cliente, not_opened_contador]
+          enum: [all, cliente, contador, new_contacts, new_cliente, new_contador, specific, manual, opened_all, opened_cliente, opened_contador, clicked_all, clicked_cliente, clicked_contador, not_opened_cliente, not_opened_contador]
           description: Override campaign targetType for this send
         specificContactIds:
           type: array
@@ -5443,6 +5455,15 @@ components:
         sendIntervalSecs:
           type: integer
           description: Segundos de espera entre lotes (override para este disparo)
+        sendStartHour:
+          type: integer
+          description: Hora de início (0-23) no fuso BRT para envio em horário comercial
+        sendEndHour:
+          type: integer
+          description: Hora de fim (1-24) no fuso BRT para envio em horário comercial
+        sendDays:
+          type: string
+          description: Dias permitidos separados por vírgula (0=Dom,1=Seg,...,6=Sáb) ex "1,2,3,4,5"
 
     InboundWebhookInput:
       type: object

@@ -32,6 +32,12 @@ export interface MarketingCampaign {
   sendBatchSize?: number | null;
   /** Segundos de espera entre lotes (null = sem pausa) */
   sendIntervalSecs?: number | null;
+  /** Hora de início (0-23) BRT para horário comercial */
+  sendStartHour?: number | null;
+  /** Hora de fim (1-24) BRT para horário comercial */
+  sendEndHour?: number | null;
+  /** Dias permitidos separados por vírgula (ex "1,2,3,4,5") */
+  sendDays?: string | null;
   createdAt: string;
   updatedAt: string;
 }

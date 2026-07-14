@@ -20,4 +20,10 @@ export interface SendCampaignInput {
   sendBatchSize?: number;
   /** Segundos de espera entre lotes (override para este disparo) */
   sendIntervalSecs?: number;
+  /** Hora de início (0-23) no fuso BRT para envio em horário comercial */
+  sendStartHour?: number;
+  /** Hora de fim (1-24) no fuso BRT para envio em horário comercial */
+  sendEndHour?: number;
+  /** Dias permitidos separados por vírgula (0=Dom,1=Seg,...,6=Sáb) ex "1,2,3,4,5" */
+  sendDays?: string;
 }

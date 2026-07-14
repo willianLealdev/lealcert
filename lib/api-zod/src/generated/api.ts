@@ -2820,6 +2820,9 @@ export const ListMarketingCampaignsResponseItem = zod.object({
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
   "sendBatchSize": zod.number().nullish().describe('Quantos e-mails enviar por lote (null = sem limite)'),
   "sendIntervalSecs": zod.number().nullish().describe('Segundos de espera entre lotes (null = sem pausa)'),
+  "sendStartHour": zod.number().nullish().describe('Hora de início (0-23) BRT para horário comercial'),
+  "sendEndHour": zod.number().nullish().describe('Hora de fim (1-24) BRT para horário comercial'),
+  "sendDays": zod.string().nullish().describe('Dias permitidos separados por vírgula (ex \"1,2,3,4,5\")'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -2873,6 +2876,9 @@ export const GetMarketingCampaignResponse = zod.object({
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
   "sendBatchSize": zod.number().nullish().describe('Quantos e-mails enviar por lote (null = sem limite)'),
   "sendIntervalSecs": zod.number().nullish().describe('Segundos de espera entre lotes (null = sem pausa)'),
+  "sendStartHour": zod.number().nullish().describe('Hora de início (0-23) BRT para horário comercial'),
+  "sendEndHour": zod.number().nullish().describe('Hora de fim (1-24) BRT para horário comercial'),
+  "sendDays": zod.string().nullish().describe('Dias permitidos separados por vírgula (ex \"1,2,3,4,5\")'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -2921,6 +2927,9 @@ export const UpdateMarketingCampaignResponse = zod.object({
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
   "sendBatchSize": zod.number().nullish().describe('Quantos e-mails enviar por lote (null = sem limite)'),
   "sendIntervalSecs": zod.number().nullish().describe('Segundos de espera entre lotes (null = sem pausa)'),
+  "sendStartHour": zod.number().nullish().describe('Hora de início (0-23) BRT para horário comercial'),
+  "sendEndHour": zod.number().nullish().describe('Hora de fim (1-24) BRT para horário comercial'),
+  "sendDays": zod.string().nullish().describe('Dias permitidos separados por vírgula (ex \"1,2,3,4,5\")'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -2947,14 +2956,17 @@ export const SendMarketingCampaignParams = zod.object({
 
 export const SendMarketingCampaignBody = zod.object({
   "scheduledAt": zod.string().optional(),
-  "targetOverride": zod.enum(['all', 'cliente', 'contador', 'new_contacts', 'specific', 'manual', 'opened_all', 'opened_cliente', 'opened_contador', 'clicked_all', 'clicked_cliente', 'clicked_contador', 'not_opened_cliente', 'not_opened_contador']).optional().describe('Override campaign targetType for this send'),
+  "targetOverride": zod.enum(['all', 'cliente', 'contador', 'new_contacts', 'new_cliente', 'new_contador', 'specific', 'manual', 'opened_all', 'opened_cliente', 'opened_contador', 'clicked_all', 'clicked_cliente', 'clicked_contador', 'not_opened_cliente', 'not_opened_contador']).optional().describe('Override campaign targetType for this send'),
   "specificContactIds": zod.array(zod.number()).optional().describe('Contact IDs to send to when targetOverride=specific'),
   "manualRecipients": zod.array(zod.object({
   "name": zod.string(),
   "email": zod.string()
 })).optional().describe('Ad-hoc recipients when targetOverride=manual'),
   "sendBatchSize": zod.number().optional().describe('Quantos e-mails enviar por lote (override para este disparo)'),
-  "sendIntervalSecs": zod.number().optional().describe('Segundos de espera entre lotes (override para este disparo)')
+  "sendIntervalSecs": zod.number().optional().describe('Segundos de espera entre lotes (override para este disparo)'),
+  "sendStartHour": zod.number().optional().describe('Hora de início (0-23) no fuso BRT para envio em horário comercial'),
+  "sendEndHour": zod.number().optional().describe('Hora de fim (1-24) no fuso BRT para envio em horário comercial'),
+  "sendDays": zod.string().optional().describe('Dias permitidos separados por vírgula (0=Dom,1=Seg,...,6=Sáb) ex \"1,2,3,4,5\"')
 })
 
 export const SendMarketingCampaignResponse = zod.object({

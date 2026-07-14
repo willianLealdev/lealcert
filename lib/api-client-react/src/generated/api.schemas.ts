@@ -1362,6 +1362,12 @@ export interface MarketingCampaign {
   sendBatchSize?: number | null;
   /** Segundos de espera entre lotes (null = sem pausa) */
   sendIntervalSecs?: number | null;
+  /** Hora de início (0-23) BRT para horário comercial */
+  sendStartHour?: number | null;
+  /** Hora de fim (1-24) BRT para horário comercial */
+  sendEndHour?: number | null;
+  /** Dias permitidos separados por vírgula (ex "1,2,3,4,5") */
+  sendDays?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1490,6 +1496,8 @@ export const SendCampaignInputTargetOverride = {
   cliente: 'cliente',
   contador: 'contador',
   new_contacts: 'new_contacts',
+  new_cliente: 'new_cliente',
+  new_contador: 'new_contador',
   specific: 'specific',
   manual: 'manual',
   opened_all: 'opened_all',
@@ -1519,6 +1527,12 @@ export interface SendCampaignInput {
   sendBatchSize?: number;
   /** Segundos de espera entre lotes (override para este disparo) */
   sendIntervalSecs?: number;
+  /** Hora de início (0-23) no fuso BRT para envio em horário comercial */
+  sendStartHour?: number;
+  /** Hora de fim (1-24) no fuso BRT para envio em horário comercial */
+  sendEndHour?: number;
+  /** Dias permitidos separados por vírgula (0=Dom,1=Seg,...,6=Sáb) ex "1,2,3,4,5" */
+  sendDays?: string;
 }
 
 export interface InboundWebhookInput {

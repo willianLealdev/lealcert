@@ -814,7 +814,7 @@ router.delete("/marketing/campaigns/:id", async (req, res): Promise<void> => {
 
 router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const { scheduledAt, targetOverride, specificContactIds, manualRecipients, sendBatchSize, sendIntervalSecs } = req.body ?? {};
+  const { scheduledAt, targetOverride, specificContactIds, manualRecipients, sendBatchSize, sendIntervalSecs, sendStartHour, sendEndHour, sendDays } = req.body ?? {};
 
   const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
@@ -825,12 +825,13 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
   const dispatchOpts: DispatchOptions = {};
   const validTargets = [
     "all", "cliente", "contador", "specific", "manual",
+    "new_contacts", "new_cliente", "new_contador",
     "opened_all", "opened_cliente", "opened_contador",
     "clicked_all", "clicked_cliente", "clicked_contador",
     "not_opened_cliente", "not_opened_contador",
   ];
   if (targetOverride && validTargets.includes(targetOverride)) {
-    dispatchOpts.targetOverride = targetOverride;
+    dispatchOpts.targetOverride = targetOverride as DispatchOptions["targetOverride"];
   }
   if (Array.isArray(specificContactIds) && specificContactIds.length > 0) {
     dispatchOpts.specificContactIds = specificContactIds.map(Number);
@@ -844,6 +845,11 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
   if (sendIntervalSecs && Number(sendIntervalSecs) > 0) {
     dispatchOpts.sendIntervalSecs = Number(sendIntervalSecs);
   }
+  if (sendStartHour != null && sendEndHour != null) {
+    dispatchOpts.sendStartHour = Number(sendStartHour);
+    dispatchOpts.sendEndHour = Number(sendEndHour);
+  }
+  if (sendDays) dispatchOpts.sendDays = String(sendDays);
 
   if (scheduledAt) {
     await db.update(marketingCampaignsTable).set({
@@ -867,6 +873,9 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
     status: "sending",
     totalSent: 0, totalDelivered: 0, totalOpened: 0, totalClicked: 0, totalBounced: 0, totalReplied: 0,
     sentAt: null,
+    sendStartHour: dispatchOpts.sendStartHour ?? null,
+    sendEndHour: dispatchOpts.sendEndHour ?? null,
+    sendDays: dispatchOpts.sendDays ?? null,
   }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Campanha iniciada. Os e-mails serão enviados em segundo plano." });
 
@@ -1026,6 +1035,7 @@ router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> =
 // ─── Campaign Dispatch ────────────────────────────────────────────────────────
 export interface DispatchOptions {
   targetOverride?: "all" | "cliente" | "contador" | "specific" | "manual"
+    | "new_contacts" | "new_cliente" | "new_contador"
     | "opened_all" | "opened_cliente" | "opened_contador"
     | "clicked_all" | "clicked_cliente" | "clicked_contador"
     | "not_opened_cliente" | "not_opened_contador";
@@ -1033,6 +1043,41 @@ export interface DispatchOptions {
   manualRecipients?: { name: string; email: string }[];
   sendBatchSize?: number;
   sendIntervalSecs?: number;
+  sendStartHour?: number;
+  sendEndHour?: number;
+  sendDays?: string;
+}
+
+// ── Horário comercial auto-resume scheduler (roda a cada 60s) ────────────────
+setInterval(async () => {
+  try {
+    const paused = await db
+      .select({ id: marketingCampaignsTable.id, startHour: marketingCampaignsTable.sendStartHour, endHour: marketingCampaignsTable.sendEndHour, days: marketingCampaignsTable.sendDays })
+      .from(marketingCampaignsTable)
+      .where(eq(marketingCampaignsTable.status, "paused"));
+    for (const c of paused) {
+      if (c.startHour == null || c.endHour == null) continue;
+      if (!isWithinBusinessHours(c.startHour, c.endHour, c.days ?? undefined)) continue;
+      // Within hours → resume
+      pausedCampaigns.delete(c.id);
+      await db.update(marketingCampaignsTable).set({ status: "sending" }).where(eq(marketingCampaignsTable.id, c.id));
+      dispatchCampaign(c.id, { sendStartHour: c.startHour, sendEndHour: c.endHour, sendDays: c.days ?? undefined })
+        .catch(err => logger.error({ campaignId: c.id, err }, "Business hours auto-resume error"));
+      logger.info({ campaignId: c.id }, "Horário comercial: campanha retomada automaticamente");
+    }
+  } catch (err) { logger.warn({ err }, "Business hours scheduler error"); }
+}, 60_000);
+
+function isWithinBusinessHours(startHour: number, endHour: number, days?: string): boolean {
+  const now = new Date();
+  const brt = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const hour = brt.getHours();
+  const day = brt.getDay();
+  if (days) {
+    const allowed = days.split(",").map(Number);
+    if (!allowed.includes(day)) return false;
+  }
+  return hour >= startHour && hour < endHour;
 }
 
 type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; hadBounce: boolean; isNew: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date };
@@ -1133,9 +1178,10 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     `);
     contacts = rawContacts.rows.map(mapContact);
     logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded (engagement)");
-  } else if (effectiveTarget === "new_contacts") {
+  } else if (effectiveTarget === "new_contacts" || effectiveTarget === "new_cliente" || effectiveTarget === "new_contador") {
+    const typeFilter = effectiveTarget === "new_cliente" ? "cliente" : effectiveTarget === "new_contador" ? "contador" : null;
     const rawContacts = await db.execute<RawContactRow>(
-      sql`SELECT * FROM marketing_contacts WHERE is_new = true AND status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')`
+      sql`SELECT * FROM marketing_contacts WHERE is_new = true AND status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``}`
     );
     contacts = rawContacts.rows.map(mapContact);
     logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded (new_contacts)");
@@ -1232,7 +1278,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       sent++;
       await db.update(marketingCampaignsTable).set({ totalSent: sent }).where(eq(marketingCampaignsTable.id, campaignId));
       // Se for campanha de novos contatos, remove a flag após envio bem-sucedido
-      if (effectiveTarget === "new_contacts" && contact.id > 0) {
+      if ((effectiveTarget === "new_contacts" || effectiveTarget === "new_cliente" || effectiveTarget === "new_contador") && contact.id > 0) {
         await db.update(marketingContactsTable).set({ isNew: false }).where(eq(marketingContactsTable.id, contact.id));
       }
     } catch (err) {
@@ -1250,8 +1296,25 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     }
   }
 
+  // ── Horário comercial: auto-pausa quando fora do horário configurado ────────
+  async function checkAndWaitBusinessHours(): Promise<boolean> {
+    const sh = opts.sendStartHour ?? campaign.sendStartHour ?? null;
+    const eh = opts.sendEndHour ?? campaign.sendEndHour ?? null;
+    const days = opts.sendDays ?? campaign.sendDays ?? null;
+    if (sh == null || eh == null) return true; // sem restrição
+    if (isWithinBusinessHours(sh, eh, days ?? undefined)) return true; // dentro do horário
+    // Fora do horário — auto-pausa
+    if (!pausedCampaigns.has(campaignId)) {
+      pausedCampaigns.add(campaignId);
+      await db.update(marketingCampaignsTable).set({ status: "paused" }).where(eq(marketingCampaignsTable.id, campaignId));
+      logger.info({ campaignId, startHour: sh, endHour: eh }, "Fora do horário comercial — campanha pausada automaticamente");
+    }
+    return true; // cai no waitIfPaused abaixo
+  }
+
   // ── Pausa: aguarda enquanto a campanha estiver no Set pausedCampaigns ─────
   async function waitIfPaused(): Promise<boolean> {
+    await checkAndWaitBusinessHours();
     if (!pausedCampaigns.has(campaignId)) return true; // not paused, continue
     logger.info({ campaignId }, "Campanha pausada — aguardando retomada");
     while (pausedCampaigns.has(campaignId)) {

@@ -824,7 +824,8 @@ function CampaignBouncesModal({ campaignId, campaignName, onClose }: {
 }
 
 // ─── Send Campaign Dialog ─────────────────────────────────────────────────────
-type SendTarget = "all" | "cliente" | "contador" | "specific" | "manual" | "new_contacts"
+type SendTarget = "all" | "cliente" | "contador" | "specific" | "manual"
+  | "new_contacts" | "new_cliente" | "new_contador"
   | "opened_all" | "opened_cliente" | "opened_contador"
   | "clicked_all" | "clicked_cliente" | "clicked_contador"
   | "not_opened_cliente" | "not_opened_contador";
@@ -846,6 +847,10 @@ function SendCampaignDialog({
   const [manualList, setManualList] = useState<ManualRecipient[]>([{ name: "", email: "" }]);
   const [sendBatchSize, setSendBatchSize] = useState("");
   const [sendIntervalMins, setSendIntervalMins] = useState("");
+  const [useBusinessHours, setUseBusinessHours] = useState(false);
+  const [sendStartHour, setSendStartHour] = useState("8");
+  const [sendEndHour, setSendEndHour] = useState("18");
+  const [sendDays, setSendDays] = useState([1, 2, 3, 4, 5]); // Mon-Fri
 
   const { data: searchResult } = useListMarketingContacts({
     search: contactSearch.length >= 2 ? contactSearch : undefined,
@@ -874,6 +879,10 @@ function SendCampaignDialog({
   function addManualRow() { setManualList(prev => [...prev, { name: "", email: "" }]); }
   function removeManualRow(idx: number) { setManualList(prev => prev.filter((_, i) => i !== idx)); }
 
+  function toggleDay(day: number) {
+    setSendDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort());
+  }
+
   function handleSend() {
     const batchSize = sendBatchSize ? parseInt(sendBatchSize, 10) : undefined;
     const intervalSecs = sendIntervalMins ? parseInt(sendIntervalMins, 10) * 60 : undefined;
@@ -884,12 +893,20 @@ function SendCampaignDialog({
       manualRecipients?: ManualRecipient[];
       sendBatchSize?: number;
       sendIntervalSecs?: number;
+      sendStartHour?: number;
+      sendEndHour?: number;
+      sendDays?: string;
     } = {
       targetOverride: target,
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
       sendBatchSize: batchSize && batchSize > 0 ? batchSize : undefined,
       sendIntervalSecs: intervalSecs && intervalSecs > 0 ? intervalSecs : undefined,
     };
+    if (useBusinessHours) {
+      body.sendStartHour = parseInt(sendStartHour, 10);
+      body.sendEndHour = parseInt(sendEndHour, 10);
+      body.sendDays = sendDays.join(",");
+    }
 
     if (target === "specific") {
       if (!selectedContacts.length) {
@@ -912,7 +929,9 @@ function SendCampaignDialog({
     { id: "all",              label: "Todos os contatos",        desc: "Clientes e contadores ativos",              icon: Users },
     { id: "cliente",          label: "Clientes",                 desc: "Apenas clientes ativos da base",            icon: Users },
     { id: "contador",         label: "Contadores",               desc: "Apenas contadores ativos da base",          icon: Users },
-    { id: "new_contacts",     label: "Novos contatos",           desc: "Contatos marcados como novos (ainda não receberam e-mail)", icon: Sparkles },
+    { id: "new_contacts",     label: "Novos contatos",           desc: "Todos marcados como novos (is_new = true)", icon: Sparkles, group: "novos" },
+    { id: "new_cliente",      label: "Novos — Clientes",         desc: "Clientes marcados como novos",             icon: Sparkles, group: "novos" },
+    { id: "new_contador",     label: "Novos — Contadores",       desc: "Contadores marcados como novos",           icon: Sparkles, group: "novos" },
     { id: "opened_all",       label: "Quem abriu — Todos",       desc: "Contatos que abriram qualquer campanha",    icon: MailOpen, group: "engajamento" },
     { id: "opened_cliente",   label: "Quem abriu — Clientes",    desc: "Clientes que abriram qualquer campanha",    icon: MailOpen, group: "engajamento" },
     { id: "opened_contador",  label: "Quem abriu — Contadores",  desc: "Contadores que abriram qualquer campanha",  icon: MailOpen, group: "engajamento" },
@@ -948,7 +967,7 @@ function SendCampaignDialog({
                       <div className="flex items-center gap-2 py-1.5">
                         <div className="flex-1 border-t border-border" />
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
-                          {opt.group === "engajamento" ? "Por Engajamento" : "Avançado"}
+                          {opt.group === "novos" ? "Novos Contatos" : opt.group === "engajamento" ? "Por Engajamento" : "Avançado"}
                         </span>
                         <div className="flex-1 border-t border-border" />
                       </div>
@@ -1100,6 +1119,63 @@ function SendCampaignDialog({
               <p className="text-xs text-primary font-medium">
                 → Vai enviar {parseInt(sendBatchSize).toLocaleString("pt-BR")} e-mails a cada {sendIntervalMins} minuto(s)
               </p>
+            )}
+          </div>
+
+          {/* Horário Comercial */}
+          <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-primary" /> Horário Comercial
+              </p>
+              <button
+                type="button"
+                onClick={() => setUseBusinessHours(v => !v)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${useBusinessHours ? "bg-primary" : "bg-muted-foreground/30"}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${useBusinessHours ? "translate-x-4" : "translate-x-0.5"}`} />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Pausa automaticamente fora do horário configurado e retoma quando o período começar.
+            </p>
+            {useBusinessHours && (
+              <div className="space-y-3 pt-1">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Hora início (BRT)</Label>
+                    <Input type="number" min="0" max="23" value={sendStartHour} onChange={e => setSendStartHour(e.target.value)} placeholder="8" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Hora fim (BRT)</Label>
+                    <Input type="number" min="1" max="24" value={sendEndHour} onChange={e => setSendEndHour(e.target.value)} placeholder="18" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Dias da semana</Label>
+                  <div className="flex gap-1">
+                    {[
+                      { day: 1, label: "Seg" }, { day: 2, label: "Ter" }, { day: 3, label: "Qua" },
+                      { day: 4, label: "Qui" }, { day: 5, label: "Sex" }, { day: 6, label: "Sáb" }, { day: 0, label: "Dom" },
+                    ].map(({ day, label }) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleDay(day)}
+                        className={`flex-1 text-xs py-1 rounded border transition-colors ${sendDays.includes(day) ? "bg-primary text-white border-primary" : "border-border hover:border-muted-foreground/40"}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {sendStartHour && sendEndHour && (
+                  <p className="text-xs text-primary font-medium">
+                    → Envia de {sendStartHour}h às {sendEndHour}h (BRT)
+                    {sendDays.length < 7 ? ` · ${["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].filter((_, i) => sendDays.includes(i)).join(", ")}` : " · todos os dias"}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
