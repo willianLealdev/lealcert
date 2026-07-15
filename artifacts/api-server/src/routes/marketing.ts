@@ -869,6 +869,7 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
     await db.delete(marketingSendsTable).where(eq(marketingSendsTable.campaignId, id));
   }
 
+  // Save opts to DB so resume-after-restart can reconstruct them correctly
   await db.update(marketingCampaignsTable).set({
     status: "sending",
     totalSent: 0, totalDelivered: 0, totalOpened: 0, totalClicked: 0, totalBounced: 0, totalReplied: 0,
@@ -876,6 +877,11 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
     sendStartHour: dispatchOpts.sendStartHour ?? null,
     sendEndHour: dispatchOpts.sendEndHour ?? null,
     sendDays: dispatchOpts.sendDays ?? null,
+    scheduledTargetOverride: dispatchOpts.targetOverride ?? null,
+    scheduledContactIds: dispatchOpts.specificContactIds?.length
+      ? JSON.stringify(dispatchOpts.specificContactIds) : null,
+    scheduledManualRecipients: dispatchOpts.manualRecipients?.length
+      ? JSON.stringify(dispatchOpts.manualRecipients) : null,
   }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Campanha iniciada. Os e-mails serão enviados em segundo plano." });
 
@@ -901,8 +907,11 @@ router.post("/marketing/campaigns/:id/duplicate", async (req, res): Promise<void
   res.status(201).json(copy);
 });
 
-// ── Pause state (in-memory — fast; DB status = source of truth for display) ──
+// ── Pause / active-dispatch state (in-memory) ────────────────────────────────
 const pausedCampaigns = new Set<number>();
+// Tracks which campaignIds have a live dispatch loop in this process.
+// Used by resume to avoid starting a duplicate loop when the original is alive.
+const activeDispatches = new Set<number>();
 
 router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
@@ -1018,18 +1027,38 @@ router.get("/marketing/campaigns/:id/progress", async (req, res): Promise<void> 
 
 router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const [campaign] = await db.select({ status: marketingCampaignsTable.status })
+  const [campaign] = await db.select()
     .from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
   if (campaign.status !== "paused" && campaign.status !== "sending") {
     res.status(400).json({ error: "Campanha não está pausada ou em andamento." }); return;
   }
-  // Remove from paused set so the in-progress dispatch loop wakes up (if still running)
+
+  // Wake up the existing loop (if still alive in this process)
   pausedCampaigns.delete(id);
   await db.update(marketingCampaignsTable).set({ status: "sending" }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Retomando envio…" });
-  // Also start a fresh dispatch in case the server restarted (loop is gone)
-  dispatchCampaign(id).catch(err => logger.error({ campaignId: id, err }, "Resume dispatch error"));
+
+  // Only start a fresh dispatch if no loop is alive (e.g. server restarted)
+  if (!activeDispatches.has(id)) {
+    // Reconstruct opts from what was saved in the DB at send time
+    const opts: DispatchOptions = {};
+    if (campaign.scheduledTargetOverride) {
+      opts.targetOverride = campaign.scheduledTargetOverride as DispatchOptions["targetOverride"];
+    }
+    if (campaign.scheduledContactIds) {
+      try { opts.specificContactIds = JSON.parse(campaign.scheduledContactIds); } catch { /* ignore */ }
+    }
+    if (campaign.scheduledManualRecipients) {
+      try { opts.manualRecipients = JSON.parse(campaign.scheduledManualRecipients); } catch { /* ignore */ }
+    }
+    if (campaign.sendBatchSize) opts.sendBatchSize = campaign.sendBatchSize;
+    if (campaign.sendIntervalSecs) opts.sendIntervalSecs = campaign.sendIntervalSecs;
+    if (campaign.sendStartHour != null) opts.sendStartHour = campaign.sendStartHour;
+    if (campaign.sendEndHour != null) opts.sendEndHour = campaign.sendEndHour;
+    if (campaign.sendDays) opts.sendDays = campaign.sendDays;
+    dispatchCampaign(id, opts).catch(err => logger.error({ campaignId: id, err }, "Resume dispatch error"));
+  }
 });
 
 // ─── Campaign Dispatch ────────────────────────────────────────────────────────
@@ -1111,6 +1140,13 @@ function mapContact(r: RawContactRow): ContactRow {
 }
 
 export async function dispatchCampaign(campaignId: number, opts: DispatchOptions = {}) {
+  // Guard: prevent two loops for the same campaign running simultaneously
+  if (activeDispatches.has(campaignId)) {
+    logger.warn({ campaignId }, "dispatchCampaign: loop já ativo — ignorando chamada duplicada");
+    return;
+  }
+  activeDispatches.add(campaignId);
+  try {
   const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, campaignId)).limit(1);
   if (!campaign) return;
 
@@ -1413,6 +1449,9 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   }).where(eq(marketingCampaignsTable.id, campaignId));
 
   logger.info({ campaignId, sent, bounced }, "Campaign dispatch complete");
+  } finally {
+    activeDispatches.delete(campaignId);
+  }
 }
 
 // ─── Replies ─────────────────────────────────────────────────────────────────
