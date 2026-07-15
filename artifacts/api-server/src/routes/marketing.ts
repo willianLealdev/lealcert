@@ -1253,15 +1253,26 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   }, "Campaign dispatch started");
 
   async function sendOne(contact: ContactRow): Promise<void> {
-    // Guard: verifica no banco se o contato ainda está ativo antes de enviar
     if (contact.id > 0) {
+      // Guard para contatos da base: verifica status atualizado antes de enviar
       const [fresh] = await db
         .select({ status: marketingContactsTable.status, bounced: marketingContactsTable.bounced, unsubscribedAt: marketingContactsTable.unsubscribedAt })
         .from(marketingContactsTable)
         .where(eq(marketingContactsTable.id, contact.id))
         .limit(1);
-      if (!fresh || fresh.status === "unsubscribed" || fresh.status !== "active" || fresh.bounced || fresh.unsubscribedAt) {
+      if (!fresh || fresh.status !== "active" || fresh.bounced || fresh.unsubscribedAt) {
         logger.info({ contactId: contact.id, email: contact.email, status: fresh?.status }, "Contato descadastrado/inativo — pulando envio");
+        return;
+      }
+    } else {
+      // Guard para destinatários manuais: verifica se o email está descadastrado na base
+      const [existing] = await db
+        .select({ status: marketingContactsTable.status, unsubscribedAt: marketingContactsTable.unsubscribedAt })
+        .from(marketingContactsTable)
+        .where(eq(marketingContactsTable.email, contact.email.toLowerCase()))
+        .limit(1);
+      if (existing && (existing.status === "unsubscribed" || existing.unsubscribedAt)) {
+        logger.info({ email: contact.email }, "Destinatário manual descadastrado na base — pulando envio");
         return;
       }
     }
