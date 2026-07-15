@@ -1137,7 +1137,11 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       return;
     }
     contacts = await db.select().from(marketingContactsTable)
-      .where(inArray(marketingContactsTable.id, opts.specificContactIds));
+      .where(and(
+        inArray(marketingContactsTable.id, opts.specificContactIds),
+        eq(marketingContactsTable.status, "active"),
+        eq(marketingContactsTable.bounced, false),
+      ));
   } else if (effectiveTarget === "not_opened_cliente" || effectiveTarget === "not_opened_contador") {
     const contactType = effectiveTarget === "not_opened_cliente" ? "cliente" : "contador";
     const rawContacts = await db.execute<RawContactRow>(sql`
@@ -1249,6 +1253,19 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   }, "Campaign dispatch started");
 
   async function sendOne(contact: ContactRow): Promise<void> {
+    // Guard: verifica no banco se o contato ainda está ativo antes de enviar
+    if (contact.id > 0) {
+      const [fresh] = await db
+        .select({ status: marketingContactsTable.status, bounced: marketingContactsTable.bounced, unsubscribedAt: marketingContactsTable.unsubscribedAt })
+        .from(marketingContactsTable)
+        .where(eq(marketingContactsTable.id, contact.id))
+        .limit(1);
+      if (!fresh || fresh.status === "unsubscribed" || fresh.status !== "active" || fresh.bounced || fresh.unsubscribedAt) {
+        logger.info({ contactId: contact.id, email: contact.email, status: fresh?.status }, "Contato descadastrado/inativo — pulando envio");
+        return;
+      }
+    }
+
     const token = genToken();
     try {
       await db.insert(marketingSendsTable).values({
