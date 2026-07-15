@@ -473,8 +473,17 @@ router.post("/marketing/contacts", async (req, res): Promise<void> => {
   const { name, email, phone, tags, type } = req.body ?? {};
   if (!name || !email) { res.status(400).json({ error: "Nome e e-mail são obrigatórios." }); return; }
   const contactType = type === "contador" ? "contador" : "cliente";
-  const [contact] = await db.insert(marketingContactsTable).values({ name, email: email.toLowerCase().trim(), phone, tags, type: contactType }).returning();
-  res.status(201).json(contact);
+  try {
+    const [contact] = await db.insert(marketingContactsTable).values({ name, email: email.toLowerCase().trim(), phone, tags, type: contactType }).returning();
+    res.status(201).json(contact);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("duplicate key") || msg.includes("unique constraint")) {
+      res.status(409).json({ error: "Este e-mail já está cadastrado como " + contactType + "." });
+      return;
+    }
+    throw err;
+  }
 });
 
 router.post("/marketing/contacts/import", upload.single("file"), async (req, res): Promise<void> => {
