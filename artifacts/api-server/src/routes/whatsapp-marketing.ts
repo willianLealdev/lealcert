@@ -615,7 +615,7 @@ async function dispatchWaCampaign(
         .where(
           and(
             eq(whatsappSendsTable.campaignId, campaignId),
-            eq(whatsappSendsTable.contactId, contact.id),
+            eq(whatsappSendsTable.phone, contact.phone),
           ),
         );
 
@@ -625,7 +625,7 @@ async function dispatchWaCampaign(
         .set({ totalSent: sent })
         .where(eq(whatsappCampaignsTable.id, campaignId));
 
-      logger.info({ campaignId, contactId: contact.id, sent }, "WA: mensagem enviada");
+      logger.info({ campaignId, phone: contact.phone, sent }, "WA: mensagem enviada");
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       await db
@@ -634,7 +634,7 @@ async function dispatchWaCampaign(
         .where(
           and(
             eq(whatsappSendsTable.campaignId, campaignId),
-            eq(whatsappSendsTable.contactId, contact.id),
+            eq(whatsappSendsTable.phone, contact.phone),
           ),
         );
       failed++;
