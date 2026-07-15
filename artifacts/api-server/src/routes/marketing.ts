@@ -511,6 +511,20 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
     res.status(400).json({ error: "Arquivo inválido. Use CSV ou XLSX." }); return;
   }
 
+  // Extrai o celular quando o campo tem múltiplos números (ex: "68-32244109,68-992058586")
+  // Celular BR: DDD (2 dígitos) + 9 dígitos começando com 9 = 11 dígitos total
+  function extractCelular(raw: string): string | undefined {
+    const candidates = raw.split(/[,/|;]+/).map(s => s.replace(/\D/g, ""));
+    const mobiles = candidates.filter(n => n.length === 11 && n[2] === "9");
+    if (mobiles.length > 0) return mobiles[0];
+    // fallback: qualquer número com DDD (10 ou 11 dígitos)
+    const any = candidates.filter(n => n.length === 10 || n.length === 11);
+    if (any.length > 0) return any[0];
+    // fallback final: qualquer coisa não vazia
+    const fallback = candidates.find(n => n.length >= 8);
+    return fallback ?? undefined;
+  }
+
   type ContactRow = { name: string; email: string; phone?: string; tags?: string; type: string; isNew: boolean };
   const validRows: ContactRow[] = [];
   let parseSkipped = 0;
@@ -544,7 +558,7 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
       "name","Name","NAME",
     );
     const rawPhone = pick("Telefone","telefone","TELEFONE","Fone","fone","FONE","phone","Phone","PHONE","Celular","celular","CELULAR");
-    const phone = rawPhone.replace(/\D/g, "").slice(0, 20) || undefined;
+    const phone = rawPhone ? (extractCelular(rawPhone) ?? undefined) : undefined;
     const estado = pick("Estado","estado","ESTADO","UF","uf");
     const cidade = pick("Cidade","cidade","CIDADE","Município","municipio");
     const rawTags = pick("Tags","tags","TAGS");
