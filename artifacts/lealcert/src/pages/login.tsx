@@ -114,17 +114,19 @@ export default function Login() {
     },
   });
 
-  if (user) {
+  useEffect(() => {
+    if (!user) return;
     if (user.mustChangePassword) setLocation("/change-password");
     else setLocation(homeRoute(user.role));
-    return null;
-  }
+  }, [user]);
 
   useEffect(() => {
     if (ipResendCooldown <= 0) return;
     const t = setTimeout(() => setIpResendCooldown(c => c - 1), 1000);
     return () => clearTimeout(t);
   }, [ipResendCooldown]);
+
+  if (user) return null;
 
   const handleResendIpCode = async () => {
     setIpResendLoading(true);
