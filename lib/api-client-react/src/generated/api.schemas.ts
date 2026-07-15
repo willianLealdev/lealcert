@@ -1699,6 +1699,49 @@ export interface IpLogsResponse {
   limit: number;
 }
 
+export interface WaCampaign {
+  id: number;
+  name: string;
+  message: string;
+  status: string;
+  targetType: string;
+  filterTags?: string | null;
+  sendPerMinute?: number | null;
+  sendStartHour?: number | null;
+  sendEndHour?: number | null;
+  sendDays?: string | null;
+  totalSent: number;
+  totalFailed: number;
+  totalContacts: number;
+  scheduledAt?: string | null;
+  sentAt?: string | null;
+  scheduledTargetOverride?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateWaCampaignBody {
+  name: string;
+  message: string;
+}
+
+export interface SendWaCampaignBody {
+  targetOverride?: string | null;
+  sendPerMinute?: number | null;
+  sendStartHour?: number | null;
+  sendEndHour?: number | null;
+  sendDays?: string | null;
+  scheduledAt?: string | null;
+}
+
+export interface WaProgress {
+  status: string;
+  totalSent: number;
+  totalFailed: number;
+  totalContacts: number;
+  paused: boolean;
+}
+
 export type ValidateCrcParams = {
 /**
  * CRC number (e.g. SP100000O)
@@ -2040,5 +2083,11 @@ status?: string;
 
 export type ListMarketingRepliesParams = {
 unreadOnly?: boolean;
+};
+
+export type WaWebhookSairBody = { [key: string]: unknown };
+
+export type WaWebhookSair200 = {
+  ok?: boolean;
 };
 

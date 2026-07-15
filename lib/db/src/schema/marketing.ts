@@ -95,6 +95,39 @@ export const marketingTemplatesTable = pgTable("marketing_templates", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
+export const whatsappCampaignsTable = pgTable("whatsapp_campaigns", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  message: text("message").notNull(),
+  status: text("status").notNull().default("draft"),
+  targetType: text("target_type").notNull().default("all"),
+  filterTags: text("filter_tags"),
+  sendPerMinute: integer("send_per_minute"),
+  sendStartHour: integer("send_start_hour"),
+  sendEndHour: integer("send_end_hour"),
+  sendDays: text("send_days"),
+  totalSent: integer("total_sent").notNull().default(0),
+  totalFailed: integer("total_failed").notNull().default(0),
+  totalContacts: integer("total_contacts").notNull().default(0),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  scheduledTargetOverride: text("scheduled_target_override"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const whatsappSendsTable = pgTable("whatsapp_sends", {
+  id: serial("id").primaryKey(),
+  campaignId: integer("campaign_id").notNull().references(() => whatsappCampaignsTable.id, { onDelete: "cascade" }),
+  contactId: integer("contact_id").references(() => marketingContactsTable.id, { onDelete: "set null" }),
+  phone: text("phone").notNull(),
+  recipientName: text("recipient_name"),
+  status: text("status").notNull().default("pending"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertMarketingContactSchema = createInsertSchema(marketingContactsTable).omit({ id: true, createdAt: true });
 export type InsertMarketingContact = z.infer<typeof insertMarketingContactSchema>;
 export const selectMarketingContactSchema = createSelectSchema(marketingContactsTable);

@@ -2959,6 +2959,184 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
+  /marketing/wa/campaigns:
+    get:
+      operationId: listWaCampaigns
+      tags: [whatsapp]
+      summary: List all WhatsApp campaigns
+      responses:
+        "200":
+          description: Campaign list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WaCampaign"
+    post:
+      operationId: createWaCampaign
+      tags: [whatsapp]
+      summary: Create a new WhatsApp campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWaCampaignBody"
+      responses:
+        "200":
+          description: Created campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaCampaign"
+
+  /marketing/wa/campaigns/{id}:
+    put:
+      operationId: updateWaCampaign
+      tags: [whatsapp]
+      summary: Update a WhatsApp campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWaCampaignBody"
+      responses:
+        "200":
+          description: Updated campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaCampaign"
+    delete:
+      operationId: deleteWaCampaign
+      tags: [whatsapp]
+      summary: Delete a WhatsApp campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/wa/campaigns/{id}/send:
+    post:
+      operationId: sendWaCampaign
+      tags: [whatsapp]
+      summary: Dispatch a WhatsApp campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendWaCampaignBody"
+      responses:
+        "200":
+          description: Dispatch started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/wa/campaigns/{id}/pause:
+    post:
+      operationId: pauseWaCampaign
+      tags: [whatsapp]
+      summary: Pause a running WhatsApp campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Paused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/wa/campaigns/{id}/resume:
+    post:
+      operationId: resumeWaCampaign
+      tags: [whatsapp]
+      summary: Resume a paused WhatsApp campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/wa/campaigns/{id}/progress:
+    get:
+      operationId: getWaCampaignProgress
+      tags: [whatsapp]
+      summary: Poll sending progress of a WhatsApp campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaProgress"
+
+  /marketing/wa/webhook/sair:
+    post:
+      operationId: waWebhookSair
+      tags: [whatsapp]
+      summary: Evolution API webhook — SAIR keyword unsubscribe detection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
 components:
   schemas:
     OrderEvent:
@@ -5747,3 +5925,103 @@ components:
           type: integer
         limit:
           type: integer
+
+    WaCampaign:
+      type: object
+      required: [id, name, message, status, targetType, totalSent, totalFailed, totalContacts, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+        targetType:
+          type: string
+        filterTags:
+          type: string
+          nullable: true
+        sendPerMinute:
+          type: integer
+          nullable: true
+        sendStartHour:
+          type: integer
+          nullable: true
+        sendEndHour:
+          type: integer
+          nullable: true
+        sendDays:
+          type: string
+          nullable: true
+        totalSent:
+          type: integer
+        totalFailed:
+          type: integer
+        totalContacts:
+          type: integer
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        scheduledTargetOverride:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateWaCampaignBody:
+      type: object
+      required: [name, message]
+      properties:
+        name:
+          type: string
+        message:
+          type: string
+
+    SendWaCampaignBody:
+      type: object
+      properties:
+        targetOverride:
+          type: string
+          nullable: true
+        sendPerMinute:
+          type: integer
+          nullable: true
+        sendStartHour:
+          type: integer
+          nullable: true
+        sendEndHour:
+          type: integer
+          nullable: true
+        sendDays:
+          type: string
+          nullable: true
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    WaProgress:
+      type: object
+      required: [status, totalSent, totalFailed, totalContacts, paused]
+      properties:
+        status:
+          type: string
+        totalSent:
+          type: integer
+        totalFailed:
+          type: integer
+        totalContacts:
+          type: integer
+        paused:
+          type: boolean

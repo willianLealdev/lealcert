@@ -224,3 +224,6 @@ export * from './validateEmailsInput';
 export * from './validateEmailsInputType';
 export * from './verifyEmailInput';
 export * from './verifyIp400';
+export * from './waCampaign';
+export * from './waProgress';
+export * from './waWebhookSair200';

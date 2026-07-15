@@ -64,6 +64,7 @@ import type {
   CrcValidationResult,
   CreateCampaignInput,
   CreateMarketingContactInput,
+  CreateWaCampaignBody,
   DashboardStats,
   EmailValidationResult,
   ErrorResponse,
@@ -167,6 +168,7 @@ import type {
   SendRenewalAlert200,
   SendReplyInput,
   SendTestPush200,
+  SendWaCampaignBody,
   Slot,
   SlotInput,
   SubscribePush200,
@@ -189,7 +191,11 @@ import type {
   ValidateEmailsInput,
   VerifyEmailInput,
   VerifyIp400,
-  VerifyIpBody
+  VerifyIpBody,
+  WaCampaign,
+  WaProgress,
+  WaWebhookSair200,
+  WaWebhookSairBody
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -10952,5 +10958,655 @@ export const useMarketingInboundWebhook = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getMarketingInboundWebhookMutationOptions(options));
+    }
+
+export const getListWaCampaignsUrl = () => {
+
+
+
+
+  return `/api/marketing/wa/campaigns`
+}
+
+/**
+ * @summary List all WhatsApp campaigns
+ */
+export const listWaCampaigns = async ( options?: RequestInit): Promise<WaCampaign[]> => {
+
+  return customFetch<WaCampaign[]>(getListWaCampaignsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListWaCampaignsQueryKey = () => {
+    return [
+    `/api/marketing/wa/campaigns`
+    ] as const;
+    }
+
+
+export const getListWaCampaignsQueryOptions = <TData = Awaited<ReturnType<typeof listWaCampaigns>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWaCampaigns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListWaCampaignsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listWaCampaigns>>> = ({ signal }) => listWaCampaigns({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listWaCampaigns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListWaCampaignsQueryResult = NonNullable<Awaited<ReturnType<typeof listWaCampaigns>>>
+export type ListWaCampaignsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all WhatsApp campaigns
+ */
+
+export function useListWaCampaigns<TData = Awaited<ReturnType<typeof listWaCampaigns>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWaCampaigns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListWaCampaignsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateWaCampaignUrl = () => {
+
+
+
+
+  return `/api/marketing/wa/campaigns`
+}
+
+/**
+ * @summary Create a new WhatsApp campaign
+ */
+export const createWaCampaign = async (createWaCampaignBody: CreateWaCampaignBody, options?: RequestInit): Promise<WaCampaign> => {
+
+  return customFetch<WaCampaign>(getCreateWaCampaignUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createWaCampaignBody,)
+  }
+);}
+
+
+
+
+export const getCreateWaCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWaCampaign>>, TError,{data: BodyType<CreateWaCampaignBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createWaCampaign>>, TError,{data: BodyType<CreateWaCampaignBody>}, TContext> => {
+
+const mutationKey = ['createWaCampaign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createWaCampaign>>, {data: BodyType<CreateWaCampaignBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createWaCampaign(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateWaCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof createWaCampaign>>>
+    export type CreateWaCampaignMutationBody = BodyType<CreateWaCampaignBody>
+    export type CreateWaCampaignMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a new WhatsApp campaign
+ */
+export const useCreateWaCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWaCampaign>>, TError,{data: BodyType<CreateWaCampaignBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createWaCampaign>>,
+        TError,
+        {data: BodyType<CreateWaCampaignBody>},
+        TContext
+      > => {
+      return useMutation(getCreateWaCampaignMutationOptions(options));
+    }
+
+export const getUpdateWaCampaignUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/wa/campaigns/${id}`
+}
+
+/**
+ * @summary Update a WhatsApp campaign
+ */
+export const updateWaCampaign = async (id: number,
+    createWaCampaignBody: CreateWaCampaignBody, options?: RequestInit): Promise<WaCampaign> => {
+
+  return customFetch<WaCampaign>(getUpdateWaCampaignUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createWaCampaignBody,)
+  }
+);}
+
+
+
+
+export const getUpdateWaCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWaCampaign>>, TError,{id: number;data: BodyType<CreateWaCampaignBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateWaCampaign>>, TError,{id: number;data: BodyType<CreateWaCampaignBody>}, TContext> => {
+
+const mutationKey = ['updateWaCampaign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateWaCampaign>>, {id: number;data: BodyType<CreateWaCampaignBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateWaCampaign(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateWaCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof updateWaCampaign>>>
+    export type UpdateWaCampaignMutationBody = BodyType<CreateWaCampaignBody>
+    export type UpdateWaCampaignMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a WhatsApp campaign
+ */
+export const useUpdateWaCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWaCampaign>>, TError,{id: number;data: BodyType<CreateWaCampaignBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateWaCampaign>>,
+        TError,
+        {id: number;data: BodyType<CreateWaCampaignBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateWaCampaignMutationOptions(options));
+    }
+
+export const getDeleteWaCampaignUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/wa/campaigns/${id}`
+}
+
+/**
+ * @summary Delete a WhatsApp campaign
+ */
+export const deleteWaCampaign = async (id: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getDeleteWaCampaignUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteWaCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWaCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteWaCampaign>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteWaCampaign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteWaCampaign>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteWaCampaign(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteWaCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof deleteWaCampaign>>>
+
+    export type DeleteWaCampaignMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a WhatsApp campaign
+ */
+export const useDeleteWaCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWaCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteWaCampaign>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteWaCampaignMutationOptions(options));
+    }
+
+export const getSendWaCampaignUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/wa/campaigns/${id}/send`
+}
+
+/**
+ * @summary Dispatch a WhatsApp campaign
+ */
+export const sendWaCampaign = async (id: number,
+    sendWaCampaignBody?: SendWaCampaignBody, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getSendWaCampaignUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      sendWaCampaignBody,)
+  }
+);}
+
+
+
+
+export const getSendWaCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendWaCampaign>>, TError,{id: number;data?: BodyType<SendWaCampaignBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendWaCampaign>>, TError,{id: number;data?: BodyType<SendWaCampaignBody>}, TContext> => {
+
+const mutationKey = ['sendWaCampaign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendWaCampaign>>, {id: number;data?: BodyType<SendWaCampaignBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  sendWaCampaign(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendWaCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof sendWaCampaign>>>
+    export type SendWaCampaignMutationBody = BodyType<SendWaCampaignBody> | undefined
+    export type SendWaCampaignMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Dispatch a WhatsApp campaign
+ */
+export const useSendWaCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendWaCampaign>>, TError,{id: number;data?: BodyType<SendWaCampaignBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendWaCampaign>>,
+        TError,
+        {id: number;data?: BodyType<SendWaCampaignBody>},
+        TContext
+      > => {
+      return useMutation(getSendWaCampaignMutationOptions(options));
+    }
+
+export const getPauseWaCampaignUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/wa/campaigns/${id}/pause`
+}
+
+/**
+ * @summary Pause a running WhatsApp campaign
+ */
+export const pauseWaCampaign = async (id: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getPauseWaCampaignUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPauseWaCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pauseWaCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pauseWaCampaign>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['pauseWaCampaign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pauseWaCampaign>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  pauseWaCampaign(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PauseWaCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof pauseWaCampaign>>>
+
+    export type PauseWaCampaignMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Pause a running WhatsApp campaign
+ */
+export const usePauseWaCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pauseWaCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pauseWaCampaign>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getPauseWaCampaignMutationOptions(options));
+    }
+
+export const getResumeWaCampaignUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/wa/campaigns/${id}/resume`
+}
+
+/**
+ * @summary Resume a paused WhatsApp campaign
+ */
+export const resumeWaCampaign = async (id: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getResumeWaCampaignUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getResumeWaCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumeWaCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resumeWaCampaign>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['resumeWaCampaign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resumeWaCampaign>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  resumeWaCampaign(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResumeWaCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof resumeWaCampaign>>>
+
+    export type ResumeWaCampaignMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Resume a paused WhatsApp campaign
+ */
+export const useResumeWaCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumeWaCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resumeWaCampaign>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getResumeWaCampaignMutationOptions(options));
+    }
+
+export const getGetWaCampaignProgressUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/wa/campaigns/${id}/progress`
+}
+
+/**
+ * @summary Poll sending progress of a WhatsApp campaign
+ */
+export const getWaCampaignProgress = async (id: number, options?: RequestInit): Promise<WaProgress> => {
+
+  return customFetch<WaProgress>(getGetWaCampaignProgressUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWaCampaignProgressQueryKey = (id: number,) => {
+    return [
+    `/api/marketing/wa/campaigns/${id}/progress`
+    ] as const;
+    }
+
+
+export const getGetWaCampaignProgressQueryOptions = <TData = Awaited<ReturnType<typeof getWaCampaignProgress>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWaCampaignProgress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWaCampaignProgressQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWaCampaignProgress>>> = ({ signal }) => getWaCampaignProgress(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWaCampaignProgress>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWaCampaignProgressQueryResult = NonNullable<Awaited<ReturnType<typeof getWaCampaignProgress>>>
+export type GetWaCampaignProgressQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Poll sending progress of a WhatsApp campaign
+ */
+
+export function useGetWaCampaignProgress<TData = Awaited<ReturnType<typeof getWaCampaignProgress>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWaCampaignProgress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWaCampaignProgressQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getWaWebhookSairUrl = () => {
+
+
+
+
+  return `/api/marketing/wa/webhook/sair`
+}
+
+/**
+ * @summary Evolution API webhook — SAIR keyword unsubscribe detection
+ */
+export const waWebhookSair = async (waWebhookSairBody: WaWebhookSairBody, options?: RequestInit): Promise<WaWebhookSair200> => {
+
+  return customFetch<WaWebhookSair200>(getWaWebhookSairUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      waWebhookSairBody,)
+  }
+);}
+
+
+
+
+export const getWaWebhookSairMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof waWebhookSair>>, TError,{data: BodyType<WaWebhookSairBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof waWebhookSair>>, TError,{data: BodyType<WaWebhookSairBody>}, TContext> => {
+
+const mutationKey = ['waWebhookSair'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof waWebhookSair>>, {data: BodyType<WaWebhookSairBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  waWebhookSair(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type WaWebhookSairMutationResult = NonNullable<Awaited<ReturnType<typeof waWebhookSair>>>
+    export type WaWebhookSairMutationBody = BodyType<WaWebhookSairBody>
+    export type WaWebhookSairMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Evolution API webhook — SAIR keyword unsubscribe detection
+ */
+export const useWaWebhookSair = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof waWebhookSair>>, TError,{data: BodyType<WaWebhookSairBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof waWebhookSair>>,
+        TError,
+        {data: BodyType<WaWebhookSairBody>},
+        TContext
+      > => {
+      return useMutation(getWaWebhookSairMutationOptions(options));
     }
 

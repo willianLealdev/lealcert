@@ -41,6 +41,7 @@ import {
   BarChart2,
   X,
   MessageSquare,
+  Phone,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 import { ReviewPrompt } from "@/components/review-prompt";
@@ -64,6 +65,7 @@ const adminNav = [
   { name: "Descontos", href: "/admin/coupons", icon: Tag },
   { name: "Avaliações", href: "/admin/reviews", icon: MessageSquare },
   { name: "Marketing", href: "/admin/marketing", icon: Megaphone },
+  { name: "WhatsApp", href: "/admin/whatsapp", icon: Phone },
   { name: "Segurança de IP", href: "/admin/ip-security", icon: ShieldCheck },
   { name: "Relatórios GAR", href: "/admin/relatorios-gar", icon: BarChart2 },
   { name: "Configurações", href: "/admin/settings", icon: Settings },

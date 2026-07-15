@@ -3211,3 +3211,178 @@ export const MarketingInboundWebhookResponse = zod.object({
 })
 
 
+/**
+ * @summary List all WhatsApp campaigns
+ */
+export const ListWaCampaignsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "message": zod.string(),
+  "status": zod.string(),
+  "targetType": zod.string(),
+  "filterTags": zod.string().nullish(),
+  "sendPerMinute": zod.number().nullish(),
+  "sendStartHour": zod.number().nullish(),
+  "sendEndHour": zod.number().nullish(),
+  "sendDays": zod.string().nullish(),
+  "totalSent": zod.number(),
+  "totalFailed": zod.number(),
+  "totalContacts": zod.number(),
+  "scheduledAt": zod.coerce.date().nullish(),
+  "sentAt": zod.coerce.date().nullish(),
+  "scheduledTargetOverride": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListWaCampaignsResponse = zod.array(ListWaCampaignsResponseItem)
+
+
+/**
+ * @summary Create a new WhatsApp campaign
+ */
+export const CreateWaCampaignBody = zod.object({
+  "name": zod.string(),
+  "message": zod.string()
+})
+
+export const CreateWaCampaignResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "message": zod.string(),
+  "status": zod.string(),
+  "targetType": zod.string(),
+  "filterTags": zod.string().nullish(),
+  "sendPerMinute": zod.number().nullish(),
+  "sendStartHour": zod.number().nullish(),
+  "sendEndHour": zod.number().nullish(),
+  "sendDays": zod.string().nullish(),
+  "totalSent": zod.number(),
+  "totalFailed": zod.number(),
+  "totalContacts": zod.number(),
+  "scheduledAt": zod.coerce.date().nullish(),
+  "sentAt": zod.coerce.date().nullish(),
+  "scheduledTargetOverride": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a WhatsApp campaign
+ */
+export const UpdateWaCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateWaCampaignBody = zod.object({
+  "name": zod.string(),
+  "message": zod.string()
+})
+
+export const UpdateWaCampaignResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "message": zod.string(),
+  "status": zod.string(),
+  "targetType": zod.string(),
+  "filterTags": zod.string().nullish(),
+  "sendPerMinute": zod.number().nullish(),
+  "sendStartHour": zod.number().nullish(),
+  "sendEndHour": zod.number().nullish(),
+  "sendDays": zod.string().nullish(),
+  "totalSent": zod.number(),
+  "totalFailed": zod.number(),
+  "totalContacts": zod.number(),
+  "scheduledAt": zod.coerce.date().nullish(),
+  "sentAt": zod.coerce.date().nullish(),
+  "scheduledTargetOverride": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a WhatsApp campaign
+ */
+export const DeleteWaCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteWaCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Dispatch a WhatsApp campaign
+ */
+export const SendWaCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SendWaCampaignBody = zod.object({
+  "targetOverride": zod.string().nullish(),
+  "sendPerMinute": zod.number().nullish(),
+  "sendStartHour": zod.number().nullish(),
+  "sendEndHour": zod.number().nullish(),
+  "sendDays": zod.string().nullish(),
+  "scheduledAt": zod.coerce.date().nullish()
+})
+
+export const SendWaCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Pause a running WhatsApp campaign
+ */
+export const PauseWaCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const PauseWaCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Resume a paused WhatsApp campaign
+ */
+export const ResumeWaCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ResumeWaCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Poll sending progress of a WhatsApp campaign
+ */
+export const GetWaCampaignProgressParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetWaCampaignProgressResponse = zod.object({
+  "status": zod.string(),
+  "totalSent": zod.number(),
+  "totalFailed": zod.number(),
+  "totalContacts": zod.number(),
+  "paused": zod.boolean()
+})
+
+
+/**
+ * @summary Evolution API webhook — SAIR keyword unsubscribe detection
+ */
+export const WaWebhookSairBody = zod.object({
+
+}).passthrough()
+
+export const WaWebhookSairResponse = zod.object({
+  "ok": zod.boolean().optional()
+})
+
+
