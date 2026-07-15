@@ -915,8 +915,14 @@ const activeDispatches = new Set<number>();
 
 router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  pausedCampaigns.delete(id);
+  // ADD to pausedCampaigns so any running loop hits waitIfPaused(),
+  // checks DB (status will be "draft"), and exits cleanly.
+  pausedCampaigns.add(id);
   await db.update(marketingCampaignsTable).set({ status: "draft", scheduledAt: null }).where(eq(marketingCampaignsTable.id, id));
+  // If no loop is running, clean up immediately so a fresh send can start.
+  if (!activeDispatches.has(id)) {
+    pausedCampaigns.delete(id);
+  }
   res.json({ message: "Campanha cancelada." });
 });
 
@@ -1451,6 +1457,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   logger.info({ campaignId, sent, bounced }, "Campaign dispatch complete");
   } finally {
     activeDispatches.delete(campaignId);
+    pausedCampaigns.delete(campaignId); // clean up any stale pause signal
   }
 }
 
