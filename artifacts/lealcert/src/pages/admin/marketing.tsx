@@ -946,14 +946,14 @@ function SendCampaignDialog({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Send className="h-4 w-4 text-primary" /> Enviar Campanha
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5 py-1">
+        <div className="flex-1 overflow-y-auto space-y-5 py-1 pr-1">
           {/* Target selection */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">Para quem enviar?</Label>
