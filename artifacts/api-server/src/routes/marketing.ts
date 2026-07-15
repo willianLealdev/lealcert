@@ -557,7 +557,26 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
       "CONTATO","contato","Contato",
       "name","Name","NAME",
     );
-    const rawPhone = pick("Telefone","telefone","TELEFONE","Fone","fone","FONE","phone","Phone","PHONE","Celular","celular","CELULAR");
+    let rawPhone = pick(
+      "Telefone","telefone","TELEFONE",
+      "Fone","fone","FONE",
+      "Tel","tel","TEL",
+      "Cel","cel","CEL",
+      "phone","Phone","PHONE",
+      "Celular","celular","CELULAR",
+      "Whatsapp","whatsapp","WHATSAPP","WhatsApp",
+      "Telefone Celular","telefone celular","TELEFONE CELULAR",
+      "Tel. Celular","tel. celular",
+      "Telefone 1","telefone 1",
+      "Telefones","telefones",
+    );
+    // Fallback: procura qualquer coluna cujo nome contenha "tel", "cel", "fone" ou "whats"
+    if (!rawPhone) {
+      const phoneKey = Object.keys(normalizedRow).find(k =>
+        /tel|cel|fone|whats|phone/.test(k) && normalizedRow[k] !== ""
+      );
+      if (phoneKey) rawPhone = normalizedRow[phoneKey];
+    }
     const phone = rawPhone ? (extractCelular(rawPhone) ?? undefined) : undefined;
     const estado = pick("Estado","estado","ESTADO","UF","uf");
     const cidade = pick("Cidade","cidade","CIDADE","Município","municipio");
@@ -571,6 +590,10 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
     validRows.push({ name, email, phone, tags, type: finalType, isNew: true });
   }
 
+  // Log diagnóstico: primeiros 3 registros com phone detectado
+  const sample = validRows.filter(r => r.phone).slice(0, 3);
+  logger.info({ sample, totalWithPhone: validRows.filter(r => r.phone).length, totalRows: validRows.length }, "Import: amostra de phones detectados");
+
   // Responde imediatamente para não sofrer timeout do proxy (VPS)
   res.json({ started: true, total: records.length, valid: validRows.length, skipped: parseSkipped });
 
@@ -579,24 +602,27 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
   (async () => {
     for (let i = 0; i < validRows.length; i += BATCH) {
       const batch = validRows.slice(i, i + BATCH);
+      // Garante que todas as linhas têm phone e tags como null (não undefined)
+      const normalizedBatch = batch.map(r => ({ ...r, phone: r.phone ?? null, tags: r.tags ?? null }));
       try {
-        await db.insert(marketingContactsTable).values(batch).onConflictDoUpdate({
+        await db.insert(marketingContactsTable).values(normalizedBatch).onConflictDoUpdate({
           target: [marketingContactsTable.email, marketingContactsTable.type],
           set: {
-            name: sql`EXCLUDED.name`,
-            phone: sql`CASE WHEN EXCLUDED.phone IS NOT NULL AND EXCLUDED.phone != '' THEN EXCLUDED.phone ELSE ${marketingContactsTable.phone} END`,
-            tags: sql`CASE WHEN EXCLUDED.tags IS NOT NULL AND EXCLUDED.tags != '' THEN EXCLUDED.tags ELSE ${marketingContactsTable.tags} END`,
+            name: sql.raw(`EXCLUDED.name`),
+            phone: sql.raw(`CASE WHEN EXCLUDED.phone IS NOT NULL AND EXCLUDED.phone != '' THEN EXCLUDED.phone ELSE marketing_contacts.phone END`),
+            tags: sql.raw(`CASE WHEN EXCLUDED.tags IS NOT NULL AND EXCLUDED.tags != '' THEN EXCLUDED.tags ELSE marketing_contacts.tags END`),
           },
         });
-      } catch {
-        for (const row of batch) {
+      } catch (batchErr) {
+        logger.warn({ err: batchErr, batchStart: i }, "Import: batch falhou, tentando linha a linha");
+        for (const row of normalizedBatch) {
           try {
             await db.insert(marketingContactsTable).values(row).onConflictDoUpdate({
               target: [marketingContactsTable.email, marketingContactsTable.type],
               set: {
-                name: sql`EXCLUDED.name`,
-                phone: sql`CASE WHEN EXCLUDED.phone IS NOT NULL AND EXCLUDED.phone != '' THEN EXCLUDED.phone ELSE ${marketingContactsTable.phone} END`,
-                tags: sql`CASE WHEN EXCLUDED.tags IS NOT NULL AND EXCLUDED.tags != '' THEN EXCLUDED.tags ELSE ${marketingContactsTable.tags} END`,
+                name: sql.raw(`EXCLUDED.name`),
+                phone: sql.raw(`CASE WHEN EXCLUDED.phone IS NOT NULL AND EXCLUDED.phone != '' THEN EXCLUDED.phone ELSE marketing_contacts.phone END`),
+                tags: sql.raw(`CASE WHEN EXCLUDED.tags IS NOT NULL AND EXCLUDED.tags != '' THEN EXCLUDED.tags ELSE marketing_contacts.tags END`),
               },
             });
           } catch { /* ignora erros individuais */ }
