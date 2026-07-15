@@ -566,10 +566,26 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
     for (let i = 0; i < validRows.length; i += BATCH) {
       const batch = validRows.slice(i, i + BATCH);
       try {
-        await db.insert(marketingContactsTable).values(batch).onConflictDoNothing();
+        await db.insert(marketingContactsTable).values(batch).onConflictDoUpdate({
+          target: [marketingContactsTable.email, marketingContactsTable.type],
+          set: {
+            name: sql`EXCLUDED.name`,
+            phone: sql`CASE WHEN EXCLUDED.phone IS NOT NULL AND EXCLUDED.phone != '' THEN EXCLUDED.phone ELSE ${marketingContactsTable.phone} END`,
+            tags: sql`CASE WHEN EXCLUDED.tags IS NOT NULL AND EXCLUDED.tags != '' THEN EXCLUDED.tags ELSE ${marketingContactsTable.tags} END`,
+          },
+        });
       } catch {
         for (const row of batch) {
-          try { await db.insert(marketingContactsTable).values(row).onConflictDoNothing(); } catch { /* ignora duplicatas */ }
+          try {
+            await db.insert(marketingContactsTable).values(row).onConflictDoUpdate({
+              target: [marketingContactsTable.email, marketingContactsTable.type],
+              set: {
+                name: sql`EXCLUDED.name`,
+                phone: sql`CASE WHEN EXCLUDED.phone IS NOT NULL AND EXCLUDED.phone != '' THEN EXCLUDED.phone ELSE ${marketingContactsTable.phone} END`,
+                tags: sql`CASE WHEN EXCLUDED.tags IS NOT NULL AND EXCLUDED.tags != '' THEN EXCLUDED.tags ELSE ${marketingContactsTable.tags} END`,
+              },
+            });
+          } catch { /* ignora erros individuais */ }
         }
       }
     }
