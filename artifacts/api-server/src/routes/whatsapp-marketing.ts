@@ -243,7 +243,7 @@ router.post("/marketing/wa/campaigns/:id/send", async (req, res): Promise<void> 
     return;
   }
   const id = parseInt(req.params.id, 10);
-  const { targetOverride, sendPerMinute, sendStartHour, sendEndHour, sendDays, scheduledAt, manualPhones } =
+  const { targetOverride, sendPerMinute, sendStartHour, sendEndHour, sendDays, scheduledAt, manualPhones, specificContactIds } =
     req.body ?? {};
 
   const [campaign] = await db
@@ -275,6 +275,7 @@ router.post("/marketing/wa/campaigns/:id/send", async (req, res): Promise<void> 
     "clicked_contador",
     "not_opened_cliente",
     "not_opened_contador",
+    "specific",
   ];
 
   const opts: WaDispatchOptions = {};
@@ -282,6 +283,10 @@ router.post("/marketing/wa/campaigns/:id/send", async (req, res): Promise<void> 
     opts.targetOverride = "manual";
     if (Array.isArray(manualPhones) && manualPhones.length > 0)
       opts.manualPhones = (manualPhones as string[]).map((p) => String(p).replace(/\D/g, "")).filter(Boolean);
+  } else if (targetOverride === "specific") {
+    opts.targetOverride = "specific";
+    if (Array.isArray(specificContactIds) && specificContactIds.length > 0)
+      opts.specificContactIds = (specificContactIds as number[]).map(Number).filter(Boolean);
   } else if (targetOverride && validTargets.includes(targetOverride as string)) {
     opts.targetOverride = targetOverride as string;
   }
@@ -408,6 +413,7 @@ interface WaDispatchOptions {
   sendEndHour?: number;
   sendDays?: string;
   manualPhones?: string[];
+  specificContactIds?: number[];
 }
 
 interface WaContact {
@@ -472,6 +478,12 @@ async function dispatchWaCampaign(
       const phone = digits.startsWith("55") ? digits : `55${digits}`;
       return { id: -(i + 1), name: "Destinatário", phone, type: "manual" };
     });
+  } else if (effectiveTarget === "specific" && opts.specificContactIds && opts.specificContactIds.length > 0) {
+    const ids = opts.specificContactIds;
+    const r = await db.execute<WaRawRow>(
+      sql`SELECT id, name, phone, type, status, unsubscribed_at FROM marketing_contacts WHERE id = ANY(${sql.raw(`ARRAY[${ids.join(",")}]::int[]`)}) AND status = 'active' AND unsubscribed_at IS NULL AND phone IS NOT NULL AND phone != ''`,
+    );
+    contacts = r.rows.map(row => ({ id: row.id, name: row.name, phone: row.phone, type: row.type }));
   } else {
     contacts = await loadWaContacts(effectiveTarget);
   }

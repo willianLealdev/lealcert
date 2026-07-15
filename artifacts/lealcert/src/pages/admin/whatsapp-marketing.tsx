@@ -10,6 +10,7 @@ import {
   useResumeWaCampaign,
   useGetWaCampaignProgress,
   useListWaCampaignSends,
+  useListMarketingContacts,
   getListWaCampaignSendsQueryKey,
   getListWaCampaignsQueryKey,
 } from "@workspace/api-client-react";
@@ -60,6 +61,7 @@ import {
   AlertCircle,
   Eye,
   UserX,
+  Search,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -102,6 +104,7 @@ const TARGET_LABELS: Record<string, string> = {
   clicked_contador: "Contadores que clicaram",
   not_opened_cliente: "Clientes sem abertura de e-mail",
   not_opened_contador: "Contadores sem abertura de e-mail",
+  specific: "Cliente específico",
   manual: "Destinatário manual",
 };
 
@@ -262,6 +265,20 @@ function SendDialog({
   const [useSchedule, setUseSchedule] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [manualPhones, setManualPhones] = useState<string[]>([""]);
+  const [contactSearch, setContactSearch] = useState("");
+  const [selectedContacts, setSelectedContacts] = useState<{ id: number; name: string; phone?: string | null; email?: string }[]>([]);
+
+  const { data: searchResult } = useListMarketingContacts({
+    search: contactSearch.length >= 2 ? contactSearch : undefined,
+    page: 1,
+  });
+  const foundContacts = searchResult?.data ?? [];
+
+  function toggleContact(c: { id: number; name: string; phone?: string | null; email?: string }) {
+    setSelectedContacts(prev =>
+      prev.some(x => x.id === c.id) ? prev.filter(x => x.id !== c.id) : [...prev, c]
+    );
+  }
 
   function toggleDay(d: string) {
     setSelectedDays((prev) =>
@@ -291,6 +308,13 @@ function SendDialog({
     }
     if (useSchedule && scheduledAt) {
       body.scheduledAt = new Date(scheduledAt).toISOString();
+    }
+    if (targetOverride === "specific") {
+      if (!selectedContacts.length) {
+        toast({ title: "Selecione ao menos um contato.", variant: "destructive" });
+        return;
+      }
+      body.specificContactIds = selectedContacts.map(c => c.id);
     }
     if (targetOverride === "manual") {
       const phones = manualPhones.map((p) => p.replace(/\D/g, "")).filter(Boolean);
@@ -331,7 +355,7 @@ function SendDialog({
         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
           <div>
             <Label>Público-alvo</Label>
-            <Select value={targetOverride} onValueChange={(v) => { setTargetOverride(v); if (v === "manual") setManualPhones([""]); }}>
+            <Select value={targetOverride} onValueChange={(v) => { setTargetOverride(v); if (v === "manual") setManualPhones([""]); if (v !== "specific") { setContactSearch(""); setSelectedContacts([]); } }}>
               <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
@@ -342,6 +366,52 @@ function SendDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {targetOverride === "specific" && (
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Buscar contato</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Nome ou e-mail (mín. 2 caracteres)…"
+                  value={contactSearch}
+                  onChange={e => setContactSearch(e.target.value)}
+                />
+              </div>
+              {selectedContacts.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedContacts.map(c => (
+                    <span key={c.id} className="flex items-center gap-1 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                      {c.name}
+                      <button onClick={() => toggleContact(c)} className="hover:text-destructive ml-0.5">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {contactSearch.length >= 2 && foundContacts.length > 0 && (
+                <div className="border rounded-lg overflow-hidden max-h-40 overflow-y-auto">
+                  {foundContacts.map(c => {
+                    const sel = selectedContacts.some(x => x.id === c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => toggleContact(c)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-left border-b last:border-0 transition-colors ${sel ? "bg-green-50" : "hover:bg-muted/50"}`}
+                      >
+                        <div className={`h-3.5 w-3.5 rounded border shrink-0 ${sel ? "bg-green-600 border-green-600" : "border-muted-foreground/40"}`} />
+                        <span className="font-medium">{c.name}</span>
+                        <span className="text-muted-foreground text-xs truncate ml-auto">{c.phone ?? c.email}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {contactSearch.length >= 2 && foundContacts.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-2">Nenhum contato encontrado.</p>
+              )}
+            </div>
+          )}
 
           {targetOverride === "manual" && (
             <div className="space-y-2">
