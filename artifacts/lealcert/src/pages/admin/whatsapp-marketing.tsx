@@ -98,6 +98,7 @@ const TARGET_LABELS: Record<string, string> = {
   clicked_contador: "Contadores que clicaram",
   not_opened_cliente: "Clientes sem abertura de e-mail",
   not_opened_contador: "Contadores sem abertura de e-mail",
+  manual: "Destinatário manual",
 };
 
 const DAYS_OF_WEEK = [
@@ -256,11 +257,24 @@ function SendDialog({
   const [selectedDays, setSelectedDays] = useState<string[]>(["1", "2", "3", "4", "5"]);
   const [useSchedule, setUseSchedule] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
+  const [manualPhones, setManualPhones] = useState<string[]>([""]);
 
   function toggleDay(d: string) {
     setSelectedDays((prev) =>
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d],
     );
+  }
+
+  function setManualPhone(i: number, val: string) {
+    setManualPhones((prev) => prev.map((p, idx) => (idx === i ? val : p)));
+  }
+
+  function addManualPhone() {
+    setManualPhones((prev) => [...prev, ""]);
+  }
+
+  function removeManualPhone(i: number) {
+    setManualPhones((prev) => prev.filter((_, idx) => idx !== i));
   }
 
   function handleSend() {
@@ -273,6 +287,14 @@ function SendDialog({
     }
     if (useSchedule && scheduledAt) {
       body.scheduledAt = new Date(scheduledAt).toISOString();
+    }
+    if (targetOverride === "manual") {
+      const phones = manualPhones.map((p) => p.replace(/\D/g, "")).filter(Boolean);
+      if (phones.length === 0) {
+        toast({ title: "Informe ao menos um número", variant: "destructive" });
+        return;
+      }
+      body.manualPhones = phones;
     }
 
     sendMutation.mutate(
@@ -293,7 +315,7 @@ function SendDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Send className="h-4 w-4 text-green-600" />
@@ -302,10 +324,10 @@ function SendDialog({
           <p className="text-sm text-muted-foreground">{campaign.name}</p>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
           <div>
             <Label>Público-alvo</Label>
-            <Select value={targetOverride} onValueChange={setTargetOverride}>
+            <Select value={targetOverride} onValueChange={(v) => { setTargetOverride(v); if (v === "manual") setManualPhones([""]); }}>
               <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
@@ -316,6 +338,39 @@ function SendDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {targetOverride === "manual" && (
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Números de WhatsApp</Label>
+              <p className="text-xs text-muted-foreground">Prefixo +55 já incluído. Digite apenas DDD + número (ex: 11912345678).</p>
+              <div className="space-y-2">
+                {manualPhones.map((phone, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-muted-foreground bg-muted px-2 py-2 rounded-l border border-r-0 border-border shrink-0">+55</span>
+                    <Input
+                      className="rounded-l-none flex-1"
+                      placeholder="11912345678"
+                      value={phone}
+                      maxLength={11}
+                      onChange={(e) => setManualPhone(i, e.target.value.replace(/\D/g, ""))}
+                    />
+                    {manualPhones.length > 1 && (
+                      <button onClick={() => removeManualPhone(i)} className="text-destructive/70 hover:text-destructive shrink-0">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addManualPhone}
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Adicionar número
+                </button>
+              </div>
+            </div>
+          )}
 
           <div>
             <Label>Limite de envio (msgs/minuto)</Label>

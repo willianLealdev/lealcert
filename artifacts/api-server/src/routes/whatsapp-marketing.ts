@@ -216,7 +216,7 @@ router.post("/marketing/wa/campaigns/:id/send", async (req, res): Promise<void> 
     return;
   }
   const id = parseInt(req.params.id, 10);
-  const { targetOverride, sendPerMinute, sendStartHour, sendEndHour, sendDays, scheduledAt } =
+  const { targetOverride, sendPerMinute, sendStartHour, sendEndHour, sendDays, scheduledAt, manualPhones } =
     req.body ?? {};
 
   const [campaign] = await db
@@ -251,8 +251,13 @@ router.post("/marketing/wa/campaigns/:id/send", async (req, res): Promise<void> 
   ];
 
   const opts: WaDispatchOptions = {};
-  if (targetOverride && validTargets.includes(targetOverride as string))
+  if (targetOverride === "manual") {
+    opts.targetOverride = "manual";
+    if (Array.isArray(manualPhones) && manualPhones.length > 0)
+      opts.manualPhones = (manualPhones as string[]).map((p) => String(p).replace(/\D/g, "")).filter(Boolean);
+  } else if (targetOverride && validTargets.includes(targetOverride as string)) {
     opts.targetOverride = targetOverride as string;
+  }
   if (sendPerMinute && Number(sendPerMinute) > 0) opts.sendPerMinute = Number(sendPerMinute);
   if (sendStartHour != null && sendEndHour != null) {
     opts.sendStartHour = Number(sendStartHour);
@@ -375,6 +380,7 @@ interface WaDispatchOptions {
   sendStartHour?: number;
   sendEndHour?: number;
   sendDays?: string;
+  manualPhones?: string[];
 }
 
 interface WaContact {
@@ -431,7 +437,17 @@ async function dispatchWaCampaign(
     campaign.scheduledTargetOverride ??
     campaign.targetType;
 
-  const contacts = await loadWaContacts(effectiveTarget);
+  // Manual phones: build synthetic contact list, skip DB lookup
+  let contacts: WaContact[];
+  if (effectiveTarget === "manual" && opts.manualPhones && opts.manualPhones.length > 0) {
+    contacts = opts.manualPhones.map((rawPhone, i) => {
+      const digits = rawPhone.replace(/\D/g, "");
+      const phone = digits.startsWith("55") ? digits : `55${digits}`;
+      return { id: -(i + 1), name: "Destinatário", phone, type: "manual" };
+    });
+  } else {
+    contacts = await loadWaContacts(effectiveTarget);
+  }
 
   const alreadySentRows = await db
     .select({ contactId: whatsappSendsTable.contactId })
@@ -519,28 +535,32 @@ async function dispatchWaCampaign(
   for (const contact of remaining) {
     if (!(await waitIfPaused())) return;
 
-    const [fresh] = await db
-      .select({
-        status: marketingContactsTable.status,
-        unsubscribedAt: marketingContactsTable.unsubscribedAt,
-      })
-      .from(marketingContactsTable)
-      .where(eq(marketingContactsTable.id, contact.id))
-      .limit(1);
+    const isManualContact = contact.id < 0;
 
-    if (!fresh || fresh.status !== "active" || fresh.unsubscribedAt) {
-      logger.info(
-        { contactId: contact.id, phone: contact.phone },
-        "WA: contato inativo/descadastrado — pulando",
-      );
-      continue;
+    if (!isManualContact) {
+      const [fresh] = await db
+        .select({
+          status: marketingContactsTable.status,
+          unsubscribedAt: marketingContactsTable.unsubscribedAt,
+        })
+        .from(marketingContactsTable)
+        .where(eq(marketingContactsTable.id, contact.id))
+        .limit(1);
+
+      if (!fresh || fresh.status !== "active" || fresh.unsubscribedAt) {
+        logger.info(
+          { contactId: contact.id, phone: contact.phone },
+          "WA: contato inativo/descadastrado — pulando",
+        );
+        continue;
+      }
     }
 
     await db
       .insert(whatsappSendsTable)
       .values({
         campaignId,
-        contactId: contact.id,
+        contactId: isManualContact ? null : contact.id,
         phone: contact.phone,
         recipientName: contact.name,
         status: "pending",
