@@ -151,6 +151,33 @@ router.delete("/marketing/wa/campaigns/:id", async (req, res): Promise<void> => 
   res.json({ message: "Campanha removida." });
 });
 
+// GET /marketing/wa/campaigns/:id/sends
+router.get("/marketing/wa/campaigns/:id/sends", async (req, res): Promise<void> => {
+  if (req.session.role !== "admin") { res.status(403).json({ error: "Acesso negado." }); return; }
+  const id = parseInt(req.params.id, 10);
+  const rows = await db.execute<{
+    id: number; phone: string; recipient_name: string | null; status: string;
+    sent_at: Date | null; error: string | null; created_at: Date; unsubscribed_at: Date | null;
+  }>(sql`
+    SELECT ws.id, ws.phone, ws.recipient_name, ws.status, ws.sent_at, ws.error, ws.created_at,
+           mc.unsubscribed_at
+    FROM whatsapp_sends ws
+    LEFT JOIN marketing_contacts mc ON mc.phone = ws.phone AND mc.unsubscribed_at IS NOT NULL
+    WHERE ws.campaign_id = ${id}
+    ORDER BY ws.created_at ASC
+  `);
+  res.json(rows.rows.map(r => ({
+    id: r.id,
+    phone: r.phone,
+    recipientName: r.recipient_name,
+    status: r.status,
+    sentAt: r.sent_at,
+    error: r.error,
+    unsubscribed: !!r.unsubscribed_at,
+    createdAt: r.created_at,
+  })));
+});
+
 // GET /marketing/wa/campaigns/:id/progress
 router.get("/marketing/wa/campaigns/:id/progress", async (req, res): Promise<void> => {
   if (req.session.role !== "admin") {

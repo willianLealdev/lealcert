@@ -9,9 +9,11 @@ import {
   usePauseWaCampaign,
   useResumeWaCampaign,
   useGetWaCampaignProgress,
+  useListWaCampaignSends,
+  getListWaCampaignSendsQueryKey,
   getListWaCampaignsQueryKey,
 } from "@workspace/api-client-react";
-import type { WaCampaign } from "@workspace/api-client-react";
+import type { WaCampaign, WaSend } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +58,8 @@ import {
   XCircle,
   Clock,
   AlertCircle,
+  Eye,
+  UserX,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -594,6 +598,84 @@ function CampaignDialog({
   );
 }
 
+// ── Sends Dialog ──────────────────────────────────────────────────────────────
+
+function WaSendsDialog({ campaignId, campaignName, open, onClose }: { campaignId: number; campaignName: string; open: boolean; onClose: () => void }) {
+  const { data: sends = [], isLoading } = useListWaCampaignSends(
+    campaignId,
+    { query: { queryKey: getListWaCampaignSendsQueryKey(campaignId), enabled: open } },
+  );
+
+  const sent = sends.filter(s => s.status === "sent").length;
+  const failed = sends.filter(s => s.status === "failed").length;
+  const unsub = sends.filter(s => s.unsubscribed).length;
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Envios — {campaignName}</DialogTitle>
+        </DialogHeader>
+
+        {/* Summary */}
+        <div className="flex gap-4 text-sm flex-wrap border-b pb-3">
+          <span className="flex items-center gap-1 text-green-600 font-medium">
+            <CheckCircle2 className="h-4 w-4" /> {sent} enviados
+          </span>
+          {failed > 0 && (
+            <span className="flex items-center gap-1 text-red-500 font-medium">
+              <XCircle className="h-4 w-4" /> {failed} falhas
+            </span>
+          )}
+          {unsub > 0 && (
+            <span className="flex items-center gap-1 text-slate-500 font-medium">
+              <UserX className="h-4 w-4" /> {unsub} descadastrados
+            </span>
+          )}
+          <span className="text-muted-foreground">{sends.length} total</span>
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+          {isLoading && <p className="text-sm text-muted-foreground py-4 text-center">Carregando...</p>}
+          {!isLoading && sends.length === 0 && (
+            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum envio registrado.</p>
+          )}
+          {sends.map((s: WaSend) => (
+            <div key={s.id} className="flex items-center justify-between gap-3 py-2 border-b last:border-0">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{s.recipientName ?? s.phone}</p>
+                <p className="text-xs text-muted-foreground">{s.phone}</p>
+                {s.error && <p className="text-xs text-red-500 truncate">{s.error}</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {s.unsubscribed && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border flex items-center gap-1">
+                    <UserX className="h-3 w-3" /> Descadastrado
+                  </span>
+                )}
+                <span className={cn(
+                  "text-[11px] px-2 py-0.5 rounded-full border font-medium",
+                  s.status === "sent" ? "bg-green-50 text-green-700 border-green-200" :
+                  s.status === "failed" ? "bg-red-50 text-red-600 border-red-200" :
+                  "bg-gray-50 text-gray-600 border-gray-200"
+                )}>
+                  {s.status === "sent" ? "Enviado" : s.status === "failed" ? "Falhou" : s.status}
+                </span>
+                {s.sentAt && (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(s.sentAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Campaign Row ──────────────────────────────────────────────────────────────
 
 function CampaignRow({
@@ -611,6 +693,7 @@ function CampaignRow({
   const queryClient = useQueryClient();
   const pauseMutation = usePauseWaCampaign();
   const resumeMutation = useResumeWaCampaign();
+  const [showSends, setShowSends] = useState(false);
 
   const isSending = campaign.status === "sending";
   const isPaused = campaign.status === "paused";
@@ -671,6 +754,12 @@ function CampaignRow({
 
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
+          {campaign.totalSent > 0 && (
+            <Button size="sm" variant="outline" onClick={() => setShowSends(true)}>
+              <Eye className="h-3.5 w-3.5 mr-1" />
+              Ver Envios
+            </Button>
+          )}
           {(isDraft || isDone || isScheduled) && (
             <Button size="sm" variant="outline" onClick={onSend} className="text-green-700 border-green-200 hover:bg-green-50">
               <Send className="h-3.5 w-3.5 mr-1" />
@@ -743,6 +832,15 @@ function CampaignRow({
       <p className="text-xs text-muted-foreground italic truncate border-t pt-2">
         "{campaign.message.slice(0, 80)}{campaign.message.length > 80 ? "…" : ""}"
       </p>
+
+      {showSends && (
+        <WaSendsDialog
+          campaignId={campaign.id}
+          campaignName={campaign.name}
+          open={showSends}
+          onClose={() => setShowSends(false)}
+        />
+      )}
     </div>
   );
 }

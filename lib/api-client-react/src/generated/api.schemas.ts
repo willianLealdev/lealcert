@@ -1734,6 +1734,17 @@ export interface SendWaCampaignBody {
   scheduledAt?: string | null;
 }
 
+export interface WaSend {
+  id: number;
+  phone: string;
+  recipientName?: string | null;
+  status: string;
+  sentAt?: string | null;
+  error?: string | null;
+  unsubscribed?: boolean;
+  createdAt: string;
+}
+
 export interface WaProgress {
   status: string;
   totalSent: number;

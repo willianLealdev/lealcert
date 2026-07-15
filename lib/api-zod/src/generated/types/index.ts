@@ -226,4 +226,5 @@ export * from './verifyEmailInput';
 export * from './verifyIp400';
 export * from './waCampaign';
 export * from './waProgress';
+export * from './waSend';
 export * from './waWebhookSair200';

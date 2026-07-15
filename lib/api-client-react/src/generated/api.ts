@@ -194,6 +194,7 @@ import type {
   VerifyIpBody,
   WaCampaign,
   WaProgress,
+  WaSend,
   WaWebhookSair200,
   WaWebhookSairBody
 } from './api.schemas';
@@ -11461,6 +11462,83 @@ export const useResumeWaCampaign = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getResumeWaCampaignMutationOptions(options));
     }
+
+export const getListWaCampaignSendsUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/wa/campaigns/${id}/sends`
+}
+
+/**
+ * @summary List individual sends for a WhatsApp campaign
+ */
+export const listWaCampaignSends = async (id: number, options?: RequestInit): Promise<WaSend[]> => {
+
+  return customFetch<WaSend[]>(getListWaCampaignSendsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListWaCampaignSendsQueryKey = (id: number,) => {
+    return [
+    `/api/marketing/wa/campaigns/${id}/sends`
+    ] as const;
+    }
+
+
+export const getListWaCampaignSendsQueryOptions = <TData = Awaited<ReturnType<typeof listWaCampaignSends>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWaCampaignSends>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListWaCampaignSendsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listWaCampaignSends>>> = ({ signal }) => listWaCampaignSends(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listWaCampaignSends>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListWaCampaignSendsQueryResult = NonNullable<Awaited<ReturnType<typeof listWaCampaignSends>>>
+export type ListWaCampaignSendsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List individual sends for a WhatsApp campaign
+ */
+
+export function useListWaCampaignSends<TData = Awaited<ReturnType<typeof listWaCampaignSends>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWaCampaignSends>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListWaCampaignSendsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetWaCampaignProgressUrl = (id: number,) => {
 

@@ -3096,6 +3096,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
+  /marketing/wa/campaigns/{id}/sends:
+    get:
+      operationId: listWaCampaignSends
+      tags: [whatsapp]
+      summary: List individual sends for a WhatsApp campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of sends
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WaSend"
+
   /marketing/wa/campaigns/{id}/progress:
     get:
       operationId: getWaCampaignProgress
@@ -6010,6 +6031,32 @@ components:
           type: string
           format: date-time
           nullable: true
+
+    WaSend:
+      type: object
+      required: [id, phone, status, createdAt]
+      properties:
+        id:
+          type: integer
+        phone:
+          type: string
+        recipientName:
+          type: string
+          nullable: true
+        status:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        unsubscribed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
 
     WaProgress:
       type: object

@@ -3359,6 +3359,26 @@ export const ResumeWaCampaignResponse = zod.object({
 
 
 /**
+ * @summary List individual sends for a WhatsApp campaign
+ */
+export const ListWaCampaignSendsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListWaCampaignSendsResponseItem = zod.object({
+  "id": zod.number(),
+  "phone": zod.string(),
+  "recipientName": zod.string().nullish(),
+  "status": zod.string(),
+  "sentAt": zod.coerce.date().nullish(),
+  "error": zod.string().nullish(),
+  "unsubscribed": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+})
+export const ListWaCampaignSendsResponse = zod.array(ListWaCampaignSendsResponseItem)
+
+
+/**
  * @summary Poll sending progress of a WhatsApp campaign
  */
 export const GetWaCampaignProgressParams = zod.object({
