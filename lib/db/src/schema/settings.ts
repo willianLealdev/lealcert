@@ -72,6 +72,9 @@ export const settingsTable = pgTable("settings", {
   claudeModel: text("claude_model").default("claude-3-5-haiku-20241022"),
   // ZeroBounce — validação de emails de marketing
   zeroBounceApiKey: text("zero_bounce_api_key"),
+  // Resend — API de envio para e-mail marketing
+  resendApiKey: text("resend_api_key"),
+  mktUseResend: text("mkt_use_resend").default("0"),   // 0 = SMTP | 1 = Resend
   // NFS-e (Nota Fiscal de Serviço Eletrônica) — BrasilNFe
   nfseAmbiente: text("nfse_ambiente").default("homologacao"),          // homologacao | producao
   nfseAutoEmit: text("nfse_auto_emit").default("0"),                   // 0 = manual | 1 = automático

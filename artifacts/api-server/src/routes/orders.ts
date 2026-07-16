@@ -537,6 +537,7 @@ router.patch("/orders/:id", requireAdmin, async (req, res): Promise<void> => {
             if (rows[0]?.autoEmit === "1") {
               return emitNfseForOrder(id);
             }
+            return;
           })
           .catch((err: unknown) => logger.error({ err, orderId: id }, "Auto-emit NFS-e falhou"));
       }).catch(() => { /* ignore */ });

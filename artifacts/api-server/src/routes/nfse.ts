@@ -71,7 +71,7 @@ export async function emitNfseForOrder(orderId: number): Promise<void> {
 
   const rpsNumber = await getNextRpsNumber();
   const ambiente = s.nfseAmbiente ?? "homologacao";
-  const valorServico = parseFloat(String(orderRow.totalAmount ?? orderRow.price ?? 0));
+  const valorServico = parseFloat(String(orderRow.total ?? 0));
   const aliquota = parseFloat(s.nfseServicoAliquota ?? "2");
 
   const [invoice] = await db.insert(nfseInvoicesTable).values({
@@ -83,7 +83,7 @@ export async function emitNfseForOrder(orderId: number): Promise<void> {
   }).returning();
 
   try {
-    const tomadorCpfCnpj = (orderRow.customerCpfCnpj ?? orderRow.customerCpf ?? "").replace(/\D/g, "");
+    const tomadorCpfCnpj = (orderRow.customerCpfCnpj ?? "").replace(/\D/g, "");
     const dataEmissao = new Date().toISOString().split("T")[0];
 
     const payload = {
@@ -101,7 +101,7 @@ export async function emitNfseForOrder(orderId: number): Promise<void> {
           Bairro: orderRow.addressNeighborhood ?? "",
           CodigoMunicipio: 0,
           Uf: orderRow.addressState ?? "AC",
-          Cep: (orderRow.addressZip ?? "").replace(/\D/g, ""),
+          Cep: (orderRow.addressZipcode ?? "").replace(/\D/g, ""),
         },
       },
       Servico: {
@@ -145,7 +145,7 @@ export async function emitNfseForOrder(orderId: number): Promise<void> {
 }
 
 router.post("/nfse/emit/:orderId", requireAdmin, async (req, res): Promise<void> => {
-  const orderId = parseInt(req.params.orderId, 10);
+  const orderId = parseInt(String(req.params["orderId"]), 10);
   if (isNaN(orderId)) { res.status(400).json({ error: "ID inválido." }); return; }
   try {
     await emitNfseForOrder(orderId);
@@ -187,7 +187,7 @@ router.get("/nfse", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.get("/nfse/:id", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params["id"]), 10);
   const [invoice] = await db.select().from(nfseInvoicesTable).where(eq(nfseInvoicesTable.id, id)).limit(1);
   if (!invoice) { res.status(404).json({ error: "Nota não encontrada." }); return; }
   res.json({
@@ -208,7 +208,7 @@ router.get("/nfse/:id", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.get("/nfse/:id/pdf", requireAuth, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params["id"]), 10);
   const [invoice] = await db.select({ pdfBase64: nfseInvoicesTable.pdfBase64, orderId: nfseInvoicesTable.orderId, numeroNfse: nfseInvoicesTable.numeroNfse })
     .from(nfseInvoicesTable).where(eq(nfseInvoicesTable.id, id)).limit(1);
   if (!invoice) { res.status(404).json({ error: "Nota não encontrada." }); return; }
@@ -220,7 +220,7 @@ router.get("/nfse/:id/pdf", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.get("/nfse/:id/xml", requireAuth, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params["id"]), 10);
   const [invoice] = await db.select({ xmlBase64: nfseInvoicesTable.xmlBase64, orderId: nfseInvoicesTable.orderId, numeroNfse: nfseInvoicesTable.numeroNfse })
     .from(nfseInvoicesTable).where(eq(nfseInvoicesTable.id, id)).limit(1);
   if (!invoice) { res.status(404).json({ error: "Nota não encontrada." }); return; }
@@ -232,7 +232,7 @@ router.get("/nfse/:id/xml", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.delete("/nfse/:id", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params["id"]), 10);
   const [invoice] = await db.select().from(nfseInvoicesTable).where(eq(nfseInvoicesTable.id, id)).limit(1);
   if (!invoice) { res.status(404).json({ error: "Nota não encontrada." }); return; }
   if (invoice.status !== "emitted") { res.status(400).json({ error: "Apenas notas emitidas podem ser canceladas." }); return; }
@@ -254,7 +254,7 @@ router.delete("/nfse/:id", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.get("/nfse/order/:orderId", requireAuth, async (req, res): Promise<void> => {
-  const orderId = parseInt(req.params.orderId, 10);
+  const orderId = parseInt(String(req.params["orderId"]), 10);
   const invoices = await db
     .select()
     .from(nfseInvoicesTable)

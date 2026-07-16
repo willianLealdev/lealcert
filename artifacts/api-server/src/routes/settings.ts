@@ -42,6 +42,8 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     claudeApiKey: mask(s.claudeApiKey),
     claudeModel: s.claudeModel ?? "claude-3-5-haiku-20241022",
     zeroBounceApiKey: mask(s.zeroBounceApiKey),
+    resendApiKey: mask((s as unknown as Record<string, string>).resendApiKey),
+    mktUseResend: (s as unknown as Record<string, string>).mktUseResend ?? "0",
     // NFS-e
     nfseAmbiente: s.nfseAmbiente ?? "homologacao",
     nfseAutoEmit: s.nfseAutoEmit ?? "0",
@@ -119,6 +121,8 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     deepseekApiKey, deepseekModel,
     claudeApiKey, claudeModel,
     zeroBounceApiKey,
+    resendApiKey,
+    mktUseResend,
     aiProvider,
     nfseAmbiente, nfseAutoEmit,
     nfseTokenTest, nfseTokenProd,
@@ -190,6 +194,8 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("deepseekApiKey", deepseekApiKey);
   set("claudeApiKey", claudeApiKey);
   set("zeroBounceApiKey", zeroBounceApiKey);
+  set("resendApiKey", resendApiKey);
+  if (mktUseResend !== undefined) u.mktUseResend = mktUseResend;
   // NFS-e
   if (nfseAmbiente !== undefined) u.nfseAmbiente = nfseAmbiente;
   if (nfseAutoEmit !== undefined) u.nfseAutoEmit = nfseAutoEmit;

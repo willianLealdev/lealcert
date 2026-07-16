@@ -118,6 +118,8 @@ export default function AdminSettings() {
     claudeApiKey: "",
     claudeModel: "claude-3-5-haiku-20241022",
     zeroBounceApiKey: "",
+    resendApiKey: "",
+    mktUseResend: "0",
     nfseAmbiente: "homologacao",
     nfseAutoEmit: "0",
     nfseTokenTest: "",
@@ -201,6 +203,8 @@ export default function AdminSettings() {
         deepseekModel: s.deepseekModel ?? "deepseek-chat",
         claudeApiKey: s.claudeApiKey ?? "",
         zeroBounceApiKey: s.zeroBounceApiKey ?? "",
+        resendApiKey: (s as unknown as Record<string, string>).resendApiKey ?? "",
+        mktUseResend: (s as unknown as Record<string, string>).mktUseResend ?? "0",
         claudeModel: s.claudeModel ?? "claude-3-5-haiku-20241022",
         nfseAmbiente: (s as unknown as Record<string, string>).nfseAmbiente ?? "homologacao",
         nfseAutoEmit: (s as unknown as Record<string, string>).nfseAutoEmit ?? "0",
@@ -691,6 +695,45 @@ export default function AdminSettings() {
                     <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
                       <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                       ZeroBounce ativo — chave salva.
+                    </div>
+                  )}
+                </div>
+
+                {/* Resend */}
+                <div className="border-t pt-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <Label className="flex items-center gap-1.5 text-sm font-medium">
+                        Resend — API de envio
+                        <span className="text-xs font-normal text-muted-foreground">(alternativa ao SMTP)</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Quando ativado, os e-mails de marketing saem pelo <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-primary underline">Resend</a> em vez do servidor SMTP. O SMTP acima continua sendo usado para e-mails transacionais.
+                      </p>
+                    </div>
+                    <Select value={form.mktUseResend} onValueChange={v => set("mktUseResend", v)}>
+                      <SelectTrigger className="w-[130px] shrink-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">SMTP próprio</SelectItem>
+                        <SelectItem value="1">🚀 Resend</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.mktUseResend === "1" && (
+                    <div className="space-y-2">
+                      <Label>Chave de API Resend</Label>
+                      <MaskedInput value={form.resendApiKey} onChange={v => set("resendApiKey", v)} placeholder="re_xxxxxxxxxxxxxxxxxxxx" />
+                      <p className="text-xs text-muted-foreground">
+                        Obtenha sua chave em <a href="https://resend.com/api-keys" target="_blank" rel="noreferrer" className="text-primary underline">resend.com/api-keys</a>. O remetente precisa estar configurado e verificado no Resend.
+                      </p>
+                    </div>
+                  )}
+                  {form.mktUseResend === "1" && (form.resendApiKey === "***" || (form.resendApiKey && form.resendApiKey !== "***")) && (
+                    <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                      Resend ativado — campanhas de marketing serão enviadas via API Resend.
                     </div>
                   )}
                 </div>

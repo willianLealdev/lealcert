@@ -4561,6 +4561,12 @@ components:
         zeroBounceApiKey:
           type: string
           nullable: true
+        resendApiKey:
+          type: string
+          nullable: true
+        mktUseResend:
+          type: string
+          nullable: true
         nfseAmbiente:
           type: string
           nullable: true
@@ -4710,6 +4716,10 @@ components:
         claudeModel:
           type: string
         zeroBounceApiKey:
+          type: string
+        resendApiKey:
+          type: string
+        mktUseResend:
           type: string
         nfseAmbiente:
           type: string
