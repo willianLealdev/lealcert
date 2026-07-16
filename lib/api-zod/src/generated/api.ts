@@ -2305,6 +2305,16 @@ export const GetSettingsResponse = zod.object({
   "claudeApiKey": zod.string().nullish(),
   "claudeModel": zod.string().nullish(),
   "zeroBounceApiKey": zod.string().nullish(),
+  "nfseAmbiente": zod.string().nullish(),
+  "nfseAutoEmit": zod.string().nullish(),
+  "nfseTokenTest": zod.string().nullish(),
+  "nfseTokenProd": zod.string().nullish(),
+  "nfsePrestadorCnpj": zod.string().nullish(),
+  "nfsePrestadorIm": zod.string().nullish(),
+  "nfseServicoCodigo": zod.string().nullish(),
+  "nfseServicoAliquota": zod.string().nullish(),
+  "nfseDiscriminacao": zod.string().nullish(),
+  "nfseIssRetido": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 
@@ -2369,7 +2379,17 @@ export const UpdateSettingsBody = zod.object({
   "deepseekModel": zod.string().optional(),
   "claudeApiKey": zod.string().optional(),
   "claudeModel": zod.string().optional(),
-  "zeroBounceApiKey": zod.string().optional()
+  "zeroBounceApiKey": zod.string().optional(),
+  "nfseAmbiente": zod.string().optional(),
+  "nfseAutoEmit": zod.string().optional(),
+  "nfseTokenTest": zod.string().optional(),
+  "nfseTokenProd": zod.string().optional(),
+  "nfsePrestadorCnpj": zod.string().optional(),
+  "nfsePrestadorIm": zod.string().optional(),
+  "nfseServicoCodigo": zod.string().optional(),
+  "nfseServicoAliquota": zod.string().optional(),
+  "nfseDiscriminacao": zod.string().optional(),
+  "nfseIssRetido": zod.string().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -2431,6 +2451,16 @@ export const UpdateSettingsResponse = zod.object({
   "claudeApiKey": zod.string().nullish(),
   "claudeModel": zod.string().nullish(),
   "zeroBounceApiKey": zod.string().nullish(),
+  "nfseAmbiente": zod.string().nullish(),
+  "nfseAutoEmit": zod.string().nullish(),
+  "nfseTokenTest": zod.string().nullish(),
+  "nfseTokenProd": zod.string().nullish(),
+  "nfsePrestadorCnpj": zod.string().nullish(),
+  "nfsePrestadorIm": zod.string().nullish(),
+  "nfseServicoCodigo": zod.string().nullish(),
+  "nfseServicoAliquota": zod.string().nullish(),
+  "nfseDiscriminacao": zod.string().nullish(),
+  "nfseIssRetido": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 
@@ -3391,6 +3421,132 @@ export const GetWaCampaignProgressResponse = zod.object({
   "totalFailed": zod.number(),
   "totalContacts": zod.number(),
   "paused": zod.boolean()
+})
+
+
+/**
+ * @summary List all NFS-e invoices (admin)
+ */
+export const ListNfseQueryParams = zod.object({
+  "status": zod.coerce.string().optional(),
+  "orderId": zod.coerce.number().optional()
+})
+
+export const ListNfseResponseItem = zod.object({
+  "id": zod.number(),
+  "orderId": zod.number().nullish(),
+  "rpsNumber": zod.number().nullish(),
+  "ambiente": zod.string(),
+  "numeroNfse": zod.string().nullish(),
+  "status": zod.string(),
+  "errorMsg": zod.string().nullish(),
+  "valorServico": zod.string().nullish(),
+  "hasPdf": zod.boolean().optional(),
+  "hasXml": zod.boolean().optional(),
+  "rawResponse": zod.object({
+
+}).passthrough().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+export const ListNfseResponse = zod.array(ListNfseResponseItem)
+
+
+/**
+ * @summary Manually emit NFS-e for an order (admin)
+ */
+export const EmitNfseParams = zod.object({
+  "orderId": zod.coerce.number()
+})
+
+export const EmitNfseResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "invoice": zod.object({
+  "id": zod.number(),
+  "orderId": zod.number().nullish(),
+  "rpsNumber": zod.number().nullish(),
+  "ambiente": zod.string(),
+  "numeroNfse": zod.string().nullish(),
+  "status": zod.string(),
+  "errorMsg": zod.string().nullish(),
+  "valorServico": zod.string().nullish(),
+  "hasPdf": zod.boolean().optional(),
+  "hasXml": zod.boolean().optional(),
+  "rawResponse": zod.object({
+
+}).passthrough().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+}).optional()
+})
+
+
+/**
+ * @summary List NFS-e invoices for a specific order
+ */
+export const ListNfseByOrderParams = zod.object({
+  "orderId": zod.coerce.number()
+})
+
+export const ListNfseByOrderResponseItem = zod.object({
+  "id": zod.number(),
+  "orderId": zod.number().nullish(),
+  "rpsNumber": zod.number().nullish(),
+  "ambiente": zod.string(),
+  "numeroNfse": zod.string().nullish(),
+  "status": zod.string(),
+  "errorMsg": zod.string().nullish(),
+  "valorServico": zod.string().nullish(),
+  "hasPdf": zod.boolean().optional(),
+  "hasXml": zod.boolean().optional(),
+  "rawResponse": zod.object({
+
+}).passthrough().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+export const ListNfseByOrderResponse = zod.array(ListNfseByOrderResponseItem)
+
+
+/**
+ * @summary Get single NFS-e invoice detail (admin)
+ */
+export const GetNfseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetNfseResponse = zod.object({
+  "id": zod.number(),
+  "orderId": zod.number().nullish(),
+  "rpsNumber": zod.number().nullish(),
+  "ambiente": zod.string(),
+  "numeroNfse": zod.string().nullish(),
+  "status": zod.string(),
+  "errorMsg": zod.string().nullish(),
+  "valorServico": zod.string().nullish(),
+  "hasPdf": zod.boolean().optional(),
+  "hasXml": zod.boolean().optional(),
+  "rawResponse": zod.object({
+
+}).passthrough().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Cancel NFS-e invoice (admin)
+ */
+export const CancelNfseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CancelNfseBody = zod.object({
+  "motivo": zod.string().optional()
+})
+
+export const CancelNfseResponse = zod.object({
+  "ok": zod.boolean().optional()
 })
 
 

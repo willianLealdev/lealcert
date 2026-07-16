@@ -62,6 +62,7 @@ import AdminIpSecurity from "@/pages/admin/ip-security";
 import AdminAgentes from "@/pages/admin/agentes";
 import AdminRelatoriosGar from "@/pages/admin/relatorios-gar";
 import AdminReviews from "@/pages/admin/reviews";
+import AdminNfse from "@/pages/admin/nfse";
 import AgenteConsultar from "@/pages/agente/consultar";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import ComprarPage from "@/pages/comprar";
@@ -156,6 +157,7 @@ function Router() {
       <Route path="/admin/agentes" component={() => <ProtectedRoute component={AdminAgentes} adminOnly />} />
       <Route path="/admin/relatorios-gar" component={() => <ProtectedRoute component={AdminRelatoriosGar} adminOnly />} />
       <Route path="/admin/reviews" component={() => <ProtectedRoute component={AdminReviews} adminOnly />} />
+      <Route path="/admin/nfse" component={() => <ProtectedRoute component={AdminNfse} adminOnly />} />
       {/* Agente routes */}
       <Route path="/consultar" component={() => <ProtectedRoute component={AgenteConsultar} agenteOnly />} />
       <Route component={NotFound} />

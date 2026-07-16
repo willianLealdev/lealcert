@@ -65,5 +65,15 @@ export interface AppSettings {
   claudeApiKey?: string | null;
   claudeModel?: string | null;
   zeroBounceApiKey?: string | null;
+  nfseAmbiente?: string | null;
+  nfseAutoEmit?: string | null;
+  nfseTokenTest?: string | null;
+  nfseTokenProd?: string | null;
+  nfsePrestadorCnpj?: string | null;
+  nfsePrestadorIm?: string | null;
+  nfseServicoCodigo?: string | null;
+  nfseServicoAliquota?: string | null;
+  nfseDiscriminacao?: string | null;
+  nfseIssRetido?: string | null;
   updatedAt?: string;
 }

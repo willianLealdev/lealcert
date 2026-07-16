@@ -72,6 +72,17 @@ export const settingsTable = pgTable("settings", {
   claudeModel: text("claude_model").default("claude-3-5-haiku-20241022"),
   // ZeroBounce — validação de emails de marketing
   zeroBounceApiKey: text("zero_bounce_api_key"),
+  // NFS-e (Nota Fiscal de Serviço Eletrônica) — BrasilNFe
+  nfseAmbiente: text("nfse_ambiente").default("homologacao"),          // homologacao | producao
+  nfseAutoEmit: text("nfse_auto_emit").default("0"),                   // 0 = manual | 1 = automático
+  nfseTokenTest: text("nfse_token_test"),                              // token API homologação
+  nfseTokenProd: text("nfse_token_prod"),                              // token API produção
+  nfsePrestadorCnpj: text("nfse_prestador_cnpj"),                      // CNPJ do prestador
+  nfsePrestadorIm: text("nfse_prestador_im"),                          // Inscrição Municipal
+  nfseServicoCodigo: text("nfse_servico_codigo").default("1.09"),      // código LC116
+  nfseServicoAliquota: text("nfse_servico_aliquota").default("2"),     // alíquota ISS %
+  nfseDiscriminacao: text("nfse_discriminacao").default("Emissão de Certificado Digital"),
+  nfseIssRetido: text("nfse_iss_retido").default("0"),                 // 0 = não retido | 1 = retido
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

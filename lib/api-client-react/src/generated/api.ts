@@ -46,6 +46,7 @@ import type {
   CampaignBounceEntry,
   CampaignProgress,
   CampaignSendEntry,
+  CancelNfse200,
   Certificate,
   CertificateInput,
   CertificateRenewal,
@@ -67,6 +68,7 @@ import type {
   CreateWaCampaignBody,
   DashboardStats,
   EmailValidationResult,
+  EmitNfse200,
   ErrorResponse,
   ForgotPasswordInput,
   GarCancelarAgendamento200,
@@ -126,6 +128,7 @@ import type {
   ListMarketingContacts200,
   ListMarketingContactsParams,
   ListMarketingRepliesParams,
+  ListNfseParams,
   ListOrdersParams,
   ListSlotsParams,
   LoginInput,
@@ -138,6 +141,8 @@ import type {
   Message,
   MessageInput,
   MessageResponse,
+  NfseCancelBody,
+  NfseInvoice,
   OpenaiConversation,
   Order,
   OrderEvent,
@@ -11616,6 +11621,386 @@ export function useGetWaCampaignProgress<TData = Awaited<ReturnType<typeof getWa
 
 
 
+
+export const getListNfseUrl = (params?: ListNfseParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/nfse?${stringifiedParams}` : `/api/nfse`
+}
+
+/**
+ * @summary List all NFS-e invoices (admin)
+ */
+export const listNfse = async (params?: ListNfseParams, options?: RequestInit): Promise<NfseInvoice[]> => {
+
+  return customFetch<NfseInvoice[]>(getListNfseUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListNfseQueryKey = (params?: ListNfseParams,) => {
+    return [
+    `/api/nfse`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListNfseQueryOptions = <TData = Awaited<ReturnType<typeof listNfse>>, TError = ErrorType<unknown>>(params?: ListNfseParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNfse>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListNfseQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listNfse>>> = ({ signal }) => listNfse(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listNfse>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListNfseQueryResult = NonNullable<Awaited<ReturnType<typeof listNfse>>>
+export type ListNfseQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all NFS-e invoices (admin)
+ */
+
+export function useListNfse<TData = Awaited<ReturnType<typeof listNfse>>, TError = ErrorType<unknown>>(
+ params?: ListNfseParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNfse>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListNfseQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getEmitNfseUrl = (orderId: number,) => {
+
+
+
+
+  return `/api/nfse/emit/${orderId}`
+}
+
+/**
+ * @summary Manually emit NFS-e for an order (admin)
+ */
+export const emitNfse = async (orderId: number, options?: RequestInit): Promise<EmitNfse200> => {
+
+  return customFetch<EmitNfse200>(getEmitNfseUrl(orderId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getEmitNfseMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof emitNfse>>, TError,{orderId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof emitNfse>>, TError,{orderId: number}, TContext> => {
+
+const mutationKey = ['emitNfse'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof emitNfse>>, {orderId: number}> = (props) => {
+          const {orderId} = props ?? {};
+
+          return  emitNfse(orderId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EmitNfseMutationResult = NonNullable<Awaited<ReturnType<typeof emitNfse>>>
+
+    export type EmitNfseMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Manually emit NFS-e for an order (admin)
+ */
+export const useEmitNfse = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof emitNfse>>, TError,{orderId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof emitNfse>>,
+        TError,
+        {orderId: number},
+        TContext
+      > => {
+      return useMutation(getEmitNfseMutationOptions(options));
+    }
+
+export const getListNfseByOrderUrl = (orderId: number,) => {
+
+
+
+
+  return `/api/nfse/order/${orderId}`
+}
+
+/**
+ * @summary List NFS-e invoices for a specific order
+ */
+export const listNfseByOrder = async (orderId: number, options?: RequestInit): Promise<NfseInvoice[]> => {
+
+  return customFetch<NfseInvoice[]>(getListNfseByOrderUrl(orderId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListNfseByOrderQueryKey = (orderId: number,) => {
+    return [
+    `/api/nfse/order/${orderId}`
+    ] as const;
+    }
+
+
+export const getListNfseByOrderQueryOptions = <TData = Awaited<ReturnType<typeof listNfseByOrder>>, TError = ErrorType<unknown>>(orderId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNfseByOrder>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListNfseByOrderQueryKey(orderId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listNfseByOrder>>> = ({ signal }) => listNfseByOrder(orderId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(orderId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listNfseByOrder>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListNfseByOrderQueryResult = NonNullable<Awaited<ReturnType<typeof listNfseByOrder>>>
+export type ListNfseByOrderQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List NFS-e invoices for a specific order
+ */
+
+export function useListNfseByOrder<TData = Awaited<ReturnType<typeof listNfseByOrder>>, TError = ErrorType<unknown>>(
+ orderId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNfseByOrder>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListNfseByOrderQueryOptions(orderId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetNfseUrl = (id: number,) => {
+
+
+
+
+  return `/api/nfse/${id}`
+}
+
+/**
+ * @summary Get single NFS-e invoice detail (admin)
+ */
+export const getNfse = async (id: number, options?: RequestInit): Promise<NfseInvoice> => {
+
+  return customFetch<NfseInvoice>(getGetNfseUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNfseQueryKey = (id: number,) => {
+    return [
+    `/api/nfse/${id}`
+    ] as const;
+    }
+
+
+export const getGetNfseQueryOptions = <TData = Awaited<ReturnType<typeof getNfse>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNfse>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNfseQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNfse>>> = ({ signal }) => getNfse(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNfse>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNfseQueryResult = NonNullable<Awaited<ReturnType<typeof getNfse>>>
+export type GetNfseQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get single NFS-e invoice detail (admin)
+ */
+
+export function useGetNfse<TData = Awaited<ReturnType<typeof getNfse>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNfse>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNfseQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCancelNfseUrl = (id: number,) => {
+
+
+
+
+  return `/api/nfse/${id}`
+}
+
+/**
+ * @summary Cancel NFS-e invoice (admin)
+ */
+export const cancelNfse = async (id: number,
+    nfseCancelBody?: NfseCancelBody, options?: RequestInit): Promise<CancelNfse200> => {
+
+  return customFetch<CancelNfse200>(getCancelNfseUrl(id),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      nfseCancelBody,)
+  }
+);}
+
+
+
+
+export const getCancelNfseMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelNfse>>, TError,{id: number;data?: BodyType<NfseCancelBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelNfse>>, TError,{id: number;data?: BodyType<NfseCancelBody>}, TContext> => {
+
+const mutationKey = ['cancelNfse'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelNfse>>, {id: number;data?: BodyType<NfseCancelBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  cancelNfse(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelNfseMutationResult = NonNullable<Awaited<ReturnType<typeof cancelNfse>>>
+    export type CancelNfseMutationBody = BodyType<NfseCancelBody> | undefined
+    export type CancelNfseMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Cancel NFS-e invoice (admin)
+ */
+export const useCancelNfse = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelNfse>>, TError,{id: number;data?: BodyType<NfseCancelBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelNfse>>,
+        TError,
+        {id: number;data?: BodyType<NfseCancelBody>},
+        TContext
+      > => {
+      return useMutation(getCancelNfseMutationOptions(options));
+    }
 
 export const getWaWebhookSairUrl = () => {
 

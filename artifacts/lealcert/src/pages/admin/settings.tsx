@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight,
-  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff, Bot, Megaphone,
+  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff, Bot, Megaphone, Receipt,
 } from "lucide-react";
 import { useSendTestPush } from "@workspace/api-client-react";
 import { usePush } from "@/lib/use-push";
@@ -118,6 +118,16 @@ export default function AdminSettings() {
     claudeApiKey: "",
     claudeModel: "claude-3-5-haiku-20241022",
     zeroBounceApiKey: "",
+    nfseAmbiente: "homologacao",
+    nfseAutoEmit: "0",
+    nfseTokenTest: "",
+    nfseTokenProd: "",
+    nfsePrestadorCnpj: "",
+    nfsePrestadorIm: "",
+    nfseServicoCodigo: "1.09",
+    nfseServicoAliquota: "2",
+    nfseDiscriminacao: "Emissão de Certificado Digital",
+    nfseIssRetido: "0",
   });
 
   useEffect(() => {
@@ -192,6 +202,16 @@ export default function AdminSettings() {
         claudeApiKey: s.claudeApiKey ?? "",
         zeroBounceApiKey: s.zeroBounceApiKey ?? "",
         claudeModel: s.claudeModel ?? "claude-3-5-haiku-20241022",
+        nfseAmbiente: (s as unknown as Record<string, string>).nfseAmbiente ?? "homologacao",
+        nfseAutoEmit: (s as unknown as Record<string, string>).nfseAutoEmit ?? "0",
+        nfseTokenTest: (s as unknown as Record<string, string>).nfseTokenTest ?? "",
+        nfseTokenProd: (s as unknown as Record<string, string>).nfseTokenProd ?? "",
+        nfsePrestadorCnpj: (s as unknown as Record<string, string>).nfsePrestadorCnpj ?? "",
+        nfsePrestadorIm: (s as unknown as Record<string, string>).nfsePrestadorIm ?? "",
+        nfseServicoCodigo: (s as unknown as Record<string, string>).nfseServicoCodigo ?? "1.09",
+        nfseServicoAliquota: (s as unknown as Record<string, string>).nfseServicoAliquota ?? "2",
+        nfseDiscriminacao: (s as unknown as Record<string, string>).nfseDiscriminacao ?? "Emissão de Certificado Digital",
+        nfseIssRetido: (s as unknown as Record<string, string>).nfseIssRetido ?? "0",
       });
     }
   }, [settings]);
@@ -287,6 +307,9 @@ export default function AdminSettings() {
           </TabsTrigger>
           <TabsTrigger value="ia" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Bot className="h-4 w-4" /><span>IA</span>
+          </TabsTrigger>
+          <TabsTrigger value="nfse" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Receipt className="h-4 w-4" /><span>NFS-e</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1105,6 +1128,136 @@ export default function AdminSettings() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* ── NFS-e ──────────────────────────────────────────────────────── */}
+        <TabsContent value="nfse" className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Ambiente e modo */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Receipt className="h-5 w-5 text-primary" />
+                  Nota Fiscal de Serviço (NFS-e) — BrasilNFe
+                </CardTitle>
+                <CardDescription>
+                  Configure a emissão de NFS-e via <a href="https://brasilnfe.com.br" target="_blank" rel="noreferrer" className="text-primary underline">BrasilNFe API</a>. Crie sua conta lá para obter os tokens de acesso.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Ambiente ativo</Label>
+                    <Select value={form.nfseAmbiente} onValueChange={v => set("nfseAmbiente", v)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="homologacao">🟡 Homologação (testes)</SelectItem>
+                        <SelectItem value="producao">🟢 Produção</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Homologação é gratuita e ilimitada para testes.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Modo de emissão</Label>
+                    <Select value={form.nfseAutoEmit} onValueChange={v => set("nfseAutoEmit", v)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Manual — emitir por pedido</SelectItem>
+                        <SelectItem value="1">Automático — ao mudar status para "Emitido"</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">No modo manual, cada pedido terá um botão "Emitir NFS-e".</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tokens */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Tokens de API</CardTitle>
+                <CardDescription>Gere os tokens no painel do BrasilNFe em Configurações → API.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Token de Homologação</Label>
+                  <MaskedInput value={form.nfseTokenTest} onChange={v => set("nfseTokenTest", v)} placeholder="Token de teste..." />
+                </div>
+                <div className="space-y-2">
+                  <Label>Token de Produção</Label>
+                  <MaskedInput value={form.nfseTokenProd} onChange={v => set("nfseTokenProd", v)} placeholder="Token de produção..." />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dados do prestador */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Dados da Empresa (Prestador)</CardTitle>
+                <CardDescription>Informações do seu CNPJ que aparecerão nas notas emitidas.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>CNPJ do Prestador</Label>
+                    <Input value={form.nfsePrestadorCnpj} onChange={e => set("nfsePrestadorCnpj", e.target.value)} placeholder="00.000.000/0001-00" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Inscrição Municipal</Label>
+                    <Input value={form.nfsePrestadorIm} onChange={e => set("nfsePrestadorIm", e.target.value)} placeholder="123456" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dados do serviço */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Dados do Serviço</CardTitle>
+                <CardDescription>Defina como o serviço aparecerá na nota fiscal.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Código do Serviço (LC 116)</Label>
+                    <Input value={form.nfseServicoCodigo} onChange={e => set("nfseServicoCodigo", e.target.value)} placeholder="1.09" />
+                    <p className="text-xs text-muted-foreground">Ex: 1.09 (Disponibilização de sistemas e banco de dados). Consulte a tabela LC 116 do seu município.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Alíquota ISS (%)</Label>
+                    <Input value={form.nfseServicoAliquota} onChange={e => set("nfseServicoAliquota", e.target.value)} placeholder="2" type="number" step="0.01" min="0" max="5" />
+                    <p className="text-xs text-muted-foreground">Alíquota cobrada pelo seu município.</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Discriminação do Serviço</Label>
+                  <Input value={form.nfseDiscriminacao} onChange={e => set("nfseDiscriminacao", e.target.value)} placeholder="Emissão de Certificado Digital" />
+                  <p className="text-xs text-muted-foreground">Texto que aparecerá na descrição do serviço na nota.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>ISS Retido na Fonte</Label>
+                  <Select value={form.nfseIssRetido} onValueChange={v => set("nfseIssRetido", v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Não retido (padrão)</SelectItem>
+                      <SelectItem value="1">Retido na fonte</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Button type="submit" disabled={update.isPending}>
+              {update.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Salvar configurações NFS-e
+            </Button>
+          </form>
         </TabsContent>
       </Tabs>
     </div>

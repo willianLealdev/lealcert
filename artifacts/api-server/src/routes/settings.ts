@@ -42,6 +42,17 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     claudeApiKey: mask(s.claudeApiKey),
     claudeModel: s.claudeModel ?? "claude-3-5-haiku-20241022",
     zeroBounceApiKey: mask(s.zeroBounceApiKey),
+    // NFS-e
+    nfseAmbiente: s.nfseAmbiente ?? "homologacao",
+    nfseAutoEmit: s.nfseAutoEmit ?? "0",
+    nfseTokenTest: mask(s.nfseTokenTest),
+    nfseTokenProd: mask(s.nfseTokenProd),
+    nfsePrestadorCnpj: s.nfsePrestadorCnpj ?? "",
+    nfsePrestadorIm: s.nfsePrestadorIm ?? "",
+    nfseServicoCodigo: s.nfseServicoCodigo ?? "1.09",
+    nfseServicoAliquota: s.nfseServicoAliquota ?? "2",
+    nfseDiscriminacao: s.nfseDiscriminacao ?? "Emissão de Certificado Digital",
+    nfseIssRetido: s.nfseIssRetido ?? "0",
     // Non-secret fields
     mailFrom: s.mailFrom,
     siteUrl: s.siteUrl,
@@ -109,6 +120,10 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     claudeApiKey, claudeModel,
     zeroBounceApiKey,
     aiProvider,
+    nfseAmbiente, nfseAutoEmit,
+    nfseTokenTest, nfseTokenProd,
+    nfsePrestadorCnpj, nfsePrestadorIm,
+    nfseServicoCodigo, nfseServicoAliquota, nfseDiscriminacao, nfseIssRetido,
   } = req.body ?? {};
 
   // Helper: skip masked sentinel value (never overwrite a real secret with "***")
@@ -175,6 +190,17 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("deepseekApiKey", deepseekApiKey);
   set("claudeApiKey", claudeApiKey);
   set("zeroBounceApiKey", zeroBounceApiKey);
+  // NFS-e
+  if (nfseAmbiente !== undefined) u.nfseAmbiente = nfseAmbiente;
+  if (nfseAutoEmit !== undefined) u.nfseAutoEmit = nfseAutoEmit;
+  if (nfsePrestadorCnpj !== undefined) u.nfsePrestadorCnpj = nfsePrestadorCnpj;
+  if (nfsePrestadorIm !== undefined) u.nfsePrestadorIm = nfsePrestadorIm;
+  if (nfseServicoCodigo !== undefined) u.nfseServicoCodigo = nfseServicoCodigo;
+  if (nfseServicoAliquota !== undefined) u.nfseServicoAliquota = nfseServicoAliquota;
+  if (nfseDiscriminacao !== undefined) u.nfseDiscriminacao = nfseDiscriminacao;
+  if (nfseIssRetido !== undefined) u.nfseIssRetido = nfseIssRetido;
+  set("nfseTokenTest", nfseTokenTest);
+  set("nfseTokenProd", nfseTokenProd);
 
   const [updated] = await db
     .update(settingsTable)

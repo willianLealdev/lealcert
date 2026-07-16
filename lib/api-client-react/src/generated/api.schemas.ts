@@ -724,6 +724,16 @@ export interface AppSettings {
   claudeApiKey?: string | null;
   claudeModel?: string | null;
   zeroBounceApiKey?: string | null;
+  nfseAmbiente?: string | null;
+  nfseAutoEmit?: string | null;
+  nfseTokenTest?: string | null;
+  nfseTokenProd?: string | null;
+  nfsePrestadorCnpj?: string | null;
+  nfsePrestadorIm?: string | null;
+  nfseServicoCodigo?: string | null;
+  nfseServicoAliquota?: string | null;
+  nfseDiscriminacao?: string | null;
+  nfseIssRetido?: string | null;
   updatedAt?: string;
 }
 
@@ -785,6 +795,16 @@ export interface AppSettingsUpdate {
   claudeApiKey?: string;
   claudeModel?: string;
   zeroBounceApiKey?: string;
+  nfseAmbiente?: string;
+  nfseAutoEmit?: string;
+  nfseTokenTest?: string;
+  nfseTokenProd?: string;
+  nfsePrestadorCnpj?: string;
+  nfsePrestadorIm?: string;
+  nfseServicoCodigo?: string;
+  nfseServicoAliquota?: string;
+  nfseDiscriminacao?: string;
+  nfseIssRetido?: string;
 }
 
 export type PushSubscribeBodyKeys = {
@@ -1745,6 +1765,28 @@ export interface WaSend {
   createdAt: string;
 }
 
+export type NfseInvoiceRawResponse = { [key: string]: unknown } | null;
+
+export interface NfseInvoice {
+  id: number;
+  orderId?: number | null;
+  rpsNumber?: number | null;
+  ambiente: string;
+  numeroNfse?: string | null;
+  status: string;
+  errorMsg?: string | null;
+  valorServico?: string | null;
+  hasPdf?: boolean;
+  hasXml?: boolean;
+  rawResponse?: NfseInvoiceRawResponse;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface NfseCancelBody {
+  motivo?: string;
+}
+
 export interface WaProgress {
   status: string;
   totalSent: number;
@@ -2094,6 +2136,20 @@ status?: string;
 
 export type ListMarketingRepliesParams = {
 unreadOnly?: boolean;
+};
+
+export type ListNfseParams = {
+status?: string;
+orderId?: number;
+};
+
+export type EmitNfse200 = {
+  ok?: boolean;
+  invoice?: NfseInvoice;
+};
+
+export type CancelNfse200 = {
+  ok?: boolean;
 };
 
 export type WaWebhookSairBody = { [key: string]: unknown };

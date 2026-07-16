@@ -527,6 +527,20 @@ router.patch("/orders/:id", requireAdmin, async (req, res): Promise<void> => {
       orderNumber: order.orderNumber,
       status: order.status,
     }).catch((err: unknown) => logger.error({ err }, "Erro ao notificar status do pedido"));
+
+    // Auto-emit NFS-e when order status changes to "emitido"
+    if (status === "emitido") {
+      import("./nfse").then(({ emitNfseForOrder }) => {
+        db.select({ autoEmit: settingsTable.nfseAutoEmit })
+          .from(settingsTable).limit(1)
+          .then(rows => {
+            if (rows[0]?.autoEmit === "1") {
+              return emitNfseForOrder(id);
+            }
+          })
+          .catch((err: unknown) => logger.error({ err, orderId: id }, "Auto-emit NFS-e falhou"));
+      }).catch(() => { /* ignore */ });
+    }
   }
 
   res.json(orderRow(order));

@@ -16,3 +16,4 @@ export * from "./ip-blocks";
 export * from "./ip-verifications";
 export * from "./ip-whitelist";
 export * from "./reviews";
+export * from "./nfse-invoices";

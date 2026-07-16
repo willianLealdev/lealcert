@@ -34,6 +34,8 @@ tags:
     description: OpenAI AI chat operations
   - name: gestaoar
     description: Gestão AR integration — produtos, vendas, protocolo e agenda
+  - name: nfse
+    description: NFS-e (Nota Fiscal de Serviço Eletrônica) — BrasilNFe integration
 
 paths:
   /coupons:
@@ -3136,6 +3138,119 @@ paths:
               schema:
                 $ref: "#/components/schemas/WaProgress"
 
+  /nfse:
+    get:
+      operationId: listNfse
+      tags: [nfse]
+      summary: List all NFS-e invoices (admin)
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: orderId
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of NFS-e invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NfseInvoice"
+
+  /nfse/emit/{orderId}:
+    post:
+      operationId: emitNfse
+      tags: [nfse]
+      summary: Manually emit NFS-e for an order (admin)
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  invoice:
+                    $ref: "#/components/schemas/NfseInvoice"
+
+  /nfse/order/{orderId}:
+    get:
+      operationId: listNfseByOrder
+      tags: [nfse]
+      summary: List NFS-e invoices for a specific order
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of invoices for the order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NfseInvoice"
+
+  /nfse/{id}:
+    get:
+      operationId: getNfse
+      tags: [nfse]
+      summary: Get single NFS-e invoice detail (admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: NFS-e invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NfseInvoice"
+    delete:
+      operationId: cancelNfse
+      tags: [nfse]
+      summary: Cancel NFS-e invoice (admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NfseCancelBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
   /marketing/wa/webhook/sair:
     post:
       operationId: waWebhookSair
@@ -4446,6 +4561,36 @@ components:
         zeroBounceApiKey:
           type: string
           nullable: true
+        nfseAmbiente:
+          type: string
+          nullable: true
+        nfseAutoEmit:
+          type: string
+          nullable: true
+        nfseTokenTest:
+          type: string
+          nullable: true
+        nfseTokenProd:
+          type: string
+          nullable: true
+        nfsePrestadorCnpj:
+          type: string
+          nullable: true
+        nfsePrestadorIm:
+          type: string
+          nullable: true
+        nfseServicoCodigo:
+          type: string
+          nullable: true
+        nfseServicoAliquota:
+          type: string
+          nullable: true
+        nfseDiscriminacao:
+          type: string
+          nullable: true
+        nfseIssRetido:
+          type: string
+          nullable: true
         updatedAt:
           type: string
 
@@ -4565,6 +4710,26 @@ components:
         claudeModel:
           type: string
         zeroBounceApiKey:
+          type: string
+        nfseAmbiente:
+          type: string
+        nfseAutoEmit:
+          type: string
+        nfseTokenTest:
+          type: string
+        nfseTokenProd:
+          type: string
+        nfsePrestadorCnpj:
+          type: string
+        nfsePrestadorIm:
+          type: string
+        nfseServicoCodigo:
+          type: string
+        nfseServicoAliquota:
+          type: string
+        nfseDiscriminacao:
+          type: string
+        nfseIssRetido:
           type: string
 
     PushSubscribeBody:
@@ -6057,6 +6222,52 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    NfseInvoice:
+      type: object
+      required: [id, ambiente, status, createdAt]
+      properties:
+        id:
+          type: integer
+        orderId:
+          type: integer
+          nullable: true
+        rpsNumber:
+          type: integer
+          nullable: true
+        ambiente:
+          type: string
+        numeroNfse:
+          type: string
+          nullable: true
+        status:
+          type: string
+        errorMsg:
+          type: string
+          nullable: true
+        valorServico:
+          type: string
+          nullable: true
+        hasPdf:
+          type: boolean
+        hasXml:
+          type: boolean
+        rawResponse:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    NfseCancelBody:
+      type: object
+      properties:
+        motivo:
+          type: string
 
     WaProgress:
       type: object

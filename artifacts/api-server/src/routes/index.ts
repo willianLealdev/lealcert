@@ -26,6 +26,7 @@ import publicRouter from "./public";
 import reviewsRouter from "./reviews";
 import checkoutRouter from "./checkout";
 import whatsappMarketingRouter from "./whatsapp-marketing";
+import nfseRouter from "./nfse";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(agenteDocsRouter);
 router.use(publicRouter);
 router.use(checkoutRouter);
 router.use(whatsappMarketingRouter);
+router.use(nfseRouter);
 
 export default router;

@@ -64,4 +64,14 @@ export interface AppSettingsUpdate {
   claudeApiKey?: string;
   claudeModel?: string;
   zeroBounceApiKey?: string;
+  nfseAmbiente?: string;
+  nfseAutoEmit?: string;
+  nfseTokenTest?: string;
+  nfseTokenProd?: string;
+  nfsePrestadorCnpj?: string;
+  nfsePrestadorIm?: string;
+  nfseServicoCodigo?: string;
+  nfseServicoAliquota?: string;
+  nfseDiscriminacao?: string;
+  nfseIssRetido?: string;
 }

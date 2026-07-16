@@ -42,6 +42,7 @@ import {
   X,
   MessageSquare,
   Phone,
+  Receipt,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 import { ReviewPrompt } from "@/components/review-prompt";
@@ -68,6 +69,7 @@ const adminNav = [
   { name: "WhatsApp", href: "/admin/whatsapp", icon: Phone },
   { name: "Segurança de IP", href: "/admin/ip-security", icon: ShieldCheck },
   { name: "Relatórios GAR", href: "/admin/relatorios-gar", icon: BarChart2 },
+  { name: "Notas Fiscais", href: "/admin/nfse", icon: Receipt },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 

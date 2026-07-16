@@ -25,6 +25,8 @@ import {
   useApprovePaymentManual,
   useTriggerProtocolManual,
   useConfirmDocs,
+  useListNfseByOrder,
+  useEmitNfse,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -124,6 +126,123 @@ const EVENT_LABELS: Record<string, string> = {
   admin_action:         "Ação do Administrador",
   sync_performed:       "Sincronização",
 };
+
+function NfseSection({ orderId, isAdmin }: { orderId: number; isAdmin: boolean }) {
+  const { toast } = useToast();
+  const { data: invoices = [], isLoading, refetch } = useListNfseByOrder(orderId, {
+    query: { queryKey: ["nfse-order", orderId], refetchInterval: 15000 },
+  });
+
+  const emitMutation = useEmitNfse({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "✅ NFS-e emitida com sucesso!" });
+        void refetch();
+      },
+      onError: (e: unknown) => {
+        toast({ title: "Erro ao emitir NFS-e", description: (e as Error).message, variant: "destructive" });
+      },
+    },
+  });
+
+  const STATUS_LABEL: Record<string, string> = {
+    emitting: "Processando",
+    emitted: "Emitida",
+    failed: "Falhou",
+    rejected: "Rejeitada",
+    cancelled: "Cancelada",
+  };
+
+  if (!isAdmin && invoices.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Receipt className="h-5 w-5 text-primary" />
+          Nota Fiscal (NFS-e)
+        </CardTitle>
+        {isAdmin && invoices.length === 0 && !isLoading && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={emitMutation.isPending}
+            onClick={() => emitMutation.mutate({ orderId })}
+          >
+            {emitMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Receipt className="h-4 w-4 mr-2" />}
+            Emitir NFS-e
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : invoices.length === 0 ? (
+          <div className="text-sm text-muted-foreground italic">
+            {isAdmin ? "Nenhuma nota fiscal emitida para este pedido." : "Nota fiscal não disponível."}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {invoices.map(inv => (
+              <div key={inv.id} className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={inv.status === "emitted" ? "default" : inv.status === "failed" || inv.status === "rejected" ? "destructive" : "secondary"}>
+                      {STATUS_LABEL[inv.status] ?? inv.status}
+                    </Badge>
+                    {inv.ambiente === "homologacao" && (
+                      <span className="text-[10px] font-semibold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full uppercase">Homologação</span>
+                    )}
+                    {inv.numeroNfse && (
+                      <span className="text-xs font-mono text-muted-foreground">N° {inv.numeroNfse}</span>
+                    )}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    {inv.hasPdf && (
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => window.open(`/api/nfse/${inv.id}/pdf`, "_blank")}>
+                        <Download className="h-3 w-3 mr-1" />PDF
+                      </Button>
+                    )}
+                    {inv.hasXml && (
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => window.open(`/api/nfse/${inv.id}/xml`, "_blank")}>
+                        <FileText className="h-3 w-3 mr-1" />XML
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {inv.valorServico && (
+                  <p className="text-sm font-medium">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(parseFloat(inv.valorServico))}
+                  </p>
+                )}
+                {inv.errorMsg && (
+                  <p className="text-xs text-destructive bg-destructive/10 rounded p-2">{inv.errorMsg}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {new Date(inv.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                </p>
+              </div>
+            ))}
+            {isAdmin && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={emitMutation.isPending}
+                onClick={() => emitMutation.mutate({ orderId })}
+                className="text-xs"
+              >
+                {emitMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Receipt className="h-3 w-3 mr-1" />}
+                Emitir nova nota
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function OrderTimeline({ orderId, onEventsChange }: { orderId: number; onEventsChange?: () => void }) {
   const { data: events, isLoading, refetch: refetchEvents } = useGetOrderEvents(orderId);
@@ -2647,6 +2766,8 @@ export default function OrderDetail() {
               </CardContent>
             </Card>
           )}
+
+          <NfseSection orderId={Number(id)} isAdmin={isAdmin} />
 
           <OrderTimeline orderId={Number(id)} onEventsChange={() => { void refetch(); }} />
         </div>
