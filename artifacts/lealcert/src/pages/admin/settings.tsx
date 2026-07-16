@@ -1234,9 +1234,11 @@ export default function AdminSettings() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Discriminação do Serviço</Label>
+                  <Label>Discriminação do Serviço (fallback)</Label>
                   <Input value={form.nfseDiscriminacao} onChange={e => set("nfseDiscriminacao", e.target.value)} placeholder="Emissão de Certificado Digital" />
-                  <p className="text-xs text-muted-foreground">Texto que aparecerá na descrição do serviço na nota.</p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Preenchido automaticamente</strong> com o nome do produto do pedido (ex: "e-CPF 12 meses"). Este texto só é usado se o pedido não tiver produto identificado.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>ISS Retido na Fonte</Label>

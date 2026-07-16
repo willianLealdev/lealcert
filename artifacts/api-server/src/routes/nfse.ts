@@ -105,7 +105,7 @@ export async function emitNfseForOrder(orderId: number): Promise<void> {
         },
       },
       Servico: {
-        Discriminacao: s.nfseDiscriminacao ?? "Emissão de Certificado Digital",
+        Discriminacao: orderRow.certNameSnapshot ?? s.nfseDiscriminacao ?? "Emissão de Certificado Digital",
         CodigoServico: s.nfseServicoCodigo ?? "1.09",
         ValorServico: valorServico,
         Aliquota: aliquota,
