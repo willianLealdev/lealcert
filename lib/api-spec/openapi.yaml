@@ -4483,6 +4483,15 @@ components:
         evolutionInstance:
           type: string
           nullable: true
+        evolutionMktUrl:
+          type: string
+          nullable: true
+        evolutionMktApiKey:
+          type: string
+          nullable: true
+        evolutionMktInstance:
+          type: string
+          nullable: true
         logoUrl:
           type: string
           nullable: true
@@ -4664,6 +4673,12 @@ components:
         evolutionApiKey:
           type: string
         evolutionInstance:
+          type: string
+        evolutionMktUrl:
+          type: string
+        evolutionMktApiKey:
+          type: string
+        evolutionMktInstance:
           type: string
         logoUrl:
           type: string

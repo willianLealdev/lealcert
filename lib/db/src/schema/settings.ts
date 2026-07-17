@@ -39,6 +39,10 @@ export const settingsTable = pgTable("settings", {
   evolutionUrl: text("evolution_url"),
   evolutionApiKey: text("evolution_api_key"),
   evolutionInstance: text("evolution_instance"),
+  // Evolution API — instância exclusiva de marketing
+  evolutionMktUrl: text("evolution_mkt_url"),
+  evolutionMktApiKey: text("evolution_mkt_api_key"),
+  evolutionMktInstance: text("evolution_mkt_instance"),
   // White-label branding
   logoUrl: text("logo_url"),
   primaryColor: text("primary_color").default("#2563eb"),

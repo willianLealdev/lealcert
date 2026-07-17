@@ -698,6 +698,9 @@ export interface AppSettings {
   evolutionUrl?: string | null;
   evolutionApiKey?: string | null;
   evolutionInstance?: string | null;
+  evolutionMktUrl?: string | null;
+  evolutionMktApiKey?: string | null;
+  evolutionMktInstance?: string | null;
   logoUrl?: string | null;
   primaryColor?: string | null;
   contactPhone?: string | null;
@@ -771,6 +774,9 @@ export interface AppSettingsUpdate {
   evolutionUrl?: string;
   evolutionApiKey?: string;
   evolutionInstance?: string;
+  evolutionMktUrl?: string;
+  evolutionMktApiKey?: string;
+  evolutionMktInstance?: string;
   logoUrl?: string;
   primaryColor?: string;
   contactPhone?: string;

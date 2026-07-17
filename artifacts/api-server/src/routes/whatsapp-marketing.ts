@@ -445,9 +445,9 @@ async function dispatchWaCampaign(
 
   const [settings] = await db
     .select({
-      evolutionUrl: settingsTable.evolutionUrl,
-      evolutionApiKey: settingsTable.evolutionApiKey,
-      evolutionInstance: settingsTable.evolutionInstance,
+      evolutionUrl: settingsTable.evolutionMktUrl,
+      evolutionApiKey: settingsTable.evolutionMktApiKey,
+      evolutionInstance: settingsTable.evolutionMktInstance,
     })
     .from(settingsTable)
     .limit(1);
@@ -457,7 +457,7 @@ async function dispatchWaCampaign(
     !settings?.evolutionApiKey ||
     !settings?.evolutionInstance
   ) {
-    logger.error({ campaignId }, "Evolution API não configurada — abortando dispatch WA");
+    logger.error({ campaignId }, "Evolution API de marketing não configurada — abortando dispatch WA");
     await db
       .update(whatsappCampaignsTable)
       .set({ status: "draft" })

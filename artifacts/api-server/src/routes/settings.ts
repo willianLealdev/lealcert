@@ -31,6 +31,9 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     safewebPassword: mask(s.safewebPassword),
     safewebPasswordHomologacao: mask(s.safewebPasswordHomologacao),
     evolutionApiKey: mask(s.evolutionApiKey),
+    evolutionMktUrl: s.evolutionMktUrl ?? null,
+    evolutionMktApiKey: mask((s as unknown as Record<string, string>).evolutionMktApiKey),
+    evolutionMktInstance: (s as unknown as Record<string, string>).evolutionMktInstance ?? null,
     smtpPassDb: mask(s.smtpPassDb),
     mktSmtpPassDb: mask(s.mktSmtpPassDb),
     vapidPrivateKey: mask(s.vapidPrivateKey),             // crypto private key — never expose
@@ -112,6 +115,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     safewebUsernameHomologacao, safewebPasswordHomologacao,
     safewebCnpjAr, safewebCodigoParceiro, activeProvider,
     evolutionUrl, evolutionApiKey, evolutionInstance,
+    evolutionMktUrl, evolutionMktApiKey, evolutionMktInstance,
     logoUrl, primaryColor,
     contactPhone, contactWhatsapp, contactEmailSupport, contactAddress,
     smtpHostDb, smtpPortDb, smtpUserDb, smtpPassDb,
@@ -158,6 +162,8 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (activeProvider !== undefined) u.activeProvider = activeProvider;
   if (evolutionUrl !== undefined) u.evolutionUrl = evolutionUrl;
   if (evolutionInstance !== undefined) u.evolutionInstance = evolutionInstance;
+  if (evolutionMktUrl !== undefined) u.evolutionMktUrl = evolutionMktUrl;
+  if (evolutionMktInstance !== undefined) u.evolutionMktInstance = evolutionMktInstance;
   if (logoUrl !== undefined) u.logoUrl = logoUrl;
   if (primaryColor !== undefined) u.primaryColor = primaryColor;
   if (contactPhone !== undefined) u.contactPhone = contactPhone;
@@ -187,6 +193,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("safewebPassword", safewebPassword);
   set("safewebPasswordHomologacao", safewebPasswordHomologacao);
   set("evolutionApiKey", evolutionApiKey);
+  set("evolutionMktApiKey", evolutionMktApiKey);
   set("smtpPassDb", smtpPassDb);
   set("mktSmtpPassDb", mktSmtpPassDb);
   set("vapidPrivateKey", vapidPrivateKey);

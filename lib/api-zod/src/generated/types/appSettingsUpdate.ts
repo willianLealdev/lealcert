@@ -38,6 +38,9 @@ export interface AppSettingsUpdate {
   evolutionUrl?: string;
   evolutionApiKey?: string;
   evolutionInstance?: string;
+  evolutionMktUrl?: string;
+  evolutionMktApiKey?: string;
+  evolutionMktInstance?: string;
   logoUrl?: string;
   primaryColor?: string;
   contactPhone?: string;

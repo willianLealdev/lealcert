@@ -98,6 +98,9 @@ export default function AdminSettings() {
     evolutionUrl: "",
     evolutionApiKey: "",
     evolutionInstance: "",
+    evolutionMktUrl: "",
+    evolutionMktApiKey: "",
+    evolutionMktInstance: "",
     smtpHostDb: "",
     smtpPortDb: "587",
     smtpUserDb: "",
@@ -184,6 +187,9 @@ export default function AdminSettings() {
         evolutionUrl: s.evolutionUrl ?? "",
         evolutionApiKey: s.evolutionApiKey ?? "",
         evolutionInstance: s.evolutionInstance ?? "",
+        evolutionMktUrl: (s as unknown as Record<string, string>).evolutionMktUrl ?? "",
+        evolutionMktApiKey: (s as unknown as Record<string, string>).evolutionMktApiKey ?? "",
+        evolutionMktInstance: (s as unknown as Record<string, string>).evolutionMktInstance ?? "",
         smtpHostDb: s.smtpHostDb ?? "",
         smtpPortDb: s.smtpPortDb ?? "587",
         smtpUserDb: s.smtpUserDb ?? "",
@@ -1010,10 +1016,17 @@ export default function AdminSettings() {
         {/* ── WHATSAPP ────────────────────────────────────────────────────── */}
         <TabsContent value="whatsapp">
           <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+            {/* Instância de notificações */}
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-2"><MessageCircle className="h-5 w-5 text-primary" /><CardTitle>WhatsApp — Evolution API</CardTitle></div>
-                <CardDescription>Integração com Evolution API para envio de notificações via WhatsApp. Configure em <a href="https://evolution-api.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">evolution-api.com</a>.</CardDescription>
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                  <CardTitle>WhatsApp — Notificações</CardTitle>
+                </div>
+                <CardDescription>
+                  Instância exclusiva para notificações transacionais: confirmação de pagamento, agendamento, status de pedido, etc.
+                  Configure em <a href="https://evolution-api.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">evolution-api.com</a>.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -1026,8 +1039,42 @@ export default function AdminSettings() {
                 </div>
                 <div className="space-y-2">
                   <Label>Nome da Instância</Label>
-                  <Input value={form.evolutionInstance} onChange={e => set("evolutionInstance", e.target.value)} placeholder="lealcert" />
+                  <Input value={form.evolutionInstance} onChange={e => set("evolutionInstance", e.target.value)} placeholder="lealcert-notif" />
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Instância de marketing */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Megaphone className="h-5 w-5 text-amber-500" />
+                  <CardTitle>WhatsApp — Marketing</CardTitle>
+                </div>
+                <CardDescription>
+                  Instância dedicada exclusivamente para campanhas de marketing (página Campanhas WhatsApp).
+                  Use um número diferente do de notificações para proteger a reputação do número principal.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>URL da Evolution API</Label>
+                  <Input value={form.evolutionMktUrl} onChange={e => set("evolutionMktUrl", e.target.value)} placeholder="https://evolution.seudominio.com.br" />
+                </div>
+                <div className="space-y-2">
+                  <Label>API Key</Label>
+                  <MaskedInput value={form.evolutionMktApiKey} onChange={v => set("evolutionMktApiKey", v)} placeholder="Chave de autenticação da API" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nome da Instância</Label>
+                  <Input value={form.evolutionMktInstance} onChange={e => set("evolutionMktInstance", e.target.value)} placeholder="lealcert-marketing" />
+                </div>
+                {form.evolutionMktInstance && (
+                  <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    Instância de marketing configurada — campanhas WhatsApp usarão este número.
+                  </div>
+                )}
               </CardContent>
             </Card>
             <SaveButton />

@@ -39,6 +39,9 @@ export interface AppSettings {
   evolutionUrl?: string | null;
   evolutionApiKey?: string | null;
   evolutionInstance?: string | null;
+  evolutionMktUrl?: string | null;
+  evolutionMktApiKey?: string | null;
+  evolutionMktInstance?: string | null;
   logoUrl?: string | null;
   primaryColor?: string | null;
   contactPhone?: string | null;
