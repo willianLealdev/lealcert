@@ -17,6 +17,8 @@ export const marketingContactsTable = pgTable("marketing_contacts", {
   bounced: boolean("bounced").notNull().default(false),
   hadBounce: boolean("had_bounce").notNull().default(false),
   isNew: boolean("is_new").notNull().default(false),
+  // Token estável por contato para descadastro (RFC 8058) — gerado uma vez, nunca muda
+  unsubToken: text("unsub_token").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [unique().on(t.email, t.type)]);
 

@@ -73,6 +73,7 @@ app.use((_req, res, next) => {
 const BOT_WHITELIST_PATHS = new Set([
   "/api/mp/webhook",
   "/api/marketing/webhook/inbound",
+  "/api/marketing/unsubscribe", // RFC 8058: Gmail/Yahoo/Outlook enviam POST com UA não-browser
 ]);
 // Prefixes whitelisted: tracking pixel fetched by email proxies (GoogleImageProxy etc.)
 const BOT_WHITELIST_PREFIXES = ["/api/marketing/track/", "/api/marketing/click/"];

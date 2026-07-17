@@ -111,8 +111,10 @@ export async function sendMarketingEmail({ campaign, contact, trackingToken }: S
 
   const baseUrl = cfg.siteUrl;
   const pixelUrl = `${baseUrl}/api/marketing/track/${trackingToken}`;
-  const unsubUrl = `${baseUrl}/unsubscribe?token=${trackingToken}`;
-  const unsubApiUrl = `${baseUrl}/api/marketing/unsubscribe?token=${trackingToken}`;
+  // Token estável por contato (RFC 8058) — não muda entre campanhas; fallback para tracking token
+  const contactToken = contact.unsubToken ?? trackingToken;
+  const unsubUrl = `${baseUrl}/unsubscribe?token=${contactToken}`;
+  const unsubApiUrl = `${baseUrl}/api/marketing/unsubscribe?token=${contactToken}`;
 
   const bodyWithVars = campaign.bodyHtml
     .replace(/{{nome}}/gi, contact.name)

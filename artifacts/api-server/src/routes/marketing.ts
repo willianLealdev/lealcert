@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, desc, ilike, or, sql, and, isNull, ne, inArray } from "drizzle-orm";
-import { randomBytes } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { promises as dns } from "dns";
 import * as net from "net";
 import multer from "multer";
@@ -234,29 +234,65 @@ function genToken() {
 const PIXEL = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
 
 // ─── Unsubscribe (público — sem auth) ─────────────────────────────────────────
+// Resolve contactId pelo token — aceita token estável do contato OU tracking token por-envio
+async function resolveContactIdFromToken(token: string): Promise<{ contactId: number | null; found: boolean }> {
+  // 1ª tentativa: token estável por contato (unsub_token)
+  const [byContact] = await db
+    .select({ id: marketingContactsTable.id })
+    .from(marketingContactsTable)
+    .where(eq(marketingContactsTable.unsubToken, token))
+    .limit(1);
+  if (byContact) return { contactId: byContact.id, found: true };
+
+  // 2ª tentativa: tracking token por-envio (retrocompatibilidade)
+  const [bySend] = await db
+    .select({ contactId: marketingSendsTable.contactId })
+    .from(marketingSendsTable)
+    .where(eq(marketingSendsTable.trackingToken, token))
+    .limit(1);
+  if (bySend) return { contactId: bySend.contactId, found: true };
+
+  return { contactId: null, found: false };
+}
+
+async function doUnsubscribe(token: string): Promise<{ ok: boolean; already: boolean; found: boolean }> {
+  const { contactId, found } = await resolveContactIdFromToken(token);
+  if (!found) return { ok: false, already: false, found: false };
+  if (!contactId) return { ok: true, already: true, found: true }; // sem contactId (contato deletado) — tratar como ok
+
+  const result = await db.execute<{ updated: number }>(sql`
+    WITH updated AS (
+      UPDATE marketing_contacts
+      SET status = 'unsubscribed', unsubscribed_at = NOW()
+      WHERE id = ${contactId}
+        AND status != 'unsubscribed'
+      RETURNING 1
+    )
+    SELECT count(*)::int AS updated FROM updated
+  `);
+  const already = (result.rows[0]?.updated ?? 0) === 0;
+  return { ok: true, already, found: true };
+}
+
+// GET — chamado pelo frontend /unsubscribe (link no corpo do email)
 router.get("/marketing/unsubscribe", async (req, res): Promise<void> => {
   const token = req.query.token as string | undefined;
   if (!token) { res.status(400).json({ error: "Token ausente." }); return; }
 
-  const [send] = await db.select().from(marketingSendsTable).where(eq(marketingSendsTable.trackingToken, token)).limit(1);
-  if (!send) { res.status(404).json({ error: "Link inválido ou expirado." }); return; }
+  const result = await doUnsubscribe(token);
+  if (!result.found) { res.status(404).json({ error: "Link inválido ou expirado." }); return; }
 
-  let already = false;
-  if (send.contactId) {
-    const result = await db.execute<{ updated: number }>(sql`
-      WITH updated AS (
-        UPDATE marketing_contacts
-        SET status = 'unsubscribed', unsubscribed_at = NOW()
-        WHERE id = ${send.contactId}
-          AND status != 'unsubscribed'
-        RETURNING 1
-      )
-      SELECT count(*)::int AS updated FROM updated
-    `);
-    already = (result.rows[0]?.updated ?? 0) === 0;
-  }
+  res.json({ message: "Descadastro realizado com sucesso.", already: result.already });
+});
 
-  res.json({ message: "Descadastro realizado com sucesso.", already });
+// POST — RFC 8058 one-click unsubscribe (Gmail, Yahoo, Outlook enviam POST silencioso)
+// Body: application/x-www-form-urlencoded  →  List-Unsubscribe=One-Click
+router.post("/marketing/unsubscribe", async (req, res): Promise<void> => {
+  const token = (req.query.token ?? (req.body as Record<string, string>)?.token) as string | undefined;
+  if (!token) { res.status(200).send("ok"); return; } // 200 mesmo sem token — não expor erro
+
+  await doUnsubscribe(token); // idempotente: sempre 200 independente do resultado
+  res.status(200).send("ok");
 });
 
 router.get("/marketing/track/:token", async (req, res): Promise<void> => {
@@ -474,7 +510,7 @@ router.post("/marketing/contacts", async (req, res): Promise<void> => {
   if (!name || !email) { res.status(400).json({ error: "Nome e e-mail são obrigatórios." }); return; }
   const contactType = type === "contador" ? "contador" : "cliente";
   try {
-    const [contact] = await db.insert(marketingContactsTable).values({ name, email: email.toLowerCase().trim(), phone, tags, type: contactType }).returning();
+    const [contact] = await db.insert(marketingContactsTable).values({ name, email: email.toLowerCase().trim(), phone, tags, type: contactType, unsubToken: randomUUID() }).returning();
     res.status(201).json(contact);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -525,7 +561,7 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
     return fallback ?? undefined;
   }
 
-  type ContactRow = { name: string; email: string; phone?: string; tags?: string; type: string; isNew: boolean };
+  type ContactRow = { name: string; email: string; phone?: string; tags?: string; type: string; isNew: boolean; unsubToken: string };
   const validRows: ContactRow[] = [];
   let parseSkipped = 0;
 
@@ -587,7 +623,7 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
     const finalType = (rowType === "contador" || rowType === "cliente") ? rowType : contactType;
 
     if (!email || !name) { parseSkipped++; continue; }
-    validRows.push({ name, email, phone, tags, type: finalType, isNew: true });
+    validRows.push({ name, email, phone, tags, type: finalType, isNew: true, unsubToken: randomUUID() });
   }
 
   // Log diagnóstico: primeiros 3 registros com phone detectado
@@ -611,6 +647,8 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
             name: sql.raw(`EXCLUDED.name`),
             phone: sql.raw(`CASE WHEN EXCLUDED.phone IS NOT NULL AND EXCLUDED.phone != '' THEN EXCLUDED.phone ELSE marketing_contacts.phone END`),
             tags: sql.raw(`CASE WHEN EXCLUDED.tags IS NOT NULL AND EXCLUDED.tags != '' THEN EXCLUDED.tags ELSE marketing_contacts.tags END`),
+            // preserva o token estável existente; atribui novo apenas se ainda não tiver
+            unsubToken: sql.raw(`CASE WHEN marketing_contacts.unsub_token IS NULL THEN EXCLUDED.unsub_token ELSE marketing_contacts.unsub_token END`),
           },
         });
       } catch (batchErr) {
@@ -623,6 +661,7 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
                 name: sql.raw(`EXCLUDED.name`),
                 phone: sql.raw(`CASE WHEN EXCLUDED.phone IS NOT NULL AND EXCLUDED.phone != '' THEN EXCLUDED.phone ELSE marketing_contacts.phone END`),
                 tags: sql.raw(`CASE WHEN EXCLUDED.tags IS NOT NULL AND EXCLUDED.tags != '' THEN EXCLUDED.tags ELSE marketing_contacts.tags END`),
+                unsubToken: sql.raw(`CASE WHEN marketing_contacts.unsub_token IS NULL THEN EXCLUDED.unsub_token ELSE marketing_contacts.unsub_token END`),
               },
             });
           } catch { /* ignora erros individuais */ }
@@ -1180,8 +1219,8 @@ function isWithinBusinessHours(startHour: number, endHour: number, days?: string
   return hour >= startHour && hour < endHour;
 }
 
-type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; hadBounce: boolean; isNew: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; createdAt: Date };
-type RawContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; had_bounce: boolean; is_new: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; created_at: Date };
+type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; hadBounce: boolean; isNew: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; unsubToken: string | null; createdAt: Date };
+type RawContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; had_bounce: boolean; is_new: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; unsub_token: string | null; created_at: Date };
 
 // ── Filas de provedores (regras fixas — não editáveis pelo painel) ────────────
 const PROVIDER_QUEUES = {
@@ -1206,7 +1245,7 @@ function mapContact(r: RawContactRow): ContactRow {
     id: r.id, name: r.name, email: r.email, phone: r.phone, type: r.type, status: r.status,
     bounced: r.bounced, hadBounce: r.had_bounce ?? false, isNew: r.is_new ?? false, tags: r.tags, emailStatus: r.email_status,
     emailInvalidReason: r.email_invalid_reason, emailValidatedAt: r.email_validated_at,
-    unsubscribedAt: r.unsubscribed_at, createdAt: r.created_at,
+    unsubscribedAt: r.unsubscribed_at, unsubToken: r.unsub_token ?? null, createdAt: r.created_at,
   };
 }
 
@@ -1235,7 +1274,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       id: -(i + 1), name: r.name, email: r.email, phone: null,
       type: "manual", status: "active", bounced: false, hadBounce: false, isNew: false, tags: null,
       emailStatus: "unknown", emailInvalidReason: null, emailValidatedAt: null,
-      unsubscribedAt: null, createdAt: new Date(),
+      unsubscribedAt: null, unsubToken: null, createdAt: new Date(),
     }));
   } else if (effectiveTarget === "specific") {
     if (!opts.specificContactIds?.length) {
@@ -1254,7 +1293,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     const rawContacts = await db.execute<RawContactRow>(sql`
       SELECT mc.id, mc.name, mc.email, mc.phone, mc.type, mc.status, mc.bounced, mc.tags,
         mc.email_status, mc.email_invalid_reason, mc.email_validated_at,
-        mc.unsubscribed_at, mc.created_at
+        mc.unsubscribed_at, mc.unsub_token, mc.created_at
       FROM marketing_contacts mc
       WHERE mc.status = 'active'
         AND mc.bounced = false
@@ -1277,7 +1316,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       SELECT DISTINCT ON (mc.id)
         mc.id, mc.name, mc.email, mc.phone, mc.type, mc.status, mc.bounced, mc.tags,
         mc.email_status, mc.email_invalid_reason, mc.email_validated_at,
-        mc.unsubscribed_at, mc.created_at
+        mc.unsubscribed_at, mc.unsub_token, mc.created_at
       FROM marketing_contacts mc
       INNER JOIN marketing_sends ms ON ms.contact_id = mc.id
       WHERE ms.${sql.raw(engagementCol)} IS NOT NULL
