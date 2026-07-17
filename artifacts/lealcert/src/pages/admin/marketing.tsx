@@ -1484,12 +1484,36 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+    if (file.size > MAX_BYTES) {
+      toast({
+        title: "Arquivo muito grande",
+        description: `O arquivo tem ${(file.size / 1024 / 1024).toFixed(1)} MB. O limite é 20 MB. Divida a planilha em partes menores ou aumente o client_max_body_size no nginx da VPS.`,
+        variant: "destructive",
+      });
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+
     setImporting(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("type", type);
       const res = await fetch("/api/marketing/contacts/import", { method: "POST", body: fd, credentials: "include" });
+
+      if (!res.ok) {
+        let desc = `Erro ${res.status}.`;
+        if (res.status === 413) {
+          desc = "O servidor recusou o arquivo por ser grande demais. Adicione client_max_body_size 50M; no nginx da VPS e recarregue o container.";
+        } else {
+          try { const j = await res.json() as { error?: string }; if (j.error) desc = j.error; } catch { /* ignore */ }
+        }
+        toast({ title: "Erro na importação", description: desc, variant: "destructive" });
+        return;
+      }
+
       const result = await res.json() as { started?: boolean; valid?: number; total: number; skipped?: number; imported?: number; errors?: string[] };
       if (result.started) {
         toast({ title: `Importação iniciada!`, description: `${result.valid} contatos válidos de ${result.total} registros sendo processados em background. Aguarde alguns segundos e atualize a lista.` });
@@ -1498,7 +1522,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
       }
       setTimeout(() => invalidate(), 5000);
     } catch {
-      toast({ title: "Erro na importação", variant: "destructive" });
+      toast({ title: "Erro na importação", description: "Não foi possível concluir. Verifique o tamanho do arquivo e a conexão.", variant: "destructive" });
     } finally {
       setImporting(false);
       if (fileRef.current) fileRef.current.value = "";
