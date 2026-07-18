@@ -74,6 +74,8 @@ async function sendViaResend(opts: {
   if (opts.replyTo) body.reply_to = opts.replyTo;
   if (opts.headers && Object.keys(opts.headers).length > 0) body.headers = opts.headers;
 
+  logger.info({ headers: opts.headers }, "Resend: headers incluídos no envio");
+
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -83,10 +85,11 @@ async function sendViaResend(opts: {
     body: JSON.stringify(body),
   });
 
+  const responseData = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as Record<string, unknown>;
-    throw new Error(`Resend API error ${res.status}: ${err.message ?? JSON.stringify(err)}`);
+    throw new Error(`Resend API error ${res.status}: ${responseData.message ?? JSON.stringify(responseData)}`);
   }
+  logger.info({ resendEmailId: responseData.id }, "Resend: email aceito pela API");
 }
 
 function wrapLinks(html: string, baseUrl: string, trackingToken: string): string {
