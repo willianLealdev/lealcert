@@ -1270,11 +1270,21 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       await db.update(marketingCampaignsTable).set({ status: "draft" }).where(eq(marketingCampaignsTable.id, campaignId));
       return;
     }
+    // Busca unsub_token real do banco para destinatários manuais (necessário para RFC 8058)
+    const manualEmails = opts.manualRecipients.map(r => r.email.toLowerCase().trim());
+    const existingContacts = manualEmails.length > 0
+      ? await db.select({ email: marketingContactsTable.email, unsubToken: marketingContactsTable.unsubToken })
+          .from(marketingContactsTable)
+          .where(inArray(marketingContactsTable.email, manualEmails))
+      : [];
+    const unsubByEmail = new Map(existingContacts.map(c => [c.email, c.unsubToken]));
     contacts = opts.manualRecipients.map((r, i) => ({
       id: -(i + 1), name: r.name, email: r.email, phone: null,
       type: "manual", status: "active", bounced: false, hadBounce: false, isNew: false, tags: null,
       emailStatus: "unknown", emailInvalidReason: null, emailValidatedAt: null,
-      unsubscribedAt: null, unsubToken: null, createdAt: new Date(),
+      unsubscribedAt: null,
+      unsubToken: unsubByEmail.get(r.email.toLowerCase().trim()) ?? randomUUID(),
+      createdAt: new Date(),
     }));
   } else if (effectiveTarget === "specific") {
     if (!opts.specificContactIds?.length) {
