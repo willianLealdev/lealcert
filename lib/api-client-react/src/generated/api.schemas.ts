@@ -1557,6 +1557,17 @@ export type SendCampaignInputManualRecipientsItem = {
   email: string;
 };
 
+export type SendCampaignInputIncludedProvidersItem = typeof SendCampaignInputIncludedProvidersItem[keyof typeof SendCampaignInputIncludedProvidersItem];
+
+
+export const SendCampaignInputIncludedProvidersItem = {
+  outros: 'outros',
+  gmail: 'gmail',
+  outlook: 'outlook',
+  yahoo: 'yahoo',
+  uolbol: 'uolbol',
+} as const;
+
 export interface SendCampaignInput {
   scheduledAt?: string;
   /** Override campaign targetType for this send */
@@ -1579,6 +1590,8 @@ export interface SendCampaignInput {
   dispatchFrom?: number;
   /** Posição final (1-based, inclusiva). Ex 3000 = vai até o 3000º contato. */
   dispatchTo?: number;
+  /** Provedores permitidos neste disparo. Se omitido ou vazio, envia para todos os provedores. */
+  includedProviders?: SendCampaignInputIncludedProvidersItem[];
 }
 
 export interface InboundWebhookInput {

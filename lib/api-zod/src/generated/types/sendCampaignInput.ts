@@ -5,6 +5,7 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { SendCampaignInputIncludedProvidersItem } from './sendCampaignInputIncludedProvidersItem';
 import type { SendCampaignInputManualRecipientsItem } from './sendCampaignInputManualRecipientsItem';
 import type { SendCampaignInputTargetOverride } from './sendCampaignInputTargetOverride';
 
@@ -30,4 +31,6 @@ export interface SendCampaignInput {
   dispatchFrom?: number;
   /** Posição final (1-based, inclusiva). Ex 3000 = vai até o 3000º contato. */
   dispatchTo?: number;
+  /** Provedores permitidos neste disparo. Se omitido ou vazio, envia para todos os provedores. */
+  includedProviders?: SendCampaignInputIncludedProvidersItem[];
 }

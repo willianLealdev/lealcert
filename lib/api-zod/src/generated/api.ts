@@ -3033,7 +3033,8 @@ export const SendMarketingCampaignBody = zod.object({
   "sendEndHour": zod.number().optional().describe('Hora de fim (1-24) no fuso BRT para envio em horário comercial'),
   "sendDays": zod.string().optional().describe('Dias permitidos separados por vírgula (0=Dom,1=Seg,...,6=Sáb) ex \"1,2,3,4,5\"'),
   "dispatchFrom": zod.number().optional().describe('Posição inicial (1-based) na lista ordenada por id ASC. Ex 250 = começa do 250º contato.'),
-  "dispatchTo": zod.number().optional().describe('Posição final (1-based, inclusiva). Ex 3000 = vai até o 3000º contato.')
+  "dispatchTo": zod.number().optional().describe('Posição final (1-based, inclusiva). Ex 3000 = vai até o 3000º contato.'),
+  "includedProviders": zod.array(zod.enum(['outros', 'gmail', 'outlook', 'yahoo', 'uolbol'])).optional().describe('Provedores permitidos neste disparo. Se omitido ou vazio, envia para todos os provedores.')
 })
 
 export const SendMarketingCampaignResponse = zod.object({

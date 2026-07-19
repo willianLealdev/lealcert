@@ -5900,6 +5900,12 @@ components:
         dispatchTo:
           type: integer
           description: Posição final (1-based, inclusiva). Ex 3000 = vai até o 3000º contato.
+        includedProviders:
+          type: array
+          items:
+            type: string
+            enum: [outros, gmail, outlook, yahoo, uolbol]
+          description: Provedores permitidos neste disparo. Se omitido ou vazio, envia para todos os provedores.
 
     InboundWebhookInput:
       type: object

@@ -197,6 +197,7 @@ export * from './safewebLocaisResultLocaisItemRawData';
 export * from './safewebSlotsResult';
 export * from './safewebSlotsResultSlotsItem';
 export * from './sendCampaignInput';
+export * from './sendCampaignInputIncludedProvidersItem';
 export * from './sendCampaignInputManualRecipientsItem';
 export * from './sendCampaignInputTargetOverride';
 export * from './sendRenewalAlert200';

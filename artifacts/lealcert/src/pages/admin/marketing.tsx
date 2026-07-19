@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { useQueryClient } from "@tanstack/react-query";
-import type { MarketingStats } from "@workspace/api-client-react";
+import type { MarketingStats, SendCampaignInputIncludedProvidersItem } from "@workspace/api-client-react";
 import {
   useGetMarketingStats,
   useListMarketingContacts,
@@ -50,7 +50,7 @@ import {
   Megaphone, Users, Mail, MailOpen, MailX, Send, Upload, Plus, Trash2, Pencil,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
   ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy, MousePointerClick,
-  AlertTriangle, RotateCcw, Sparkles, Download, PauseCircle, PlayCircle,
+  AlertTriangle, RotateCcw, Sparkles, Download, PauseCircle, PlayCircle, Filter,
 } from "lucide-react";
 
 type Tab = "overview" | "campanhas" | "clientes" | "contadores" | "respostas" | "bounces";
@@ -855,11 +855,41 @@ function SendCampaignDialog({
   const [sendEndHour, setSendEndHour] = useState("18");
   const [sendDays, setSendDays] = useState([1, 2, 3, 4, 5]); // Mon-Fri
 
+  // Filtro de provedores
+  const [filterProviders, setFilterProviders] = useState(false);
+  const [includedProvidersSet, setIncludedProvidersSet] = useState<Set<string>>(
+    new Set(["outros", "gmail", "outlook", "yahoo", "uolbol"])
+  );
+  function toggleProvider(key: string) {
+    setIncludedProvidersSet(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
   const { data: searchResult } = useListMarketingContacts({
     search: contactSearch.length >= 2 ? contactSearch : undefined,
     page: 1,
   });
   const foundContacts = searchResult?.data ?? [];
+
+  // Provider stats for count preview (maps target → contact type)
+  const providerStatsType = (
+    target.includes("cliente") ? "cliente" :
+    target.includes("contador") ? "contador" :
+    undefined
+  ) as "cliente" | "contador" | undefined;
+  const showProviderFilter = target !== "specific" && target !== "manual";
+  const { data: sendProviderStats } = useGetMarketingContactProviderStats(
+    { type: providerStatsType }
+  );
+  const providerCountPreview = (() => {
+    if (!sendProviderStats || !filterProviders) return sendProviderStats?.total ?? null;
+    return (["outros","gmail","outlook","yahoo","uolbol"] as const)
+      .filter(k => includedProvidersSet.has(k))
+      .reduce((acc, k) => acc + sendProviderStats[k], 0);
+  })();
 
   const sendMutation = useSendMarketingCampaign({ mutation: {
     onSuccess: (data) => { toast({ title: "Sucesso!", description: data.message }); onSent(); },
@@ -889,6 +919,11 @@ function SendCampaignDialog({
   function handleSend() {
     const batchSize = sendBatchSize ? parseInt(sendBatchSize, 10) : undefined;
     const intervalSecs = sendIntervalMins ? parseInt(sendIntervalMins, 10) * 60 : undefined;
+    // Validação de filtro de provedores
+    if (filterProviders && includedProvidersSet.size === 0) {
+      toast({ title: "Selecione ao menos um provedor para enviar.", variant: "destructive" }); return;
+    }
+
     const body: {
       scheduledAt?: string;
       targetOverride: SendTarget;
@@ -901,6 +936,7 @@ function SendCampaignDialog({
       sendDays?: string;
       dispatchFrom?: number;
       dispatchTo?: number;
+      includedProviders?: SendCampaignInputIncludedProvidersItem[];
     } = {
       targetOverride: target,
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
@@ -908,6 +944,7 @@ function SendCampaignDialog({
       sendIntervalSecs: intervalSecs && intervalSecs > 0 ? intervalSecs : undefined,
       dispatchFrom: dispatchFrom ? parseInt(dispatchFrom, 10) : undefined,
       dispatchTo: dispatchTo ? parseInt(dispatchTo, 10) : undefined,
+      includedProviders: filterProviders ? (Array.from(includedProvidersSet) as ("outros" | "gmail" | "outlook" | "yahoo" | "uolbol")[]) : undefined,
     };
     if (useBusinessHours) {
       body.sendStartHour = parseInt(sendStartHour, 10);
@@ -1136,6 +1173,84 @@ function SendCampaignDialog({
                     : <>Enviando para os primeiros <strong>{parseInt(dispatchTo, 10).toLocaleString("pt-BR")}</strong> contatos da lista.</>
                   }
                 </p>
+              )}
+            </div>
+          )}
+
+          {/* Filtro de Provedores */}
+          {showProviderFilter && (
+            <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold flex items-center gap-1.5">
+                  <Filter className="h-4 w-4 text-primary" /> Filtro de Provedores
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFilterProviders(v => !v)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${filterProviders ? "bg-primary" : "bg-muted-foreground/30"}`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${filterProviders ? "translate-x-4" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {filterProviders
+                  ? "Selecione quais provedores receberão este envio. Os demais serão ignorados."
+                  : "Enviando para todos os provedores. Ative para restringir por provedor."}
+              </p>
+              {filterProviders && (
+                <div className="space-y-1.5 pt-0.5">
+                  {([
+                    { key: "outros",  label: "Domínio próprio",  desc: "corporativo, .com.br etc.", color: "bg-emerald-500" },
+                    { key: "gmail",   label: "Gmail",             desc: "gmail.com, googlemail.com", color: "bg-red-500"     },
+                    { key: "outlook", label: "Outlook / Hotmail", desc: "outlook.com, hotmail.com…", color: "bg-blue-500"    },
+                    { key: "yahoo",   label: "Yahoo",             desc: "yahoo.com, yahoo.com.br…",  color: "bg-purple-500"  },
+                    { key: "uolbol",  label: "UOL / BOL",         desc: "uol.com.br, bol.com.br",    color: "bg-amber-500"   },
+                  ] as const).map(({ key, label, desc, color }) => {
+                    const checked = includedProvidersSet.has(key);
+                    const count = sendProviderStats?.[key] ?? 0;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => toggleProvider(key)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all ${
+                          checked ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/40 opacity-60"
+                        }`}
+                      >
+                        <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${color}`} />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium">{label}</span>
+                          <span className="text-xs text-muted-foreground ml-1.5">{desc}</span>
+                        </div>
+                        <span className="text-xs font-mono text-muted-foreground shrink-0">
+                          {count.toLocaleString("pt-BR")} e-mails
+                        </span>
+                        <div className={`h-4 w-4 rounded border-2 shrink-0 flex items-center justify-center ${
+                          checked ? "border-primary bg-primary" : "border-muted-foreground/40"
+                        }`}>
+                          {checked && <CheckCircle2 className="h-3 w-3 text-white" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {providerCountPreview !== null && (
+                <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
+                  filterProviders && includedProvidersSet.size === 0
+                    ? "bg-destructive/10 text-destructive border border-destructive/20"
+                    : "bg-primary/8 text-primary border border-primary/20"
+                }`}>
+                  <Send className="h-3.5 w-3.5 shrink-0" />
+                  {filterProviders && includedProvidersSet.size === 0
+                    ? <span className="font-medium">Nenhum provedor selecionado — envio bloqueado.</span>
+                    : <span>
+                        <strong>{providerCountPreview.toLocaleString("pt-BR")}</strong> e-mails neste segmento
+                        {filterProviders ? ` · ${includedProvidersSet.size} provedor(es) selecionado(s)` : " · todos os provedores"}
+                        {(dispatchFrom || dispatchTo) && <span className="opacity-70"> (antes do filtro de faixa)</span>}
+                      </span>
+                  }
+                </div>
               )}
             </div>
           )}

@@ -953,7 +953,7 @@ router.delete("/marketing/campaigns/:id", async (req, res): Promise<void> => {
 
 router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const { scheduledAt, targetOverride, specificContactIds, manualRecipients, sendBatchSize, sendIntervalSecs, sendStartHour, sendEndHour, sendDays, dispatchFrom, dispatchTo } = req.body ?? {};
+  const { scheduledAt, targetOverride, specificContactIds, manualRecipients, sendBatchSize, sendIntervalSecs, sendStartHour, sendEndHour, sendDays, dispatchFrom, dispatchTo, includedProviders } = req.body ?? {};
 
   const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
@@ -991,6 +991,10 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
   if (sendDays) dispatchOpts.sendDays = String(sendDays);
   if (dispatchFrom && Number(dispatchFrom) >= 1) dispatchOpts.dispatchFrom = Number(dispatchFrom);
   if (dispatchTo && Number(dispatchTo) >= 1) dispatchOpts.dispatchTo = Number(dispatchTo);
+  const VALID_PROVIDERS: ProviderKey[] = ["outros", "gmail", "outlook", "yahoo", "uolbol"];
+  if (Array.isArray(includedProviders) && includedProviders.length > 0) {
+    dispatchOpts.includedProviders = includedProviders.filter((p: unknown) => VALID_PROVIDERS.includes(p as ProviderKey)) as ProviderKey[];
+  }
 
   if (scheduledAt) {
     await db.update(marketingCampaignsTable).set({
@@ -1226,6 +1230,12 @@ export interface DispatchOptions {
   dispatchFrom?: number;
   /** Posição final 1-based inclusiva (ex: 3000 = vai até o 3000º contato) */
   dispatchTo?: number;
+  /**
+   * Provedores permitidos neste disparo.
+   * Se omitido ou vazio → envia para TODOS os provedores.
+   * Se preenchido → apenas os provedores listados recebem. Os demais têm fila zerada antes do envio.
+   */
+  includedProviders?: ProviderKey[];
 }
 
 // ── Horário comercial auto-resume scheduler (roda a cada 60s) ────────────────
@@ -1433,6 +1443,18 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     yahoo:   allRemaining.filter(c => getProviderKey(c.email) === "yahoo"),
     uolbol:  allRemaining.filter(c => getProviderKey(c.email) === "uolbol"),
   };
+
+  // ── Filtro de provedores: zera filas não autorizadas ANTES de qualquer envio ─
+  if (opts.includedProviders && opts.includedProviders.length > 0) {
+    const allowed = new Set(opts.includedProviders);
+    const originalCounts = { outros: buckets.outros.length, gmail: buckets.gmail.length, outlook: buckets.outlook.length, yahoo: buckets.yahoo.length, uolbol: buckets.uolbol.length };
+    if (!allowed.has("outros"))  buckets.outros  = [];
+    if (!allowed.has("gmail"))   buckets.gmail   = [];
+    if (!allowed.has("outlook")) buckets.outlook = [];
+    if (!allowed.has("yahoo"))   buckets.yahoo   = [];
+    if (!allowed.has("uolbol"))  buckets.uolbol  = [];
+    logger.info({ campaignId, includedProviders: opts.includedProviders, originalCounts, filteredCounts: { outros: buckets.outros.length, gmail: buckets.gmail.length, outlook: buckets.outlook.length, yahoo: buckets.yahoo.length, uolbol: buckets.uolbol.length } }, "Filtro de provedores aplicado");
+  }
 
   // Mark campaign as sending with total count
   await db.update(marketingCampaignsTable).set({
