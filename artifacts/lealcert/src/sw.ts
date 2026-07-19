@@ -11,6 +11,19 @@ declare const self: ServiceWorkerGlobalScope;
 self.skipWaiting();
 clientsClaim();
 
+// Ao ativar um novo SW, recarrega TODAS as abas abertas.
+// Isso garante que o novo código JS (com hash novo) seja servido imediatamente,
+// independentemente de qual versão do main.tsx estava rodando antes.
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      clients.forEach((client) => {
+        void (client as WindowClient).navigate(client.url);
+      });
+    })
+  );
+});
+
 // Inject Workbox precache manifest
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
