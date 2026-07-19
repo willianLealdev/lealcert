@@ -5779,10 +5779,6 @@ components:
         targetType:
           type: string
           enum: [all, cliente, contador]
-        sendLimit:
-          type: integer
-          nullable: true
-          description: Limite de contatos a enviar (null = todos, ordenado por id ASC)
 
     SendReplyInput:
       type: object
@@ -5861,6 +5857,12 @@ components:
         sendDays:
           type: string
           description: Dias permitidos separados por vírgula (0=Dom,1=Seg,...,6=Sáb) ex "1,2,3,4,5"
+        dispatchFrom:
+          type: integer
+          description: Posição inicial (1-based) na lista ordenada por id ASC. Ex 250 = começa do 250º contato.
+        dispatchTo:
+          type: integer
+          description: Posição final (1-based, inclusiva). Ex 3000 = vai até o 3000º contato.
 
     InboundWebhookInput:
       type: object

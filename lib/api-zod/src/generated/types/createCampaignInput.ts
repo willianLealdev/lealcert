@@ -18,6 +18,4 @@ export interface CreateCampaignInput {
   scheduledAt?: string;
   filterTags?: string;
   targetType?: CreateCampaignInputTargetType;
-  /** Limite de contatos a enviar (null = todos, ordenado por id ASC) */
-  sendLimit?: number | null;
 }

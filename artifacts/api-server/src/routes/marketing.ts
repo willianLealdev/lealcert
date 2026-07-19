@@ -920,7 +920,7 @@ router.delete("/marketing/campaigns/:id", async (req, res): Promise<void> => {
 
 router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const { scheduledAt, targetOverride, specificContactIds, manualRecipients, sendBatchSize, sendIntervalSecs, sendStartHour, sendEndHour, sendDays } = req.body ?? {};
+  const { scheduledAt, targetOverride, specificContactIds, manualRecipients, sendBatchSize, sendIntervalSecs, sendStartHour, sendEndHour, sendDays, dispatchFrom, dispatchTo } = req.body ?? {};
 
   const [campaign] = await db.select().from(marketingCampaignsTable).where(eq(marketingCampaignsTable.id, id)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
@@ -956,6 +956,8 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
     dispatchOpts.sendEndHour = Number(sendEndHour);
   }
   if (sendDays) dispatchOpts.sendDays = String(sendDays);
+  if (dispatchFrom && Number(dispatchFrom) >= 1) dispatchOpts.dispatchFrom = Number(dispatchFrom);
+  if (dispatchTo && Number(dispatchTo) >= 1) dispatchOpts.dispatchTo = Number(dispatchTo);
 
   if (scheduledAt) {
     await db.update(marketingCampaignsTable).set({
@@ -1187,6 +1189,10 @@ export interface DispatchOptions {
   sendStartHour?: number;
   sendEndHour?: number;
   sendDays?: string;
+  /** Posição inicial 1-based na lista ordenada por id ASC (ex: 250 = pula os 249 primeiros) */
+  dispatchFrom?: number;
+  /** Posição final 1-based inclusiva (ex: 3000 = vai até o 3000º contato) */
+  dispatchTo?: number;
 }
 
 // ── Horário comercial auto-resume scheduler (roda a cada 60s) ────────────────
@@ -1264,6 +1270,13 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
 
   const effectiveTarget = opts.targetOverride ?? campaign.targetType;
 
+  // Cálculo do range OFFSET + LIMIT a partir de dispatchFrom/dispatchTo (posições 1-based)
+  const rangeOffset = opts.dispatchFrom && opts.dispatchFrom > 1 ? opts.dispatchFrom - 1 : 0;
+  const rangeLimit = opts.dispatchTo ? opts.dispatchTo - (opts.dispatchFrom ?? 1) + 1 : null;
+  const rangeSql = rangeLimit !== null
+    ? (rangeOffset > 0 ? sql` OFFSET ${rangeOffset} LIMIT ${rangeLimit}` : sql` LIMIT ${rangeLimit}`)
+    : (rangeOffset > 0 ? sql` OFFSET ${rangeOffset}` : sql``);
+
   let contacts: ContactRow[] = [];
 
   if (effectiveTarget === "manual") {
@@ -1315,10 +1328,10 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
           SELECT 1 FROM marketing_sends ms
           WHERE ms.contact_id = mc.id AND ms.opened_at IS NOT NULL
         )
-      ORDER BY mc.id ASC${campaign.sendLimit ? sql` LIMIT ${campaign.sendLimit}` : sql``}
+      ORDER BY mc.id ASC${rangeSql}
     `);
     contacts = rawContacts.rows.map(mapContact);
-    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, sendLimit: campaign.sendLimit }, "Dispatch contacts loaded (not-opened)");
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, dispatchFrom: opts.dispatchFrom, dispatchTo: opts.dispatchTo }, "Dispatch contacts loaded (not-opened)");
   } else if (effectiveTarget.startsWith("opened_") || effectiveTarget.startsWith("clicked_")) {
     const engagementCol = effectiveTarget.startsWith("opened_") ? "opened_at" : "clicked_at";
     const typeSuffix = effectiveTarget.split("_")[1]; // all | cliente | contador
@@ -1337,24 +1350,24 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
         AND mc.bounced = false
         AND mc.email_status NOT IN ('invalid', 'disposable')
         ${typeClause}
-      ORDER BY mc.id ASC${campaign.sendLimit ? sql` LIMIT ${campaign.sendLimit}` : sql``}
+      ORDER BY mc.id ASC${rangeSql}
     `);
     contacts = rawContacts.rows.map(mapContact);
-    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, sendLimit: campaign.sendLimit }, "Dispatch contacts loaded (engagement)");
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, dispatchFrom: opts.dispatchFrom, dispatchTo: opts.dispatchTo }, "Dispatch contacts loaded (engagement)");
   } else if (effectiveTarget === "new_contacts" || effectiveTarget === "new_cliente" || effectiveTarget === "new_contador") {
     const typeFilter = effectiveTarget === "new_cliente" ? "cliente" : effectiveTarget === "new_contador" ? "contador" : null;
     const rawContacts = await db.execute<RawContactRow>(
-      sql`SELECT * FROM marketing_contacts WHERE is_new = true AND status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``} ORDER BY id ASC${campaign.sendLimit ? sql` LIMIT ${campaign.sendLimit}` : sql``}`
+      sql`SELECT * FROM marketing_contacts WHERE is_new = true AND status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``} ORDER BY id ASC${rangeSql}`
     );
     contacts = rawContacts.rows.map(mapContact);
-    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, sendLimit: campaign.sendLimit }, "Dispatch contacts loaded (new_contacts)");
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, dispatchFrom: opts.dispatchFrom, dispatchTo: opts.dispatchTo }, "Dispatch contacts loaded (new_contacts)");
   } else {
     const typeFilter = effectiveTarget === "cliente" ? "cliente" : effectiveTarget === "contador" ? "contador" : null;
     const rawContacts = await db.execute<RawContactRow>(
-      sql`SELECT * FROM marketing_contacts WHERE status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``} ORDER BY id ASC${campaign.sendLimit ? sql` LIMIT ${campaign.sendLimit}` : sql``}`
+      sql`SELECT * FROM marketing_contacts WHERE status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``} ORDER BY id ASC${rangeSql}`
     );
     contacts = rawContacts.rows.map(mapContact);
-    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, sendLimit: campaign.sendLimit }, "Dispatch contacts loaded");
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, dispatchFrom: opts.dispatchFrom, dispatchTo: opts.dispatchTo }, "Dispatch contacts loaded");
   }
 
   // ── Resume support ────────────────────────────────────────────────────────

@@ -1487,8 +1487,6 @@ export interface CreateCampaignInput {
   scheduledAt?: string;
   filterTags?: string;
   targetType?: CreateCampaignInputTargetType;
-  /** Limite de contatos a enviar (null = todos, ordenado por id ASC) */
-  sendLimit?: number | null;
 }
 
 export interface SendReplyInput {
@@ -1567,6 +1565,10 @@ export interface SendCampaignInput {
   sendEndHour?: number;
   /** Dias permitidos separados por vírgula (0=Dom,1=Seg,...,6=Sáb) ex "1,2,3,4,5" */
   sendDays?: string;
+  /** Posição inicial (1-based) na lista ordenada por id ASC. Ex 250 = começa do 250º contato. */
+  dispatchFrom?: number;
+  /** Posição final (1-based, inclusiva). Ex 3000 = vai até o 3000º contato. */
+  dispatchTo?: number;
 }
 
 export interface InboundWebhookInput {

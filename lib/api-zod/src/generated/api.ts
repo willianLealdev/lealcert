@@ -2888,8 +2888,7 @@ export const CreateMarketingCampaignBody = zod.object({
   "replyTo": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
   "filterTags": zod.string().optional(),
-  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
-  "sendLimit": zod.number().nullish().describe('Limite de contatos a enviar (null = todos, ordenado por id ASC)')
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional()
 })
 
 
@@ -2949,8 +2948,7 @@ export const UpdateMarketingCampaignBody = zod.object({
   "replyTo": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
   "filterTags": zod.string().optional(),
-  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
-  "sendLimit": zod.number().nullish().describe('Limite de contatos a enviar (null = todos, ordenado por id ASC)')
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional()
 })
 
 export const UpdateMarketingCampaignResponse = zod.object({
@@ -3016,7 +3014,9 @@ export const SendMarketingCampaignBody = zod.object({
   "sendIntervalSecs": zod.number().optional().describe('Segundos de espera entre lotes (override para este disparo)'),
   "sendStartHour": zod.number().optional().describe('Hora de início (0-23) no fuso BRT para envio em horário comercial'),
   "sendEndHour": zod.number().optional().describe('Hora de fim (1-24) no fuso BRT para envio em horário comercial'),
-  "sendDays": zod.string().optional().describe('Dias permitidos separados por vírgula (0=Dom,1=Seg,...,6=Sáb) ex \"1,2,3,4,5\"')
+  "sendDays": zod.string().optional().describe('Dias permitidos separados por vírgula (0=Dom,1=Seg,...,6=Sáb) ex \"1,2,3,4,5\"'),
+  "dispatchFrom": zod.number().optional().describe('Posição inicial (1-based) na lista ordenada por id ASC. Ex 250 = começa do 250º contato.'),
+  "dispatchTo": zod.number().optional().describe('Posição final (1-based, inclusiva). Ex 3000 = vai até o 3000º contato.')
 })
 
 export const SendMarketingCampaignResponse = zod.object({

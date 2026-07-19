@@ -847,6 +847,8 @@ function SendCampaignDialog({
   const [manualList, setManualList] = useState<ManualRecipient[]>([{ name: "", email: "" }]);
   const [sendBatchSize, setSendBatchSize] = useState("");
   const [sendIntervalMins, setSendIntervalMins] = useState("");
+  const [dispatchFrom, setDispatchFrom] = useState("");
+  const [dispatchTo, setDispatchTo] = useState("");
   const [useBusinessHours, setUseBusinessHours] = useState(false);
   const [sendStartHour, setSendStartHour] = useState("8");
   const [sendEndHour, setSendEndHour] = useState("18");
@@ -896,11 +898,15 @@ function SendCampaignDialog({
       sendStartHour?: number;
       sendEndHour?: number;
       sendDays?: string;
+      dispatchFrom?: number;
+      dispatchTo?: number;
     } = {
       targetOverride: target,
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
       sendBatchSize: batchSize && batchSize > 0 ? batchSize : undefined,
       sendIntervalSecs: intervalSecs && intervalSecs > 0 ? intervalSecs : undefined,
+      dispatchFrom: dispatchFrom ? parseInt(dispatchFrom, 10) : undefined,
+      dispatchTo: dispatchTo ? parseInt(dispatchTo, 10) : undefined,
     };
     if (useBusinessHours) {
       body.sendStartHour = parseInt(sendStartHour, 10);
@@ -1082,6 +1088,57 @@ function SendCampaignDialog({
             </div>
           )}
 
+          {/* Faixa de Contatos — De / Até */}
+          {target !== "specific" && target !== "manual" && (
+            <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
+              <div>
+                <p className="text-sm font-semibold flex items-center gap-1.5">
+                  <Users className="h-4 w-4 text-primary" /> Faixa de Contatos
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Defina a posição inicial e final na lista ordenada por ID (menor ao maior).
+                  Deixe em branco para enviar para todos.
+                  <br />
+                  <span className="text-amber-600 font-medium">
+                    Clientes e contadores têm contagens independentes — posição 1 sempre é o 1º contato do tipo selecionado.
+                  </span>
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">De (posição inicial)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={dispatchFrom}
+                    onChange={e => setDispatchFrom(e.target.value)}
+                    placeholder="Ex: 1 (padrão)"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Até (posição final)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={dispatchTo}
+                    onChange={e => setDispatchTo(e.target.value)}
+                    placeholder="Ex: 3000"
+                  />
+                </div>
+              </div>
+              {(dispatchFrom || dispatchTo) && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+                  {dispatchFrom && dispatchTo
+                    ? <>Serão enviados para os contatos da posição <strong>{parseInt(dispatchFrom, 10).toLocaleString("pt-BR")}</strong> até <strong>{parseInt(dispatchTo, 10).toLocaleString("pt-BR")}</strong> — próximo lote começa em <strong>{(parseInt(dispatchTo, 10) + 1).toLocaleString("pt-BR")}</strong>.</>
+                    : dispatchFrom
+                    ? <>Começando do contato <strong>{parseInt(dispatchFrom, 10).toLocaleString("pt-BR")}</strong> até o final da lista.</>
+                    : <>Enviando para os primeiros <strong>{parseInt(dispatchTo, 10).toLocaleString("pt-BR")}</strong> contatos da lista.</>
+                  }
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Velocidade de Envio */}
           <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
             <p className="text-sm font-semibold flex items-center gap-1.5">
@@ -1255,7 +1312,6 @@ function CampaignFormDialog({
     replyTo: existing?.replyTo ?? "",
     filterTags: existing?.filterTags ?? "",
     targetType: existing?.targetType ?? "all",
-    sendLimit: existing?.sendLimit?.toString() ?? "",
   });
 
   function set(k: keyof typeof form, v: string) { setForm(p => ({ ...p, [k]: v })); }
@@ -1270,7 +1326,6 @@ function CampaignFormDialog({
       replyTo: form.replyTo || undefined,
       bodyText: form.bodyText || undefined,
       filterTags: form.filterTags || undefined,
-      sendLimit: form.sendLimit ? parseInt(form.sendLimit, 10) : null,
     };
     if (campaignId) updateMutation.mutate({ id: campaignId, data });
     else createMutation.mutate({ data });
@@ -1346,22 +1401,7 @@ function CampaignFormDialog({
               <Label>Filtrar por Tags (opcional)</Label>
               <Input value={form.filterTags} onChange={e => set("filterTags", e.target.value)} placeholder="Ex: vip, empresa" />
             </div>
-            <div className="space-y-1.5">
-              <Label>Limite de envio (opcional)</Label>
-              <Input
-                type="number"
-                min="1"
-                value={form.sendLimit}
-                onChange={e => set("sendLimit", e.target.value)}
-                placeholder="Ex: 10000 (vazio = todos)"
-              />
-            </div>
           </div>
-          {form.sendLimit && parseInt(form.sendLimit, 10) > 0 && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-              ⚡ Serão enviados apenas os primeiros <strong>{parseInt(form.sendLimit, 10).toLocaleString("pt-BR")}</strong> contatos{form.targetType !== "all" ? ` do tipo "${form.targetType}"` : ""}, ordenados do ID mais antigo ao mais novo.
-            </p>
-          )}
 
           <div className="space-y-1.5">
             <Label>Corpo do E-mail (HTML) *</Label>
