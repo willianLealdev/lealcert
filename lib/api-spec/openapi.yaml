@@ -2462,6 +2462,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/MarketingContact"
 
+  /marketing/contacts/provider-stats:
+    get:
+      operationId: getMarketingContactProviderStats
+      tags: [marketing]
+      summary: Contagem de contatos por provedor de e-mail
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+          description: Filtrar por tipo (cliente|contador)
+      responses:
+        "200":
+          description: Contagem por provedor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingContactProviderStats"
+
   /marketing/contacts/bulk-delete:
     post:
       operationId: bulkDeleteMarketingContacts
@@ -5653,6 +5672,24 @@ components:
           nullable: true
         createdAt:
           type: string
+
+    MarketingContactProviderStats:
+      type: object
+      required: [total, gmail, outlook, yahoo, uolbol, outros]
+      properties:
+        total:
+          type: integer
+        gmail:
+          type: integer
+        outlook:
+          type: integer
+        yahoo:
+          type: integer
+        uolbol:
+          type: integer
+        outros:
+          type: integer
+          description: Domínios próprios / corporativos (não pertencem a provedores conhecidos)
 
     MarketingStats:
       type: object

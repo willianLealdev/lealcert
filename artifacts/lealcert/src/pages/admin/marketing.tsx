@@ -31,6 +31,7 @@ import {
   useDeleteMarketingBounce,
   useRestoreAllMarketingBounces,
   useDeleteAllMarketingBounces,
+  useGetMarketingContactProviderStats,
   getGetMarketingStatsQueryKey,
   getListMarketingContactsQueryKey,
   getListMarketingCampaignsQueryKey,
@@ -1486,6 +1487,8 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
     }
   }
 
+  const { data: providerStats } = useGetMarketingContactProviderStats({ type });
+
   const { data, isLoading } = useListMarketingContacts({
     page,
     search: search || undefined,
@@ -1602,6 +1605,31 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
 
   return (
     <div className="space-y-4">
+      {/* Provider breakdown */}
+      {providerStats && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {([
+            { key: "gmail",   label: "Gmail",          color: "bg-red-500",    pct: providerStats.total > 0 ? Math.round(providerStats.gmail / providerStats.total * 100) : 0 },
+            { key: "outlook", label: "Outlook/Hotmail", color: "bg-blue-500",  pct: providerStats.total > 0 ? Math.round(providerStats.outlook / providerStats.total * 100) : 0 },
+            { key: "yahoo",   label: "Yahoo",           color: "bg-purple-500", pct: providerStats.total > 0 ? Math.round(providerStats.yahoo / providerStats.total * 100) : 0 },
+            { key: "uolbol",  label: "UOL / BOL",       color: "bg-amber-500",  pct: providerStats.total > 0 ? Math.round(providerStats.uolbol / providerStats.total * 100) : 0 },
+            { key: "outros",  label: "Domínio próprio", color: "bg-emerald-500",pct: providerStats.total > 0 ? Math.round(providerStats.outros / providerStats.total * 100) : 0 },
+          ] as const).map(({ key, label, color, pct }) => (
+            <div key={key} className="bg-card border rounded-xl p-4 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${color} shrink-0`} />
+                <span className="text-xs text-muted-foreground font-medium truncate">{label}</span>
+              </div>
+              <p className="text-2xl font-bold">{(providerStats[key] as number).toLocaleString("pt-BR")}</p>
+              <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+              </div>
+              <p className="text-xs text-muted-foreground">{pct}% do total</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1">

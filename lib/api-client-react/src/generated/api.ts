@@ -109,6 +109,7 @@ import type {
   GetGarTiposEmissaoParams,
   GetGarTiposProdutoParams,
   GetGarValidadesParams,
+  GetMarketingContactProviderStatsParams,
   GetMeStatsParams,
   GetOrderGarDisponibilidadeParams,
   GetSafewebConfigParams,
@@ -135,6 +136,7 @@ import type {
   LookupCnpjParams,
   MarketingCampaign,
   MarketingContact,
+  MarketingContactProviderStats,
   MarketingReply,
   MarketingStats,
   MeStats,
@@ -9065,6 +9067,90 @@ export const useCreateMarketingContact = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateMarketingContactMutationOptions(options));
     }
+
+export const getGetMarketingContactProviderStatsUrl = (params?: GetMarketingContactProviderStatsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/marketing/contacts/provider-stats?${stringifiedParams}` : `/api/marketing/contacts/provider-stats`
+}
+
+/**
+ * @summary Contagem de contatos por provedor de e-mail
+ */
+export const getMarketingContactProviderStats = async (params?: GetMarketingContactProviderStatsParams, options?: RequestInit): Promise<MarketingContactProviderStats> => {
+
+  return customFetch<MarketingContactProviderStats>(getGetMarketingContactProviderStatsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMarketingContactProviderStatsQueryKey = (params?: GetMarketingContactProviderStatsParams,) => {
+    return [
+    `/api/marketing/contacts/provider-stats`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMarketingContactProviderStatsQueryOptions = <TData = Awaited<ReturnType<typeof getMarketingContactProviderStats>>, TError = ErrorType<unknown>>(params?: GetMarketingContactProviderStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMarketingContactProviderStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMarketingContactProviderStatsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMarketingContactProviderStats>>> = ({ signal }) => getMarketingContactProviderStats(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMarketingContactProviderStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMarketingContactProviderStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getMarketingContactProviderStats>>>
+export type GetMarketingContactProviderStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Contagem de contatos por provedor de e-mail
+ */
+
+export function useGetMarketingContactProviderStats<TData = Awaited<ReturnType<typeof getMarketingContactProviderStats>>, TError = ErrorType<unknown>>(
+ params?: GetMarketingContactProviderStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMarketingContactProviderStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMarketingContactProviderStatsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getBulkDeleteMarketingContactsUrl = () => {
 

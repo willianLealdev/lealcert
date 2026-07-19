@@ -2762,6 +2762,23 @@ export const CreateMarketingContactBody = zod.object({
 
 
 /**
+ * @summary Contagem de contatos por provedor de e-mail
+ */
+export const GetMarketingContactProviderStatsQueryParams = zod.object({
+  "type": zod.coerce.string().optional().describe('Filtrar por tipo (cliente|contador)')
+})
+
+export const GetMarketingContactProviderStatsResponse = zod.object({
+  "total": zod.number(),
+  "gmail": zod.number(),
+  "outlook": zod.number(),
+  "yahoo": zod.number(),
+  "uolbol": zod.number(),
+  "outros": zod.number().describe('Domínios próprios \/ corporativos (não pertencem a provedores conhecidos)')
+})
+
+
+/**
  * @summary Delete multiple contacts by ID
  */
 export const BulkDeleteMarketingContactsBody = zod.object({

@@ -1419,6 +1419,16 @@ export interface MarketingReply {
   createdAt: string;
 }
 
+export interface MarketingContactProviderStats {
+  total: number;
+  gmail: number;
+  outlook: number;
+  yahoo: number;
+  uolbol: number;
+  /** Domínios próprios / corporativos (não pertencem a provedores conhecidos) */
+  outros: number;
+}
+
 export interface MarketingStats {
   totalContacts: number;
   activeContacts: number;
@@ -2141,6 +2151,13 @@ export const ListMarketingContactsEmailStatus = {
 export type ListMarketingContacts200 = {
   data: MarketingContact[];
   total: number;
+};
+
+export type GetMarketingContactProviderStatsParams = {
+/**
+ * Filtrar por tipo (cliente|contador)
+ */
+type?: string;
 };
 
 export type ListCampaignSendsParams = {

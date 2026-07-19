@@ -421,6 +421,39 @@ router.get("/marketing/stats", async (req, res): Promise<void> => {
   });
 });
 
+// ─── Provider breakdown ───────────────────────────────────────────────────────
+router.get("/marketing/contacts/provider-stats", async (req, res): Promise<void> => {
+  const type = req.query.type as string | undefined;
+
+  const conditions = type ? [eq(marketingContactsTable.type, type)] : [];
+  const where = conditions.length > 0 ? conditions[0] : undefined;
+
+  const rows = await db
+    .select({ email: marketingContactsTable.email })
+    .from(marketingContactsTable)
+    .where(where);
+
+  const PROVIDERS: Record<string, Set<string>> = {
+    gmail:   new Set(["gmail.com", "googlemail.com"]),
+    outlook: new Set(["outlook.com", "hotmail.com", "hotmail.com.br", "live.com", "msn.com"]),
+    yahoo:   new Set(["yahoo.com", "yahoo.com.br", "yahoo.com.ar", "ymail.com"]),
+    uolbol:  new Set(["uol.com.br", "bol.com.br"]),
+  };
+
+  const counts: Record<string, number> = { gmail: 0, outlook: 0, yahoo: 0, uolbol: 0, outros: 0 };
+
+  for (const row of rows) {
+    const domain = row.email?.split("@")[1]?.toLowerCase() ?? "";
+    let matched = false;
+    for (const [key, domains] of Object.entries(PROVIDERS)) {
+      if (domains.has(domain)) { counts[key]++; matched = true; break; }
+    }
+    if (!matched) counts["outros"]++;
+  }
+
+  res.json({ total: rows.length, ...counts });
+});
+
 // ─── Contacts ────────────────────────────────────────────────────────────────
 router.get("/marketing/contacts", async (req, res): Promise<void> => {
   const page = Math.max(1, parseInt(req.query.page as string ?? "1", 10));
