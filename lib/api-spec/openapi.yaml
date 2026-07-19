@@ -5587,6 +5587,10 @@ components:
         targetType:
           type: string
           enum: [all, cliente, contador]
+        sendLimit:
+          type: integer
+          nullable: true
+          description: Quantidade máxima de contatos a enviar (null = todos). Sempre ordenado por id ASC.
         sendBatchSize:
           type: integer
           nullable: true
@@ -5775,6 +5779,10 @@ components:
         targetType:
           type: string
           enum: [all, cliente, contador]
+        sendLimit:
+          type: integer
+          nullable: true
+          description: Limite de contatos a enviar (null = todos, ordenado por id ASC)
 
     SendReplyInput:
       type: object

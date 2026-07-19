@@ -1255,6 +1255,7 @@ function CampaignFormDialog({
     replyTo: existing?.replyTo ?? "",
     filterTags: existing?.filterTags ?? "",
     targetType: existing?.targetType ?? "all",
+    sendLimit: existing?.sendLimit?.toString() ?? "",
   });
 
   function set(k: keyof typeof form, v: string) { setForm(p => ({ ...p, [k]: v })); }
@@ -1269,6 +1270,7 @@ function CampaignFormDialog({
       replyTo: form.replyTo || undefined,
       bodyText: form.bodyText || undefined,
       filterTags: form.filterTags || undefined,
+      sendLimit: form.sendLimit ? parseInt(form.sendLimit, 10) : null,
     };
     if (campaignId) updateMutation.mutate({ id: campaignId, data });
     else createMutation.mutate({ data });
@@ -1344,7 +1346,22 @@ function CampaignFormDialog({
               <Label>Filtrar por Tags (opcional)</Label>
               <Input value={form.filterTags} onChange={e => set("filterTags", e.target.value)} placeholder="Ex: vip, empresa" />
             </div>
+            <div className="space-y-1.5">
+              <Label>Limite de envio (opcional)</Label>
+              <Input
+                type="number"
+                min="1"
+                value={form.sendLimit}
+                onChange={e => set("sendLimit", e.target.value)}
+                placeholder="Ex: 10000 (vazio = todos)"
+              />
+            </div>
           </div>
+          {form.sendLimit && parseInt(form.sendLimit, 10) > 0 && (
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              ⚡ Serão enviados apenas os primeiros <strong>{parseInt(form.sendLimit, 10).toLocaleString("pt-BR")}</strong> contatos{form.targetType !== "all" ? ` do tipo "${form.targetType}"` : ""}, ordenados do ID mais antigo ao mais novo.
+            </p>
+          )}
 
           <div className="space-y-1.5">
             <Label>Corpo do E-mail (HTML) *</Label>

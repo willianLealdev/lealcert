@@ -2863,6 +2863,7 @@ export const ListMarketingCampaignsResponseItem = zod.object({
   "totalContacts": zod.number(),
   "filterTags": zod.string().nullish(),
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
+  "sendLimit": zod.number().nullish().describe('Quantidade máxima de contatos a enviar (null = todos). Sempre ordenado por id ASC.'),
   "sendBatchSize": zod.number().nullish().describe('Quantos e-mails enviar por lote (null = sem limite)'),
   "sendIntervalSecs": zod.number().nullish().describe('Segundos de espera entre lotes (null = sem pausa)'),
   "sendStartHour": zod.number().nullish().describe('Hora de início (0-23) BRT para horário comercial'),
@@ -2887,7 +2888,8 @@ export const CreateMarketingCampaignBody = zod.object({
   "replyTo": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
   "filterTags": zod.string().optional(),
-  "targetType": zod.enum(['all', 'cliente', 'contador']).optional()
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
+  "sendLimit": zod.number().nullish().describe('Limite de contatos a enviar (null = todos, ordenado por id ASC)')
 })
 
 
@@ -2919,6 +2921,7 @@ export const GetMarketingCampaignResponse = zod.object({
   "totalContacts": zod.number(),
   "filterTags": zod.string().nullish(),
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
+  "sendLimit": zod.number().nullish().describe('Quantidade máxima de contatos a enviar (null = todos). Sempre ordenado por id ASC.'),
   "sendBatchSize": zod.number().nullish().describe('Quantos e-mails enviar por lote (null = sem limite)'),
   "sendIntervalSecs": zod.number().nullish().describe('Segundos de espera entre lotes (null = sem pausa)'),
   "sendStartHour": zod.number().nullish().describe('Hora de início (0-23) BRT para horário comercial'),
@@ -2946,7 +2949,8 @@ export const UpdateMarketingCampaignBody = zod.object({
   "replyTo": zod.string().optional(),
   "scheduledAt": zod.string().optional(),
   "filterTags": zod.string().optional(),
-  "targetType": zod.enum(['all', 'cliente', 'contador']).optional()
+  "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
+  "sendLimit": zod.number().nullish().describe('Limite de contatos a enviar (null = todos, ordenado por id ASC)')
 })
 
 export const UpdateMarketingCampaignResponse = zod.object({
@@ -2970,6 +2974,7 @@ export const UpdateMarketingCampaignResponse = zod.object({
   "totalContacts": zod.number(),
   "filterTags": zod.string().nullish(),
   "targetType": zod.enum(['all', 'cliente', 'contador']).optional(),
+  "sendLimit": zod.number().nullish().describe('Quantidade máxima de contatos a enviar (null = todos). Sempre ordenado por id ASC.'),
   "sendBatchSize": zod.number().nullish().describe('Quantos e-mails enviar por lote (null = sem limite)'),
   "sendIntervalSecs": zod.number().nullish().describe('Segundos de espera entre lotes (null = sem pausa)'),
   "sendStartHour": zod.number().nullish().describe('Hora de início (0-23) BRT para horário comercial'),

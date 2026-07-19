@@ -48,6 +48,7 @@ export const marketingCampaignsTable = pgTable("marketing_campaigns", {
   sendStartHour: integer("send_start_hour"),
   sendEndHour: integer("send_end_hour"),
   sendDays: text("send_days"),
+  sendLimit: integer("send_limit"),
   scheduledTargetOverride: text("scheduled_target_override"),
   scheduledContactIds: text("scheduled_contact_ids"),
   scheduledManualRecipients: text("scheduled_manual_recipients"),

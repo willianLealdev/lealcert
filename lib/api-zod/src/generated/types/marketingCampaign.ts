@@ -28,6 +28,8 @@ export interface MarketingCampaign {
   totalContacts: number;
   filterTags?: string | null;
   targetType?: MarketingCampaignTargetType;
+  /** Quantidade máxima de contatos a enviar (null = todos). Sempre ordenado por id ASC. */
+  sendLimit?: number | null;
   /** Quantos e-mails enviar por lote (null = sem limite) */
   sendBatchSize?: number | null;
   /** Segundos de espera entre lotes (null = sem pausa) */

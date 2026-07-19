@@ -885,7 +885,7 @@ router.get("/marketing/campaigns/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/marketing/campaigns", async (req, res): Promise<void> => {
-  const { name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, scheduledAt, filterTags, targetType } = req.body ?? {};
+  const { name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, scheduledAt, filterTags, targetType, sendLimit } = req.body ?? {};
   if (!name || !subject || !bodyHtml) { res.status(400).json({ error: "Nome, assunto e corpo são obrigatórios." }); return; }
   const [campaign] = await db.insert(marketingCampaignsTable).values({
     name, subject, bodyHtml, bodyText,
@@ -893,6 +893,7 @@ router.post("/marketing/campaigns", async (req, res): Promise<void> => {
     fromEmail: fromEmail ?? "mkt@lealcert.com.br",
     replyTo, filterTags,
     targetType: (["cliente","contador","new_contacts","not_opened_cliente","not_opened_contador","opened_all","opened_cliente","opened_contador","clicked_all","clicked_cliente","clicked_contador"].includes(targetType)) ? targetType : "all",
+    sendLimit: sendLimit && Number(sendLimit) > 0 ? Number(sendLimit) : null,
     scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
     status: scheduledAt ? "scheduled" : "draft",
   }).returning();
@@ -901,10 +902,11 @@ router.post("/marketing/campaigns", async (req, res): Promise<void> => {
 
 router.put("/marketing/campaigns/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const { name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, scheduledAt, filterTags, targetType } = req.body ?? {};
+  const { name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, scheduledAt, filterTags, targetType, sendLimit } = req.body ?? {};
   const [campaign] = await db.update(marketingCampaignsTable).set({
     name, subject, bodyHtml, bodyText, fromName, fromEmail, replyTo, filterTags,
     targetType: (["cliente","contador","new_contacts","not_opened_cliente","not_opened_contador","opened_all","opened_cliente","opened_contador","clicked_all","clicked_cliente","clicked_contador"].includes(targetType)) ? targetType : "all",
+    sendLimit: sendLimit !== undefined ? (sendLimit && Number(sendLimit) > 0 ? Number(sendLimit) : null) : undefined,
     scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
   }).where(eq(marketingCampaignsTable.id, id)).returning();
   res.json(campaign);
@@ -1313,9 +1315,10 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
           SELECT 1 FROM marketing_sends ms
           WHERE ms.contact_id = mc.id AND ms.opened_at IS NOT NULL
         )
+      ORDER BY mc.id ASC${campaign.sendLimit ? sql` LIMIT ${campaign.sendLimit}` : sql``}
     `);
     contacts = rawContacts.rows.map(mapContact);
-    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded (not-opened)");
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, sendLimit: campaign.sendLimit }, "Dispatch contacts loaded (not-opened)");
   } else if (effectiveTarget.startsWith("opened_") || effectiveTarget.startsWith("clicked_")) {
     const engagementCol = effectiveTarget.startsWith("opened_") ? "opened_at" : "clicked_at";
     const typeSuffix = effectiveTarget.split("_")[1]; // all | cliente | contador
@@ -1334,24 +1337,24 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
         AND mc.bounced = false
         AND mc.email_status NOT IN ('invalid', 'disposable')
         ${typeClause}
-      ORDER BY mc.id
+      ORDER BY mc.id ASC${campaign.sendLimit ? sql` LIMIT ${campaign.sendLimit}` : sql``}
     `);
     contacts = rawContacts.rows.map(mapContact);
-    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded (engagement)");
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, sendLimit: campaign.sendLimit }, "Dispatch contacts loaded (engagement)");
   } else if (effectiveTarget === "new_contacts" || effectiveTarget === "new_cliente" || effectiveTarget === "new_contador") {
     const typeFilter = effectiveTarget === "new_cliente" ? "cliente" : effectiveTarget === "new_contador" ? "contador" : null;
     const rawContacts = await db.execute<RawContactRow>(
-      sql`SELECT * FROM marketing_contacts WHERE is_new = true AND status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``}`
+      sql`SELECT * FROM marketing_contacts WHERE is_new = true AND status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``} ORDER BY id ASC${campaign.sendLimit ? sql` LIMIT ${campaign.sendLimit}` : sql``}`
     );
     contacts = rawContacts.rows.map(mapContact);
-    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded (new_contacts)");
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, sendLimit: campaign.sendLimit }, "Dispatch contacts loaded (new_contacts)");
   } else {
     const typeFilter = effectiveTarget === "cliente" ? "cliente" : effectiveTarget === "contador" ? "contador" : null;
     const rawContacts = await db.execute<RawContactRow>(
-      sql`SELECT * FROM marketing_contacts WHERE status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``}`
+      sql`SELECT * FROM marketing_contacts WHERE status = 'active' AND bounced = false AND email_status NOT IN ('invalid', 'disposable')${typeFilter ? sql` AND type = ${typeFilter}` : sql``} ORDER BY id ASC${campaign.sendLimit ? sql` LIMIT ${campaign.sendLimit}` : sql``}`
     );
     contacts = rawContacts.rows.map(mapContact);
-    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length }, "Dispatch contacts loaded");
+    logger.info({ campaignId, effectiveTarget, contactsFound: contacts.length, sendLimit: campaign.sendLimit }, "Dispatch contacts loaded");
   }
 
   // ── Resume support ────────────────────────────────────────────────────────
