@@ -14,3 +14,4 @@
 - [GAR protocol date fix + sync](gar-protocol-fix.md) — ErrorCode 888 = data em DD/MM/YYYY; normalizeDateForGar() converte; syncGarProtocols() scheduler a cada 5min recupera protocolos perdidos.
 - [Chat order flow — Hope modal + active order card](chat-order-flow.md) — Hope abre em modal iframe; ao abrir chat busca pedidos ativos e mostra botões Enviar Docs / Agendar no menu inicial.
 - [Chat login + inline scheduling security](chat-login-security.md) — ACAO:LOGIN_CHAT usa passwordHash (não password); ownership check em __AGENDAR__ e ACAO:AGENDAR: antes de reservar slot; senhas redacted antes de salvar fullResponse no DB.
+- [Changelog obrigatório](changelog-rule.md) — toda alteração feita no sistema deve ser registrada em artifacts/lealcert/src/components/changelog.tsx antes do push.
