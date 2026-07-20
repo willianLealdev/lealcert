@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, marketingContactsTable, whatsappCampaignsTable, whatsappSendsTable, settingsTable } from "@workspace/db";
 import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
-import { sendWhatsApp } from "../lib/evolution";
+import { sendWhatsApp, checkHasWhatsApp } from "../lib/evolution";
 
 const router = Router();
 
@@ -617,6 +617,37 @@ async function dispatchWaCampaign(
       }
     }
 
+    // Verifica se o número tem WhatsApp antes de tentar enviar
+    const evoSettings = {
+      evolutionUrl: settings.evolutionUrl!,
+      evolutionApiKey: settings.evolutionApiKey!,
+      evolutionInstance: settings.evolutionInstance!,
+    };
+    const hasWA = await checkHasWhatsApp(evoSettings, contact.phone);
+    if (!hasWA) {
+      await db
+        .insert(whatsappSendsTable)
+        .values({
+          campaignId,
+          contactId: isManualContact ? null : contact.id,
+          phone: contact.phone,
+          recipientName: contact.name,
+          status: "failed",
+          error: "Número não possui WhatsApp",
+        })
+        .onConflictDoUpdate({
+          target: [whatsappSendsTable.campaignId, whatsappSendsTable.phone],
+          set: { status: "failed", error: "Número não possui WhatsApp" },
+        });
+      failed++;
+      await db
+        .update(whatsappCampaignsTable)
+        .set({ totalFailed: failed })
+        .where(eq(whatsappCampaignsTable.id, campaignId));
+      logger.warn({ campaignId, phone: contact.phone }, "WA: número sem WhatsApp — pulando");
+      continue;
+    }
+
     await db
       .insert(whatsappSendsTable)
       .values({
@@ -633,15 +664,7 @@ async function dispatchWaCampaign(
       "\n\n_Responda *SAIR* para cancelar o recebimento._";
 
     try {
-      await sendWhatsApp(
-        {
-          evolutionUrl: settings.evolutionUrl!,
-          evolutionApiKey: settings.evolutionApiKey!,
-          evolutionInstance: settings.evolutionInstance!,
-        },
-        contact.phone,
-        personalized,
-      );
+      await sendWhatsApp(evoSettings, contact.phone, personalized);
 
       await db
         .update(whatsappSendsTable)

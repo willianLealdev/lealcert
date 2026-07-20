@@ -6,6 +6,54 @@ export interface EvolutionSettings {
   evolutionInstance: string;
 }
 
+function toE164(phone: string): string {
+  const raw = phone.replace(/\D/g, "");
+  return raw.startsWith("55") ? raw : `55${raw}`;
+}
+
+/**
+ * Verifica se um número possui WhatsApp (regular ou Business).
+ * Retorna true se o número está ativo no WhatsApp, false caso contrário.
+ */
+export async function checkHasWhatsApp(
+  settings: EvolutionSettings,
+  phone: string,
+): Promise<boolean> {
+  const raw = phone.replace(/\D/g, "");
+  if (!raw || raw.length < 8) return false;
+
+  const e164 = toE164(phone);
+  const url = `${settings.evolutionUrl.replace(/\/$/, "")}/chat/whatsappNumbers/${settings.evolutionInstance}`;
+
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": settings.evolutionApiKey,
+      },
+      body: JSON.stringify({ numbers: [e164] }),
+    });
+
+    if (!resp.ok) {
+      logger.warn({ phone: e164, status: resp.status }, "checkHasWhatsApp: resposta não-ok — assumindo que tem WhatsApp");
+      return true; // em caso de falha na checagem, tenta enviar mesmo assim
+    }
+
+    const data = await resp.json() as Array<{ exists?: boolean; jid?: string; numberExists?: boolean }>;
+    if (!Array.isArray(data) || data.length === 0) return true;
+
+    const result = data[0];
+    const exists = result.exists ?? result.numberExists ?? true;
+
+    logger.info({ phone: e164, exists }, "checkHasWhatsApp: resultado");
+    return exists;
+  } catch (err) {
+    logger.warn({ phone: e164, err }, "checkHasWhatsApp: erro na verificação — assumindo que tem WhatsApp");
+    return true; // falha silenciosa — não bloqueia o envio
+  }
+}
+
 export async function sendWhatsApp(
   settings: EvolutionSettings,
   phone: string,
@@ -16,7 +64,7 @@ export async function sendWhatsApp(
     throw new Error(`Telefone inválido: "${phone}"`);
   }
 
-  const e164 = rawPhone.startsWith("55") ? rawPhone : `55${rawPhone}`;
+  const e164 = toE164(phone);
   const url = `${settings.evolutionUrl.replace(/\/$/, "")}/message/sendText/${settings.evolutionInstance}`;
 
   let resp: Response;
