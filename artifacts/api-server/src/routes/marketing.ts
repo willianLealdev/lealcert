@@ -1546,7 +1546,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       bounced++;
       logger.warn({ email: contact.email, error }, "Failed to send marketing email");
       if (contact.id > 0) {
-        const isPermanentBounce = /550|551|552|553|554|user.unknown|does not exist|invalid|no such user|mailbox.*not.*found|bounce/i.test(error);
+        const isPermanentBounce = /\b55[0-4]\b|user.unknown|does not exist|no such user|mailbox.*not.*found|invalid (address|recipient|mailbox|user)|user.*invalid|address.*invalid|recipient.*invalid|account.*does.*not.*exist|no.*mailbox|mailbox.*unavailable|permanently.*failed|address.*rejected/i.test(error);
         if (isPermanentBounce) {
           await db.update(marketingContactsTable).set({ bounced: true, hadBounce: true }).where(eq(marketingContactsTable.id, contact.id));
           logger.info({ contactId: contact.id, email: contact.email }, "Contato marcado como bloqueado por bounce permanente");
