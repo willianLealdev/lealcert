@@ -378,7 +378,11 @@ router.post("/marketing/webhook/inbound", async (req, res): Promise<void> => {
 });
 
 // ─── Admin-only routes ────────────────────────────────────────────────────────
-router.use("/marketing", requireAdmin);
+// WhatsApp webhook paths are handled by whatsappMarketingRouter — skip auth for them
+router.use("/marketing", (req, res, next) => {
+  if (req.path.startsWith("/wa/webhook/")) return next("router");
+  requireAdmin(req, res, next);
+});
 
 // ─── Stats ───────────────────────────────────────────────────────────────────
 router.get("/marketing/stats", async (req, res): Promise<void> => {
