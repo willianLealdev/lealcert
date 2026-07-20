@@ -456,7 +456,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* User footer */}
         <div className="p-2 border-t border-sidebar-border/50 space-y-0.5">
-          <ChangelogButton collapsed={collapsed} />
+          {user?.role === "admin" && <ChangelogButton collapsed={collapsed} />}
           <PushBellButton collapsed={collapsed} />
           <Link href="/profile">
             <div
