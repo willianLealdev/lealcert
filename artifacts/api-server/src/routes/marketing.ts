@@ -1517,6 +1517,24 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       }
     }
 
+    // ── Validação de e-mail antes do envio ────────────────────────────────────
+    // Para contatos com email_status = 'unknown', valida antes de enviar.
+    // Usa ZeroBounce se configurado, senão SMTP + MX. Resultados ficam em cache
+    // por 7 dias, então a validação só ocorre uma vez por endereço.
+    if (contact.emailStatus === "unknown" || !contact.emailStatus) {
+      const validity = await validateEmail(contact.email);
+      const reason: string | null = validity === "disposable" ? "disposable_domain" : validity === "invalid" ? "smtp_invalid" : null;
+      if (contact.id > 0) {
+        await db.update(marketingContactsTable)
+          .set({ emailStatus: validity, emailInvalidReason: reason, emailValidatedAt: new Date() })
+          .where(eq(marketingContactsTable.id, contact.id));
+      }
+      if (validity === "invalid" || validity === "disposable") {
+        logger.info({ contactId: contact.id, email: contact.email, validity }, "E-mail inválido detectado antes do envio — pulando");
+        return;
+      }
+    }
+
     const token = genToken();
     try {
       await db.insert(marketingSendsTable).values({
