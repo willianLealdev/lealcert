@@ -472,7 +472,8 @@ router.get("/marketing/contacts", async (req, res): Promise<void> => {
 
   const conditions = [];
   if (search) conditions.push(or(ilike(marketingContactsTable.name, `%${search}%`), ilike(marketingContactsTable.email, `%${search}%`)));
-  if (status) conditions.push(eq(marketingContactsTable.status, status));
+  if (status === "bounced") conditions.push(eq(marketingContactsTable.bounced, true));
+  else if (status) conditions.push(eq(marketingContactsTable.status, status));
   if (type) conditions.push(eq(marketingContactsTable.type, type));
   if (emailStatus) conditions.push(eq(marketingContactsTable.emailStatus, emailStatus));
   if (isNewFilter === "true") conditions.push(eq(marketingContactsTable.isNew, true));
