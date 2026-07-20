@@ -694,12 +694,14 @@ function exportSendsCSV(sends: WaSend[], campaignName: string) {
   URL.revokeObjectURL(url);
 }
 
-function WaSendsDialog({ campaignId, campaignName, open, onClose }: { campaignId: number; campaignName: string; open: boolean; onClose: () => void }) {
+function WaSendsDialog({ campaignId, campaignName, open, initialFilter = "all", onClose }: { campaignId: number; campaignName: string; open: boolean; initialFilter?: SendsFilter; onClose: () => void }) {
   const { data: sends = [], isLoading } = useListWaCampaignSends(
     campaignId,
     { query: { queryKey: getListWaCampaignSendsQueryKey(campaignId), enabled: open } },
   );
-  const [filter, setFilter] = useState<SendsFilter>("all");
+  const [filter, setFilter] = useState<SendsFilter>(initialFilter);
+
+  useEffect(() => { setFilter(initialFilter); }, [initialFilter]);
 
   const sent = sends.filter(s => s.status === "sent").length;
   const failed = sends.filter(s => s.status === "failed").length;
@@ -893,6 +895,7 @@ function CampaignRow({
   const pauseMutation = usePauseWaCampaign();
   const resumeMutation = useResumeWaCampaign();
   const [showSends, setShowSends] = useState(false);
+  const [sendsFilter, setSendsFilter] = useState<SendsFilter>("all");
 
   const isSending = campaign.status === "sending";
   const isPaused = campaign.status === "paused";
@@ -956,8 +959,8 @@ function CampaignRow({
 
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
-          {campaign.totalSent > 0 && (
-            <Button size="sm" variant="outline" onClick={() => setShowSends(true)}>
+          {(campaign.totalSent > 0 || campaign.totalFailed > 0) && (
+            <Button size="sm" variant="outline" onClick={() => { setSendsFilter("all"); setShowSends(true); }}>
               <Eye className="h-3.5 w-3.5 mr-1" />
               Ver Envios
             </Button>
@@ -1000,16 +1003,22 @@ function CampaignRow({
           {campaign.totalContacts} contatos
         </span>
         {campaign.totalSent > 0 && (
-          <span className="flex items-center gap-1 text-green-600">
+          <button
+            onClick={() => { setSendsFilter("sent"); setShowSends(true); }}
+            className="flex items-center gap-1 text-green-600 hover:underline cursor-pointer"
+          >
             <CheckCircle2 className="h-3 w-3" />
             {campaign.totalSent} enviados
-          </span>
+          </button>
         )}
         {campaign.totalFailed > 0 && (
-          <span className="flex items-center gap-1 text-red-500">
+          <button
+            onClick={() => { setSendsFilter("failed"); setShowSends(true); }}
+            className="flex items-center gap-1 text-red-500 hover:underline cursor-pointer"
+          >
             <XCircle className="h-3 w-3" />
             {campaign.totalFailed} falhas
-          </span>
+          </button>
         )}
         {campaign.sentAt && (
           <span className="flex items-center gap-1">
@@ -1040,6 +1049,7 @@ function CampaignRow({
           campaignId={campaign.id}
           campaignName={campaign.name}
           open={showSends}
+          initialFilter={sendsFilter}
           onClose={() => setShowSends(false)}
         />
       )}
