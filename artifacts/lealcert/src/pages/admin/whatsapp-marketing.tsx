@@ -1118,6 +1118,7 @@ export default function AdminWhatsAppMarketing() {
   const draftOrScheduled = campaigns.filter(
     (c) => c.status === "draft" || c.status === "scheduled",
   );
+  const cancelledCampaigns = campaigns.filter((c) => c.status === "cancelled");
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -1203,6 +1204,25 @@ export default function AdminWhatsAppMarketing() {
             Enviadas
           </h2>
           {sentCampaigns.map((c) => (
+            <CampaignRow
+              key={c.id}
+              campaign={c}
+              onEdit={() => setEditCampaign(c)}
+              onDelete={() => setDeleteCampaign(c)}
+              onSend={() => setSendCampaign(c)}
+            />
+          ))}
+        </section>
+      )}
+
+      {/* Cancelled */}
+      {cancelledCampaigns.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <XCircle className="h-3.5 w-3.5 text-red-400" />
+            Canceladas
+          </h2>
+          {cancelledCampaigns.map((c) => (
             <CampaignRow
               key={c.id}
               campaign={c}
