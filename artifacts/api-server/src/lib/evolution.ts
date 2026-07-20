@@ -12,8 +12,8 @@ export async function sendWhatsApp(
   text: string,
 ): Promise<void> {
   const rawPhone = phone.replace(/\D/g, "");
-  if (!rawPhone || rawPhone.length < 10) {
-    throw new Error(`Telefone inválido ou muito curto: "${phone}"`);
+  if (!rawPhone || rawPhone.length < 8) {
+    throw new Error(`Telefone inválido: "${phone}"`);
   }
 
   const e164 = rawPhone.startsWith("55") ? rawPhone : `55${rawPhone}`;
@@ -30,7 +30,7 @@ export async function sendWhatsApp(
       body: JSON.stringify({ number: e164, text }),
     });
   } catch (fetchErr) {
-    throw new Error(`Não foi possível conectar à Evolution API (${url}): ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
+    throw new Error(`Falha ao conectar na Evolution API: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
   }
 
   const bodyText = await resp.text().catch(() => "");
@@ -39,16 +39,5 @@ export async function sendWhatsApp(
     throw new Error(`Evolution API ${resp.status}: ${bodyText}`);
   }
 
-  // Parse response to detect silent errors (Evolution sometimes returns 200 with error body)
-  let bodyJson: unknown;
-  try { bodyJson = JSON.parse(bodyText); } catch { bodyJson = null; }
-
-  if (bodyJson && typeof bodyJson === "object" && bodyJson !== null) {
-    const b = bodyJson as Record<string, unknown>;
-    if (b.error || b.message === "error" || b.status === "error") {
-      throw new Error(`Evolution API retornou erro: ${bodyText}`);
-    }
-  }
-
-  logger.info({ phone: e164, instance: settings.evolutionInstance, status: resp.status, body: bodyText.slice(0, 300) }, "WhatsApp enviado via Evolution API");
+  logger.info({ phone: e164, instance: settings.evolutionInstance, responseBody: bodyText.slice(0, 400) }, "WhatsApp enviado via Evolution API");
 }
