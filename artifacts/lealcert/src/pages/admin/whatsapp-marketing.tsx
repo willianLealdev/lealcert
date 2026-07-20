@@ -818,7 +818,10 @@ function CampaignRow({
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {TARGET_LABELS[campaign.targetType] ?? campaign.targetType}
+            {(() => {
+              const effective = campaign.scheduledTargetOverride ?? campaign.targetType;
+              return TARGET_LABELS[effective] ?? effective;
+            })()}
           </p>
         </div>
 

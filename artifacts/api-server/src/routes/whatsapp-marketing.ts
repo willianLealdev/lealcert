@@ -303,6 +303,8 @@ router.post("/marketing/wa/campaigns/:id/send", async (req, res): Promise<void> 
       status: "scheduled",
       scheduledAt: new Date(scheduledAt as string),
       scheduledTargetOverride: opts.targetOverride ?? null,
+      // Also update targetType so the card always shows the correct label
+      ...(opts.targetOverride ? { targetType: opts.targetOverride } : {}),
       sendPerMinute: opts.sendPerMinute ?? null,
       sendStartHour: opts.sendStartHour ?? null,
       sendEndHour: opts.sendEndHour ?? null,
@@ -326,6 +328,8 @@ router.post("/marketing/wa/campaigns/:id/send", async (req, res): Promise<void> 
     sendStartHour: opts.sendStartHour ?? null,
     sendEndHour: opts.sendEndHour ?? null,
     sendDays: opts.sendDays ?? null,
+    // Persist the chosen target so the card always shows the correct label
+    ...(opts.targetOverride ? { targetType: opts.targetOverride } : {}),
   }).where(eq(whatsappCampaignsTable.id, id));
 
   res.json({ message: "Campanha iniciada. Mensagens em envio em segundo plano." });
