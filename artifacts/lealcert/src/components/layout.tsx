@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 import { ReviewPrompt } from "@/components/review-prompt";
+import { ChangelogButton } from "@/components/changelog";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -455,6 +456,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* User footer */}
         <div className="p-2 border-t border-sidebar-border/50 space-y-0.5">
+          <ChangelogButton collapsed={collapsed} />
           <PushBellButton collapsed={collapsed} />
           <Link href="/profile">
             <div
@@ -485,6 +487,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <LogOut className="h-4 w-4" />
             {!collapsed && "Sair"}
           </Button>
+          {!collapsed && (
+            <p className="text-[10px] text-sidebar-foreground/25 text-center pt-1 select-none">
+              build {new Date(__BUILD_TIME__).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+            </p>
+          )}
         </div>
       </aside>
 
