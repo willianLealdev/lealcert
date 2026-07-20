@@ -18,7 +18,8 @@ const CHANGELOG: ChangelogEntry[] = [
     version: "1.16",
     changes: [
       { type: "fix",      text: "Validação de e-mails não travava mais o servidor: endpoint agora roda em background e retorna imediatamente" },
-      { type: "fix",      text: "Detecta automaticamente se porta 25 (SMTP) está bloqueada no provedor — evita timeout de 5s por contato" },
+      { type: "melhoria", text: "Verificação SMTP testa portas 25, 587 e 465 em sequência — funciona mesmo com provedores que bloqueiam a porta 25" },
+      { type: "melhoria", text: "Sondagem inicial testa todas as portas antes de declarar SMTP bloqueado" },
       { type: "melhoria", text: "Progresso da validação exibido em tempo real no botão (ex: 'Validando… 120/500')" },
     ],
   },

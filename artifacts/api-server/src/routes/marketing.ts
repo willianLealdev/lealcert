@@ -68,7 +68,11 @@ const CATCHALL_DOMAINS = new Set([
   "protonmail.com", "pm.me",
 ]);
 
-async function smtpVerifyMailbox(email: string, mxHost: string): Promise<"valid" | "invalid" | "unknown"> {
+// Ports tried in order: 25 (standard MTA), 587 (submission), 465 (SMTPS plain-text probe)
+// Some providers block 25 and only expose 587/465 for inbound verification
+const SMTP_PORTS = [25, 587, 465];
+
+async function smtpVerifyMailbox(email: string, mxHost: string, port: number): Promise<"valid" | "invalid" | "unknown"> {
   return new Promise((resolve) => {
     let buf = "";
     let step = 0;
@@ -81,7 +85,7 @@ async function smtpVerifyMailbox(email: string, mxHost: string): Promise<"valid"
       resolve(result);
     };
 
-    const socket = net.createConnection({ host: mxHost, port: 25 });
+    const socket = net.createConnection({ host: mxHost, port });
     socket.setTimeout(5000);
     socket.setEncoding("utf8");
 
@@ -91,51 +95,28 @@ async function smtpVerifyMailbox(email: string, mxHost: string): Promise<"valid"
 
     socket.on("data", (chunk: string) => {
       buf += chunk;
-      // Process all complete lines
       const lines = buf.split(/\r?\n/);
       buf = lines.pop() ?? "";
 
       for (const line of lines) {
         if (!line.trim()) continue;
         const code = parseInt(line.slice(0, 3), 10);
-        const isFinal = line[3] !== "-"; // multi-line response continues with "-"
-        if (!isFinal) continue; // wait for final line of multi-line response
+        const isFinal = line[3] !== "-";
+        if (!isFinal) continue;
 
         if (step === 0) {
-          // Waiting for banner (220)
-          if (code === 220) {
-            socket.write("EHLO mail-verify.local\r\n");
-            step = 1;
-          } else {
-            finish("unknown");
-          }
+          if (code === 220) { socket.write("EHLO mail-verify.local\r\n"); step = 1; }
+          else { finish("unknown"); }
         } else if (step === 1) {
-          // Waiting for EHLO response (250)
-          if (code === 250) {
-            socket.write("MAIL FROM:<verify@mail-verify.local>\r\n");
-            step = 2;
-          } else {
-            finish("unknown");
-          }
+          if (code === 250) { socket.write("MAIL FROM:<verify@mail-verify.local>\r\n"); step = 2; }
+          else { finish("unknown"); }
         } else if (step === 2) {
-          // Waiting for MAIL FROM response (250)
-          if (code === 250) {
-            socket.write(`RCPT TO:<${email}>\r\n`);
-            step = 3;
-          } else {
-            finish("unknown");
-          }
+          if (code === 250) { socket.write(`RCPT TO:<${email}>\r\n`); step = 3; }
+          else { finish("unknown"); }
         } else if (step === 3) {
-          // This is the key check — response to RCPT TO
-          if (code === 250 || code === 251) {
-            finish("valid");
-          } else if (code >= 550 && code <= 554) {
-            // 550 user unknown, 551 user not local, 552 mailbox full, 553 bad address, 554 rejected
-            finish("invalid");
-          } else {
-            // 4xx = temporary error, 421 = service unavailable → inconclusive
-            finish("unknown");
-          }
+          if (code === 250 || code === 251) { finish("valid"); }
+          else if (code >= 550 && code <= 554) { finish("invalid"); }
+          else { finish("unknown"); }
           socket.write("QUIT\r\n");
         }
       }
@@ -154,16 +135,17 @@ async function validateEmailSmtp(email: string): Promise<"valid" | "invalid" | "
     return "invalid";
   }
 
-  // Try first two MX hosts
+  // Try first two MX hosts × ports 25, 587, 465
   for (const host of mxHosts.slice(0, 2)) {
-    const result = await smtpVerifyMailbox(email, host);
-    if (result !== "unknown") {
-      smtpCache.set(email, { result, ts: Date.now() });
-      return result;
+    for (const port of SMTP_PORTS) {
+      const result = await smtpVerifyMailbox(email, host, port);
+      if (result !== "unknown") {
+        smtpCache.set(email, { result, ts: Date.now() });
+        return result;
+      }
     }
   }
 
-  // Inconclusive — MX exists but SMTP check wasn't conclusive
   smtpCache.set(email, { result: "unknown", ts: Date.now() });
   return "unknown";
 }
@@ -762,10 +744,9 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
 
   // ── Background processing ─────────────────────────────────────────────────
   (async () => {
-    // Detect if outbound port 25 is blocked (try one SMTP check first)
+    // Detect if ALL SMTP ports are blocked — try ports 25, 587, 465 before giving up
     let smtpBlocked = false;
     if (!zbKey) {
-      // Quick probe: pick the first non-catchall domain to test port 25
       const probe = contacts.find(c => {
         const d = c.email.split("@")[1]?.toLowerCase();
         return d && !CATCHALL_DOMAINS.has(d);
@@ -774,8 +755,13 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
         const d = probe.email.split("@")[1].toLowerCase();
         const hosts = await getMxHosts(d);
         if (hosts.length) {
-          const r = await smtpVerifyMailbox(probe.email, hosts[0]);
-          if (r === "unknown") smtpBlocked = true; // port 25 likely blocked
+          // Try every SMTP port — only declare blocked if ALL fail
+          let anyPortWorked = false;
+          for (const port of SMTP_PORTS) {
+            const r = await smtpVerifyMailbox(probe.email, hosts[0], port);
+            if (r !== "unknown") { anyPortWorked = true; break; }
+          }
+          if (!anyPortWorked) smtpBlocked = true;
         }
       }
     }
