@@ -8,6 +8,7 @@ import {
   useSendWaCampaign,
   usePauseWaCampaign,
   useResumeWaCampaign,
+  useCancelWaCampaign,
   useGetWaCampaignProgress,
   useListWaCampaignSends,
   useListWaUnsubscribed,
@@ -894,6 +895,7 @@ function CampaignRow({
   const queryClient = useQueryClient();
   const pauseMutation = usePauseWaCampaign();
   const resumeMutation = useResumeWaCampaign();
+  const cancelMutation = useCancelWaCampaign();
   const [showSends, setShowSends] = useState(false);
   const [sendsFilter, setSendsFilter] = useState<SendsFilter>("all");
 
@@ -902,6 +904,7 @@ function CampaignRow({
   const isDone = campaign.status === "sent";
   const isDraft = campaign.status === "draft";
   const isScheduled = campaign.status === "scheduled";
+  const isCancelled = campaign.status === "cancelled";
 
   function handlePause() {
     pauseMutation.mutate(
@@ -921,6 +924,19 @@ function CampaignRow({
       {
         onSuccess: () => {
           toast({ title: "Campanha retomada!" });
+          queryClient.invalidateQueries({ queryKey: getListWaCampaignsQueryKey() });
+        },
+      },
+    );
+  }
+
+  function handleCancel() {
+    if (!confirm(`Cancelar a campanha "${campaign.name}"? Esta ação não pode ser desfeita.`)) return;
+    cancelMutation.mutate(
+      { id: campaign.id },
+      {
+        onSuccess: () => {
+          toast({ title: "Campanha cancelada.", variant: "destructive" });
           queryClient.invalidateQueries({ queryKey: getListWaCampaignsQueryKey() });
         },
       },
@@ -983,7 +999,13 @@ function CampaignRow({
               Retomar
             </Button>
           )}
-          {(isDraft || isDone || isScheduled) && (
+          {(isSending || isPaused) && (
+            <Button size="sm" variant="outline" onClick={handleCancel} disabled={cancelMutation.isPending} className="text-red-600 border-red-200 hover:bg-red-50">
+              <XCircle className="h-3.5 w-3.5 mr-1" />
+              Cancelar
+            </Button>
+          )}
+          {(isDraft || isDone || isScheduled || isCancelled) && (
             <>
               <Button size="sm" variant="ghost" onClick={onEdit}>
                 <Pencil className="h-3.5 w-3.5" />

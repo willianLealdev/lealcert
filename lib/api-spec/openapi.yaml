@@ -3117,6 +3117,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
+  /marketing/wa/campaigns/{id}/cancel:
+    post:
+      operationId: cancelWaCampaign
+      tags: [whatsapp]
+      summary: Cancel a running or paused WhatsApp campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   /marketing/wa/campaigns/{id}/sends:
     get:
       operationId: listWaCampaignSends

@@ -6,8 +6,10 @@ import { sendWhatsApp, checkHasWhatsApp } from "../lib/evolution";
 
 const router = Router();
 
-// ── In-memory pause set ──────────────────────────────────────────────────────
-const pausedWaCampaigns = new Set<number>();
+// ── In-memory state ──────────────────────────────────────────────────────────
+const pausedWaCampaigns = new Set<number>();        // all paused (auto + manual)
+const manuallyPausedWaCampaigns = new Set<number>(); // paused by user click — never auto-resumed
+const activeWaDispatches = new Set<number>();        // loops currently running — prevents double dispatch
 
 // ── Business hours helper ────────────────────────────────────────────────────
 function isWithinBusinessHoursWa(startHour: number, endHour: number, days?: string): boolean {
@@ -23,6 +25,8 @@ function isWithinBusinessHoursWa(startHour: number, endHour: number, days?: stri
 }
 
 // ── Auto-resume scheduler (every 60 s) ──────────────────────────────────────
+// Only auto-resumes campaigns paused by business-hours logic.
+// Campaigns paused manually (manuallyPausedWaCampaigns) are NEVER touched here.
 setInterval(async () => {
   try {
     const paused = await db
@@ -36,17 +40,26 @@ setInterval(async () => {
       .where(eq(whatsappCampaignsTable.status, "paused"));
 
     for (const c of paused) {
+      // Never auto-resume campaigns the user paused manually
+      if (manuallyPausedWaCampaigns.has(c.id)) continue;
       if (c.startHour == null || c.endHour == null) continue;
       if (!isWithinBusinessHoursWa(c.startHour, c.endHour, c.days ?? undefined)) continue;
+
       pausedWaCampaigns.delete(c.id);
       await db
         .update(whatsappCampaignsTable)
         .set({ status: "sending" })
         .where(eq(whatsappCampaignsTable.id, c.id));
-      dispatchWaCampaign(c.id).catch((err) =>
-        logger.error({ campaignId: c.id, err }, "WA auto-resume dispatch error"),
-      );
-      logger.info({ campaignId: c.id }, "WA: campanha retomada automaticamente (horário comercial)");
+
+      // Only call dispatchWaCampaign if no loop is already running for this campaign.
+      // If the original loop is still in waitIfPaused(), removing it from pausedWaCampaigns
+      // is enough — the loop will wake up and continue on its own.
+      if (!activeWaDispatches.has(c.id)) {
+        dispatchWaCampaign(c.id).catch((err) =>
+          logger.error({ campaignId: c.id, err }, "WA auto-resume dispatch error"),
+        );
+      }
+      logger.info({ campaignId: c.id, hadActiveLoop: activeWaDispatches.has(c.id) }, "WA: campanha retomada automaticamente (horário comercial)");
     }
   } catch (err) {
     logger.warn({ err }, "WA business-hours scheduler error");
@@ -211,6 +224,7 @@ router.post("/marketing/wa/campaigns/:id/pause", async (req, res): Promise<void>
   }
   const id = parseInt(req.params.id, 10);
   pausedWaCampaigns.add(id);
+  manuallyPausedWaCampaigns.add(id); // mark as manual — scheduler will NOT auto-resume this
   await db
     .update(whatsappCampaignsTable)
     .set({ status: "paused" })
@@ -225,15 +239,37 @@ router.post("/marketing/wa/campaigns/:id/resume", async (req, res): Promise<void
     return;
   }
   const id = parseInt(req.params.id, 10);
+  manuallyPausedWaCampaigns.delete(id); // allow auto-resume again if business hours configured
   pausedWaCampaigns.delete(id);
   await db
     .update(whatsappCampaignsTable)
     .set({ status: "sending" })
     .where(eq(whatsappCampaignsTable.id, id));
   res.json({ message: "Retomando envio…" });
-  dispatchWaCampaign(id).catch((err) =>
-    logger.error({ campaignId: id, err }, "WA resume dispatch error"),
-  );
+  // Only start a new dispatch loop if one isn't already running.
+  // If the original loop is in waitIfPaused(), removing from pausedWaCampaigns is enough.
+  if (!activeWaDispatches.has(id)) {
+    dispatchWaCampaign(id).catch((err) =>
+      logger.error({ campaignId: id, err }, "WA resume dispatch error"),
+    );
+  }
+});
+
+// POST /marketing/wa/campaigns/:id/cancel
+router.post("/marketing/wa/campaigns/:id/cancel", async (req, res): Promise<void> => {
+  if (req.session.role !== "admin") {
+    res.status(403).json({ error: "Acesso negado." });
+    return;
+  }
+  const id = parseInt(req.params.id, 10);
+  pausedWaCampaigns.delete(id);
+  manuallyPausedWaCampaigns.delete(id);
+  await db
+    .update(whatsappCampaignsTable)
+    .set({ status: "cancelled" })
+    .where(eq(whatsappCampaignsTable.id, id));
+  // The running dispatch loop checks for "cancelled" status and will stop itself
+  res.json({ message: "Campanha cancelada." });
 });
 
 // POST /marketing/wa/campaigns/:id/send
@@ -458,6 +494,22 @@ async function dispatchWaCampaign(
   campaignId: number,
   opts: WaDispatchOptions = {},
 ): Promise<void> {
+  if (activeWaDispatches.has(campaignId)) {
+    logger.warn({ campaignId }, "WA: dispatch já em execução — ignorando chamada duplicada");
+    return;
+  }
+  activeWaDispatches.add(campaignId);
+  try {
+    await _doDispatchWaCampaign(campaignId, opts);
+  } finally {
+    activeWaDispatches.delete(campaignId);
+  }
+}
+
+async function _doDispatchWaCampaign(
+  campaignId: number,
+  opts: WaDispatchOptions = {},
+): Promise<void> {
   const [campaign] = await db
     .select()
     .from(whatsappCampaignsTable)
@@ -542,9 +594,9 @@ async function dispatchWaCampaign(
   let sent = alreadySentCount;
   let failed = campaign.totalFailed;
 
-  const perMinute = opts.sendPerMinute ?? campaign.sendPerMinute ?? null;
-  const delayMs =
-    perMinute && perMinute > 0 ? Math.floor(60_000 / perMinute) : 0;
+  // Default to 20 msg/min (3s interval) if no rate limit configured — prevents WA blocks
+  const perMinute = opts.sendPerMinute ?? campaign.sendPerMinute ?? 20;
+  const delayMs = Math.floor(60_000 / perMinute);
 
   logger.info(
     { campaignId, total: contacts.length, remaining: remaining.length, perMinute, delayMs },

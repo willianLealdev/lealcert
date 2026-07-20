@@ -3427,6 +3427,18 @@ export const ResumeWaCampaignResponse = zod.object({
 
 
 /**
+ * @summary Cancel a running or paused WhatsApp campaign
+ */
+export const CancelWaCampaignParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CancelWaCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary List individual sends for a WhatsApp campaign
  */
 export const ListWaCampaignSendsParams = zod.object({

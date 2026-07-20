@@ -11555,6 +11555,76 @@ export const useResumeWaCampaign = <TError = ErrorType<unknown>,
       return useMutation(getResumeWaCampaignMutationOptions(options));
     }
 
+export const getCancelWaCampaignUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/wa/campaigns/${id}/cancel`
+}
+
+/**
+ * @summary Cancel a running or paused WhatsApp campaign
+ */
+export const cancelWaCampaign = async (id: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getCancelWaCampaignUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCancelWaCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelWaCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelWaCampaign>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['cancelWaCampaign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelWaCampaign>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  cancelWaCampaign(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelWaCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof cancelWaCampaign>>>
+
+    export type CancelWaCampaignMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Cancel a running or paused WhatsApp campaign
+ */
+export const useCancelWaCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelWaCampaign>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelWaCampaign>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getCancelWaCampaignMutationOptions(options));
+    }
+
 export const getListWaCampaignSendsUrl = (id: number,) => {
 
 
