@@ -15,6 +15,15 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/07/2026",
+    version: "1.16",
+    changes: [
+      { type: "fix",      text: "Validação de e-mails não travava mais o servidor: endpoint agora roda em background e retorna imediatamente" },
+      { type: "fix",      text: "Detecta automaticamente se porta 25 (SMTP) está bloqueada no provedor — evita timeout de 5s por contato" },
+      { type: "melhoria", text: "Progresso da validação exibido em tempo real no botão (ex: 'Validando… 120/500')" },
+    ],
+  },
+  {
+    date: "20/07/2026",
     version: "1.15",
     changes: [
       { type: "melhoria", text: "Dockerfile otimizado: camada de dependências cacheada separadamente — deploys futuros até 5× mais rápidos quando só o código muda" },

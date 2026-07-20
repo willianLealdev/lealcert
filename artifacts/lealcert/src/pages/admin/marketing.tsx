@@ -1568,30 +1568,41 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
 
   const validateMutation = useValidateContactEmails();
   const [validating, setValidating] = useState(false);
-  const [validateProgress, setValidateProgress] = useState<{ done: number; batches: number } | null>(null);
+  const [validateProgress, setValidateProgress] = useState<{ done: number; total: number } | null>(null);
 
   async function runValidateAll() {
     if (validating) return;
     setValidating(true);
-    setValidateProgress({ done: 0, batches: 0 });
-    let totalDone = 0;
-    let batches = 0;
-    let totalValid = 0, totalInvalid = 0, totalDisposable = 0;
+    setValidateProgress({ done: 0, total: 0 });
     try {
-      while (true) {
-        const result = await validateMutation.mutateAsync({ data: { type, limit: 500 } });
-        batches++;
-        totalDone += result.processed;
-        totalValid += result.valid;
-        totalInvalid += result.invalid ?? 0;
-        totalDisposable += result.disposable ?? 0;
-        setValidateProgress({ done: totalDone, batches });
-        invalidate();
-        if (result.processed === 0) break;
-      }
-      toast({
-        title: "Validação concluída!",
-        description: `${totalDone} e-mails processados em ${batches} lote(s) — ${totalValid} válidos, ${totalInvalid} inválidos, ${totalDisposable} descartáveis.`,
+      // Fire-and-forget: server responds immediately and processes in background
+      const result = await validateMutation.mutateAsync({ data: { type, limit: 500 } });
+      const total = (result as { total?: number }).total ?? 0;
+      setValidateProgress({ done: 0, total });
+
+      // Poll /validate/status every 3s until done
+      await new Promise<void>((resolve) => {
+        const poll = setInterval(async () => {
+          try {
+            const res = await fetch("/api/marketing/contacts/validate/status", { credentials: "include" });
+            const job = await res.json() as { running?: boolean; processed?: number; total?: number; valid?: number; invalid?: number; disposable?: number; done?: boolean };
+            setValidateProgress({ done: job.processed ?? 0, total: job.total ?? total });
+            invalidate();
+            if (!job.running || job.done) {
+              clearInterval(poll);
+              if (job.processed !== undefined) {
+                toast({
+                  title: "Validação concluída!",
+                  description: `${job.processed} e-mails processados — ${job.valid ?? 0} válidos, ${job.invalid ?? 0} inválidos, ${job.disposable ?? 0} descartáveis.`,
+                });
+              }
+              resolve();
+            }
+          } catch {
+            clearInterval(poll);
+            resolve();
+          }
+        }, 3000);
       });
     } catch {
       toast({ title: "Erro na validação", variant: "destructive" });
@@ -1765,8 +1776,8 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
         >
           {validating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
           {validating
-            ? validateProgress && validateProgress.done > 0
-              ? `Validando… ${validateProgress.done} feitos`
+            ? validateProgress && validateProgress.total > 0
+              ? `Validando… ${validateProgress.done}/${validateProgress.total}`
               : "Iniciando…"
             : "Validar E-mails"}
         </Button>

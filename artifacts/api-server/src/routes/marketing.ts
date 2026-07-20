@@ -82,7 +82,7 @@ async function smtpVerifyMailbox(email: string, mxHost: string): Promise<"valid"
     };
 
     const socket = net.createConnection({ host: mxHost, port: 25 });
-    socket.setTimeout(9000);
+    socket.setTimeout(5000);
     socket.setEncoding("utf8");
 
     socket.on("timeout", () => finish("unknown"));
@@ -710,7 +710,34 @@ router.post("/marketing/contacts/import", upload.single("file"), async (req, res
   })().catch(err => logger.error({ err }, "Import background: erro"));
 });
 
+// ── In-memory validation job state ────────────────────────────────────────────
+interface ValidationJob {
+  total: number;
+  processed: number;
+  valid: number;
+  invalid: number;
+  disposable: number;
+  badFormat: number;
+  noMx: number;
+  skipped: number;
+  zeroBounce: boolean;
+  done: boolean;
+  startedAt: number;
+}
+let validationJob: ValidationJob | null = null;
+
+router.get("/marketing/contacts/validate/status", (_req, res): void => {
+  if (!validationJob) { res.json({ running: false }); return; }
+  res.json({ running: !validationJob.done, ...validationJob });
+});
+
 router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
+  // If a job is already running, return its current status
+  if (validationJob && !validationJob.done) {
+    res.json({ running: true, ...validationJob });
+    return;
+  }
+
   const batchLimit = Math.min(parseInt(req.body?.limit ?? "500", 10), 2000);
   const typeFilter = req.body?.type;
 
@@ -723,65 +750,85 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
     .limit(batchLimit);
 
   const zbKey = await getZeroBounceApiKey();
-  const stats = { processed: 0, valid: 0, invalid: 0, disposable: 0, badFormat: 0, noMx: 0, alreadyValidated: 0, skipped: 0, zeroBounce: !!zbKey };
 
-  for (const contact of contacts) {
-    try {
-      const domain = contact.email.includes("@") ? contact.email.split("@")[1].toLowerCase() : "";
-      let status: "valid" | "invalid" | "disposable";
-      let reason: string | null = null;
+  validationJob = {
+    total: contacts.length, processed: 0, valid: 0, invalid: 0,
+    disposable: 0, badFormat: 0, noMx: 0, skipped: 0,
+    zeroBounce: !!zbKey, done: false, startedAt: Date.now(),
+  };
 
-      if (!EMAIL_REGEX.test(contact.email)) {
-        status = "invalid";
-        reason = "bad_format";
-        stats.badFormat++;
-      } else if (DISPOSABLE_DOMAINS.has(domain)) {
-        status = "disposable";
-        reason = "disposable_domain";
-        stats.disposable++;
-      } else if (zbKey) {
-        status = await validateEmailZeroBounce(contact.email, zbKey);
-        if (status === "valid") stats.valid++;
-        else if (status === "disposable") { stats.disposable++; reason = "disposable_domain"; }
-        else { stats.noMx++; reason = "zerobounce_invalid"; }
-      } else {
-        // Sem ZeroBounce: verifica MX + tenta SMTP (RCPT TO) para domínios corporativos
-        // Domínios catch-all (Gmail, Outlook, etc.) aceitam qualquer RCPT, então só MX
-        const hosts = await getMxHosts(domain);
-        if (!hosts.length) {
-          status = "invalid";
-          reason = "no_mx";
-          stats.noMx++;
-        } else if (CATCHALL_DOMAINS.has(domain)) {
-          // Catch-all: não tem como saber se a caixa existe — assume válido
-          status = "valid";
-          stats.valid++;
-        } else {
-          // Domínio corporativo: tenta SMTP para verificar se a caixa existe
-          const smtpResult = await validateEmailSmtp(contact.email);
-          if (smtpResult === "invalid") {
-            status = "invalid";
-            reason = "smtp_invalid";
-            stats.noMx++;
-          } else {
-            status = "valid";
-            stats.valid++;
-          }
+  // Respond immediately — processing runs in background
+  res.json({ started: true, total: contacts.length, zeroBounce: !!zbKey });
+
+  // ── Background processing ─────────────────────────────────────────────────
+  (async () => {
+    // Detect if outbound port 25 is blocked (try one SMTP check first)
+    let smtpBlocked = false;
+    if (!zbKey) {
+      // Quick probe: pick the first non-catchall domain to test port 25
+      const probe = contacts.find(c => {
+        const d = c.email.split("@")[1]?.toLowerCase();
+        return d && !CATCHALL_DOMAINS.has(d);
+      });
+      if (probe) {
+        const d = probe.email.split("@")[1].toLowerCase();
+        const hosts = await getMxHosts(d);
+        if (hosts.length) {
+          const r = await smtpVerifyMailbox(probe.email, hosts[0]);
+          if (r === "unknown") smtpBlocked = true; // port 25 likely blocked
         }
       }
-
-      await db.update(marketingContactsTable)
-        .set({ emailStatus: status, emailInvalidReason: reason, emailValidatedAt: new Date() })
-        .where(eq(marketingContactsTable.id, contact.id));
-
-      if (status === "invalid" || status === "disposable") stats.invalid++;
-      stats.processed++;
-    } catch {
-      stats.skipped++;
     }
-  }
 
-  res.json(stats);
+    for (const contact of contacts) {
+      if (!validationJob) break;
+      try {
+        const domain = contact.email.includes("@") ? contact.email.split("@")[1].toLowerCase() : "";
+        let status: "valid" | "invalid" | "disposable";
+        let reason: string | null = null;
+
+        if (!EMAIL_REGEX.test(contact.email)) {
+          status = "invalid"; reason = "bad_format"; validationJob.badFormat++;
+        } else if (DISPOSABLE_DOMAINS.has(domain)) {
+          status = "disposable"; reason = "disposable_domain"; validationJob.disposable++;
+        } else if (zbKey) {
+          status = await validateEmailZeroBounce(contact.email, zbKey);
+          if (status === "valid") validationJob.valid++;
+          else if (status === "disposable") { validationJob.disposable++; reason = "disposable_domain"; }
+          else { validationJob.noMx++; reason = "zerobounce_invalid"; }
+        } else {
+          const hosts = await getMxHosts(domain);
+          if (!hosts.length) {
+            status = "invalid"; reason = "no_mx"; validationJob.noMx++;
+          } else if (CATCHALL_DOMAINS.has(domain) || smtpBlocked) {
+            // catch-all domains or port 25 blocked: assume valid if MX exists
+            status = "valid"; validationJob.valid++;
+          } else {
+            const smtpResult = await validateEmailSmtp(contact.email);
+            if (smtpResult === "invalid") {
+              status = "invalid"; reason = "smtp_invalid"; validationJob.noMx++;
+            } else {
+              status = "valid"; validationJob.valid++;
+            }
+          }
+        }
+
+        await db.update(marketingContactsTable)
+          .set({ emailStatus: status, emailInvalidReason: reason, emailValidatedAt: new Date() })
+          .where(eq(marketingContactsTable.id, contact.id));
+
+        if (status === "invalid" || status === "disposable") validationJob.invalid++;
+        validationJob.processed++;
+      } catch {
+        validationJob.skipped++;
+      }
+    }
+    if (validationJob) validationJob.done = true;
+    logger.info({ ...validationJob }, "Email validation job completed");
+  })().catch(err => {
+    logger.error({ err }, "Email validation background job error");
+    if (validationJob) validationJob.done = true;
+  });
 });
 
 router.patch("/marketing/contacts/:id", async (req, res): Promise<void> => {
