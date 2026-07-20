@@ -73,7 +73,8 @@ app.use((_req, res, next) => {
 const BOT_WHITELIST_PATHS = new Set([
   "/api/mp/webhook",
   "/api/marketing/webhook/inbound",
-  "/api/marketing/unsubscribe", // RFC 8058: Gmail/Yahoo/Outlook enviam POST com UA não-browser
+  "/api/marketing/unsubscribe",           // RFC 8058: Gmail/Yahoo/Outlook enviam POST com UA não-browser
+  "/api/marketing/wa/webhook/sair",       // Evolution API usa axios internamente — liberar
 ]);
 // Prefixes whitelisted: tracking pixel fetched by email proxies (GoogleImageProxy etc.)
 const BOT_WHITELIST_PREFIXES = ["/api/marketing/track/", "/api/marketing/click/"];
@@ -255,6 +256,7 @@ app.use("/api/auth/forgot-password", authLimiter);
 app.use("/api/auth/resend-verification", authLimiter);  // prevent email spam
 app.use("/api/chat", chatLimiter);                      // prevent AI cost abuse
 app.use("/api/marketing/webhook/inbound", webhookLimiter);
+app.use("/api/marketing/wa/webhook/sair", webhookLimiter);
 app.use("/api/push/public-key", vapidLimiter);
 app.use("/api/mp/webhook", mpWebhookLimiter);
 
