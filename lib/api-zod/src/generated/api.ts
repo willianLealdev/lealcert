@@ -3589,6 +3589,18 @@ export const CancelNfseResponse = zod.object({
 
 
 /**
+ * @summary List all unsubscribed WhatsApp contacts
+ */
+export const ListWaUnsubscribedResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "unsubscribedAt": zod.coerce.date()
+})
+export const ListWaUnsubscribedResponse = zod.array(ListWaUnsubscribedResponseItem)
+
+
+/**
  * @summary Evolution API webhook — SAIR keyword unsubscribe detection
  */
 export const WaWebhookSairBody = zod.object({

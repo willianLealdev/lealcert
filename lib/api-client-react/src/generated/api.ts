@@ -202,6 +202,7 @@ import type {
   WaCampaign,
   WaProgress,
   WaSend,
+  WaUnsubscribedContact,
   WaWebhookSair200,
   WaWebhookSairBody
 } from './api.schemas';
@@ -12087,6 +12088,83 @@ export const useCancelNfse = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCancelNfseMutationOptions(options));
     }
+
+export const getListWaUnsubscribedUrl = () => {
+
+
+
+
+  return `/api/marketing/wa/unsubscribed`
+}
+
+/**
+ * @summary List all unsubscribed WhatsApp contacts
+ */
+export const listWaUnsubscribed = async ( options?: RequestInit): Promise<WaUnsubscribedContact[]> => {
+
+  return customFetch<WaUnsubscribedContact[]>(getListWaUnsubscribedUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListWaUnsubscribedQueryKey = () => {
+    return [
+    `/api/marketing/wa/unsubscribed`
+    ] as const;
+    }
+
+
+export const getListWaUnsubscribedQueryOptions = <TData = Awaited<ReturnType<typeof listWaUnsubscribed>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWaUnsubscribed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListWaUnsubscribedQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listWaUnsubscribed>>> = ({ signal }) => listWaUnsubscribed({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listWaUnsubscribed>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListWaUnsubscribedQueryResult = NonNullable<Awaited<ReturnType<typeof listWaUnsubscribed>>>
+export type ListWaUnsubscribedQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all unsubscribed WhatsApp contacts
+ */
+
+export function useListWaUnsubscribed<TData = Awaited<ReturnType<typeof listWaUnsubscribed>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWaUnsubscribed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListWaUnsubscribedQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getWaWebhookSairUrl = () => {
 

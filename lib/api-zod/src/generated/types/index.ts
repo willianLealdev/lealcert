@@ -236,4 +236,5 @@ export * from './verifyIp400';
 export * from './waCampaign';
 export * from './waProgress';
 export * from './waSend';
+export * from './waUnsubscribedContact';
 export * from './waWebhookSair200';

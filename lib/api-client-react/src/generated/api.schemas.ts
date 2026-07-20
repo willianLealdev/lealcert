@@ -1758,6 +1758,13 @@ export interface IpLogsResponse {
   limit: number;
 }
 
+export interface WaUnsubscribedContact {
+  id: number;
+  name: string;
+  phone: string;
+  unsubscribedAt: string;
+}
+
 export interface WaCampaign {
   id: number;
   name: string;

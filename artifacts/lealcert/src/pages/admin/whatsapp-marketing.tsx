@@ -10,11 +10,13 @@ import {
   useResumeWaCampaign,
   useGetWaCampaignProgress,
   useListWaCampaignSends,
+  useListWaUnsubscribed,
   useListMarketingContacts,
   getListWaCampaignSendsQueryKey,
   getListWaCampaignsQueryKey,
+  getListWaUnsubscribedQueryKey,
 } from "@workspace/api-client-react";
-import type { WaCampaign, WaSend } from "@workspace/api-client-react";
+import type { WaCampaign, WaSend, WaUnsubscribedContact } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -670,70 +672,116 @@ function CampaignDialog({
 
 // ── Sends Dialog ──────────────────────────────────────────────────────────────
 
+type SendsFilter = "all" | "sent" | "failed" | "unsub";
+
+function exportSendsCSV(sends: WaSend[], campaignName: string) {
+  const header = "Nome,Telefone,Status,Erro,Data envio,Descadastrado";
+  const rows = sends.map(s => [
+    `"${(s.recipientName ?? "").replace(/"/g, '""')}"`,
+    s.phone,
+    s.status === "sent" ? "Enviado" : s.status === "failed" ? "Falhou" : s.status,
+    `"${(s.error ?? "").replace(/"/g, '""')}"`,
+    s.sentAt ? new Date(s.sentAt).toLocaleString("pt-BR") : "",
+    s.unsubscribed ? "Sim" : "Não",
+  ].join(","));
+  const csv = [header, ...rows].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `envios_${campaignName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function WaSendsDialog({ campaignId, campaignName, open, onClose }: { campaignId: number; campaignName: string; open: boolean; onClose: () => void }) {
   const { data: sends = [], isLoading } = useListWaCampaignSends(
     campaignId,
     { query: { queryKey: getListWaCampaignSendsQueryKey(campaignId), enabled: open } },
   );
+  const [filter, setFilter] = useState<SendsFilter>("all");
 
   const sent = sends.filter(s => s.status === "sent").length;
   const failed = sends.filter(s => s.status === "failed").length;
   const unsub = sends.filter(s => s.unsubscribed).length;
 
+  const visible = sends.filter(s => {
+    if (filter === "sent") return s.status === "sent" && !s.unsubscribed;
+    if (filter === "failed") return s.status === "failed";
+    if (filter === "unsub") return s.unsubscribed;
+    return true;
+  });
+
+  const FILTERS: { key: SendsFilter; label: string; count: number; color: string }[] = [
+    { key: "all", label: "Todos", count: sends.length, color: "text-muted-foreground" },
+    { key: "sent", label: "Enviados", count: sent, color: "text-green-600" },
+    { key: "failed", label: "Com erro", count: failed, color: "text-red-500" },
+    { key: "unsub", label: "Descadastrados", count: unsub, color: "text-slate-500" },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Envios — {campaignName}</DialogTitle>
+          <div className="flex items-start justify-between gap-2 pr-6">
+            <DialogTitle className="leading-tight">Relatório de envios<br /><span className="text-sm font-normal text-muted-foreground">{campaignName}</span></DialogTitle>
+            <Button size="sm" variant="outline" onClick={() => exportSendsCSV(sends, campaignName)} className="shrink-0 mt-0.5">
+              ↓ Exportar CSV
+            </Button>
+          </div>
         </DialogHeader>
 
-        {/* Summary */}
-        <div className="flex gap-4 text-sm flex-wrap border-b pb-3">
-          <span className="flex items-center gap-1 text-green-600 font-medium">
-            <CheckCircle2 className="h-4 w-4" /> {sent} enviados
-          </span>
-          {failed > 0 && (
-            <span className="flex items-center gap-1 text-red-500 font-medium">
-              <XCircle className="h-4 w-4" /> {failed} falhas
-            </span>
-          )}
-          {unsub > 0 && (
-            <span className="flex items-center gap-1 text-slate-500 font-medium">
-              <UserX className="h-4 w-4" /> {unsub} descadastrados
-            </span>
-          )}
-          <span className="text-muted-foreground">{sends.length} total</span>
+        {/* Filter tabs */}
+        <div className="flex gap-1 border-b pb-2 flex-wrap">
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                "px-3 py-1 text-xs rounded-full border transition-colors font-medium",
+                filter === f.key
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background border-border hover:bg-muted " + f.color,
+              )}
+            >
+              {f.label} ({f.count})
+            </button>
+          ))}
         </div>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-1 pr-1 min-h-0">
           {isLoading && <p className="text-sm text-muted-foreground py-4 text-center">Carregando...</p>}
-          {!isLoading && sends.length === 0 && (
-            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum envio registrado.</p>
+          {!isLoading && visible.length === 0 && (
+            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum registro neste filtro.</p>
           )}
-          {sends.map((s: WaSend) => (
-            <div key={s.id} className="flex items-center justify-between gap-3 py-2 border-b last:border-0">
-              <div className="min-w-0">
+          {visible.map((s: WaSend) => (
+            <div key={s.id} className="flex items-start justify-between gap-3 py-2 border-b last:border-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{s.recipientName ?? s.phone}</p>
                 <p className="text-xs text-muted-foreground">{s.phone}</p>
-                {s.error && <p className="text-xs text-red-500 truncate">{s.error}</p>}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {s.unsubscribed && (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border flex items-center gap-1">
-                    <UserX className="h-3 w-3" /> Descadastrado
-                  </span>
+                {s.error && (
+                  <p className="text-xs text-red-500 mt-0.5 break-words">{s.error}</p>
                 )}
-                <span className={cn(
-                  "text-[11px] px-2 py-0.5 rounded-full border font-medium",
-                  s.status === "sent" ? "bg-green-50 text-green-700 border-green-200" :
-                  s.status === "failed" ? "bg-red-50 text-red-600 border-red-200" :
-                  "bg-gray-50 text-gray-600 border-gray-200"
-                )}>
-                  {s.status === "sent" ? "Enviado" : s.status === "failed" ? "Falhou" : s.status}
-                </span>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  {s.unsubscribed && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border flex items-center gap-1">
+                      <UserX className="h-3 w-3" /> Descadastrado
+                    </span>
+                  )}
+                  <span className={cn(
+                    "text-[11px] px-2 py-0.5 rounded-full border font-medium",
+                    s.status === "sent" ? "bg-green-50 text-green-700 border-green-200" :
+                    s.status === "failed" ? "bg-red-50 text-red-600 border-red-200" :
+                    "bg-gray-50 text-gray-600 border-gray-200"
+                  )}>
+                    {s.status === "sent" ? "✓ Enviado" : s.status === "failed" ? "✗ Falhou" : s.status}
+                  </span>
+                </div>
                 {s.sentAt && (
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  <span className="text-[11px] text-muted-foreground">
                     {new Date(s.sentAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                   </span>
                 )}
@@ -743,6 +791,87 @@ function WaSendsDialog({ campaignId, campaignName, open, onClose }: { campaignId
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── Unsubscribed Section ───────────────────────────────────────────────────────
+
+function WaUnsubscribedSection() {
+  const [open, setOpen] = useState(false);
+  const { data: contacts = [], isLoading } = useListWaUnsubscribed({
+    query: { queryKey: getListWaUnsubscribedQueryKey(), enabled: open },
+  });
+
+  function exportUnsubCSV() {
+    const header = "Nome,Telefone,Data descadastro";
+    const rows = (contacts as WaUnsubscribedContact[]).map(c => [
+      `"${c.name.replace(/"/g, '""')}"`,
+      c.phone,
+      new Date(c.unsubscribedAt).toLocaleString("pt-BR"),
+    ].join(","));
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `descadastrados_wa_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <section className="border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <UserX className="h-4 w-4 text-slate-500" />
+          <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Descadastrados</span>
+          {contacts.length > 0 && (
+            <span className="text-xs bg-slate-100 text-slate-600 border px-2 py-0.5 rounded-full font-medium">
+              {contacts.length}
+            </span>
+          )}
+        </div>
+        <span className="text-muted-foreground text-xs">{open ? "▲ Fechar" : "▼ Ver lista"}</span>
+      </button>
+
+      {open && (
+        <div className="border-t">
+          <div className="flex items-center justify-between px-4 py-2 bg-muted/30">
+            <p className="text-xs text-muted-foreground">
+              Contatos que responderam <strong>SAIR</strong> e foram removidos das campanhas futuras.
+            </p>
+            {contacts.length > 0 && (
+              <Button size="sm" variant="outline" onClick={exportUnsubCSV} className="shrink-0 ml-3 h-7 text-xs">
+                ↓ Exportar CSV
+              </Button>
+            )}
+          </div>
+
+          {isLoading && <p className="text-sm text-muted-foreground py-6 text-center">Carregando...</p>}
+          {!isLoading && contacts.length === 0 && (
+            <p className="text-sm text-muted-foreground py-6 text-center">Nenhum descadastro até o momento.</p>
+          )}
+          {!isLoading && contacts.length > 0 && (
+            <div className="divide-y max-h-64 overflow-y-auto">
+              {(contacts as WaUnsubscribedContact[]).map(c => (
+                <div key={c.id} className="flex items-center justify-between px-4 py-2.5 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{c.name}</p>
+                    <p className="text-xs text-muted-foreground">{c.phone}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                    {new Date(c.unsubscribedAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1064,6 +1193,9 @@ export default function AdminWhatsAppMarketing() {
           </Button>
         </div>
       )}
+
+      {/* Unsubscribed section */}
+      <WaUnsubscribedSection />
 
       {/* Dialogs */}
       <CampaignDialog

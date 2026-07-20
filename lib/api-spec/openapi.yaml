@@ -3270,6 +3270,21 @@ paths:
                   ok:
                     type: boolean
 
+  /marketing/wa/unsubscribed:
+    get:
+      operationId: listWaUnsubscribed
+      tags: [whatsapp]
+      summary: List all unsubscribed WhatsApp contacts
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WaUnsubscribedContact"
+
   /marketing/wa/webhook/sair:
     post:
       operationId: waWebhookSair
@@ -6189,6 +6204,20 @@ components:
           type: integer
         limit:
           type: integer
+
+    WaUnsubscribedContact:
+      type: object
+      required: [id, name, phone, unsubscribedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+        unsubscribedAt:
+          type: string
+          format: date-time
 
     WaCampaign:
       type: object

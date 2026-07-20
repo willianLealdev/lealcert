@@ -340,6 +340,24 @@ router.post("/marketing/wa/campaigns/:id/send", async (req, res): Promise<void> 
   );
 });
 
+// GET /marketing/wa/unsubscribed
+router.get("/marketing/wa/unsubscribed", async (req, res): Promise<void> => {
+  if (req.session.role !== "admin") { res.status(403).json({ error: "Acesso negado." }); return; }
+  const rows = await db.execute<{ id: number; name: string; phone: string; unsubscribed_at: Date }>(sql`
+    SELECT id, name, phone, unsubscribed_at
+    FROM marketing_contacts
+    WHERE unsubscribed_at IS NOT NULL AND phone IS NOT NULL AND phone != ''
+    ORDER BY unsubscribed_at DESC
+    LIMIT 500
+  `);
+  res.json(rows.rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    phone: r.phone,
+    unsubscribedAt: r.unsubscribed_at,
+  })));
+});
+
 // POST /marketing/wa/webhook/sair — Evolution webhook for SAIR detection
 router.post("/marketing/wa/webhook/sair", async (req, res): Promise<void> => {
   try {
