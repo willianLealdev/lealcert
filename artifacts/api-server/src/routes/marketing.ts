@@ -745,14 +745,28 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
         else if (status === "disposable") { stats.disposable++; reason = "disposable_domain"; }
         else { stats.noMx++; reason = "zerobounce_invalid"; }
       } else {
+        // Sem ZeroBounce: verifica MX + tenta SMTP (RCPT TO) para domínios corporativos
+        // Domínios catch-all (Gmail, Outlook, etc.) aceitam qualquer RCPT, então só MX
         const hosts = await getMxHosts(domain);
-        if (hosts.length > 0) {
-          status = "valid";
-          stats.valid++;
-        } else {
+        if (!hosts.length) {
           status = "invalid";
           reason = "no_mx";
           stats.noMx++;
+        } else if (CATCHALL_DOMAINS.has(domain)) {
+          // Catch-all: não tem como saber se a caixa existe — assume válido
+          status = "valid";
+          stats.valid++;
+        } else {
+          // Domínio corporativo: tenta SMTP para verificar se a caixa existe
+          const smtpResult = await validateEmailSmtp(contact.email);
+          if (smtpResult === "invalid") {
+            status = "invalid";
+            reason = "smtp_invalid";
+            stats.noMx++;
+          } else {
+            status = "valid";
+            stats.valid++;
+          }
         }
       }
 
