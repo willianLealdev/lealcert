@@ -1009,6 +1009,12 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
         ? JSON.stringify(dispatchOpts.specificContactIds) : null,
       scheduledManualRecipients: dispatchOpts.manualRecipients?.length
         ? JSON.stringify(dispatchOpts.manualRecipients) : null,
+      // Salvar configurações de rate-limiting para que o scheduler as use ao disparar
+      sendBatchSize: dispatchOpts.sendBatchSize ?? null,
+      sendIntervalSecs: dispatchOpts.sendIntervalSecs ?? null,
+      sendStartHour: dispatchOpts.sendStartHour ?? null,
+      sendEndHour: dispatchOpts.sendEndHour ?? null,
+      sendDays: dispatchOpts.sendDays ?? null,
     }).where(eq(marketingCampaignsTable.id, id));
     res.json({ message: `Campanha agendada para ${new Date(scheduledAt).toLocaleString("pt-BR")}.` });
     return;
@@ -1023,6 +1029,8 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
     status: "sending",
     totalSent: 0, totalDelivered: 0, totalOpened: 0, totalClicked: 0, totalBounced: 0, totalReplied: 0,
     sentAt: null,
+    sendBatchSize: dispatchOpts.sendBatchSize ?? null,
+    sendIntervalSecs: dispatchOpts.sendIntervalSecs ?? null,
     sendStartHour: dispatchOpts.sendStartHour ?? null,
     sendEndHour: dispatchOpts.sendEndHour ?? null,
     sendDays: dispatchOpts.sendDays ?? null,
