@@ -23,6 +23,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "novo",     text: "Botão 'Cancelar' nas campanhas WA em andamento ou pausadas — interrompe o disparo e permite excluir a campanha depois" },
       { type: "fix",      text: "Campanhas canceladas desapareciam da lista — agora aparecem na seção 'Canceladas' com botão Excluir disponível" },
       { type: "fix",      text: "Validação de e-mails parava em 500 contatos — agora processa em lotes de 200 em loop até validar todos os contatos pendentes" },
+      { type: "fix",      text: "Validação SMTP lenta e sem erros smtp_invalid: probe busca domínio não catch-all corretamente; timeout SMTP mantém contato como 'unknown' no banco (não marca como válido) e exclui da fila desta execução" },
     ],
   },
   {

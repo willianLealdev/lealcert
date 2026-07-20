@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, ilike, or, sql, and, isNull, ne, inArray } from "drizzle-orm";
+import { eq, desc, ilike, or, sql, and, isNull, ne, inArray, notInArray } from "drizzle-orm";
 import { randomBytes, randomUUID } from "crypto";
 import { promises as dns } from "dns";
 import * as net from "net";
@@ -748,45 +748,59 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
     // Detect if ALL SMTP ports are blocked once — reuse result for all contacts
     let smtpBlocked = false;
     if (!zbKey) {
-      // Find one non-catch-all contact to use as probe
-      const [probe] = await db
+      // Fetch a few contacts and find the first one that is NOT a catch-all domain
+      // (catch-all domains like Gmail can't be probed — they always accept RCPT TO)
+      const probeContacts = await db
         .select({ email: marketingContactsTable.email })
         .from(marketingContactsTable)
         .where(and(...conditions))
-        .limit(1);
+        .limit(20);
+      const probe = probeContacts.find(c => {
+        const d = c.email.split("@")[1]?.toLowerCase();
+        return d && !CATCHALL_DOMAINS.has(d);
+      });
       if (probe) {
-        const d = probe.email.split("@")[1]?.toLowerCase();
-        if (d && !CATCHALL_DOMAINS.has(d)) {
-          const hosts = await getMxHosts(d);
-          if (hosts.length) {
-            let anyPortWorked = false;
-            for (const port of SMTP_PORTS) {
-              const r = await smtpVerifyMailbox(probe.email, hosts[0], port);
-              if (r !== "unknown") { anyPortWorked = true; break; }
-            }
-            if (!anyPortWorked) smtpBlocked = true;
+        const d = probe.email.split("@")[1].toLowerCase();
+        const hosts = await getMxHosts(d);
+        if (hosts.length) {
+          let anyPortWorked = false;
+          for (const port of SMTP_PORTS) {
+            const r = await smtpVerifyMailbox(probe.email, hosts[0], port);
+            if (r !== "unknown") { anyPortWorked = true; break; }
           }
+          if (!anyPortWorked) smtpBlocked = true;
         }
+      } else {
+        // All contacts in first 20 are catch-all — treat as blocked to skip SMTP
+        smtpBlocked = true;
       }
     }
+
+    // IDs that returned SMTP "unknown" (timeout) — kept as "unknown" in DB,
+    // excluded from future batches so the loop doesn't retry them endlessly.
+    const unresolvableIds: number[] = [];
 
     // Keep fetching and processing batches until none remain
     while (true) {
       if (!validationJob) break;
 
+      const batchWhere = unresolvableIds.length > 0
+        ? and(...conditions, notInArray(marketingContactsTable.id, unresolvableIds))
+        : and(...conditions);
+
       const batch = await db
         .select({ id: marketingContactsTable.id, email: marketingContactsTable.email })
         .from(marketingContactsTable)
-        .where(and(...conditions))
+        .where(batchWhere)
         .limit(BATCH_SIZE);
 
       if (batch.length === 0) break; // all done
 
-      // Update total in case more contacts were added while running
+      // Update total: remaining resolvable + already processed
       const [{ count: remaining }] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(marketingContactsTable)
-        .where(and(...conditions));
+        .where(batchWhere);
       validationJob.total = validationJob.processed + remaining;
 
       for (const contact of batch) {
@@ -795,6 +809,7 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
           const domain = contact.email.includes("@") ? contact.email.split("@")[1].toLowerCase() : "";
           let status: "valid" | "invalid" | "disposable";
           let reason: string | null = null;
+          let smtpUnresolvable = false;
 
           if (!EMAIL_REGEX.test(contact.email)) {
             status = "invalid"; reason = "bad_format"; validationJob.badFormat++;
@@ -810,22 +825,32 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
             if (!hosts.length) {
               status = "invalid"; reason = "no_mx"; validationJob.noMx++;
             } else if (CATCHALL_DOMAINS.has(domain) || smtpBlocked) {
+              // Catch-all domains or SMTP blocked at network level: only MX confirms existence
               status = "valid"; validationJob.valid++;
             } else {
               const smtpResult = await validateEmailSmtp(contact.email);
               if (smtpResult === "invalid") {
                 status = "invalid"; reason = "smtp_invalid"; validationJob.noMx++;
+              } else if (smtpResult === "unknown") {
+                // SMTP timed out for this contact — can't determine validity.
+                // Leave status as "unknown" in DB; skip in this job run.
+                smtpUnresolvable = true;
+                unresolvableIds.push(contact.id);
+                validationJob.skipped++;
+                validationJob.processed++;
               } else {
                 status = "valid"; validationJob.valid++;
               }
             }
           }
 
+          if (smtpUnresolvable) continue; // don't update DB — keep as "unknown"
+
           await db.update(marketingContactsTable)
-            .set({ emailStatus: status, emailInvalidReason: reason, emailValidatedAt: new Date() })
+            .set({ emailStatus: status!, emailInvalidReason: reason, emailValidatedAt: new Date() })
             .where(eq(marketingContactsTable.id, contact.id));
 
-          if (status === "invalid" || status === "disposable") validationJob.invalid++;
+          if (status! === "invalid" || status! === "disposable") validationJob.invalid++;
           validationJob.processed++;
         } catch {
           validationJob.skipped++;
