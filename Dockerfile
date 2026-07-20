@@ -14,14 +14,26 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY tsconfig.base.json tsconfig.json ./
 
-# Copiar todos os pacotes do monorepo
+# Copiar apenas os package.json de cada pacote para cachear o install
+COPY lib/db/package.json                          ./lib/db/
+COPY lib/api-spec/package.json                    ./lib/api-spec/
+COPY lib/api-zod/package.json                     ./lib/api-zod/
+COPY lib/api-client-react/package.json            ./lib/api-client-react/
+COPY lib/integrations/package.json                ./lib/integrations/
+COPY lib/integrations-openai-ai-react/package.json  ./lib/integrations-openai-ai-react/
+COPY lib/integrations-openai-ai-server/package.json ./lib/integrations-openai-ai-server/
+COPY scripts/package.json                         ./scripts/
+COPY artifacts/api-server/package.json            ./artifacts/api-server/
+COPY artifacts/lealcert/package.json              ./artifacts/lealcert/
+
+# Instalar todas as dependências — esta camada é cacheada enquanto o lockfile não mudar
+RUN pnpm install --frozen-lockfile
+
+# Agora copiar o código fonte
 COPY lib/              ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 COPY artifacts/lealcert/   ./artifacts/lealcert/
 COPY scripts/          ./scripts/
-
-# Instalar todas as dependências
-RUN pnpm install --frozen-lockfile
 
 # Compilar libs compartilhadas
 RUN pnpm run typecheck:libs

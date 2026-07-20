@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/07/2026",
+    version: "1.15",
+    changes: [
+      { type: "melhoria", text: "Dockerfile otimizado: camada de dependências cacheada separadamente — deploys futuros até 5× mais rápidos quando só o código muda" },
+    ],
+  },
+  {
+    date: "20/07/2026",
     version: "1.14",
     changes: [
       { type: "novo",     text: "Log de novidades: histórico de atualizações exibido no sidebar" },
