@@ -1359,7 +1359,14 @@ export interface DispatchOptions {
 setInterval(async () => {
   try {
     const paused = await db
-      .select({ id: marketingCampaignsTable.id, startHour: marketingCampaignsTable.sendStartHour, endHour: marketingCampaignsTable.sendEndHour, days: marketingCampaignsTable.sendDays })
+      .select({
+        id: marketingCampaignsTable.id,
+        startHour: marketingCampaignsTable.sendStartHour,
+        endHour: marketingCampaignsTable.sendEndHour,
+        days: marketingCampaignsTable.sendDays,
+        batchSize: marketingCampaignsTable.sendBatchSize,
+        intervalSecs: marketingCampaignsTable.sendIntervalSecs,
+      })
       .from(marketingCampaignsTable)
       .where(eq(marketingCampaignsTable.status, "paused"));
     for (const c of paused) {
@@ -1368,8 +1375,13 @@ setInterval(async () => {
       // Within hours → resume
       pausedCampaigns.delete(c.id);
       await db.update(marketingCampaignsTable).set({ status: "sending" }).where(eq(marketingCampaignsTable.id, c.id));
-      dispatchCampaign(c.id, { sendStartHour: c.startHour, sendEndHour: c.endHour, sendDays: c.days ?? undefined })
-        .catch(err => logger.error({ campaignId: c.id, err }, "Business hours auto-resume error"));
+      dispatchCampaign(c.id, {
+        sendStartHour: c.startHour,
+        sendEndHour: c.endHour,
+        sendDays: c.days ?? undefined,
+        sendBatchSize: c.batchSize ?? undefined,
+        sendIntervalSecs: c.intervalSecs ?? undefined,
+      }).catch(err => logger.error({ campaignId: c.id, err }, "Business hours auto-resume error"));
       logger.info({ campaignId: c.id }, "Horário comercial: campanha retomada automaticamente");
     }
   } catch (err) { logger.warn({ err }, "Business hours scheduler error"); }
