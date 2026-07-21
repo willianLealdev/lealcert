@@ -86,7 +86,7 @@ async function smtpVerifyMailbox(email: string, mxHost: string, port: number): P
     };
 
     const socket = net.createConnection({ host: mxHost, port });
-    socket.setTimeout(5000);
+    socket.setTimeout(3000);
     socket.setEncoding("utf8");
 
     socket.on("timeout", () => finish("unknown"));
@@ -135,14 +135,13 @@ async function validateEmailSmtp(email: string): Promise<"valid" | "invalid" | "
     return "invalid";
   }
 
-  // Try first two MX hosts × ports 25, 587, 465
-  for (const host of mxHosts.slice(0, 2)) {
-    for (const port of SMTP_PORTS) {
-      const result = await smtpVerifyMailbox(email, host, port);
-      if (result !== "unknown") {
-        smtpCache.set(email, { result, ts: Date.now() });
-        return result;
-      }
+  // Try first MX host × ports 25, 587, 465
+  const host = mxHosts[0];
+  for (const port of SMTP_PORTS) {
+    const result = await smtpVerifyMailbox(email, host, port);
+    if (result !== "unknown") {
+      smtpCache.set(email, { result, ts: Date.now() });
+      return result;
     }
   }
 
@@ -720,7 +719,8 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
     return;
   }
 
-  const BATCH_SIZE = 200; // contacts fetched per iteration
+  const BATCH_SIZE = 200;   // contacts fetched per iteration
+  const CONCURRENCY = 20;   // contacts processed in parallel
   const typeFilter = req.body?.type;
 
   const conditions = [eq(marketingContactsTable.emailStatus, "unknown")];
@@ -803,60 +803,67 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
         .where(batchWhere);
       validationJob.total = validationJob.processed + remaining;
 
-      for (const contact of batch) {
-        if (!validationJob) break;
-        try {
-          const domain = contact.email.includes("@") ? contact.email.split("@")[1].toLowerCase() : "";
-          let status: "valid" | "invalid" | "disposable";
-          let reason: string | null = null;
-          let smtpUnresolvable = false;
+      // Process contacts in parallel (CONCURRENCY workers pulling from the batch)
+      let batchIdx = 0;
+      await Promise.all(
+        Array.from({ length: Math.min(CONCURRENCY, batch.length) }, async () => {
+          while (true) {
+            if (!validationJob) break;
+            const contact = batch[batchIdx++];
+            if (!contact) break;
+            try {
+              const domain = contact.email.includes("@") ? contact.email.split("@")[1].toLowerCase() : "";
+              let status: "valid" | "invalid" | "disposable";
+              let reason: string | null = null;
+              let smtpUnresolvable = false;
 
-          if (!EMAIL_REGEX.test(contact.email)) {
-            status = "invalid"; reason = "bad_format"; validationJob.badFormat++;
-          } else if (DISPOSABLE_DOMAINS.has(domain)) {
-            status = "disposable"; reason = "disposable_domain"; validationJob.disposable++;
-          } else if (zbKey) {
-            status = await validateEmailZeroBounce(contact.email, zbKey);
-            if (status === "valid") validationJob.valid++;
-            else if (status === "disposable") { validationJob.disposable++; reason = "disposable_domain"; }
-            else { validationJob.noMx++; reason = "zerobounce_invalid"; }
-          } else {
-            const hosts = await getMxHosts(domain);
-            if (!hosts.length) {
-              status = "invalid"; reason = "no_mx"; validationJob.noMx++;
-            } else if (CATCHALL_DOMAINS.has(domain) || smtpBlocked) {
-              // Catch-all domains or SMTP blocked at network level: only MX confirms existence
-              status = "valid"; validationJob.valid++;
-            } else {
-              const smtpResult = await validateEmailSmtp(contact.email);
-              if (smtpResult === "invalid") {
-                status = "invalid"; reason = "smtp_invalid"; validationJob.noMx++;
-              } else if (smtpResult === "unknown") {
-                // SMTP timed out for this contact — can't determine validity.
-                // Leave status as "unknown" in DB; skip in this job run.
-                smtpUnresolvable = true;
-                unresolvableIds.push(contact.id);
-                validationJob.skipped++;
-                validationJob.processed++;
+              if (!EMAIL_REGEX.test(contact.email)) {
+                status = "invalid"; reason = "bad_format"; validationJob.badFormat++;
+              } else if (DISPOSABLE_DOMAINS.has(domain)) {
+                status = "disposable"; reason = "disposable_domain"; validationJob.disposable++;
+              } else if (zbKey) {
+                status = await validateEmailZeroBounce(contact.email, zbKey);
+                if (status === "valid") validationJob.valid++;
+                else if (status === "disposable") { validationJob.disposable++; reason = "disposable_domain"; }
+                else { validationJob.noMx++; reason = "zerobounce_invalid"; }
               } else {
-                status = "valid"; validationJob.valid++;
+                const hosts = await getMxHosts(domain);
+                if (!hosts.length) {
+                  status = "invalid"; reason = "no_mx"; validationJob.noMx++;
+                } else if (CATCHALL_DOMAINS.has(domain) || smtpBlocked) {
+                  // Catch-all or network-level SMTP block: MX confirms existence
+                  status = "valid"; validationJob.valid++;
+                } else {
+                  const smtpResult = await validateEmailSmtp(contact.email);
+                  if (smtpResult === "invalid") {
+                    status = "invalid"; reason = "smtp_invalid"; validationJob.noMx++;
+                  } else if (smtpResult === "unknown") {
+                    // SMTP timed out — can't determine validity; leave as "unknown"
+                    smtpUnresolvable = true;
+                    unresolvableIds.push(contact.id);
+                    validationJob.skipped++;
+                    validationJob.processed++;
+                  } else {
+                    status = "valid"; validationJob.valid++;
+                  }
+                }
               }
+
+              if (smtpUnresolvable) continue;
+
+              await db.update(marketingContactsTable)
+                .set({ emailStatus: status!, emailInvalidReason: reason, emailValidatedAt: new Date() })
+                .where(eq(marketingContactsTable.id, contact.id));
+
+              if (status! === "invalid" || status! === "disposable") validationJob.invalid++;
+              validationJob.processed++;
+            } catch {
+              validationJob.skipped++;
+              validationJob.processed++;
             }
           }
-
-          if (smtpUnresolvable) continue; // don't update DB — keep as "unknown"
-
-          await db.update(marketingContactsTable)
-            .set({ emailStatus: status!, emailInvalidReason: reason, emailValidatedAt: new Date() })
-            .where(eq(marketingContactsTable.id, contact.id));
-
-          if (status! === "invalid" || status! === "disposable") validationJob.invalid++;
-          validationJob.processed++;
-        } catch {
-          validationJob.skipped++;
-          validationJob.processed++;
-        }
-      }
+        })
+      );
     }
 
     if (validationJob) validationJob.done = true;

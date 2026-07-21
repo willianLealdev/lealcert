@@ -14,6 +14,14 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "21/07/2026",
+    version: "1.18",
+    changes: [
+      { type: "melhoria", text: "Validação de e-mails 20× mais rápida: 20 contatos em paralelo, timeout SMTP reduzido para 3s e apenas 1 host MX testado por contato" },
+      { type: "fix",      text: "Timeout SMTP individual não marcava mais o contato como 'válido' — permanece 'unknown' no banco e é pulado nesta execução" },
+    ],
+  },
+  {
     date: "20/07/2026",
     version: "1.17",
     changes: [
