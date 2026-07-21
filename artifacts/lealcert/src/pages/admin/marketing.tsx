@@ -1261,10 +1261,8 @@ function SendCampaignDialog({
               <Send className="h-4 w-4 text-primary" /> Velocidade de Envio
             </p>
             <p className="text-xs text-muted-foreground">
-              Enviar em lotes controlados para evitar bloqueio do servidor de e-mail.
-              Deixe em branco para enviar sem limite de velocidade.
-              <br />
-              <span className="text-amber-600 font-medium">Gmail, Outlook e Hotmail seguem regra própria independente desta configuração.</span>
+              Configuração aplicada a <strong>todos os provedores</strong> (Gmail, Outlook, Yahoo, UOL/BOL e domínio próprio).
+              Deixe em branco para usar os limites de segurança padrão por provedor.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

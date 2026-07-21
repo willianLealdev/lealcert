@@ -1390,12 +1390,12 @@ function isWithinBusinessHours(startHour: number, endHour: number, days?: string
 type ContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; hadBounce: boolean; isNew: boolean; tags: string | null; emailStatus: string; emailInvalidReason: string | null; emailValidatedAt: Date | null; unsubscribedAt: Date | null; unsubToken: string | null; createdAt: Date };
 type RawContactRow = { id: number; name: string; email: string; phone: string | null; type: string; status: string; bounced: boolean; had_bounce: boolean; is_new: boolean; tags: string | null; email_status: string; email_invalid_reason: string | null; email_validated_at: Date | null; unsubscribed_at: Date | null; unsub_token: string | null; created_at: Date };
 
-// ── Filas de provedores (regras fixas — não editáveis pelo painel) ────────────
+// ── Limites de segurança mínimos por provedor (fallback se o usuário não configurar) ──
 const PROVIDER_QUEUES = {
-  gmail:   { domains: new Set(["gmail.com", "googlemail.com"]),                                    batchSize: 1000, pauseMs: 120_000 },
-  outlook: { domains: new Set(["outlook.com", "hotmail.com", "hotmail.com.br", "live.com", "msn.com"]), batchSize: 1500, pauseMs: 120_000 },
-  yahoo:   { domains: new Set(["yahoo.com", "yahoo.com.br", "yahoo.com.ar", "ymail.com"]),          batchSize: 1000, pauseMs:  60_000 },
-  uolbol:  { domains: new Set(["uol.com.br", "bol.com.br"]),                                        batchSize: 2000, pauseMs:  60_000 },
+  gmail:   { domains: new Set(["gmail.com", "googlemail.com"]),                                    batchSize: 10, pauseMs: 720_000  },
+  outlook: { domains: new Set(["outlook.com", "hotmail.com", "hotmail.com.br", "live.com", "msn.com"]), batchSize: 10, pauseMs: 1_020_000 },
+  yahoo:   { domains: new Set(["yahoo.com", "yahoo.com.br", "yahoo.com.ar", "ymail.com"]),          batchSize:  5, pauseMs: 1_560_000 },
+  uolbol:  { domains: new Set(["uol.com.br", "bol.com.br"]),                                        batchSize:  5, pauseMs: 1_800_000 },
 } as const;
 
 type ProviderKey = keyof typeof PROVIDER_QUEUES | "outros";
@@ -1740,35 +1740,27 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     logger.info({ campaignId, provider: providerName, total: queue.length }, "Fila de provedor concluída");
   }
 
-  // ── 1. Outros (config do painel) ─────────────────────────────────────────
-  let normalSentInBatch = 0;
-  for (let i = 0; i < buckets.outros.length; i++) {
-    if (!await waitIfPaused()) {
-      await db.update(marketingCampaignsTable).set({ status: "sent", sentAt: new Date(), totalSent: sent, totalDelivered: sent, totalBounced: bounced }).where(eq(marketingCampaignsTable.id, campaignId));
-      return;
-    }
-    await sendOne(buckets.outros[i]);
-    normalSentInBatch++;
-    await new Promise(r => setTimeout(r, 100));
-    const isLast = i === buckets.outros.length - 1;
-    if (userBatchSize && userIntervalMs && normalSentInBatch >= userBatchSize && !isLast) {
-      logger.info({ campaignId, normalSentInBatch, waitSecs: userIntervalMs / 1000 }, "Outros: lote completo — aguardando intervalo");
-      await new Promise(r => setTimeout(r, userIntervalMs));
-      normalSentInBatch = 0;
-    }
-  }
+  // Todos os provedores usam o lote/intervalo configurado pelo usuário.
+  // Se não configurado, usa os valores de segurança de PROVIDER_QUEUES como fallback.
+  const batchFor  = (k: keyof typeof PROVIDER_QUEUES) => userBatchSize  ?? PROVIDER_QUEUES[k].batchSize;
+  const pauseFor  = (k: keyof typeof PROVIDER_QUEUES) => userIntervalMs ?? PROVIDER_QUEUES[k].pauseMs;
 
-  // ── 2. Gmail: lotes de 1.000 · pausa 2 min ───────────────────────────────
-  await sendProviderQueue(buckets.gmail, "Gmail", PROVIDER_QUEUES.gmail.batchSize, PROVIDER_QUEUES.gmail.pauseMs);
+  // ── 1. Domínio próprio ────────────────────────────────────────────────────
+  const outrosBatch = userBatchSize ?? null;
+  const outrosPause = userIntervalMs ?? null;
+  await sendProviderQueue(buckets.outros, "Outros", outrosBatch ?? buckets.outros.length, outrosPause ?? 0);
 
-  // ── 3. Outlook / Hotmail / Live / MSN: lotes de 1.500 · pausa 2 min ──────
-  await sendProviderQueue(buckets.outlook, "Outlook", PROVIDER_QUEUES.outlook.batchSize, PROVIDER_QUEUES.outlook.pauseMs);
+  // ── 2. Gmail ──────────────────────────────────────────────────────────────
+  await sendProviderQueue(buckets.gmail, "Gmail", batchFor("gmail"), pauseFor("gmail"));
 
-  // ── 4. Yahoo: lotes de 1.000 · pausa 1 min ───────────────────────────────
-  await sendProviderQueue(buckets.yahoo, "Yahoo", PROVIDER_QUEUES.yahoo.batchSize, PROVIDER_QUEUES.yahoo.pauseMs);
+  // ── 3. Outlook / Hotmail / Live / MSN ────────────────────────────────────
+  await sendProviderQueue(buckets.outlook, "Outlook", batchFor("outlook"), pauseFor("outlook"));
 
-  // ── 5. UOL / BOL: lotes de 2.000 · pausa 1 min ───────────────────────────
-  await sendProviderQueue(buckets.uolbol, "UOL/BOL", PROVIDER_QUEUES.uolbol.batchSize, PROVIDER_QUEUES.uolbol.pauseMs);
+  // ── 4. Yahoo ─────────────────────────────────────────────────────────────
+  await sendProviderQueue(buckets.yahoo, "Yahoo", batchFor("yahoo"), pauseFor("yahoo"));
+
+  // ── 5. UOL / BOL ─────────────────────────────────────────────────────────
+  await sendProviderQueue(buckets.uolbol, "UOL/BOL", batchFor("uolbol"), pauseFor("uolbol"));
 
   await db.update(marketingCampaignsTable).set({
     status: "sent", sentAt: new Date(), totalSent: sent, totalDelivered: sent, totalBounced: bounced,
