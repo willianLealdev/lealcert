@@ -720,7 +720,7 @@ router.post("/marketing/contacts/validate", async (req, res): Promise<void> => {
   }
 
   const BATCH_SIZE = 200;   // contacts fetched per iteration
-  const CONCURRENCY = 20;   // contacts processed in parallel
+  const CONCURRENCY = 5;    // concurrent SMTP connections (keep low to avoid rate limits)
   const typeFilter = req.body?.type;
 
   const conditions = [eq(marketingContactsTable.emailStatus, "unknown")];
