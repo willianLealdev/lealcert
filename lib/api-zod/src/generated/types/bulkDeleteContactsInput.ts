@@ -5,7 +5,15 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+import type { BulkDeleteContactsInputEmailStatus } from './bulkDeleteContactsInputEmailStatus';
+import type { BulkDeleteContactsInputStatus } from './bulkDeleteContactsInputStatus';
+import type { BulkDeleteContactsInputType } from './bulkDeleteContactsInputType';
 
 export interface BulkDeleteContactsInput {
-  ids: number[];
+  ids?: number[];
+  selectAll?: boolean;
+  type?: BulkDeleteContactsInputType;
+  search?: string;
+  status?: BulkDeleteContactsInputStatus;
+  emailStatus?: BulkDeleteContactsInputEmailStatus;
 }

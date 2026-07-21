@@ -1558,6 +1558,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
   const [editContact, setEditContact] = useState<{ id: number; name: string; email: string; phone?: string | null; tags?: string | null } | null>(null);
   const [importing, setImporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectAllGlobal, setSelectAllGlobal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const isCliente = type === "cliente";
@@ -1622,15 +1623,16 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
     isNew: isNewFilter ? true : undefined,
   });
 
-  function handleSearchChange(val: string) { setSearch(val); setPage(1); setSelectedIds(new Set()); }
-  function handleEmailStatusChange(val: EmailStatusFilter) { setEmailStatusFilter(val); setPage(1); setSelectedIds(new Set()); }
+  function clearSelection() { setSelectedIds(new Set()); setSelectAllGlobal(false); }
+  function handleSearchChange(val: string) { setSearch(val); setPage(1); clearSelection(); }
+  function handleEmailStatusChange(val: EmailStatusFilter) { setEmailStatusFilter(val); setPage(1); clearSelection(); }
   function handleContactStatusChange(val: "all" | "active" | "unsubscribed" | "bounced") {
     setContactStatusFilter(val);
     if (val !== "all") setIsNewFilter(false);
     setPage(1);
-    setSelectedIds(new Set());
+    clearSelection();
   }
-  function toggleIsNewFilter() { setIsNewFilter(p => !p); setContactStatusFilter("all"); setPage(1); setSelectedIds(new Set()); }
+  function toggleIsNewFilter() { setIsNewFilter(p => !p); setContactStatusFilter("all"); setPage(1); clearSelection(); }
   const contacts = data?.data ?? [];
   const total = data?.total ?? 0;
 
@@ -1638,11 +1640,13 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
   const somePageSelected = contacts.some(c => selectedIds.has(c.id)) && !allPageSelected;
 
   function toggleSelectAll() {
+    if (selectAllGlobal) { clearSelection(); return; }
     if (allPageSelected) {
       setSelectedIds(prev => { const next = new Set(prev); contacts.forEach(c => next.delete(c.id)); return next; });
     } else {
       setSelectedIds(prev => { const next = new Set(prev); contacts.forEach(c => next.add(c.id)); return next; });
     }
+    setSelectAllGlobal(false);
   }
 
   function toggleSelect(id: number) {
@@ -1855,30 +1859,59 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
       </div>
 
       {/* Bulk action bar */}
-      {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-xl">
-          <span className="text-sm font-medium text-primary">{selectedIds.size} selecionado(s)</span>
-          <button
-            onClick={() => setSelectedIds(new Set())}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Limpar seleção
-          </button>
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={bulkDeleteMutation.isPending}
-              onClick={() => {
-                if (confirm(`Remover ${selectedIds.size} contato(s) permanentemente?`))
-                  bulkDeleteMutation.mutate({ data: { ids: Array.from(selectedIds) } });
-              }}
-              className="gap-2"
+      {(selectedIds.size > 0 || selectAllGlobal) && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-xl">
+            <span className="text-sm font-medium text-primary">
+              {selectAllGlobal ? `Todos os ${total} contatos selecionados` : `${selectedIds.size} selecionado(s)`}
+            </span>
+            <button
+              onClick={clearSelection}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              {bulkDeleteMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-              Excluir selecionados
-            </Button>
+              Limpar seleção
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={bulkDeleteMutation.isPending}
+                onClick={() => {
+                  const count = selectAllGlobal ? total : selectedIds.size;
+                  if (!confirm(`Remover ${count} contato(s) permanentemente?`)) return;
+                  if (selectAllGlobal) {
+                    bulkDeleteMutation.mutate({ data: {
+                      selectAll: true,
+                      type,
+                      search: search || undefined,
+                      status: contactStatusFilter !== "all" ? contactStatusFilter : undefined,
+                      emailStatus: emailStatusFilter !== "all" ? emailStatusFilter : undefined,
+                    }});
+                  } else {
+                    bulkDeleteMutation.mutate({ data: { ids: Array.from(selectedIds) } });
+                  }
+                }}
+                className="gap-2"
+              >
+                {bulkDeleteMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                {selectAllGlobal ? `Excluir todos os ${total}` : "Excluir selecionados"}
+              </Button>
+            </div>
           </div>
+          {/* Banner: offer to select ALL across pages */}
+          {allPageSelected && !selectAllGlobal && total > contacts.length && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+              <span className="text-amber-800">
+                {contacts.length} contatos desta página selecionados.
+              </span>
+              <button
+                onClick={() => setSelectAllGlobal(true)}
+                className="font-semibold text-primary hover:underline"
+              >
+                Selecionar todos os {total} contatos
+              </button>
+            </div>
+          )}
         </div>
       )}
 

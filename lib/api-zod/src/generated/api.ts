@@ -2782,7 +2782,12 @@ export const GetMarketingContactProviderStatsResponse = zod.object({
  * @summary Delete multiple contacts by ID
  */
 export const BulkDeleteMarketingContactsBody = zod.object({
-  "ids": zod.array(zod.number())
+  "ids": zod.array(zod.number()).optional(),
+  "selectAll": zod.boolean().optional(),
+  "type": zod.enum(['cliente', 'contador']).optional(),
+  "search": zod.string().optional(),
+  "status": zod.enum(['active', 'unsubscribed', 'bounced']).optional(),
+  "emailStatus": zod.enum(['valid', 'invalid', 'disposable', 'unknown']).optional()
 })
 
 export const BulkDeleteMarketingContactsResponse = zod.object({

@@ -1266,8 +1266,40 @@ export interface MeStats {
   next_appointments: Appointment[];
 }
 
+export type BulkDeleteContactsInputType = typeof BulkDeleteContactsInputType[keyof typeof BulkDeleteContactsInputType];
+
+
+export const BulkDeleteContactsInputType = {
+  cliente: 'cliente',
+  contador: 'contador',
+} as const;
+
+export type BulkDeleteContactsInputStatus = typeof BulkDeleteContactsInputStatus[keyof typeof BulkDeleteContactsInputStatus];
+
+
+export const BulkDeleteContactsInputStatus = {
+  active: 'active',
+  unsubscribed: 'unsubscribed',
+  bounced: 'bounced',
+} as const;
+
+export type BulkDeleteContactsInputEmailStatus = typeof BulkDeleteContactsInputEmailStatus[keyof typeof BulkDeleteContactsInputEmailStatus];
+
+
+export const BulkDeleteContactsInputEmailStatus = {
+  valid: 'valid',
+  invalid: 'invalid',
+  disposable: 'disposable',
+  unknown: 'unknown',
+} as const;
+
 export interface BulkDeleteContactsInput {
-  ids: number[];
+  ids?: number[];
+  selectAll?: boolean;
+  type?: BulkDeleteContactsInputType;
+  search?: string;
+  status?: BulkDeleteContactsInputStatus;
+  emailStatus?: BulkDeleteContactsInputEmailStatus;
 }
 
 export interface BulkDeleteContactsResult {

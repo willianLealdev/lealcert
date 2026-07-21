@@ -5458,12 +5458,24 @@ components:
 
     BulkDeleteContactsInput:
       type: object
-      required: [ids]
       properties:
         ids:
           type: array
           items:
             type: integer
+        selectAll:
+          type: boolean
+        type:
+          type: string
+          enum: [cliente, contador]
+        search:
+          type: string
+        status:
+          type: string
+          enum: [active, unsubscribed, bounced]
+        emailStatus:
+          type: string
+          enum: [valid, invalid, disposable, unknown]
 
     BulkDeleteContactsResult:
       type: object

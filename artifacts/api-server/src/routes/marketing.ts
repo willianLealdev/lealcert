@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, ilike, or, sql, and, isNull, ne, inArray, notInArray } from "drizzle-orm";
+import { eq, desc, ilike, or, sql, and, isNull, isNotNull, ne, inArray, notInArray, SQL } from "drizzle-orm";
 import { randomBytes, randomUUID } from "crypto";
 import { promises as dns } from "dns";
 import * as net from "net";
@@ -896,7 +896,28 @@ router.patch("/marketing/contacts/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/marketing/contacts/bulk-delete", async (req, res): Promise<void> => {
-  const { ids } = req.body ?? {};
+  const { ids, selectAll, type, search, status, emailStatus } = req.body ?? {};
+
+  if (selectAll) {
+    // Delete all matching the current filters (same WHERE logic as list endpoint)
+    const conditions: SQL[] = [];
+    if (type) conditions.push(eq(marketingContactsTable.type, type));
+    if (search) {
+      const like = `%${search}%`;
+      conditions.push(or(ilike(marketingContactsTable.name, like), ilike(marketingContactsTable.email, like))!);
+    }
+    if (status === "active")       conditions.push(eq(marketingContactsTable.bounced, false), isNull(marketingContactsTable.unsubscribedAt));
+    if (status === "unsubscribed") conditions.push(isNotNull(marketingContactsTable.unsubscribedAt));
+    if (status === "bounced")      conditions.push(eq(marketingContactsTable.bounced, true));
+    if (emailStatus)               conditions.push(eq(marketingContactsTable.emailStatus, emailStatus));
+
+    const where = conditions.length ? and(...conditions) : undefined;
+    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(marketingContactsTable).where(where);
+    await db.delete(marketingContactsTable).where(where);
+    res.json({ deleted: count });
+    return;
+  }
+
   if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ message: "ids required" }); return; }
   const numericIds = ids.map(Number).filter(n => Number.isFinite(n) && n > 0);
   if (numericIds.length === 0) { res.status(400).json({ message: "No valid ids" }); return; }
