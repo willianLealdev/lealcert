@@ -3070,7 +3070,8 @@ export const GetMarketingCampaignProgressResponse = zod.object({
   "status": zod.string(),
   "totalSent": zod.number(),
   "totalContacts": zod.number(),
-  "totalBounced": zod.number()
+  "totalBounced": zod.number(),
+  "pauseReason": zod.string().nullish()
 })
 
 
@@ -3476,7 +3477,8 @@ export const GetWaCampaignProgressResponse = zod.object({
   "totalFailed": zod.number(),
   "totalContacts": zod.number(),
   "paused": zod.boolean(),
-  "nextSendAt": zod.coerce.date().nullish()
+  "nextSendAt": zod.coerce.date().nullish(),
+  "pauseReason": zod.string().nullish()
 })
 
 

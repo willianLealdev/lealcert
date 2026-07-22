@@ -1202,6 +1202,7 @@ router.post("/marketing/campaigns/:id/duplicate", async (req, res): Promise<void
 
 // ── Pause / active-dispatch state (in-memory) ────────────────────────────────
 const pausedCampaigns = new Set<number>();
+const campaignPauseReasons = new Map<number, string>(); // motivo da pausa (apenas auto-pausa)
 // Tracks which campaignIds have a live dispatch loop in this process.
 // Used by resume to avoid starting a duplicate loop when the original is alive.
 const activeDispatches = new Set<number>();
@@ -1321,7 +1322,7 @@ router.get("/marketing/campaigns/:id/progress", async (req, res): Promise<void> 
     .where(eq(marketingCampaignsTable.id, id))
     .limit(1);
   if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
-  res.json(campaign);
+  res.json({ ...campaign, pauseReason: campaignPauseReasons.get(id) ?? null });
 });
 
 router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> => {
@@ -1334,6 +1335,7 @@ router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> =
   }
 
   // Wake up the existing loop (if still alive in this process)
+  campaignPauseReasons.delete(id);
   pausedCampaigns.delete(id);
   await db.update(marketingCampaignsTable).set({ status: "sending", manualPause: false }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Retomando envio…" });
@@ -1763,6 +1765,7 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     // Fora do horário — auto-pausa
     if (!pausedCampaigns.has(campaignId)) {
       pausedCampaigns.add(campaignId);
+      campaignPauseReasons.set(campaignId, `Horário comercial (${sh}h–${eh}h)`);
       await db.update(marketingCampaignsTable).set({ status: "paused" }).where(eq(marketingCampaignsTable.id, campaignId));
       logger.info({ campaignId, startHour: sh, endHour: eh }, "Fora do horário comercial — campanha pausada automaticamente");
     }

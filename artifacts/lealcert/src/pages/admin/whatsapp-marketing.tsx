@@ -259,7 +259,11 @@ function CampaignProgress({
         {data.totalFailed > 0 && (
           <span className="text-red-500 ml-1">· {data.totalFailed} falhas</span>
         )}
-        {data.paused && <span className="text-orange-500 ml-1">· pausada</span>}
+        {data.paused && (
+          <span className="text-orange-500 ml-1">
+            · pausada{data.pauseReason ? ` · ${data.pauseReason}` : ""}
+          </span>
+        )}
         {!data.paused && countdown != null && countdown > 0 && (
           <span className="text-blue-600 ml-1">· próximo em {countdown}s</span>
         )}

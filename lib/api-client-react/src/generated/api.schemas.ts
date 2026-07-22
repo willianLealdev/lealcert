@@ -1388,6 +1388,7 @@ export interface CampaignProgress {
   totalSent: number;
   totalContacts: number;
   totalBounced: number;
+  pauseReason?: string | null;
 }
 
 export type MarketingCampaignTargetType = typeof MarketingCampaignTargetType[keyof typeof MarketingCampaignTargetType];
@@ -1872,6 +1873,7 @@ export interface WaProgress {
   totalContacts: number;
   paused: boolean;
   nextSendAt?: string | null;
+  pauseReason?: string | null;
 }
 
 export type ValidateCrcParams = {

@@ -11,4 +11,5 @@ export interface CampaignProgress {
   totalSent: number;
   totalContacts: number;
   totalBounced: number;
+  pauseReason?: string | null;
 }

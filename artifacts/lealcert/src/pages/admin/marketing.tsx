@@ -307,7 +307,9 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
           {isPaused
             ? <PauseCircle className="h-3.5 w-3.5 text-amber-500" />
             : <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />}
-          {isPaused ? "Envio pausado" : "Enviando em andamento…"}
+          {isPaused
+            ? `Envio pausado${progress?.pauseReason ? ` · ${progress.pauseReason}` : ""}`
+            : "Enviando em andamento…"}
         </span>
         <span className="font-semibold tabular-nums">
           {sent.toLocaleString("pt-BR")} / {total.toLocaleString("pt-BR")} e-mails

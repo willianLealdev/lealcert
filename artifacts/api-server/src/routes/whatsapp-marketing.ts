@@ -9,6 +9,7 @@ const router = Router();
 // ── In-memory state ──────────────────────────────────────────────────────────
 const pausedWaCampaigns = new Set<number>();        // all paused (auto + manual)
 const manuallyPausedWaCampaigns = new Set<number>(); // paused by user click — never auto-resumed
+const waCampaignPauseReasons = new Map<number, string>(); // motivo da pausa (apenas auto-pausa)
 const activeWaDispatches = new Set<number>();        // loops currently running — prevents double dispatch
 
 // ── Business hours helper ────────────────────────────────────────────────────
@@ -214,6 +215,7 @@ router.get("/marketing/wa/campaigns/:id/progress", async (req, res): Promise<voi
     totalContacts: campaign.totalContacts,
     paused: pausedWaCampaigns.has(id),
     nextSendAt: campaign.nextSendAt ?? null,
+    pauseReason: waCampaignPauseReasons.get(id) ?? null,
   });
 });
 
@@ -241,6 +243,7 @@ router.post("/marketing/wa/campaigns/:id/resume", async (req, res): Promise<void
   }
   const id = parseInt(req.params.id, 10);
   manuallyPausedWaCampaigns.delete(id); // allow auto-resume again if business hours configured
+  waCampaignPauseReasons.delete(id);
   pausedWaCampaigns.delete(id);
   await db
     .update(whatsappCampaignsTable)
@@ -626,6 +629,7 @@ async function _doDispatchWaCampaign(
     ) {
       if (!pausedWaCampaigns.has(campaignId)) {
         pausedWaCampaigns.add(campaignId);
+        waCampaignPauseReasons.set(campaignId, `Horário comercial (${bhStartHour}h–${bhEndHour}h)`);
         await db
           .update(whatsappCampaignsTable)
           .set({ status: "paused", nextSendAt: null })

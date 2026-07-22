@@ -5601,6 +5601,9 @@ components:
           type: integer
         totalBounced:
           type: integer
+        pauseReason:
+          type: string
+          nullable: true
 
     MarketingCampaign:
       type: object
@@ -6424,4 +6427,7 @@ components:
         nextSendAt:
           type: string
           format: date-time
+          nullable: true
+        pauseReason:
+          type: string
           nullable: true
