@@ -186,7 +186,7 @@ export default function Login() {
   const leftPanel = (
     <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden">
       <div className="relative z-10 flex flex-col items-center text-center space-y-8">
-        <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-56 w-auto object-contain drop-shadow-2xl" />
+        <img src={branding.logoUrl || "/logo-novo-transparente.png"} alt={branding.appName} className="h-56 w-auto object-contain" />
         <p className="text-blue-200/80 text-lg max-w-sm leading-relaxed">
           Plataforma completa para emissão e gerenciamento de certificados digitais com segurança e agilidade.
         </p>
