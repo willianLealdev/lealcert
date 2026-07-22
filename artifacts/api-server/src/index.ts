@@ -69,6 +69,14 @@ async function ensureSessionTable() {
   `);
 }
 
+async function ensureMarketingColumns() {
+  await pool.query(`
+    ALTER TABLE marketing_campaigns
+      ADD COLUMN IF NOT EXISTS scheduled_included_providers text,
+      ADD COLUMN IF NOT EXISTS manual_pause boolean NOT NULL DEFAULT false;
+  `);
+}
+
 async function main() {
   logger.info("Running database migrations...");
   const migrationDb = drizzle(pool);
@@ -106,6 +114,7 @@ async function main() {
   });
   logger.info("Database migrations complete");
   await ensureSessionTable();
+  await ensureMarketingColumns();
 
   await seed();
 

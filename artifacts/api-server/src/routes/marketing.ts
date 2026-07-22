@@ -1135,12 +1135,15 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
         ? JSON.stringify(dispatchOpts.specificContactIds) : null,
       scheduledManualRecipients: dispatchOpts.manualRecipients?.length
         ? JSON.stringify(dispatchOpts.manualRecipients) : null,
+      scheduledIncludedProviders: dispatchOpts.includedProviders?.length
+        ? JSON.stringify(dispatchOpts.includedProviders) : null,
       // Salvar configurações de rate-limiting para que o scheduler as use ao disparar
       sendBatchSize: dispatchOpts.sendBatchSize ?? null,
       sendIntervalSecs: dispatchOpts.sendIntervalSecs ?? null,
       sendStartHour: dispatchOpts.sendStartHour ?? null,
       sendEndHour: dispatchOpts.sendEndHour ?? null,
       sendDays: dispatchOpts.sendDays ?? null,
+      manualPause: false,
     }).where(eq(marketingCampaignsTable.id, id));
     res.json({ message: `Campanha agendada para ${new Date(scheduledAt).toLocaleString("pt-BR")}.` });
     return;
@@ -1165,6 +1168,9 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
       ? JSON.stringify(dispatchOpts.specificContactIds) : null,
     scheduledManualRecipients: dispatchOpts.manualRecipients?.length
       ? JSON.stringify(dispatchOpts.manualRecipients) : null,
+    scheduledIncludedProviders: dispatchOpts.includedProviders?.length
+      ? JSON.stringify(dispatchOpts.includedProviders) : null,
+    manualPause: false,
   }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Campanha iniciada. Os e-mails serão enviados em segundo plano." });
 
@@ -1216,7 +1222,7 @@ router.post("/marketing/campaigns/:id/pause", async (req, res): Promise<void> =>
   if (!campaign) { res.status(404).json({ error: "Campanha não encontrada." }); return; }
   if (campaign.status !== "sending") { res.status(400).json({ error: "Campanha não está em andamento." }); return; }
   pausedCampaigns.add(id);
-  await db.update(marketingCampaignsTable).set({ status: "paused" }).where(eq(marketingCampaignsTable.id, id));
+  await db.update(marketingCampaignsTable).set({ status: "paused", manualPause: true }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Campanha pausada." });
 });
 
@@ -1325,7 +1331,7 @@ router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> =
 
   // Wake up the existing loop (if still alive in this process)
   pausedCampaigns.delete(id);
-  await db.update(marketingCampaignsTable).set({ status: "sending" }).where(eq(marketingCampaignsTable.id, id));
+  await db.update(marketingCampaignsTable).set({ status: "sending", manualPause: false }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Retomando envio…" });
 
   // Only start a fresh dispatch if no loop is alive (e.g. server restarted)
@@ -1340,6 +1346,9 @@ router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> =
     }
     if (campaign.scheduledManualRecipients) {
       try { opts.manualRecipients = JSON.parse(campaign.scheduledManualRecipients); } catch { /* ignore */ }
+    }
+    if (campaign.scheduledIncludedProviders) {
+      try { opts.includedProviders = JSON.parse(campaign.scheduledIncludedProviders); } catch { /* ignore */ }
     }
     if (campaign.sendBatchSize) opts.sendBatchSize = campaign.sendBatchSize;
     if (campaign.sendIntervalSecs) opts.sendIntervalSecs = campaign.sendIntervalSecs;
@@ -1387,23 +1396,35 @@ setInterval(async () => {
         days: marketingCampaignsTable.sendDays,
         batchSize: marketingCampaignsTable.sendBatchSize,
         intervalSecs: marketingCampaignsTable.sendIntervalSecs,
+        manualPause: marketingCampaignsTable.manualPause,
+        scheduledTargetOverride: marketingCampaignsTable.scheduledTargetOverride,
+        scheduledContactIds: marketingCampaignsTable.scheduledContactIds,
+        scheduledManualRecipients: marketingCampaignsTable.scheduledManualRecipients,
+        scheduledIncludedProviders: marketingCampaignsTable.scheduledIncludedProviders,
       })
       .from(marketingCampaignsTable)
       .where(eq(marketingCampaignsTable.status, "paused"));
     for (const c of paused) {
+      // Nunca retomar automaticamente campanhas pausadas manualmente pelo usuário
+      if (c.manualPause) continue;
       if (c.startHour == null || c.endHour == null) continue;
       if (!isWithinBusinessHours(c.startHour, c.endHour, c.days ?? undefined)) continue;
       // Within hours → resume
       pausedCampaigns.delete(c.id);
       await db.update(marketingCampaignsTable).set({ status: "sending" }).where(eq(marketingCampaignsTable.id, c.id));
-      dispatchCampaign(c.id, {
+      const opts: DispatchOptions = {
         sendStartHour: c.startHour,
         sendEndHour: c.endHour,
         sendDays: c.days ?? undefined,
         sendBatchSize: c.batchSize ?? undefined,
         sendIntervalSecs: c.intervalSecs ?? undefined,
-      }).catch(err => logger.error({ campaignId: c.id, err }, "Business hours auto-resume error"));
-      logger.info({ campaignId: c.id }, "Horário comercial: campanha retomada automaticamente");
+      };
+      if (c.scheduledTargetOverride) opts.targetOverride = c.scheduledTargetOverride as DispatchOptions["targetOverride"];
+      if (c.scheduledContactIds) { try { opts.specificContactIds = JSON.parse(c.scheduledContactIds); } catch { /* ignore */ } }
+      if (c.scheduledManualRecipients) { try { opts.manualRecipients = JSON.parse(c.scheduledManualRecipients); } catch { /* ignore */ } }
+      if (c.scheduledIncludedProviders) { try { opts.includedProviders = JSON.parse(c.scheduledIncludedProviders); } catch { /* ignore */ } }
+      dispatchCampaign(c.id, opts).catch(err => logger.error({ campaignId: c.id, err }, "Business hours auto-resume error"));
+      logger.info({ campaignId: c.id, includedProviders: opts.includedProviders }, "Horário comercial: campanha retomada automaticamente");
     }
   } catch (err) { logger.warn({ err }, "Business hours scheduler error"); }
 }, 60_000);

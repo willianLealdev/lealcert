@@ -14,6 +14,15 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "22/07/2026",
+    version: "1.19",
+    changes: [
+      { type: "fix", text: "Filtro de provedor (Gmail, Outlook, etc.) agora é salvo corretamente — ao retomar ou agendar a campanha, somente os provedores selecionados recebem" },
+      { type: "fix", text: "Pausa manual agora é respeitada pelo scheduler — campanha pausada pelo usuário não volta sozinha mais" },
+      { type: "fix", text: "Auto-retomada por horário comercial agora restaura corretamente o filtro de provedores e demais opções configuradas" },
+    ],
+  },
+  {
     date: "21/07/2026",
     version: "1.18",
     changes: [
