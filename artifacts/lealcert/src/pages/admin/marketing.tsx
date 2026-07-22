@@ -24,6 +24,7 @@ import {
   getGetMarketingCampaignProgressQueryKey,
   useResumeMarketingCampaign,
   usePauseMarketingCampaign,
+  useUpdateMarketingCampaignRate,
   useListCampaignBounces,
   useListCampaignSends,
   useListMarketingBounces,
@@ -277,6 +278,13 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
     onSuccess: () => { toast({ title: "Envio retomado!", description: "Continuando de onde parou." }); invalidate(); qc.invalidateQueries({ queryKey: getGetMarketingCampaignProgressQueryKey(campaignId) }); },
     onError: () => toast({ title: "Erro ao retomar", variant: "destructive" }),
   }});
+  const rateMutation = useUpdateMarketingCampaignRate({ mutation: {
+    onSuccess: () => { toast({ title: "Velocidade atualizada!", description: "O loop vai aplicar na próxima pausa entre lotes." }); setShowRateModal(false); },
+    onError: () => toast({ title: "Erro ao atualizar velocidade", variant: "destructive" }),
+  }});
+  const [showRateModal, setShowRateModal] = useState(false);
+  const [rateBatch, setRateBatch] = useState("");
+  const [rateInterval, setRateInterval] = useState("");
 
   const qc = useQueryClient();
 
@@ -325,7 +333,15 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
       {(progress?.totalBounced ?? 0) > 0 && (
         <p className="text-xs text-red-500">{progress!.totalBounced} bounce(s) detectados</p>
       )}
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 flex-wrap">
+        <Button
+          size="sm" variant="outline"
+          onClick={() => { setRateBatch(""); setRateInterval(""); setShowRateModal(true); }}
+          className="gap-1.5 text-xs text-blue-700 border-blue-200 hover:bg-blue-50"
+        >
+          <RefreshCw className="h-3 w-3" />
+          Editar velocidade
+        </Button>
         {!isPaused ? (
           <Button
             size="sm" variant="outline"
@@ -352,6 +368,49 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
           </Button>
         )}
       </div>
+
+      <Dialog open={showRateModal} onOpenChange={setShowRateModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar velocidade de envio</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Alterações aplicam a partir do próximo lote — sem reiniciar o envio.</p>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label className="text-xs">E-mails por lote</Label>
+              <Input
+                type="number" min={1} placeholder="Ex: 50"
+                value={rateBatch} onChange={e => setRateBatch(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Pausa entre lotes (segundos)</Label>
+              <Input
+                type="number" min={1} placeholder="Ex: 60"
+                value={rateInterval} onChange={e => setRateInterval(e.target.value)}
+              />
+            </div>
+            {rateBatch && rateInterval && (
+              <p className="text-xs text-muted-foreground bg-muted rounded p-2">
+                → {parseInt(rateBatch)} e-mails a cada ~{Math.round(parseInt(rateInterval) * 0.7)}–{Math.round(parseInt(rateInterval) * 1.3)}s (com jitter ±30%)
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setShowRateModal(false)}>Cancelar</Button>
+            <Button
+              size="sm"
+              disabled={rateMutation.isPending || (!rateBatch && !rateInterval)}
+              onClick={() => rateMutation.mutate({ id: campaignId, data: {
+                ...(rateBatch ? { sendBatchSize: parseInt(rateBatch) } : {}),
+                ...(rateInterval ? { sendIntervalSecs: parseInt(rateInterval) } : {}),
+              }})}
+            >
+              {rateMutation.isPending ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Aplicar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

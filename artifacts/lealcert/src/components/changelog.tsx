@@ -15,6 +15,16 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "22/07/2026",
+    version: "1.21",
+    changes: [
+      { type: "melhoria", text: "E-mail e WhatsApp: intervalos entre envios agora têm variação aleatória de ±30% (ex: pause de 60s vira 42–78s) — reduz risco de detecção de spam por padrão regular" },
+      { type: "novo",     text: "E-mail: botão 'Editar velocidade' aparece em campanhas ativas — permite alterar lote e intervalo sem parar o envio; aplica no próximo lote automaticamente" },
+      { type: "novo",     text: "WhatsApp: botão 'Velocidade' aparece em campanhas ativas — permite alterar msgs/minuto sem pausar; mostra preview do intervalo resultante com jitter" },
+      { type: "novo",     text: "API: novos endpoints PATCH /marketing/campaigns/:id/rate e PATCH /marketing/wa/campaigns/:id/rate para ajuste de velocidade ao vivo" },
+    ],
+  },
+  {
+    date: "22/07/2026",
     version: "1.20",
     changes: [
       { type: "novo",    text: "E-mail e WhatsApp: quando o envio pausa por horário comercial, o motivo aparece na tela (ex: 'Envio pausado · Horário comercial (8h–18h)')" },

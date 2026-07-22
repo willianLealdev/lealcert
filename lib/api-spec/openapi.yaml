@@ -2763,6 +2763,31 @@ paths:
                 items:
                   $ref: "#/components/schemas/CampaignBounceEntry"
 
+  /marketing/campaigns/{id}/rate:
+    patch:
+      operationId: updateMarketingCampaignRate
+      tags: [marketing]
+      summary: Update email campaign send rate live (no restart needed)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCampaignRateRequest"
+      responses:
+        "200":
+          description: Rate updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   /marketing/campaigns/{id}/pause:
     post:
       operationId: pauseMarketingCampaign
@@ -3093,6 +3118,31 @@ paths:
       responses:
         "200":
           description: Paused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /marketing/wa/campaigns/{id}/rate:
+    patch:
+      operationId: updateWaCampaignRate
+      tags: [whatsapp]
+      summary: Update WhatsApp campaign send rate live (no restart needed)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWaCampaignRateRequest"
+      responses:
+        "200":
+          description: Rate updated
           content:
             application/json:
               schema:
@@ -3507,6 +3557,27 @@ components:
       properties:
         email:
           type: string
+
+    UpdateCampaignRateRequest:
+      type: object
+      properties:
+        sendBatchSize:
+          type: integer
+          minimum: 1
+          description: Emails por lote
+        sendIntervalSecs:
+          type: integer
+          minimum: 1
+          description: Pausa entre lotes em segundos
+
+    UpdateWaCampaignRateRequest:
+      type: object
+      required: [sendPerMinute]
+      properties:
+        sendPerMinute:
+          type: integer
+          minimum: 1
+          description: Mensagens por minuto
 
     MessageResponse:
       type: object

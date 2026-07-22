@@ -259,6 +259,16 @@ router.post("/marketing/wa/campaigns/:id/resume", async (req, res): Promise<void
   }
 });
 
+// PATCH /marketing/wa/campaigns/:id/rate — edição ao vivo de msgs/min
+router.patch("/marketing/wa/campaigns/:id/rate", async (req, res): Promise<void> => {
+  if (req.session.role !== "admin") { res.status(403).json({ error: "Acesso negado." }); return; }
+  const id = parseInt(req.params.id, 10);
+  const { sendPerMinute } = req.body ?? {};
+  if (!sendPerMinute || Number(sendPerMinute) <= 0) { res.status(400).json({ error: "sendPerMinute inválido." }); return; }
+  await db.update(whatsappCampaignsTable).set({ sendPerMinute: Number(sendPerMinute) }).where(eq(whatsappCampaignsTable.id, id));
+  res.json({ message: "Velocidade atualizada." });
+});
+
 // POST /marketing/wa/campaigns/:id/cancel
 router.post("/marketing/wa/campaigns/:id/cancel", async (req, res): Promise<void> => {
   if (req.session.role !== "admin") {
@@ -607,12 +617,11 @@ async function _doDispatchWaCampaign(
   let sent = alreadySentCount;
   let failed = campaign.totalFailed;
 
-  // Default to 20 msg/min (3s interval) if no rate limit configured — prevents WA blocks
-  const perMinute = opts.sendPerMinute ?? campaign.sendPerMinute ?? 20;
-  const delayMs = Math.floor(60_000 / perMinute);
+  // Default rate — re-lido do DB a cada envio para suportar edição ao vivo
+  const defaultPerMinute = opts.sendPerMinute ?? campaign.sendPerMinute ?? 20;
 
   logger.info(
-    { campaignId, total: contacts.length, remaining: remaining.length, perMinute, delayMs },
+    { campaignId, total: contacts.length, remaining: remaining.length, defaultPerMinute },
     "WA dispatch iniciado",
   );
 
@@ -801,9 +810,24 @@ async function _doDispatchWaCampaign(
       logger.warn({ campaignId, phone: contact.phone, error }, "WA: mensagem falhou");
     }
 
-    if (delayMs > 0) {
-      const alive = await interruptibleDelay(delayMs);
-      if (!alive) return;
+    // Re-lê sendPerMinute do DB a cada mensagem (suporta edição ao vivo) + jitter ±30%
+    {
+      let livePerMinute = defaultPerMinute;
+      try {
+        const [freshRate] = await db
+          .select({ sendPerMinute: whatsappCampaignsTable.sendPerMinute })
+          .from(whatsappCampaignsTable)
+          .where(eq(whatsappCampaignsTable.id, campaignId))
+          .limit(1);
+        livePerMinute = freshRate?.sendPerMinute ?? defaultPerMinute;
+      } catch { /* usa defaultPerMinute */ }
+      const baseDelay = Math.floor(60_000 / livePerMinute);
+      if (baseDelay > 0) {
+        const jitter = 0.7 + Math.random() * 0.6; // ±30%
+        const liveDelay = Math.round(baseDelay * jitter);
+        const alive = await interruptibleDelay(liveDelay);
+        if (!alive) return;
+      }
     }
   }
 

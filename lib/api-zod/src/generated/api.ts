@@ -3123,6 +3123,27 @@ export const ListCampaignBouncesResponse = zod.array(ListCampaignBouncesResponse
 
 
 /**
+ * @summary Update email campaign send rate live (no restart needed)
+ */
+export const UpdateMarketingCampaignRateParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateMarketingCampaignRateBody = zod.object({
+  "sendBatchSize": zod.number().min(1).optional().describe('Emails por lote'),
+  "sendIntervalSecs": zod.number().min(1).optional().describe('Pausa entre lotes em segundos')
+})
+
+export const UpdateMarketingCampaignRateResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Pause an in-progress campaign dispatch
  */
 export const PauseMarketingCampaignParams = zod.object({
@@ -3416,6 +3437,25 @@ export const PauseWaCampaignParams = zod.object({
 })
 
 export const PauseWaCampaignResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Update WhatsApp campaign send rate live (no restart needed)
+ */
+export const UpdateWaCampaignRateParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateWaCampaignRateBody = zod.object({
+  "sendPerMinute": zod.number().min(1).describe('Mensagens por minuto')
+})
+
+export const UpdateWaCampaignRateResponse = zod.object({
   "message": zod.string()
 })
 

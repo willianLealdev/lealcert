@@ -115,6 +115,27 @@ export interface ResendVerificationInput {
   email: string;
 }
 
+export interface UpdateCampaignRateRequest {
+  /**
+     * Emails por lote
+     * @minimum 1
+     */
+  sendBatchSize?: number;
+  /**
+     * Pausa entre lotes em segundos
+     * @minimum 1
+     */
+  sendIntervalSecs?: number;
+}
+
+export interface UpdateWaCampaignRateRequest {
+  /**
+     * Mensagens por minuto
+     * @minimum 1
+     */
+  sendPerMinute: number;
+}
+
 export interface MessageResponse {
   message: string;
 }

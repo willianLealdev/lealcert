@@ -190,7 +190,9 @@ import type {
   UnbanIp200,
   UnblockIp200,
   UnsubscribePush200,
+  UpdateCampaignRateRequest,
   UpdateMarketingContactInput,
+  UpdateWaCampaignRateRequest,
   User,
   UserInput,
   UserUpdate,
@@ -10189,6 +10191,78 @@ export function useListCampaignBounces<TData = Awaited<ReturnType<typeof listCam
 
 
 
+export const getUpdateMarketingCampaignRateUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/campaigns/${id}/rate`
+}
+
+/**
+ * @summary Update email campaign send rate live (no restart needed)
+ */
+export const updateMarketingCampaignRate = async (id: number,
+    updateCampaignRateRequest: UpdateCampaignRateRequest, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getUpdateMarketingCampaignRateUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateCampaignRateRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateMarketingCampaignRateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMarketingCampaignRate>>, TError,{id: number;data: BodyType<UpdateCampaignRateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMarketingCampaignRate>>, TError,{id: number;data: BodyType<UpdateCampaignRateRequest>}, TContext> => {
+
+const mutationKey = ['updateMarketingCampaignRate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMarketingCampaignRate>>, {id: number;data: BodyType<UpdateCampaignRateRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMarketingCampaignRate(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMarketingCampaignRateMutationResult = NonNullable<Awaited<ReturnType<typeof updateMarketingCampaignRate>>>
+    export type UpdateMarketingCampaignRateMutationBody = BodyType<UpdateCampaignRateRequest>
+    export type UpdateMarketingCampaignRateMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update email campaign send rate live (no restart needed)
+ */
+export const useUpdateMarketingCampaignRate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMarketingCampaignRate>>, TError,{id: number;data: BodyType<UpdateCampaignRateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMarketingCampaignRate>>,
+        TError,
+        {id: number;data: BodyType<UpdateCampaignRateRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateMarketingCampaignRateMutationOptions(options));
+    }
+
 export const getPauseMarketingCampaignUrl = (id: number,) => {
 
 
@@ -11483,6 +11557,78 @@ export const usePauseWaCampaign = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getPauseWaCampaignMutationOptions(options));
+    }
+
+export const getUpdateWaCampaignRateUrl = (id: number,) => {
+
+
+
+
+  return `/api/marketing/wa/campaigns/${id}/rate`
+}
+
+/**
+ * @summary Update WhatsApp campaign send rate live (no restart needed)
+ */
+export const updateWaCampaignRate = async (id: number,
+    updateWaCampaignRateRequest: UpdateWaCampaignRateRequest, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getUpdateWaCampaignRateUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateWaCampaignRateRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateWaCampaignRateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWaCampaignRate>>, TError,{id: number;data: BodyType<UpdateWaCampaignRateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateWaCampaignRate>>, TError,{id: number;data: BodyType<UpdateWaCampaignRateRequest>}, TContext> => {
+
+const mutationKey = ['updateWaCampaignRate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateWaCampaignRate>>, {id: number;data: BodyType<UpdateWaCampaignRateRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateWaCampaignRate(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateWaCampaignRateMutationResult = NonNullable<Awaited<ReturnType<typeof updateWaCampaignRate>>>
+    export type UpdateWaCampaignRateMutationBody = BodyType<UpdateWaCampaignRateRequest>
+    export type UpdateWaCampaignRateMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update WhatsApp campaign send rate live (no restart needed)
+ */
+export const useUpdateWaCampaignRate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWaCampaignRate>>, TError,{id: number;data: BodyType<UpdateWaCampaignRateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateWaCampaignRate>>,
+        TError,
+        {id: number;data: BodyType<UpdateWaCampaignRateRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateWaCampaignRateMutationOptions(options));
     }
 
 export const getResumeWaCampaignUrl = (id: number,) => {

@@ -1220,6 +1220,21 @@ router.post("/marketing/campaigns/:id/cancel", async (req, res): Promise<void> =
   res.json({ message: "Campanha cancelada." });
 });
 
+// PATCH /marketing/campaigns/:id/rate — edição ao vivo de lote/intervalo
+router.patch("/marketing/campaigns/:id/rate", async (req, res): Promise<void> => {
+  if (req.session.role !== "admin") { res.status(403).json({ error: "Acesso negado." }); return; }
+  const id = parseInt(req.params.id, 10);
+  const { sendBatchSize, sendIntervalSecs } = req.body ?? {};
+  const batch = sendBatchSize != null && Number(sendBatchSize) > 0 ? Number(sendBatchSize) : null;
+  const interval = sendIntervalSecs != null && Number(sendIntervalSecs) > 0 ? Number(sendIntervalSecs) : null;
+  if (batch == null && interval == null) { res.status(400).json({ error: "Nenhum valor fornecido." }); return; }
+  await db.update(marketingCampaignsTable).set({
+    ...(batch != null ? { sendBatchSize: batch } : {}),
+    ...(interval != null ? { sendIntervalSecs: interval } : {}),
+  }).where(eq(marketingCampaignsTable.id, id));
+  res.json({ message: "Velocidade atualizada." });
+});
+
 router.post("/marketing/campaigns/:id/pause", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   const [campaign] = await db.select({ status: marketingCampaignsTable.status })
@@ -1792,19 +1807,41 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   }
 
   // ── Helper: envia uma fila com lote fixo e pausa ─────────────────────────
-  async function sendProviderQueue(queue: ContactRow[], providerName: string, batchSize: number, pauseMs: number): Promise<void> {
+  // Lê lote/intervalo do DB em tempo real (suporta edição ao vivo)
+  async function getLiveEmailRate(defaultBatch: number, defaultPauseMs: number): Promise<{ batch: number; pauseMs: number }> {
+    try {
+      const [fresh] = await db
+        .select({ sendBatchSize: marketingCampaignsTable.sendBatchSize, sendIntervalSecs: marketingCampaignsTable.sendIntervalSecs })
+        .from(marketingCampaignsTable)
+        .where(eq(marketingCampaignsTable.id, campaignId))
+        .limit(1);
+      const batch = fresh?.sendBatchSize ?? defaultBatch;
+      const ms = fresh?.sendIntervalSecs != null ? fresh.sendIntervalSecs * 1000 : defaultPauseMs;
+      return { batch, pauseMs: ms };
+    } catch {
+      return { batch: defaultBatch, pauseMs: defaultPauseMs };
+    }
+  }
+
+  async function sendProviderQueue(queue: ContactRow[], providerName: string, defaultBatch: number, defaultPauseMs: number): Promise<void> {
     if (!queue.length) return;
-    logger.info({ campaignId, provider: providerName, total: queue.length, batchSize, pauseSecs: pauseMs / 1000 }, "Iniciando fila de provedor");
+    logger.info({ campaignId, provider: providerName, total: queue.length, batchSize: defaultBatch, pauseSecs: defaultPauseMs / 1000 }, "Iniciando fila de provedor");
     let sentInBatch = 0;
+    let currentBatch = defaultBatch;
     for (let i = 0; i < queue.length; i++) {
       if (!await waitIfPaused()) return;
       await sendOne(queue[i]);
       sentInBatch++;
       const isLast = i === queue.length - 1;
-      if (sentInBatch >= batchSize && !isLast) {
-        logger.info({ campaignId, provider: providerName, sentInBatch, pauseSecs: pauseMs / 1000 }, "Lote completo — aguardando pausa");
-        await new Promise(r => setTimeout(r, pauseMs));
+      if (sentInBatch >= currentBatch && !isLast) {
+        // Re-lê do DB (suporte a edição ao vivo) + jitter ±30%
+        const live = await getLiveEmailRate(defaultBatch, defaultPauseMs);
+        const jitter = 0.7 + Math.random() * 0.6;
+        const jitteredPause = Math.round(live.pauseMs * jitter);
+        logger.info({ campaignId, provider: providerName, sentInBatch, pauseSecs: jitteredPause / 1000, nextBatch: live.batch }, "Lote completo — aguardando pausa");
+        await new Promise(r => setTimeout(r, jitteredPause));
         sentInBatch = 0;
+        currentBatch = live.batch;
       }
     }
     logger.info({ campaignId, provider: providerName, total: queue.length }, "Fila de provedor concluída");

@@ -9,6 +9,7 @@ import {
   usePauseWaCampaign,
   useResumeWaCampaign,
   useCancelWaCampaign,
+  useUpdateWaCampaignRate,
   useGetWaCampaignProgress,
   useListWaCampaignSends,
   useListWaUnsubscribed,
@@ -65,6 +66,7 @@ import {
   Eye,
   UserX,
   Search,
+  Settings,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -924,8 +926,11 @@ function CampaignRow({
   const pauseMutation = usePauseWaCampaign();
   const resumeMutation = useResumeWaCampaign();
   const cancelMutation = useCancelWaCampaign();
+  const rateMutation = useUpdateWaCampaignRate();
   const [showSends, setShowSends] = useState(false);
   const [sendsFilter, setSendsFilter] = useState<SendsFilter>("all");
+  const [showRateModal, setShowRateModal] = useState(false);
+  const [ratePerMinute, setRatePerMinute] = useState("");
 
   const isSending = campaign.status === "sending";
   const isPaused = campaign.status === "paused";
@@ -1028,10 +1033,20 @@ function CampaignRow({
             </Button>
           )}
           {(isSending || isPaused) && (
-            <Button size="sm" variant="outline" onClick={handleCancel} disabled={cancelMutation.isPending} className="text-red-600 border-red-200 hover:bg-red-50">
-              <XCircle className="h-3.5 w-3.5 mr-1" />
-              Cancelar
-            </Button>
+            <>
+              <Button
+                size="sm" variant="outline"
+                onClick={() => { setRatePerMinute(String(campaign.sendPerMinute ?? 20)); setShowRateModal(true); }}
+                className="text-blue-700 border-blue-200 hover:bg-blue-50"
+              >
+                <Settings className="h-3.5 w-3.5 mr-1" />
+                Velocidade
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleCancel} disabled={cancelMutation.isPending} className="text-red-600 border-red-200 hover:bg-red-50">
+                <XCircle className="h-3.5 w-3.5 mr-1" />
+                Cancelar
+              </Button>
+            </>
           )}
           {(isDraft || isDone || isScheduled || isCancelled) && (
             <>
@@ -1103,6 +1118,52 @@ function CampaignRow({
           onClose={() => setShowSends(false)}
         />
       )}
+
+      <Dialog open={showRateModal} onOpenChange={setShowRateModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar velocidade de envio</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Alterações aplicam na próxima mensagem — sem reiniciar ou pausar o envio.
+          </p>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Mensagens por minuto</Label>
+              <Input
+                type="number" min={1} max={60} placeholder="Ex: 20"
+                value={ratePerMinute} onChange={e => setRatePerMinute(e.target.value)}
+              />
+            </div>
+            {ratePerMinute && Number(ratePerMinute) > 0 && (
+              <p className="text-xs text-muted-foreground bg-muted rounded p-2">
+                → Intervalo base: {Math.round(60_000 / Number(ratePerMinute) / 1000)}s
+                · com jitter ±30%: ~{Math.round(60_000 / Number(ratePerMinute) * 0.7 / 1000)}–{Math.round(60_000 / Number(ratePerMinute) * 1.3 / 1000)}s entre mensagens
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setShowRateModal(false)}>Cancelar</Button>
+            <Button
+              size="sm"
+              disabled={rateMutation.isPending || !ratePerMinute || Number(ratePerMinute) <= 0}
+              onClick={() => rateMutation.mutate(
+                { id: campaign.id, data: { sendPerMinute: Number(ratePerMinute) } },
+                {
+                  onSuccess: () => {
+                    toast({ title: "Velocidade atualizada!", description: "Aplicada na próxima mensagem." });
+                    setShowRateModal(false);
+                    queryClient.invalidateQueries({ queryKey: getListWaCampaignsQueryKey() });
+                  },
+                  onError: () => toast({ title: "Erro ao atualizar", variant: "destructive" }),
+                },
+              )}
+            >
+              {rateMutation.isPending ? <Settings className="h-3.5 w-3.5 animate-spin" /> : "Aplicar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
