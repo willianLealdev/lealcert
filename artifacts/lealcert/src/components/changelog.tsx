@@ -21,6 +21,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "melhoria", text: "Fallback de segurança por provedor: se lote/intervalo não configurado, usa valores conservadores (ex: Gmail 10 e-mails a cada 12 min)" },
       { type: "fix",      text: "Scheduler de retomada por horário comercial agora restaura corretamente o lote/intervalo configurado — não caia mais no fallback ao retomar" },
       { type: "novo",     text: "Contatos: seleção global — selecione toda a página e um banner aparece para selecionar TODOS os X contatos de uma vez; exclusão em lote respeita filtros ativos" },
+      { type: "fix",      text: "Logo agora visível em todos os fundos escuros: brilho aumentado + glow azul em login, cadastro, sidebar e demais telas" },
       { type: "melhoria", text: "Validação de e-mails 5× mais rápida: 5 contatos em paralelo, timeout SMTP reduzido para 3s e apenas 1 host MX testado por contato" },
       { type: "fix",      text: "Timeout SMTP individual mantém contato como 'unknown' no banco — não marca como válido" },
     ],

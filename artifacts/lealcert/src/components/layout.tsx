@@ -350,7 +350,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className={`px-3 pt-5 pb-4 border-b border-sidebar-border/50 flex items-center ${collapsed ? "justify-center" : "justify-between gap-2"}`}>
           {!collapsed ? (
             <>
-              <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-16 w-auto object-contain" />
+              <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-16 w-auto object-contain" style={{ filter: "brightness(1.6) drop-shadow(0 0 14px rgba(59,130,246,0.5))" }} />
               <button
                 onClick={() => setCollapsed(true)}
                 className="hidden md:flex p-1.5 rounded-lg text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors shrink-0"
@@ -370,7 +370,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
           {/* Mobile: show logo always */}
           {collapsed && (
-            <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-8 w-8 object-contain md:hidden" />
+            <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-8 w-8 object-contain md:hidden" style={{ filter: "brightness(1.6) drop-shadow(0 0 10px rgba(59,130,246,0.5))" }} />
           )}
         </div>
 
@@ -506,7 +506,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-9 w-auto object-contain" />
+          <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-9 w-auto object-contain" style={{ filter: "brightness(1.6) drop-shadow(0 0 12px rgba(59,130,246,0.5))" }} />
         </header>
 
         <main className="flex-1 overflow-auto">
