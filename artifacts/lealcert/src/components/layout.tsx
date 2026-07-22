@@ -347,7 +347,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         `}
       >
         {/* Brand + collapse button */}
-        <div className={`px-3 pt-5 pb-4 border-b border-sidebar-border/50 flex items-center ${collapsed ? "justify-center" : "justify-between gap-2"}`}>
+        <div className={`px-3 pt-5 pb-4 border-b border-sidebar-border/50 flex items-center bg-white ${collapsed ? "justify-center" : "justify-between gap-2"}`}>
           {!collapsed ? (
             <>
               <img src={branding.logoUrl || "/logo-oficial-cropped.png"} alt={branding.appName} className="h-14 w-auto object-contain" />
