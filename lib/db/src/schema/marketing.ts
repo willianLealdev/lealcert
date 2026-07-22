@@ -53,6 +53,8 @@ export const marketingCampaignsTable = pgTable("marketing_campaigns", {
   scheduledContactIds: text("scheduled_contact_ids"),
   scheduledManualRecipients: text("scheduled_manual_recipients"),
   scheduledIncludedProviders: text("scheduled_included_providers"),
+  scheduledDispatchFrom: integer("scheduled_dispatch_from"),
+  scheduledDispatchTo: integer("scheduled_dispatch_to"),
   manualPause: boolean("manual_pause").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

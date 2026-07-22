@@ -18,16 +18,20 @@ docker exec lealcert_cert-db-1 psql -U postgres -d lealcert -c "SQL AQUI"
 
 ## Histórico de migrações entregues
 
-### 2026-07-22 — Filtro de provedor + pausa manual
+### 2026-07-22 — Filtro de provedor + pausa manual + faixa de contatos
 ```sql
 ALTER TABLE marketing_campaigns
   ADD COLUMN IF NOT EXISTS scheduled_included_providers text,
-  ADD COLUMN IF NOT EXISTS manual_pause boolean NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS manual_pause boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS scheduled_dispatch_from integer,
+  ADD COLUMN IF NOT EXISTS scheduled_dispatch_to integer;
 ```
 ```bash
 docker exec lealcert_cert-db-1 psql -U postgres -d lealcert -c "
 ALTER TABLE marketing_campaigns
   ADD COLUMN IF NOT EXISTS scheduled_included_providers text,
-  ADD COLUMN IF NOT EXISTS manual_pause boolean NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS manual_pause boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS scheduled_dispatch_from integer,
+  ADD COLUMN IF NOT EXISTS scheduled_dispatch_to integer;
 "
 ```

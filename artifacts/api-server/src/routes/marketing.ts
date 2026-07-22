@@ -1137,6 +1137,8 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
         ? JSON.stringify(dispatchOpts.manualRecipients) : null,
       scheduledIncludedProviders: dispatchOpts.includedProviders?.length
         ? JSON.stringify(dispatchOpts.includedProviders) : null,
+      scheduledDispatchFrom: dispatchOpts.dispatchFrom ?? null,
+      scheduledDispatchTo: dispatchOpts.dispatchTo ?? null,
       // Salvar configurações de rate-limiting para que o scheduler as use ao disparar
       sendBatchSize: dispatchOpts.sendBatchSize ?? null,
       sendIntervalSecs: dispatchOpts.sendIntervalSecs ?? null,
@@ -1170,6 +1172,8 @@ router.post("/marketing/campaigns/:id/send", async (req, res): Promise<void> => 
       ? JSON.stringify(dispatchOpts.manualRecipients) : null,
     scheduledIncludedProviders: dispatchOpts.includedProviders?.length
       ? JSON.stringify(dispatchOpts.includedProviders) : null,
+    scheduledDispatchFrom: dispatchOpts.dispatchFrom ?? null,
+    scheduledDispatchTo: dispatchOpts.dispatchTo ?? null,
     manualPause: false,
   }).where(eq(marketingCampaignsTable.id, id));
   res.json({ message: "Campanha iniciada. Os e-mails serão enviados em segundo plano." });
@@ -1350,6 +1354,8 @@ router.post("/marketing/campaigns/:id/resume", async (req, res): Promise<void> =
     if (campaign.scheduledIncludedProviders) {
       try { opts.includedProviders = JSON.parse(campaign.scheduledIncludedProviders); } catch { /* ignore */ }
     }
+    if (campaign.scheduledDispatchFrom) opts.dispatchFrom = campaign.scheduledDispatchFrom;
+    if (campaign.scheduledDispatchTo) opts.dispatchTo = campaign.scheduledDispatchTo;
     if (campaign.sendBatchSize) opts.sendBatchSize = campaign.sendBatchSize;
     if (campaign.sendIntervalSecs) opts.sendIntervalSecs = campaign.sendIntervalSecs;
     if (campaign.sendStartHour != null) opts.sendStartHour = campaign.sendStartHour;
@@ -1401,6 +1407,8 @@ setInterval(async () => {
         scheduledContactIds: marketingCampaignsTable.scheduledContactIds,
         scheduledManualRecipients: marketingCampaignsTable.scheduledManualRecipients,
         scheduledIncludedProviders: marketingCampaignsTable.scheduledIncludedProviders,
+        scheduledDispatchFrom: marketingCampaignsTable.scheduledDispatchFrom,
+        scheduledDispatchTo: marketingCampaignsTable.scheduledDispatchTo,
       })
       .from(marketingCampaignsTable)
       .where(eq(marketingCampaignsTable.status, "paused"));
@@ -1423,6 +1431,8 @@ setInterval(async () => {
       if (c.scheduledContactIds) { try { opts.specificContactIds = JSON.parse(c.scheduledContactIds); } catch { /* ignore */ } }
       if (c.scheduledManualRecipients) { try { opts.manualRecipients = JSON.parse(c.scheduledManualRecipients); } catch { /* ignore */ } }
       if (c.scheduledIncludedProviders) { try { opts.includedProviders = JSON.parse(c.scheduledIncludedProviders); } catch { /* ignore */ } }
+      if (c.scheduledDispatchFrom) opts.dispatchFrom = c.scheduledDispatchFrom;
+      if (c.scheduledDispatchTo) opts.dispatchTo = c.scheduledDispatchTo;
       dispatchCampaign(c.id, opts).catch(err => logger.error({ campaignId: c.id, err }, "Business hours auto-resume error"));
       logger.info({ campaignId: c.id, includedProviders: opts.includedProviders }, "Horário comercial: campanha retomada automaticamente");
     }

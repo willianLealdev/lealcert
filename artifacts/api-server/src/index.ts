@@ -73,7 +73,9 @@ async function ensureMarketingColumns() {
   await pool.query(`
     ALTER TABLE marketing_campaigns
       ADD COLUMN IF NOT EXISTS scheduled_included_providers text,
-      ADD COLUMN IF NOT EXISTS manual_pause boolean NOT NULL DEFAULT false;
+      ADD COLUMN IF NOT EXISTS manual_pause boolean NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS scheduled_dispatch_from integer,
+      ADD COLUMN IF NOT EXISTS scheduled_dispatch_to integer;
   `);
 }
 

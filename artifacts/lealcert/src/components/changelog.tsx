@@ -19,7 +19,8 @@ const CHANGELOG: ChangelogEntry[] = [
     changes: [
       { type: "fix", text: "Filtro de provedor (Gmail, Outlook, etc.) agora é salvo corretamente — ao retomar ou agendar a campanha, somente os provedores selecionados recebem" },
       { type: "fix", text: "Pausa manual agora é respeitada pelo scheduler — campanha pausada pelo usuário não volta sozinha mais" },
-      { type: "fix", text: "Auto-retomada por horário comercial agora restaura corretamente o filtro de provedores e demais opções configuradas" },
+      { type: "fix", text: "Faixa de contatos (De/Até) agora é salva e restaurada corretamente em disparo imediato, agendado e retomada" },
+      { type: "fix", text: "Auto-retomada por horário comercial agora restaura corretamente filtro de provedores, faixa de contatos e demais opções configuradas" },
     ],
   },
   {
