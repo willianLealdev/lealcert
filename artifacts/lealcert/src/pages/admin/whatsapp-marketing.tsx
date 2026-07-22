@@ -205,6 +205,25 @@ function PhoneBubblePreview({ message }: { message: string }) {
   );
 }
 
+// ── Countdown hook ────────────────────────────────────────────────────────────
+
+function useCountdown(nextSendAt: string | null | undefined): number | null {
+  const [secs, setSecs] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!nextSendAt) { setSecs(null); return; }
+    const tick = () => {
+      const diff = Math.max(0, Math.ceil((new Date(nextSendAt).getTime() - Date.now()) / 1000));
+      setSecs(diff);
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [nextSendAt]);
+
+  return secs;
+}
+
 // ── Progress Bar ──────────────────────────────────────────────────────────────
 
 function CampaignProgress({
@@ -217,6 +236,8 @@ function CampaignProgress({
   const { data } = useGetWaCampaignProgress(campaignId, {
     query: { queryKey: ["wa-progress", campaignId], refetchInterval: 2500 },
   });
+
+  const countdown = useCountdown(data?.nextSendAt);
 
   useEffect(() => {
     if (data?.status === "sent" || data?.status === "cancelled") {
@@ -239,6 +260,9 @@ function CampaignProgress({
           <span className="text-red-500 ml-1">· {data.totalFailed} falhas</span>
         )}
         {data.paused && <span className="text-orange-500 ml-1">· pausada</span>}
+        {!data.paused && countdown != null && countdown > 0 && (
+          <span className="text-blue-600 ml-1">· próximo em {countdown}s</span>
+        )}
       </p>
     </div>
   );

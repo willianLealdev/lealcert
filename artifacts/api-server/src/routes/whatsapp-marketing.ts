@@ -213,6 +213,7 @@ router.get("/marketing/wa/campaigns/:id/progress", async (req, res): Promise<voi
     totalFailed: campaign.totalFailed,
     totalContacts: campaign.totalContacts,
     paused: pausedWaCampaigns.has(id),
+    nextSendAt: campaign.nextSendAt ?? null,
   });
 });
 
@@ -603,26 +604,24 @@ async function _doDispatchWaCampaign(
     "WA dispatch iniciado",
   );
 
-  async function waitIfPaused(): Promise<boolean> {
-    const sh = opts.sendStartHour ?? campaign.sendStartHour ?? null;
-    const eh = opts.sendEndHour ?? campaign.sendEndHour ?? null;
-    const days = opts.sendDays ?? campaign.sendDays ?? null;
+  // Business hours only apply when explicitly configured in this dispatch opts
+  const bhStartHour = opts.sendStartHour ?? null;
+  const bhEndHour   = opts.sendEndHour   ?? null;
+  const bhDays      = opts.sendDays      ?? null;
 
+  async function waitIfPaused(): Promise<boolean> {
     if (
-      sh != null &&
-      eh != null &&
-      !isWithinBusinessHoursWa(sh, eh, days ?? undefined)
+      bhStartHour != null &&
+      bhEndHour   != null &&
+      !isWithinBusinessHoursWa(bhStartHour, bhEndHour, bhDays ?? undefined)
     ) {
       if (!pausedWaCampaigns.has(campaignId)) {
         pausedWaCampaigns.add(campaignId);
         await db
           .update(whatsappCampaignsTable)
-          .set({ status: "paused" })
+          .set({ status: "paused", nextSendAt: null })
           .where(eq(whatsappCampaignsTable.id, campaignId));
-        logger.info(
-          { campaignId },
-          "WA: fora do horário comercial — campanha pausada automaticamente",
-        );
+        logger.info({ campaignId }, "WA: fora do horário comercial — campanha pausada automaticamente");
       }
     }
 
@@ -642,6 +641,38 @@ async function _doDispatchWaCampaign(
       }
     }
     logger.info({ campaignId }, "WA: campanha retomada — continuando envio");
+    return true;
+  }
+
+  // Delay interruptível: dorme em fatias de 2s, checando pausa a cada tick
+  async function interruptibleDelay(ms: number): Promise<boolean> {
+    const nextAt = new Date(Date.now() + ms);
+    await db.update(whatsappCampaignsTable)
+      .set({ nextSendAt: nextAt })
+      .where(eq(whatsappCampaignsTable.id, campaignId));
+
+    const clearNext = () =>
+      db.update(whatsappCampaignsTable)
+        .set({ nextSendAt: null })
+        .where(eq(whatsappCampaignsTable.id, campaignId));
+
+    const slice = 2_000;
+    let left = ms;
+    while (left > 0) {
+      await new Promise((r) => setTimeout(r, Math.min(slice, left)));
+      left -= slice;
+      if (pausedWaCampaigns.has(campaignId)) {
+        await clearNext();
+        const alive = await waitIfPaused();
+        if (!alive) return false;
+      }
+      if (bhStartHour != null && bhEndHour != null && !isWithinBusinessHoursWa(bhStartHour, bhEndHour, bhDays ?? undefined)) {
+        await clearNext();
+        const alive = await waitIfPaused();
+        if (!alive) return false;
+      }
+    }
+    await clearNext();
     return true;
   }
 
@@ -754,7 +785,10 @@ async function _doDispatchWaCampaign(
       logger.warn({ campaignId, phone: contact.phone, error }, "WA: mensagem falhou");
     }
 
-    if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+    if (delayMs > 0) {
+      const alive = await interruptibleDelay(delayMs);
+      if (!alive) return;
+    }
   }
 
   const [finalState] = await db

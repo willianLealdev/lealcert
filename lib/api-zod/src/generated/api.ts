@@ -3475,7 +3475,8 @@ export const GetWaCampaignProgressResponse = zod.object({
   "totalSent": zod.number(),
   "totalFailed": zod.number(),
   "totalContacts": zod.number(),
-  "paused": zod.boolean()
+  "paused": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullish()
 })
 
 

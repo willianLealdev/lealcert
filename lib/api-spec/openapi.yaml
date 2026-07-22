@@ -6421,3 +6421,7 @@ components:
           type: integer
         paused:
           type: boolean
+        nextSendAt:
+          type: string
+          format: date-time
+          nullable: true

@@ -35,3 +35,11 @@ ALTER TABLE marketing_campaigns
   ADD COLUMN IF NOT EXISTS scheduled_dispatch_to integer;
 "
 ```
+
+### 2026-07-22 — Countdown de próximo envio WhatsApp
+```sql
+ALTER TABLE whatsapp_campaigns ADD COLUMN IF NOT EXISTS next_send_at timestamptz;
+```
+```bash
+docker exec lealcert_cert-db-1 psql -U postgres -d lealcert -c "ALTER TABLE whatsapp_campaigns ADD COLUMN IF NOT EXISTS next_send_at timestamptz;"
+```

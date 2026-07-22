@@ -12,4 +12,5 @@ export interface WaProgress {
   totalFailed: number;
   totalContacts: number;
   paused: boolean;
+  nextSendAt?: Date | null;
 }

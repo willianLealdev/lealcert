@@ -1871,6 +1871,7 @@ export interface WaProgress {
   totalFailed: number;
   totalContacts: number;
   paused: boolean;
+  nextSendAt?: string | null;
 }
 
 export type ValidateCrcParams = {

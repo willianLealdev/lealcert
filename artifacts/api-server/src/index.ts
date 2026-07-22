@@ -76,6 +76,8 @@ async function ensureMarketingColumns() {
       ADD COLUMN IF NOT EXISTS manual_pause boolean NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS scheduled_dispatch_from integer,
       ADD COLUMN IF NOT EXISTS scheduled_dispatch_to integer;
+    ALTER TABLE whatsapp_campaigns
+      ADD COLUMN IF NOT EXISTS next_send_at timestamptz;
   `);
 }
 

@@ -119,6 +119,7 @@ export const whatsappCampaignsTable = pgTable("whatsapp_campaigns", {
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),
   scheduledTargetOverride: text("scheduled_target_override"),
+  nextSendAt: timestamp("next_send_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

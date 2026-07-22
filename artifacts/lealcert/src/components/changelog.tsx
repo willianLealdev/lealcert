@@ -15,6 +15,15 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "22/07/2026",
+    version: "1.20",
+    changes: [
+      { type: "fix",     text: "WhatsApp: campanha não fica mais 'Pausada' incorretamente — horário comercial só bloqueia quando configurado; corrigida leitura de valores antigos do banco" },
+      { type: "melhoria", text: "WhatsApp: pausa manual é detectada em até 2 segundos durante o intervalo entre envios — não espera mais o temporizador inteiro para reagir" },
+      { type: "novo",    text: "WhatsApp: countdown ao vivo mostra exatamente quantos segundos faltam para o próximo envio (ex: '· próximo em 47s')" },
+    ],
+  },
+  {
+    date: "22/07/2026",
     version: "1.19",
     changes: [
       { type: "fix", text: "Filtro de provedor (Gmail, Outlook, etc.) agora é salvo corretamente — ao retomar ou agendar a campanha, somente os provedores selecionados recebem" },
