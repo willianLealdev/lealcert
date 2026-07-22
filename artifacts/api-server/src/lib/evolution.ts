@@ -15,6 +15,14 @@ function toE164(phone: string): string {
  * Verifica se um número possui WhatsApp (regular ou Business).
  * Retorna true se o número está ativo no WhatsApp, false caso contrário.
  */
+const EVOLUTION_TIMEOUT_MS = 20_000; // 20s — mata conexões travadas
+
+function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), EVOLUTION_TIMEOUT_MS);
+  return fetch(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 export async function checkHasWhatsApp(
   settings: EvolutionSettings,
   phone: string,
@@ -26,7 +34,7 @@ export async function checkHasWhatsApp(
   const url = `${settings.evolutionUrl.replace(/\/$/, "")}/chat/whatsappNumbers/${settings.evolutionInstance}`;
 
   try {
-    const resp = await fetch(url, {
+    const resp = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -69,7 +77,7 @@ export async function sendWhatsApp(
 
   let resp: Response;
   try {
-    resp = await fetch(url, {
+    resp = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -17,6 +17,8 @@ const CHANGELOG: ChangelogEntry[] = [
     date: "22/07/2026",
     version: "1.20",
     changes: [
+      { type: "fix",     text: "WhatsApp: dispatch não trava mais quando a Evolution API demora para responder — timeout de 20s garante que o loop segue para o próximo contato" },
+      { type: "fix",     text: "WhatsApp: se ocorrer qualquer erro inesperado durante o envio, a campanha passa para 'Pausada' automaticamente — nunca fica presa em 'Enviando' sem fazer nada" },
       { type: "fix",     text: "E-mail: total de contatos agora reflete apenas o provedor selecionado — selecionar só UOL mostra ~3.500, não 92.000" },
       { type: "fix",     text: "WhatsApp: campanha não fica mais 'Pausada' incorretamente — horário comercial só bloqueia quando configurado; corrigida leitura de valores antigos do banco" },
       { type: "melhoria", text: "WhatsApp: pausa manual é detectada em até 2 segundos durante o intervalo entre envios — não espera mais o temporizador inteiro para reagir" },

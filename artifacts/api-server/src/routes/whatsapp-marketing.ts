@@ -502,6 +502,15 @@ async function dispatchWaCampaign(
   activeWaDispatches.add(campaignId);
   try {
     await _doDispatchWaCampaign(campaignId, opts);
+  } catch (err) {
+    logger.error({ campaignId, err }, "WA: erro inesperado no dispatch — pausando campanha para retomada manual");
+    // Deixa campanha como "paused" para o usuário poder retomar, não fica presa em "sending"
+    try {
+      await db.update(whatsappCampaignsTable)
+        .set({ status: "paused", nextSendAt: null })
+        .where(eq(whatsappCampaignsTable.id, campaignId));
+      pausedWaCampaigns.add(campaignId);
+    } catch { /* ignora erro de DB no recovery */ }
   } finally {
     activeWaDispatches.delete(campaignId);
   }
@@ -647,14 +656,17 @@ async function _doDispatchWaCampaign(
   // Delay interruptível: dorme em fatias de 2s, checando pausa a cada tick
   async function interruptibleDelay(ms: number): Promise<boolean> {
     const nextAt = new Date(Date.now() + ms);
+    // DB writes são best-effort — falha não crasha o loop
     await db.update(whatsappCampaignsTable)
       .set({ nextSendAt: nextAt })
-      .where(eq(whatsappCampaignsTable.id, campaignId));
+      .where(eq(whatsappCampaignsTable.id, campaignId))
+      .catch((e: unknown) => logger.warn({ campaignId, e }, "WA: falha ao salvar nextSendAt"));
 
     const clearNext = () =>
       db.update(whatsappCampaignsTable)
         .set({ nextSendAt: null })
-        .where(eq(whatsappCampaignsTable.id, campaignId));
+        .where(eq(whatsappCampaignsTable.id, campaignId))
+        .catch((e: unknown) => logger.warn({ campaignId, e }, "WA: falha ao limpar nextSendAt"));
 
     const slice = 2_000;
     let left = ms;
