@@ -353,7 +353,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <img src={branding.logoUrl || "/logo-oficial-cropped.png"} alt={branding.appName} className="h-14 w-auto object-contain" />
               <button
                 onClick={() => setCollapsed(true)}
-                className="hidden md:flex p-1.5 rounded-lg text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors shrink-0"
+                className="hidden md:flex p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors shrink-0"
                 title="Recolher menu"
               >
                 <PanelLeftClose className="h-4 w-4" />
