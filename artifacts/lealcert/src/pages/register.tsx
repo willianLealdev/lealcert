@@ -355,7 +355,7 @@ export default function Register() {
     >
       <div className="w-full max-w-lg">
         <div className="flex justify-center mb-8">
-          <img src="/logo.png" alt="LealCert" className="h-24 w-auto object-contain" />
+          <img src="/logo.png" alt="LealCert" className="h-56 w-auto object-contain drop-shadow-2xl" />
         </div>
 
         <div
