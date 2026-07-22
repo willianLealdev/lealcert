@@ -16,3 +16,4 @@
 - [Chat login + inline scheduling security](chat-login-security.md) — ACAO:LOGIN_CHAT usa passwordHash (não password); ownership check em __AGENDAR__ e ACAO:AGENDAR: antes de reservar slot; senhas redacted antes de salvar fullResponse no DB.
 - [Changelog obrigatório](changelog-rule.md) — toda alteração feita no sistema deve ser registrada em artifacts/lealcert/src/components/changelog.tsx antes do push.
 - [Logo configuration](logo-config.md) — mapa definitivo de qual logo/tamanho/filtro usar em cada tela; NUNCA alterar sem pedido explícito do usuário.
+- [Docker schema migrations](docker-schema-migrations.md) — OBRIGATÓRIO: toda criação/alteração de tabela/coluna deve gerar SQL docker exec pronto para o usuário rodar na VPS de produção.
