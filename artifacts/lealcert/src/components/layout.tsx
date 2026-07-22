@@ -350,7 +350,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className={`px-3 pt-5 pb-4 border-b border-sidebar-border/50 flex items-center ${collapsed ? "justify-center" : "justify-between gap-2"}`}>
           {!collapsed ? (
             <>
-              <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-16 w-auto object-contain" style={{ filter: "brightness(1.6) drop-shadow(0 0 14px rgba(59,130,246,0.5))" }} />
+              <img src={branding.logoUrl || "/logo-oficial-cropped.png"} alt={branding.appName} className="h-14 w-auto object-contain" />
               <button
                 onClick={() => setCollapsed(true)}
                 className="hidden md:flex p-1.5 rounded-lg text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors shrink-0"

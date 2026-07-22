@@ -101,7 +101,7 @@ export default function VerifyEmail() {
     >
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <img src="/logo.png" alt="LealCert" className="h-24 w-auto object-contain" style={{ filter: "brightness(1.6) drop-shadow(0 0 18px rgba(59,130,246,0.55))" }} />
+          <img src="/logo.png" alt="LealCert" className="h-44 w-auto object-contain" style={{ filter: "brightness(1.6) drop-shadow(0 0 18px rgba(59,130,246,0.55))" }} />
         </div>
 
         <div
