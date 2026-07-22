@@ -217,7 +217,7 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex justify-center mb-8">
-            <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-44 w-auto object-contain" style={{ filter: "brightness(1.6) drop-shadow(0 0 18px rgba(59,130,246,0.55))" }} />
+            <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-24 w-auto object-contain" />
           </div>
 
           <div className="rounded-2xl p-8 shadow-2xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", backdropFilter: "blur(16px)" }}>
