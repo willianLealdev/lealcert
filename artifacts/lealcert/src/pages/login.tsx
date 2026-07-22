@@ -186,7 +186,7 @@ export default function Login() {
   const leftPanel = (
     <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden">
       <div className="relative z-10 flex flex-col items-center text-center space-y-8">
-        <img src={branding.logoUrl || "/logo-novo-transparente.png"} alt={branding.appName} className="h-56 w-auto object-contain" />
+        <img src={branding.logoUrl || "/logo-novo-transparente.png"} alt={branding.appName} className="h-56 w-auto object-contain cursor-pointer" onClick={() => window.location.href = "/"} />
         <p className="text-blue-200/80 text-lg max-w-sm leading-relaxed">
           Plataforma completa para emissão e gerenciamento de certificados digitais com segurança e agilidade.
         </p>
@@ -217,7 +217,7 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex justify-center mb-8">
-            <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-24 w-auto object-contain" />
+            <img src={branding.logoUrl || "/logo.png"} alt={branding.appName} className="h-24 w-auto object-contain cursor-pointer" onClick={() => window.location.href = "/"} />
           </div>
 
           <div className="rounded-2xl p-8 shadow-2xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", backdropFilter: "blur(16px)" }}>
