@@ -384,15 +384,15 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Pausa entre lotes (segundos)</Label>
+              <Label className="text-xs">Pausa entre lotes (minutos)</Label>
               <Input
-                type="number" min={1} placeholder="Ex: 60"
+                type="number" min={1} placeholder="Ex: 14"
                 value={rateInterval} onChange={e => setRateInterval(e.target.value)}
               />
             </div>
             {rateBatch && rateInterval && (
               <p className="text-xs text-muted-foreground bg-muted rounded p-2">
-                → {parseInt(rateBatch)} e-mails a cada ~{Math.round(parseInt(rateInterval) * 0.7)}–{Math.round(parseInt(rateInterval) * 1.3)}s (com jitter ±30%)
+                → {parseInt(rateBatch)} e-mails a cada ~{Math.round(parseInt(rateInterval) * 0.7)}–{Math.round(parseInt(rateInterval) * 1.3)} min (com jitter ±30%)
               </p>
             )}
           </div>
@@ -403,7 +403,7 @@ function CampaignProgress({ campaignId, onComplete, invalidate, toast }: {
               disabled={rateMutation.isPending || (!rateBatch && !rateInterval)}
               onClick={() => rateMutation.mutate({ id: campaignId, data: {
                 ...(rateBatch ? { sendBatchSize: parseInt(rateBatch) } : {}),
-                ...(rateInterval ? { sendIntervalSecs: parseInt(rateInterval) } : {}),
+                ...(rateInterval ? { sendIntervalSecs: parseInt(rateInterval) * 60 } : {}),
               }})}
             >
               {rateMutation.isPending ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Aplicar"}
