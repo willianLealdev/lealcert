@@ -707,11 +707,68 @@ export default function ComprarPage() {
 
   const submitCortesia = async () => {
     setPay(p => ({ ...p, loading: true, error: null, method: "cortesia" }));
+
+    const holderNome = isCnpjCert ? dados.repNome : dados.nome;
+    const repDocEmissor = dados.repDocTipo !== "0" && dados.repDocOrgan && dados.repDocUf
+      ? (dados.repDocOrgan + dados.repDocUf).toUpperCase() : undefined;
+
+    const payload: Record<string, unknown> = {
+      certificateId: Number(certId),
+      personType: isCnpjCert ? "juridica" : "fisica",
+      cpf: digits(bio.cpf),
+      dataNascimento: parseBrDate(bio.dataNascimento),
+      hasPsbio: bio.hasPsbio,
+      customerName: holderNome,
+      customerEmail: dados.email,
+      customerPhone: digits(dados.phone),
+      customerBirthDate: !isCnpjCert && dados.customerBirthDate ? parseBrDate(dados.customerBirthDate) : undefined,
+      customerCpfCnpj: isCnpjCert ? digits(dados.cpfCnpj) : undefined,
+      companyName: isCnpjCert ? dados.razaoSocial : undefined,
+      inssNumber: dados.repNumeroTipo === "pis" ? dados.inssNumber || undefined : undefined,
+      customerCei: dados.repNumeroTipo === "cei" ? dados.customerCei || undefined : undefined,
+      customerNis: dados.repNumeroTipo === "nis" ? dados.customerNis || undefined : undefined,
+      addressZipcode: digits(dados.repAddressZipcode) || undefined,
+      addressStreet: dados.repAddressStreet || undefined,
+      addressNumber: dados.repAddressNumber || undefined,
+      addressComplement: dados.repAddressComplement || undefined,
+      addressNeighborhood: dados.repAddressNeighborhood || undefined,
+      addressCity: dados.repAddressCity || undefined,
+      addressState: dados.repAddressState || undefined,
+      addressIbge: dados.repAddressIbge || undefined,
+      representanteCpf: digits(bio.cpf) || undefined,
+      representanteNascimento: isCnpjCert
+        ? (dados.repBirthDate ? parseBrDate(dados.repBirthDate) : parseBrDate(bio.dataNascimento))
+        : (dados.customerBirthDate ? parseBrDate(dados.customerBirthDate) : undefined),
+      representanteAddressZipcode: digits(dados.repAddressZipcode) || undefined,
+      representanteAddressStreet: dados.repAddressStreet || undefined,
+      representanteAddressNumber: dados.repAddressNumber || undefined,
+      representanteAddressComplement: dados.repAddressComplement || undefined,
+      representanteAddressNeighborhood: dados.repAddressNeighborhood || undefined,
+      representanteAddressCity: dados.repAddressCity || undefined,
+      representanteAddressState: dados.repAddressState || undefined,
+      representanteDocTipo: dados.repDocTipo !== "0" ? dados.repDocTipo : undefined,
+      representanteDocNumero: dados.repDocTipo !== "0" ? dados.repDocNumero || undefined : undefined,
+      representanteDocEmissor: repDocEmissor,
+      nfCnpj: nf.sameAsHolder ? (isCnpjCert ? digits(dados.cpfCnpj) : digits(bio.cpf)) || undefined : digits(nf.nfCpfCnpj) || undefined,
+      nfNome: nf.sameAsHolder ? (isCnpjCert ? dados.razaoSocial : dados.nome) || undefined : nf.nfNome || undefined,
+      nfZipcode: nf.sameAsHolder ? digits(dados.repAddressZipcode) || undefined : digits(nf.nfZipcode) || undefined,
+      nfStreet: nf.sameAsHolder ? dados.repAddressStreet || undefined : nf.nfStreet || undefined,
+      nfNumber: nf.sameAsHolder ? dados.repAddressNumber || undefined : nf.nfNumber || undefined,
+      nfComplement: nf.sameAsHolder ? dados.repAddressComplement || undefined : nf.nfComplement || undefined,
+      nfNeighborhood: nf.sameAsHolder ? dados.repAddressNeighborhood || undefined : nf.nfNeighborhood || undefined,
+      nfCity: nf.sameAsHolder ? dados.repAddressCity || undefined : nf.nfCity || undefined,
+      nfState: nf.sameAsHolder ? dados.repAddressState || undefined : nf.nfState || undefined,
+      paymentMethod: "cortesia",
+      termsAccepted: true,
+      extendedWarranty: dados.extendedWarranty,
+      existingUserId: existingUserId ?? undefined,
+    };
+
     try {
-      const r = await fetch("/api/loyalty/checkout-cortesia", {
+      const r = await fetch("/api/public/checkout/submit", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ certificateId: Number(certId) }),
+        body: JSON.stringify(payload),
       });
       const data = await r.json();
       if (!r.ok) {
@@ -723,7 +780,7 @@ export default function ComprarPage() {
         orderId: data.orderId,
         orderNumber: data.orderNumber,
         pixQr: null, pixCode: null, boletoUrl: null, boletoBarcode: null,
-        isNewUser: false, loading: false, error: null,
+        isNewUser: data.isNewUser ?? false, loading: false, error: null,
       });
       await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       setStep("processando");

@@ -508,14 +508,14 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Boleto disponível apenas para valores acima de R$ 125,00." });
     return;
   }
-  if (!["pix", "boleto", "cartao"].includes(paymentMethod)) {
+  if (!["pix", "boleto", "cartao", "cortesia"].includes(paymentMethod)) {
     res.status(400).json({ error: "Método de pagamento inválido." });
     return;
   }
 
   const [settings] = await db.select().from(settingsTable).limit(1);
   const mpToken = settings?.mpAccessToken || "";
-  if (!mpToken) { res.status(500).json({ error: "Sistema de pagamento não configurado. Contacte o suporte." }); return; }
+  if (paymentMethod !== "cortesia" && !mpToken) { res.status(500).json({ error: "Sistema de pagamento não configurado. Contacte o suporte." }); return; }
   const siteUrl = settings?.siteUrl || "https://lealcert.com.br";
 
   // Find or create user account
@@ -660,6 +660,39 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
   if (isNewUser) {
     sendWelcomeEmail(emailTo, emailName, "cliente")
       .catch((err: unknown) => logger.error({ err }, "checkout: erro ao enviar email boas-vindas"));
+  }
+
+  // ── Cortesia: pula MercadoPago, usa fidelidade ───────────────────────────
+  if (paymentMethod === "cortesia") {
+    const { getAvailableCortesias, useCorteisa } = await import("../lib/loyalty");
+    const available = await getAvailableCortesias(userId);
+    if (available < 1) {
+      // Reverter pedido criado
+      await db.delete(ordersTable).where(eq(ordersTable.id, order.id));
+      res.status(400).json({ error: "Nenhuma cortesia disponível. Complete 10 certificados para desbloquear." });
+      return;
+    }
+    const cartelaId = await useCorteisa(userId, order.id);
+    if (!cartelaId) {
+      await db.delete(ordersTable).where(eq(ordersTable.id, order.id));
+      res.status(400).json({ error: "Falha ao usar cortesia. Tente novamente." });
+      return;
+    }
+    await db.update(ordersTable)
+      .set({ status: "paid", paymentMethod: "cortesia", total: "0" })
+      .where(eq(ordersTable.id, order.id));
+
+    const activeProvider = settings?.activeProvider ?? "gestaoar";
+    if (activeProvider === "safeweb") {
+      const { swAutoComprar } = await import("../lib/sw-auto");
+      swAutoComprar(order.id).catch((err: unknown) => logger.error({ err }, "checkout cortesia: erro sw-auto"));
+    } else {
+      const { garAutoComprar } = await import("../lib/gar-auto");
+      garAutoComprar(order.id).catch((err: unknown) => logger.error({ err }, "checkout cortesia: erro gar-auto"));
+    }
+    logger.info({ userId, orderId: order.id, cartelaId }, "checkout: cortesia aplicada");
+    res.json({ orderId: order.id, orderNumber: order.orderNumber, isNewUser });
+    return;
   }
 
   // Generate payment

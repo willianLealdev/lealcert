@@ -264,19 +264,19 @@ export default function Landing() {
           <div className="flex items-center">
             <LealCertLogo variant="dark" />
           </div>
-          <div className="hidden md:flex items-center gap-1 text-sm font-medium text-gray-600">
-            <a href="#certificados" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Certificados</a>
-            <a href="#como-funciona" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Como Funciona</a>
-            <a href="#sobre" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Por que nós</a>
-            <a href="#avaliacoes" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Avaliações</a>
-            <a href="#contato" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Contato</a>
+          <div className="hidden md:flex items-center gap-0.5 text-sm font-medium text-gray-600">
+            <a href="#certificados" className="px-2.5 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors whitespace-nowrap">Certificados</a>
+            <a href="#como-funciona" className="px-2.5 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors whitespace-nowrap">Como Funciona</a>
+            <a href="#sobre" className="px-2.5 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors whitespace-nowrap">Por que nós</a>
+            <a href="#avaliacoes" className="px-2.5 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors whitespace-nowrap">Avaliações</a>
+            <a href="#contato" className="px-2.5 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors whitespace-nowrap">Contato</a>
             {/* Destaque para contadores */}
             <a
               href="/contadores"
-              className="ml-2 flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold text-xs px-3.5 py-2 rounded-full transition-colors shadow-sm"
+              className="ml-2 flex items-center gap-1 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold text-xs px-3 py-2 rounded-full transition-colors shadow-sm whitespace-nowrap"
             >
               <span>⭐</span>
-              <span>Sou Contador</span>
+              <span>Contador</span>
             </a>
           </div>
           <div className="flex items-center gap-3">
