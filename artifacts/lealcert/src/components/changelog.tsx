@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "02/08/2026",
+    version: "1.23",
+    changes: [
+      { type: "fix", text: "GAR: scheduler agora atualiza o status de pedidos que já têm protocolo — antes o sync parava em 'Agendado' e nunca detectava o certificado emitido automaticamente" },
+    ],
+  },
+  {
+    date: "02/08/2026",
     version: "1.22",
     changes: [
       { type: "novo", text: "Página de captação para contadores (/contadores): funil de vendas com preço de R$ 90/certificado, programa de cortesia a cada 10 emitidos, benefícios, portal de gestão e requisitos — com CTA para cadastro pré-selecionado como contador" },

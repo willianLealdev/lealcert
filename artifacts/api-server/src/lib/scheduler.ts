@@ -1,5 +1,5 @@
 import { eq, lte, and, isNotNull, notInArray, gte, lt } from "drizzle-orm";
-import { db, marketingCampaignsTable, ordersTable, settingsTable, certificatesTable, usersTable, type InsertOrder } from "@workspace/db";
+import { db, marketingCampaignsTable, ordersTable, settingsTable, certificatesTable, usersTable, certificateRenewalsTable, type InsertOrder } from "@workspace/db";
 import { logger } from "./logger";
 import { dispatchCampaign } from "../routes/marketing";
 import { sendDailySalesReport } from "./email";
@@ -149,9 +149,10 @@ async function syncSafewebStatuses() {
 }
 
 // ── GAR Protocol Sync ─────────────────────────────────────────────────────────
-// Roda a cada 5 minutos. Para pedidos que têm garPedido mas ainda não têm
-// garProtocolo, tenta (re)emitir o protocolo ou puxa do ConsultaPedidoProtocolo
-// o protocolo gerado manualmente no portal GAR.
+// Roda a cada 5 minutos.
+// Fase 1: pedidos SEM protocolo — tenta emitir ou puxa protocolo do portal GAR.
+// Fase 2: pedidos COM protocolo mas não concluídos — consulta status GAR e
+//         atualiza o pedido (inclusive detecta "Emitido" → completed).
 let garProtocolSyncRunning = false;
 
 async function syncGarProtocols() {
@@ -162,8 +163,8 @@ async function syncGarProtocols() {
     if (!settings?.garApiKey) return;
     if ((settings.activeProvider ?? "gestaoar") !== "gestaoar") return;
 
-    // Pedidos com garPedido mas sem protocolo e em status não-final
-    const stuck = await db
+    // Todos os pedidos GAR ativos (não-finais)
+    const activeGarOrders = await db
       .select()
       .from(ordersTable)
       .where(and(
@@ -171,52 +172,137 @@ async function syncGarProtocols() {
         notInArray(ordersTable.status, ["cancelled", "completed", "revogado"]),
       ));
 
-    const stuckWithoutProtocol = stuck.filter(o => !o.garProtocolo);
-    if (stuckWithoutProtocol.length === 0) return;
-
-    logger.info({ count: stuckWithoutProtocol.length }, "GAR protocol sync: pedidos sem protocolo encontrados");
+    if (activeGarOrders.length === 0) return;
 
     const { garConsultarStatus } = await import("./gestaoar");
     const { emitirProtocoloEHope } = await import("./gar-auto");
-    const { logEvent } = await import("../lib/order-events");
+    const { logEvent, isGarStatusEmitido } = await import("../lib/order-events");
 
-    for (const order of stuckWithoutProtocol) {
-      if (!order.garPedido) continue;
-      try {
-        // 1) Consultar GAR: se o admin gerou o protocolo manualmente no portal
-        const statusResult = await garConsultarStatus(settings.garApiKey!, order.garPedido);
-        const protocolo = statusResult.Protocolo ?? null;
+    const withoutProtocol = activeGarOrders.filter(o => !o.garProtocolo);
+    const withProtocol    = activeGarOrders.filter(o =>  o.garProtocolo);
 
-        if (protocolo) {
-          // Protocolo já existe no GAR — salvar no sistema e gerar Hope
-          logger.info({ orderId: order.id, protocolo }, "GAR protocol sync: protocolo encontrado no GAR, sincronizando");
+    // ── Fase 1: pedidos sem protocolo ─────────────────────────────────────────
+    if (withoutProtocol.length > 0) {
+      logger.info({ count: withoutProtocol.length }, "GAR protocol sync: pedidos sem protocolo");
+      for (const order of withoutProtocol) {
+        if (!order.garPedido) continue;
+        try {
+          const statusResult = await garConsultarStatus(settings.garApiKey!, order.garPedido);
+          const protocolo = statusResult.Protocolo ?? null;
 
-          let garHopeUploadUrl: string | null = null;
-          try {
-            const swSettings = { url: settings.safewebUrl ?? "", username: settings.safewebUsername ?? "", password: settings.safewebPassword ?? "" };
-            if (swSettings.url && swSettings.username && swSettings.password) {
-              const { swHopeSolicitation } = await import("./safeweb");
-              const hopeResult = await swHopeSolicitation(swSettings, protocolo);
-              garHopeUploadUrl = hopeResult.url ?? null;
+          if (protocolo) {
+            logger.info({ orderId: order.id, protocolo }, "GAR protocol sync: protocolo encontrado no GAR, sincronizando");
+            let garHopeUploadUrl: string | null = null;
+            try {
+              const swSettings = { url: settings.safewebUrl ?? "", username: settings.safewebUsername ?? "", password: settings.safewebPassword ?? "" };
+              if (swSettings.url && swSettings.username && swSettings.password) {
+                const { swHopeSolicitation } = await import("./safeweb");
+                const hopeResult = await swHopeSolicitation(swSettings, protocolo);
+                garHopeUploadUrl = hopeResult.url ?? null;
+              }
+            } catch (hopeErr) {
+              logger.warn({ err: hopeErr, orderId: order.id }, "GAR protocol sync: falha ao criar Hope solicitation");
             }
-          } catch (hopeErr) {
-            logger.warn({ err: hopeErr, orderId: order.id }, "GAR protocol sync: falha ao criar Hope solicitation");
+            await db.update(ordersTable).set({
+              garProtocolo: protocolo,
+              garHopeUploadUrl,
+              garStatus: "Protocolo emitido",
+              status: "protocol_assigned",
+            }).where(eq(ordersTable.id, order.id));
+            await logEvent(order.id, "gar_protocol_emitted", `Protocolo sincronizado do GAR: ${protocolo}`, { protocolo, garPedido: order.garPedido });
+          } else {
+            await emitirProtocoloEHope(order.id, order, settings);
           }
-
-          await db.update(ordersTable).set({
-            garProtocolo: protocolo,
-            garHopeUploadUrl,
-            garStatus: "Protocolo emitido",
-            status: "protocol_assigned",
-          }).where(eq(ordersTable.id, order.id));
-
-          await logEvent(order.id, "gar_protocol_emitted", `Protocolo sincronizado do GAR: ${protocolo}`, { protocolo, garPedido: order.garPedido });
-        } else {
-          // 2) Protocolo ainda não gerado no GAR — tentar emitir automaticamente
-          await emitirProtocoloEHope(order.id, order, settings);
+        } catch (err) {
+          logger.error({ err, orderId: order.id }, "GAR protocol sync: erro ao sincronizar pedido sem protocolo");
         }
-      } catch (err) {
-        logger.error({ err, orderId: order.id }, "GAR protocol sync: erro ao sincronizar pedido");
+      }
+    }
+
+    // ── Fase 2: pedidos COM protocolo — atualiza status GAR ──────────────────
+    // BUG FIX: antes o scheduler ignorava estes pedidos completamente, fazendo
+    // com que o status parasse em "Agendado" mesmo após o certificado ser emitido.
+    if (withProtocol.length > 0) {
+      logger.info({ count: withProtocol.length }, "GAR status sync: pedidos com protocolo aguardando atualização");
+      for (const order of withProtocol) {
+        if (!order.garPedido) continue;
+        try {
+          const statusResult = await garConsultarStatus(settings.garApiKey!, order.garPedido);
+          const newGarStatus = statusResult.StatusPedido ?? null;
+          const newProtocolo = statusResult.Protocolo ?? order.garProtocolo;
+
+          if (!newGarStatus) continue;
+
+          const wasEmitido = isGarStatusEmitido(newGarStatus) && order.status !== "completed";
+
+          if (wasEmitido) {
+            // Certificado emitido — concluir pedido e registrar renovação
+            const [certRow] = await db
+              .select({ validityMonths: certificatesTable.validityMonths, name: certificatesTable.name })
+              .from(certificatesTable)
+              .where(eq(certificatesTable.id, order.certificateId!))
+              .limit(1);
+            const validityMonths = certRow?.validityMonths ?? 12;
+            const emittedAt = new Date();
+            const expiresAt = new Date(emittedAt);
+            expiresAt.setMonth(expiresAt.getMonth() + validityMonths);
+
+            const [existingRenewal] = await db
+              .select({ id: certificateRenewalsTable.id })
+              .from(certificateRenewalsTable)
+              .where(eq(certificateRenewalsTable.orderId, order.id))
+              .limit(1);
+
+            if (!existingRenewal) {
+              await db.insert(certificateRenewalsTable).values({
+                orderId: order.id,
+                customerName: order.customerName,
+                customerCpfCnpj: order.customerCpfCnpj,
+                customerEmail: order.customerEmail ?? null,
+                certificateName: certRow?.name ?? "Certificado Digital",
+                garPedido: order.garPedido,
+                garProtocolo: newProtocolo ?? null,
+                validityMonths,
+                emittedAt,
+                expiresAt,
+              });
+            }
+
+            await db.update(ordersTable).set({
+              garStatus: newGarStatus,
+              garProtocolo: newProtocolo,
+              garSyncedAt: new Date(),
+              status: "completed",
+            }).where(eq(ordersTable.id, order.id));
+
+            await logEvent(order.id, "certificate_emitted", `Certificado emitido (sync automático) — status GAR: ${newGarStatus}`, { garStatus: newGarStatus, protocolo: newProtocolo });
+            await logEvent(order.id, "order_completed", "Pedido concluído automaticamente — certificado emitido detectado pelo scheduler");
+
+            notifyOrderStatus({
+              to: order.customerEmail,
+              phone: order.customerPhone,
+              customerName: order.customerName,
+              orderNumber: order.orderNumber,
+              status: "completed",
+              certName: certRow?.name,
+              protocolNumber: newProtocolo ?? undefined,
+            }).catch((err: unknown) => logger.error({ err }, "GAR status sync: erro ao notificar conclusão"));
+
+            logger.info({ orderId: order.id, garStatus: newGarStatus }, "GAR status sync: certificado emitido — pedido concluído automaticamente");
+
+          } else if (newGarStatus !== order.garStatus) {
+            // Status mudou mas ainda não emitido — apenas atualizar
+            await db.update(ordersTable).set({
+              garStatus: newGarStatus,
+              garProtocolo: newProtocolo,
+              garSyncedAt: new Date(),
+            }).where(eq(ordersTable.id, order.id));
+            await logEvent(order.id, "gar_status_updated", `Status GAR atualizado (sync automático): ${order.garStatus ?? "—"} → ${newGarStatus}`, { garStatus: newGarStatus });
+            logger.info({ orderId: order.id, from: order.garStatus, to: newGarStatus }, "GAR status sync: status atualizado");
+          }
+        } catch (err) {
+          logger.error({ err, orderId: order.id }, "GAR status sync: erro ao atualizar pedido com protocolo");
+        }
       }
     }
   } catch (err) {
