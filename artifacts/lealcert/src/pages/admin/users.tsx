@@ -21,6 +21,7 @@ const EMPTY: UserForm = { name: "", email: "", cpfCnpj: "", phone: "", tipo: "cl
 
 function tipoFromUser(u: { role: string; userType?: string | null }): string {
   if (u.role === "admin") return "admin";
+  if (u.role === "vendedor") return "vendedor";
   return u.userType === "contador" ? "contador" : "cliente";
 }
 function roleFromTipo(tipo: string): "admin" | "contador" { return tipo === "admin" ? "admin" : "contador"; }
@@ -44,7 +45,7 @@ function Field({ label, value }: { label: string; value: string | null | undefin
 
 function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => void }) {
   const tipo = tipoFromUser(user);
-  const tipoLabel = tipo === "admin" ? "Administrador" : tipo === "contador" ? "Contador" : "Cliente";
+  const tipoLabel = tipo === "admin" ? "Administrador" : tipo === "vendedor" ? "Vendedor" : tipo === "contador" ? "Contador" : "Cliente";
 
   const hasAddress = user.zipCode || user.street || user.city;
   const hasPJ = user.companyCnpj || user.companyName;
@@ -215,14 +216,14 @@ export default function AdminUsers() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users?.map(u => (
+                  {users?.filter(u => u.role !== "vendedor").map(u => (
                     <tr key={u.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3 font-medium">{u.name}</td>
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground hidden md:table-cell">{u.cpfCnpj}</td>
                       <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{u.email ?? "—"}</td>
                       <td className="px-4 py-3">
                         <Badge variant={u.role === "admin" ? "default" : "secondary"}>
-                          {tipoFromUser(u) === "admin" ? "Admin" : tipoFromUser(u) === "contador" ? "Contador" : "Cliente"}
+                          {tipoFromUser(u) === "admin" ? "Admin" : tipoFromUser(u) === "vendedor" ? "Vendedor" : tipoFromUser(u) === "contador" ? "Contador" : "Cliente"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">

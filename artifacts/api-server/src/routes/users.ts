@@ -149,6 +149,13 @@ router.delete("/users/:id", requireAdmin, async (req, res): Promise<void> => {
     await client.query("BEGIN");
     // Pedidos: preserva o histórico reatribuindo ao admin
     await client.query("UPDATE orders SET user_id = $1 WHERE user_id = $2", [adminId, id]);
+    // Loyalty: remove eventos e cartela do usuário
+    await client.query("DELETE FROM loyalty_slot_events WHERE user_id = $1", [id]);
+    await client.query("DELETE FROM loyalty_cartelas WHERE user_id = $1", [id]);
+    // Avaliações: anula referência (coluna nullable)
+    await client.query("UPDATE reviews SET user_id = NULL WHERE user_id = $1", [id]);
+    // Contadores vinculados a este vendedor: desvincula
+    await client.query("UPDATE users SET vendedor_id = NULL WHERE vendedor_id = $1", [id]);
     // Mensagens de tickets do usuário: exclui antes dos tickets
     await client.query("DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE user_id = $1)", [id]);
     // Mensagens enviadas pelo usuário em outros tickets: reatribui ao admin
@@ -163,7 +170,7 @@ router.delete("/users/:id", requireAdmin, async (req, res): Promise<void> => {
     // Referências nullable em ip_blocks e ip_whitelist
     await client.query("UPDATE ip_blocks SET unblocked_by = NULL WHERE unblocked_by = $1", [id]);
     await client.query("UPDATE ip_whitelist SET added_by = NULL WHERE added_by = $1", [id]);
-    // Por fim, remove o usuário
+    // Por fim, remove o usuário (vendedores e vendedor_pagamentos têm CASCADE)
     await client.query("DELETE FROM users WHERE id = $1", [id]);
     await client.query("COMMIT");
     res.sendStatus(204);

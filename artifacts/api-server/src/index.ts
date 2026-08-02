@@ -95,6 +95,18 @@ async function ensureVendedoresSchema() {
       updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  // Tabela vendedor_pagamentos
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS vendedor_pagamentos (
+      id                SERIAL PRIMARY KEY,
+      vendedor_id       INTEGER NOT NULL REFERENCES vendedores(id) ON DELETE CASCADE,
+      valor             NUMERIC(10,2) NOT NULL,
+      data_pagamento    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      observacao        TEXT,
+      criado_por_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 }
 
 async function ensureMarketingColumns() {
