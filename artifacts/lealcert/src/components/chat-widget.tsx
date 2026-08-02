@@ -545,7 +545,7 @@ export function ChatWidget() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-[#2563eb] text-white px-5 py-3.5 rounded-full shadow-2xl hover:bg-blue-700 transition-all duration-200 hover:scale-105 active:scale-95 group"
+        className="fixed bottom-20 right-6 z-50 flex items-center gap-2.5 bg-[#2563eb] text-white px-5 py-3.5 rounded-full shadow-2xl hover:bg-blue-700 transition-all duration-200 hover:scale-105 active:scale-95 group"
         aria-label="Abrir chat de vendas"
       >
         <MessageCircle className="h-5 w-5" />
