@@ -278,6 +278,25 @@ router.post("/admin/vendedores/:id/reset-password", requireAdmin, async (req, re
   res.json({ message: "Senha redefinida e e-mail enviado.", tempPassword });
 });
 
+// ── POST /admin/vendedores/:id/resend-welcome ────────────────────────────────
+router.post("/admin/vendedores/:id/resend-welcome", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(String(req.params.id));
+  const [user] = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+    .from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!user) { res.status(404).json({ error: "Vendedor não encontrado." }); return; }
+  if (!user.email) { res.status(400).json({ error: "Vendedor não possui e-mail cadastrado." }); return; }
+
+  const tempPassword = generateTempPassword();
+  const passwordHash = await bcrypt.hash(tempPassword, 10);
+  await db.update(usersTable).set({ passwordHash, mustChangePassword: true }).where(eq(usersTable.id, id));
+
+  await sendVendedorWelcomeEmail(user.email, user.name, tempPassword).catch(err =>
+    logger.error({ err }, "Erro ao reenviar email de boas-vindas ao vendedor")
+  );
+
+  res.json({ message: "E-mail de boas-vindas reenviado com nova senha provisória.", tempPassword });
+});
+
 // ── GET /admin/vendedores/:id/pagamentos ─────────────────────────────────────
 router.get("/admin/vendedores/:id/pagamentos", requireAdmin, async (req, res): Promise<void> => {
   const userId = Number(String(req.params.id));

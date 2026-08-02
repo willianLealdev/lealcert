@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Loader2, Copy, RefreshCw, Eye, DollarSign, Wallet, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Copy, RefreshCw, Eye, DollarSign, Wallet, CheckCircle, ChevronDown, ChevronUp, Mail } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
 type VendedorRow = {
@@ -104,6 +104,18 @@ function useResetPassword(opts?: { onSuccess?: (data: { tempPassword: string }) 
   return useMutation<{ tempPassword: string }, Error, number>({
     mutationFn: async (id) => {
       const res = await apiFetch(`/api/admin/vendedores/${id}/reset-password`, { method: "POST" });
+      if (!res.ok) { const t = await res.json().catch(() => ({ error: res.statusText })); throw new Error(t.error ?? "Erro"); }
+      return res.json();
+    },
+    onSuccess: opts?.onSuccess,
+    onError: opts?.onError,
+  });
+}
+
+function useResendWelcome(opts?: { onSuccess?: () => void; onError?: (e: Error) => void }) {
+  return useMutation<{ tempPassword: string }, Error, number>({
+    mutationFn: async (id) => {
+      const res = await apiFetch(`/api/admin/vendedores/${id}/resend-welcome`, { method: "POST" });
       if (!res.ok) { const t = await res.json().catch(() => ({ error: res.statusText })); throw new Error(t.error ?? "Erro"); }
       return res.json();
     },
@@ -350,6 +362,7 @@ export default function AdminVendedores() {
   const updateVendedor = useUpdateVendedor({ onSuccess: () => { toast({ title: "Vendedor atualizado!" }); setOpen(false); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) });
   const deleteVendedor = useDeleteVendedor({ onSuccess: () => { toast({ title: "Vendedor removido." }); setDeleteId(null); } });
   const resetPassword = useResetPassword({ onSuccess: (d) => toast({ title: "Senha redefinida!", description: `Nova senha temporária: ${d.tempPassword}` }), onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) });
+  const resendWelcome = useResendWelcome({ onSuccess: () => toast({ title: "E-mail reenviado!", description: "E-mail de boas-vindas enviado com nova senha provisória." }), onError: e => toast({ title: "Erro ao reenviar e-mail", description: getApiError(e), variant: "destructive" }) });
 
   function openCreate() { setForm(EMPTY); setEditId(null); setOpen(true); }
   function openEdit(v: VendedorRow) {
@@ -462,6 +475,7 @@ export default function AdminVendedores() {
                           <Button variant="ghost" size="icon" title="Ver detalhes" onClick={() => setViewVendedor(v)}><Eye className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" title="Copiar link de afiliado" onClick={() => copyLink(v.affiliateCode)}><Copy className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(v)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" title="Reenviar e-mail de boas-vindas" disabled={resendWelcome.isPending} onClick={() => resendWelcome.mutate(v.id)}><Mail className="h-4 w-4 text-blue-500" /></Button>
                           <Button variant="ghost" size="icon" title="Reset senha" disabled={resetPassword.isPending} onClick={() => resetPassword.mutate(v.id)}><RefreshCw className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Remover" onClick={() => setDeleteId(v.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>

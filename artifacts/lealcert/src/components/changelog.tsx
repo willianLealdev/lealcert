@@ -15,6 +15,16 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "02/08/2026",
+    version: "1.29",
+    changes: [
+      { type: "fix", text: "Remoção de usuários corrigida: deleção travava em FK de loyalty, cartelas e vendedor_id — todas as dependências agora limpas antes de excluir" },
+      { type: "fix", text: "Tabela vendedor_pagamentos agora criada automaticamente no startup (ausência causava erro 500 em /admin/vendedores)" },
+      { type: "fix", text: "Vendedores não aparecem mais na lista de /admin/usuários — gerenciados exclusivamente em /admin/vendedores" },
+      { type: "novo", text: "Botão 'Reenviar E-mail' (ícone envelope) na lista de vendedores: reenvia o e-mail de boas-vindas com nova senha provisória a qualquer momento" },
+    ],
+  },
+  {
+    date: "02/08/2026",
     version: "1.28",
     changes: [
       { type: "novo", text: "Controle de pagamentos de comissão: admin registra pagamentos realizados a cada vendedor (valor, data, observação) diretamente em /admin/vendedores" },
