@@ -282,6 +282,16 @@ router.get("/vendedor/pagamentos", requireVendedor, async (req, res): Promise<vo
   const ctx = await getVendedorCtx(userId);
   if (!ctx) { res.status(404).json({ error: "Vendedor não encontrado." }); return; }
 
+  const { from, to } = req.query;
+
+  const conditions = [eq(vendedorPagamentosTable.vendedorId, ctx.vendedorId)];
+  if (from) conditions.push(gte(vendedorPagamentosTable.dataPagamento, new Date(String(from))));
+  if (to) {
+    const toDate = new Date(String(to));
+    toDate.setHours(23, 59, 59, 999);
+    conditions.push(lte(vendedorPagamentosTable.dataPagamento, toDate));
+  }
+
   const pagamentos = await db
     .select({
       id: vendedorPagamentosTable.id,
@@ -291,7 +301,7 @@ router.get("/vendedor/pagamentos", requireVendedor, async (req, res): Promise<vo
       createdAt: vendedorPagamentosTable.createdAt,
     })
     .from(vendedorPagamentosTable)
-    .where(eq(vendedorPagamentosTable.vendedorId, ctx.vendedorId))
+    .where(and(...conditions))
     .orderBy(desc(vendedorPagamentosTable.dataPagamento));
 
   res.json(pagamentos);

@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Star, Wallet, CheckCircle, Receipt } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { DollarSign, TrendingUp, Star, Wallet, CheckCircle, Receipt, Filter, X } from "lucide-react";
 
 type GanhosData = {
   meses: { mes: string; certsEmitidos: number; ganho: number }[];
@@ -36,11 +39,15 @@ function useGanhos() {
   });
 }
 
-function usePagamentos() {
+function usePagamentos(from: string, to: string) {
   return useQuery<Pagamento[]>({
-    queryKey: ["vendedor-pagamentos"],
+    queryKey: ["vendedor-pagamentos", from, to],
     queryFn: async () => {
-      const res = await apiFetch("/api/vendedor/pagamentos");
+      const params = new URLSearchParams();
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      const qs = params.toString();
+      const res = await apiFetch(`/api/vendedor/pagamentos${qs ? `?${qs}` : ""}`);
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -59,7 +66,25 @@ function fmtMes(mes: string) {
 
 export default function VendedorGanhos() {
   const { data, isLoading } = useGanhos();
-  const { data: pagamentos, isLoading: pagLoading } = usePagamentos();
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
+  const [appliedFrom, setAppliedFrom] = useState("");
+  const [appliedTo, setAppliedTo] = useState("");
+  const { data: pagamentos, isLoading: pagLoading } = usePagamentos(appliedFrom, appliedTo);
+
+  function applyFilter() {
+    setAppliedFrom(filterFrom);
+    setAppliedTo(filterTo);
+  }
+
+  function clearFilter() {
+    setFilterFrom("");
+    setFilterTo("");
+    setAppliedFrom("");
+    setAppliedTo("");
+  }
+
+  const isFiltered = appliedFrom !== "" || appliedTo !== "";
 
   if (isLoading) return <div className="py-10 text-center text-muted-foreground">Carregando...</div>;
   if (!data) return <div className="py-10 text-center text-muted-foreground">Erro ao carregar dados.</div>;
@@ -199,16 +224,49 @@ export default function VendedorGanhos() {
       {/* Histórico de pagamentos recebidos */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-emerald-500" />
-            Pagamentos Recebidos
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <CardTitle className="text-base flex items-center gap-2 shrink-0">
+              <Receipt className="h-4 w-4 text-emerald-500" />
+              Pagamentos Recebidos
+            </CardTitle>
+            <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+              <div className="flex items-center gap-1.5">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <Input
+                  type="date"
+                  value={filterFrom}
+                  onChange={e => setFilterFrom(e.target.value)}
+                  className="h-8 text-xs w-36"
+                  placeholder="De"
+                />
+                <span className="text-muted-foreground text-xs">até</span>
+                <Input
+                  type="date"
+                  value={filterTo}
+                  onChange={e => setFilterTo(e.target.value)}
+                  className="h-8 text-xs w-36"
+                  placeholder="Até"
+                />
+              </div>
+              <Button size="sm" variant="default" className="h-8 text-xs px-3" onClick={applyFilter}>
+                Filtrar
+              </Button>
+              {isFiltered && (
+                <Button size="sm" variant="ghost" className="h-8 text-xs px-2 text-muted-foreground" onClick={clearFilter}>
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Limpar
+                </Button>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {pagLoading ? (
             <div className="text-center py-6 text-muted-foreground text-sm">Carregando...</div>
           ) : !pagamentos || pagamentos.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">Nenhum pagamento registrado ainda.</div>
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              {isFiltered ? "Nenhum pagamento encontrado nesse período." : "Nenhum pagamento registrado ainda."}
+            </div>
           ) : (
             <div className="rounded-md border overflow-hidden overflow-x-auto">
               <table className="w-full text-sm min-w-[400px]">

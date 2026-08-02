@@ -26,7 +26,7 @@ const CHANGELOG: ChangelogEntry[] = [
     date: "02/08/2026",
     version: "1.28",
     changes: [
-      { type: "novo", text: "Painel do vendedor — aba Meus Ganhos agora exibe tabela de 'Pagamentos Recebidos' com data, valor e observação de cada pagamento registrado pelo admin, além do total pago na linha de rodapé" },
+      { type: "novo", text: "Painel do vendedor — aba Meus Ganhos exibe tabela de 'Pagamentos Recebidos' com data, valor e observação, total no rodapé, e filtros de período (data início/fim) que atualizam a tabela reativamente" },
     ],
   },
   {
