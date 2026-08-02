@@ -133,6 +133,77 @@ router.post("/loyalty/checkout-cortesia", requireAuth, async (req, res): Promise
   }
 });
 
+// ── POST /api/loyalty/pay-with-cortesia — usa cortesia para pagar pedido já criado ──
+// O pedido foi criado normalmente (com dados do cliente preenchidos no formulário).
+// Este endpoint apenas troca o pagamento por cortesia.
+router.post("/loyalty/pay-with-cortesia", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.session.userId as number;
+
+  const [user] = await db
+    .select({ userType: usersTable.userType })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (!user || user.userType !== "contador") {
+    res.status(403).json({ error: "Recurso exclusivo para contadores." });
+    return;
+  }
+
+  const available = await getAvailableCortesias(userId);
+  if (available < 1) {
+    res.status(400).json({ error: "Nenhuma cortesia disponível." });
+    return;
+  }
+
+  const { orderId } = req.body ?? {};
+  if (!orderId) {
+    res.status(400).json({ error: "orderId é obrigatório." });
+    return;
+  }
+
+  const [order] = await db
+    .select()
+    .from(ordersTable)
+    .where(and(eq(ordersTable.id, Number(orderId)), eq(ordersTable.userId, userId)))
+    .limit(1);
+
+  if (!order) {
+    res.status(404).json({ error: "Pedido não encontrado." });
+    return;
+  }
+
+  if (order.status !== "pending_payment" && order.status !== "created") {
+    res.status(400).json({ error: "Este pedido não pode ser pago com cortesia no estado atual." });
+    return;
+  }
+
+  // Usar cortesia e atualizar pedido para "paid"
+  const cartelaId = await useCorteisa(userId, order.id);
+  if (!cartelaId) {
+    res.status(400).json({ error: "Falha ao usar cortesia. Tente novamente." });
+    return;
+  }
+
+  await db
+    .update(ordersTable)
+    .set({ status: "paid", paymentMethod: "cortesia", total: "0" })
+    .where(eq(ordersTable.id, order.id));
+
+  const [settings] = await db.select().from(settingsTable).limit(1);
+  const activeProvider = settings?.activeProvider ?? "gestaoar";
+  if (activeProvider === "safeweb") {
+    const { swAutoComprar } = await import("../lib/sw-auto");
+    swAutoComprar(order.id).catch((err: unknown) => logger.error({ err }, "Loyalty pay-with-cortesia: erro sw-auto"));
+  } else {
+    const { garAutoComprar } = await import("../lib/gar-auto");
+    garAutoComprar(order.id).catch((err: unknown) => logger.error({ err }, "Loyalty pay-with-cortesia: erro gar-auto"));
+  }
+
+  logger.info({ userId, orderId: order.id, cartelaId }, "Loyalty: cortesia aplicada em pedido existente");
+  res.json({ ok: true, orderId: order.id, orderNumber: order.orderNumber });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN ROUTES
 // ═══════════════════════════════════════════════════════════════════════════════

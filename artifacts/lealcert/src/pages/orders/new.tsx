@@ -787,23 +787,88 @@ export default function NewOrder() {
   }
 
   // ── Submit cortesia ──
+  // Cria o pedido com todos os dados do formulário (igual ao submit normal),
+  // depois chama pay-with-cortesia para usar a cortesia como pagamento.
   async function handleCortesiaSubmit() {
+    const hasPsbioValue = gateHasPsbioRef.current;
+    const nfDigits = nfForm.nfCpfCnpj.replace(/\D/g, "");
     try {
-      const r = await fetch("/api/loyalty/checkout-cortesia", {
+      // Passo 1: cria o pedido com os dados preenchidos no formulário
+      const orderData = await createOrder.mutateAsync({
+        data: {
+          certificateId: Number(form.certificateId),
+          clientType: isCnpjCert ? "cnpj" : "cpf",
+          customerName: isCnpjCert ? (form.repName || form.customerName) : form.customerName,
+          customerCpfCnpj: isCnpjCert ? form.customerCpfCnpj : form.customerCpfCnpj,
+          customerEmail: form.customerEmail,
+          customerPhone: form.customerPhone,
+          customerBirthDate: form.customerBirthDate ? parseBrDate(form.customerBirthDate) : undefined,
+          hasPsbio: hasPsbioValue,
+          companyName: form.companyName || undefined,
+          inssNumber: form.inssNumber || undefined,
+          extendedWarranty: form.extendedWarranty,
+          addressZipcode: form.representanteAddressZipcode || form.addressZipcode || undefined,
+          addressStreet: form.representanteAddressStreet || form.addressStreet || undefined,
+          addressNumber: form.representanteAddressNumber || form.addressNumber || undefined,
+          addressComplement: form.representanteAddressComplement || form.addressComplement || undefined,
+          addressNeighborhood: form.representanteAddressNeighborhood || form.addressNeighborhood || undefined,
+          addressCity: form.representanteAddressCity || form.addressCity || undefined,
+          addressState: form.representanteAddressState || form.addressState || undefined,
+          addressIbge: form.addressIbge || undefined,
+          representanteCpf: form.repCpf || undefined,
+          representanteAddressZipcode: form.representanteAddressZipcode || undefined,
+          representanteAddressStreet: form.representanteAddressStreet || undefined,
+          representanteAddressNumber: form.representanteAddressNumber || undefined,
+          representanteAddressComplement: form.representanteAddressComplement || undefined,
+          representanteAddressNeighborhood: form.representanteAddressNeighborhood || undefined,
+          representanteAddressCity: form.representanteAddressCity || undefined,
+          representanteAddressState: form.representanteAddressState || undefined,
+          representanteNascimento: form.repBirthDate ? parseBrDate(form.repBirthDate) : undefined,
+          cnhPath: undefined,
+          cnhVersoPath: undefined,
+          termsAccepted: termsAccepted,
+          cartaoCnpjPath: cartaoKey || undefined,
+          fichaCadastralPath: fichaKey || undefined,
+          customerCei: form.customerCei || undefined,
+          customerNis: form.customerNis || undefined,
+          outrosPath: outrosKey || undefined,
+          representanteDocTipo: form.repDocTipo !== "0" ? form.repDocTipo as "1" | "2" | "3" | "4" : undefined,
+          representanteDocNumero: form.repDocTipo !== "0" && form.repDocNumero ? form.repDocNumero : undefined,
+          representanteDocEmissor: form.repDocTipo !== "0" && form.repDocOrgan && form.repDocUf
+            ? (form.repDocOrgan + form.repDocUf).toUpperCase()
+            : undefined,
+          nfCnpj: nfDigits.length === 14 ? nfDigits : undefined,
+          nfNome: nfForm.nfNome || undefined,
+          nfZipcode: nfForm.nfZipcode.replace(/\D/g, "") || undefined,
+          nfStreet: nfForm.nfStreet || undefined,
+          nfNumber: nfForm.nfNumber || undefined,
+          nfComplement: nfForm.nfComplement || undefined,
+          nfNeighborhood: nfForm.nfNeighborhood || undefined,
+          nfCity: nfForm.nfCity || undefined,
+          nfState: nfForm.nfState || undefined,
+        },
+      });
+
+      // Passo 2: usa cortesia como pagamento
+      const r = await fetch("/api/loyalty/pay-with-cortesia", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ certificateId: Number(form.certificateId) }),
+        body: JSON.stringify({ orderId: orderData.id }),
       });
       const data = await r.json();
       if (!r.ok) {
-        toast({ title: "Erro", description: data.error || "Erro ao processar cortesia.", variant: "destructive" });
+        toast({ title: "Erro na cortesia", description: data.error || "Erro ao processar cortesia.", variant: "destructive" });
+        // Pedido foi criado — redireciona mesmo assim para o usuário resolver
+        setLocation(`/orders/${orderData.id}`);
         return;
       }
-      toast({ title: "Cortesia utilizada! 🎉", description: `Pedido ${data.orderNumber} criado sem custo.` });
+
+      toast({ title: "Cortesia utilizada! 🎉", description: `Pedido ${orderData.orderNumber} criado sem custo.` });
       try { localStorage.removeItem("lealcert_order_local"); } catch { /* ignore */ }
-      setLocation(`/orders/${data.orderId}`);
-    } catch {
-      toast({ title: "Erro de rede", description: "Tente novamente.", variant: "destructive" });
+      setLocation(`/orders/${orderData.id}`);
+    } catch (err: unknown) {
+      const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao processar pedido.";
+      toast({ title: "Erro", description: msg, variant: "destructive" });
     }
   }
 
