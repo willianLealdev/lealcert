@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Star, Wallet, CheckCircle } from "lucide-react";
+import { DollarSign, TrendingUp, Star, Wallet, CheckCircle, Receipt } from "lucide-react";
 
 type GanhosData = {
   meses: { mes: string; certsEmitidos: number; ganho: number }[];
@@ -15,6 +15,14 @@ type GanhosData = {
   qtdCertsBonus: number;
 };
 
+type Pagamento = {
+  id: number;
+  valor: string;
+  dataPagamento: string;
+  observacao: string | null;
+  createdAt: string;
+};
+
 const apiFetch = (url: string) => fetch(url, { credentials: "include" });
 
 function useGanhos() {
@@ -22,6 +30,17 @@ function useGanhos() {
     queryKey: ["vendedor-ganhos"],
     queryFn: async () => {
       const res = await apiFetch("/api/vendedor/ganhos");
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  });
+}
+
+function usePagamentos() {
+  return useQuery<Pagamento[]>({
+    queryKey: ["vendedor-pagamentos"],
+    queryFn: async () => {
+      const res = await apiFetch("/api/vendedor/pagamentos");
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -40,6 +59,7 @@ function fmtMes(mes: string) {
 
 export default function VendedorGanhos() {
   const { data, isLoading } = useGanhos();
+  const { data: pagamentos, isLoading: pagLoading } = usePagamentos();
 
   if (isLoading) return <div className="py-10 text-center text-muted-foreground">Carregando...</div>;
   if (!data) return <div className="py-10 text-center text-muted-foreground">Erro ao carregar dados.</div>;
@@ -168,6 +188,57 @@ export default function VendedorGanhos() {
                     <td className="px-4 py-3">Total</td>
                     <td className="px-4 py-3 text-right font-mono">{data.totalCerts}</td>
                     <td className="px-4 py-3 text-right text-emerald-600">{fmtCurrency(data.ganhos)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Histórico de pagamentos recebidos */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-emerald-500" />
+            Pagamentos Recebidos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {pagLoading ? (
+            <div className="text-center py-6 text-muted-foreground text-sm">Carregando...</div>
+          ) : !pagamentos || pagamentos.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">Nenhum pagamento registrado ainda.</div>
+          ) : (
+            <div className="rounded-md border overflow-hidden overflow-x-auto">
+              <table className="w-full text-sm min-w-[400px]">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Data</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Valor</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Observação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagamentos.map(p => (
+                    <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3 text-sm">
+                        {new Date(p.dataPagamento).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-emerald-600 font-mono">
+                        {fmtCurrency(parseFloat(p.valor))}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-sm">{p.observacao ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/20 font-bold border-t-2">
+                    <td className="px-4 py-3">Total pago</td>
+                    <td className="px-4 py-3 text-right text-emerald-600 font-mono">
+                      {fmtCurrency(pagamentos.reduce((s, p) => s + parseFloat(p.valor), 0))}
+                    </td>
+                    <td />
                   </tr>
                 </tfoot>
               </table>

@@ -276,6 +276,27 @@ router.get("/vendedor/relatorio", requireVendedor, async (req, res): Promise<voi
   res.json(result);
 });
 
+// ── GET /vendedor/pagamentos ─────────────────────────────────────────────────
+router.get("/vendedor/pagamentos", requireVendedor, async (req, res): Promise<void> => {
+  const userId = req.session.userId as number;
+  const ctx = await getVendedorCtx(userId);
+  if (!ctx) { res.status(404).json({ error: "Vendedor não encontrado." }); return; }
+
+  const pagamentos = await db
+    .select({
+      id: vendedorPagamentosTable.id,
+      valor: vendedorPagamentosTable.valor,
+      dataPagamento: vendedorPagamentosTable.dataPagamento,
+      observacao: vendedorPagamentosTable.observacao,
+      createdAt: vendedorPagamentosTable.createdAt,
+    })
+    .from(vendedorPagamentosTable)
+    .where(eq(vendedorPagamentosTable.vendedorId, ctx.vendedorId))
+    .orderBy(desc(vendedorPagamentosTable.dataPagamento));
+
+  res.json(pagamentos);
+});
+
 // ── GET /vendedor/ganhos ─────────────────────────────────────────────────────
 router.get("/vendedor/ganhos", requireVendedor, async (req, res): Promise<void> => {
   const userId = req.session.userId as number;

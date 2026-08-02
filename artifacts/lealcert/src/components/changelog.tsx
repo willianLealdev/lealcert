@@ -24,6 +24,13 @@ const CHANGELOG: ChangelogEntry[] = [
   },
   {
     date: "02/08/2026",
+    version: "1.28",
+    changes: [
+      { type: "novo", text: "Painel do vendedor — aba Meus Ganhos agora exibe tabela de 'Pagamentos Recebidos' com data, valor e observação de cada pagamento registrado pelo admin, além do total pago na linha de rodapé" },
+    ],
+  },
+  {
+    date: "02/08/2026",
     version: "1.27",
     changes: [
       { type: "fix", text: "Pedido concluído: botões 'Reagendar' e 'Cancelar Agendamento' (GAR e Safeweb) são ocultados quando o status é 'Concluído' — o card de agendamento continua visível com as informações do atendimento" },
