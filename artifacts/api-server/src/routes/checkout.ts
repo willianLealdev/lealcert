@@ -664,15 +664,22 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
 
   // ── Cortesia: pula MercadoPago, usa fidelidade ───────────────────────────
   if (paymentMethod === "cortesia") {
+    // A cortesia pertence ao CONTADOR logado, não ao titular do certificado.
+    // Se não houver sessão autenticada, cortesia não está disponível.
+    const contadorUserId = req.session?.userId;
+    if (!contadorUserId) {
+      await db.delete(ordersTable).where(eq(ordersTable.id, order.id));
+      res.status(401).json({ error: "Faça login para usar a cortesia." });
+      return;
+    }
     const { getAvailableCortesias, useCorteisa } = await import("../lib/loyalty");
-    const available = await getAvailableCortesias(userId);
+    const available = await getAvailableCortesias(contadorUserId);
     if (available < 1) {
-      // Reverter pedido criado
       await db.delete(ordersTable).where(eq(ordersTable.id, order.id));
       res.status(400).json({ error: "Nenhuma cortesia disponível. Complete 10 certificados para desbloquear." });
       return;
     }
-    const cartelaId = await useCorteisa(userId, order.id);
+    const cartelaId = await useCorteisa(contadorUserId, order.id);
     if (!cartelaId) {
       await db.delete(ordersTable).where(eq(ordersTable.id, order.id));
       res.status(400).json({ error: "Falha ao usar cortesia. Tente novamente." });
@@ -690,7 +697,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       const { garAutoComprar } = await import("../lib/gar-auto");
       garAutoComprar(order.id).catch((err: unknown) => logger.error({ err }, "checkout cortesia: erro gar-auto"));
     }
-    logger.info({ userId, orderId: order.id, cartelaId }, "checkout: cortesia aplicada");
+    logger.info({ contadorUserId, orderId: order.id, cartelaId }, "checkout: cortesia aplicada");
     res.json({ orderId: order.id, orderNumber: order.orderNumber, isNewUser });
     return;
   }

@@ -18,3 +18,4 @@
 - [Logo configuration](logo-config.md) — mapa definitivo de qual logo/tamanho/filtro usar em cada tela; NUNCA alterar sem pedido explícito do usuário.
 - [Docker schema migrations](docker-schema-migrations.md) — OBRIGATÓRIO: toda criação/alteração de tabela/coluna deve gerar SQL docker exec pronto para o usuário rodar na VPS de produção.
 - [Loyalty System](loyalty-system.md) — cartela 10 slots = 1 cortesia; incrementLoyaltySlot chamado nos 3 pontos de emissão; checkout-cortesia com double-check backend.
+- [Loyalty cortesia no checkout público](loyalty-cortesia-checkout-fix.md) — usar req.session.userId (contador logado), NÃO o userId do CPF do formulário; cliente não tem cartela.
