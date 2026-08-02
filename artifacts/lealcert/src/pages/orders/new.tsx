@@ -865,7 +865,7 @@ export default function NewOrder() {
 
       toast({ title: "Cortesia utilizada! 🎉", description: `Pedido ${orderData.orderNumber} criado sem custo.` });
       try { localStorage.removeItem("lealcert_order_local"); } catch { /* ignore */ }
-      setLocation(`/orders/${orderData.id}`);
+      setLocation(`/orders/${orderData.id}?processing=1`);
     } catch (err: unknown) {
       const msg = (err as { data?: { error?: string } })?.data?.error ?? (err as Error)?.message ?? "Erro ao processar pedido.";
       toast({ title: "Erro", description: msg, variant: "destructive" });

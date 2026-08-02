@@ -1414,8 +1414,35 @@ export default function OrderDetail() {
   const [representanteOpen, setRepresentanteOpen] = useState(false);
 
   const prevStatusRef = useRef<string | undefined>(undefined);
+  const processingParamHandled = useRef(false);
 
   const { data: order, isLoading, refetch } = useGetOrder(Number(id));
+
+  // Abre modal de processamento automaticamente quando vindo de cortesia (?processing=1)
+  useEffect(() => {
+    if (!order) return;
+    if (processingParamHandled.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get("processing")) return;
+    processingParamHandled.current = true;
+    // Remove o param da URL sem recarregar
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, "", cleanUrl);
+    const alreadyHasProtocol = !!(order.garProtocolo || order.protocolNumber);
+    if (alreadyHasProtocol) {
+      toast({ title: "✅ Cortesia aplicada!", description: `Protocolo: ${order.garProtocolo ?? order.protocolNumber}` });
+    } else {
+      const initialStep = (order.garPedido || order.safewebSolicitacaoId) ? 2 : 0;
+      setShowProtocolLoading(true);
+      setProtocolLoadingStep(initialStep);
+      setProtocolLoadingError(null);
+      protocolLoadingIntervalRef.current = setInterval(() => { refetch(); }, 4000);
+      protocolLoadingTimeoutRef.current = setTimeout(() => {
+        if (protocolLoadingIntervalRef.current) clearInterval(protocolLoadingIntervalRef.current);
+        setProtocolLoadingError("O protocolo está demorando mais que o esperado. Tente atualizar a página ou entre em contato com o suporte.");
+      }, 90_000);
+    }
+  }, [order]);
 
   // Polling DB a cada 5 s enquanto pagamento pendente
   useEffect(() => {
