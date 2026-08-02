@@ -80,11 +80,12 @@ export default function VendedorDashboard() {
       </div>
 
       {/* Cards de estatísticas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard title="Contadores" value={data.totalContadores} icon={Users} color="blue" sub="cadastrados por você" />
-        <StatCard title="Certificados hoje" value={data.vendasHoje} icon={ShoppingCart} color="green" sub={`${data.vendasMes} no mês`} />
-        <StatCard title="Certificados no ano" value={data.vendasAno} icon={TrendingUp} color="purple" sub="emitidos pelos seus contadores" />
-        <StatCard title="Saldo total" value={fmtCurrency(data.saldoTotal)} icon={DollarSign} color="amber" sub={`Ganhos + Bônus`} />
+        <StatCard title="Certificados hoje" value={data.vendasHoje} icon={ShoppingCart} color="green" sub="emitidos hoje" />
+        <StatCard title="Certificados no mês" value={data.vendasMes} icon={ShoppingCart} color="green" sub="emitidos no mês" />
+        <StatCard title="Certificados no ano" value={data.vendasAno} icon={TrendingUp} color="purple" sub="emitidos no ano" />
+        <StatCard title="Saldo total" value={fmtCurrency(data.saldoTotal)} icon={DollarSign} color="amber" sub="Ganhos + Bônus" />
       </div>
 
       {/* Card de ganhos detalhado */}
