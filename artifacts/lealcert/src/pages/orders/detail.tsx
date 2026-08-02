@@ -2522,6 +2522,12 @@ export default function OrderDetail() {
                   <span className="text-sm font-medium">Total</span>
                   <span className="text-xl font-bold text-primary">{formatBRL(order.total)}</span>
                 </div>
+                {isAdmin && order.paymentMethod === "cortesia" && (
+                  <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-700 font-medium bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
+                    <span>⭐</span>
+                    <span>Pago com Certificado Cortesia (fidelidade)</span>
+                  </div>
+                )}
               </div>
 
               {/* Admin — Aprovar Pagamento Manualmente */}
