@@ -15,6 +15,15 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "02/08/2026",
+    version: "1.25",
+    changes: [
+      { type: "novo",     text: "Checkout: contadores com cartela de fidelidade completa veem opção '⭐ Certificado Cortesia' no topo da lista de pagamentos — R$ 0,00, sem necessidade de dados de pagamento" },
+      { type: "novo",     text: "Botão 'Sou Contador' em destaque dourado no menu da landing page — leva direto para a página /contadores" },
+      { type: "fix",      text: "Ícones do app (favicon, PWA 192×512, apple-touch-icon) substituídos pelo logo oficial LealCert com fundo branco arredondado" },
+    ],
+  },
+  {
+    date: "02/08/2026",
     version: "1.24",
     changes: [
       { type: "novo",     text: "Programa de Fidelidade: a cada 10 certificados emitidos, o contador ganha 1 certificado grátis (cortesia). Cartelas visuais com slots 1–10 preenchidos automaticamente após emissão" },

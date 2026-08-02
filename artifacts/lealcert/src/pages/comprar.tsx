@@ -78,7 +78,7 @@ const UF_LIST = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG
 /* ── tipos ─────────────────────────────────────────────────────────────── */
 type Step = "lookup" | "bio" | "dados" | "nf" | "lealplus" | "pagamento" | "processando" | "docs" | "agenda";
 type CnpjRfbState = null | "loading" | { ok: true; razaoSocial: string } | { ok: false; mensagem: string };
-type PayMethod = "pix" | "boleto" | "cartao";
+type PayMethod = "pix" | "boleto" | "cartao" | "cortesia";
 
 interface Certificate {
   id: number; name: string; product?: string | null; model?: string | null;
@@ -692,6 +692,46 @@ export default function ComprarPage() {
   const [cardName, setCardName] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
+
+  /* cortesia */
+  const [cortesiaCount, setCortesiaCount] = useState(0);
+  const isContador = meData?.userType === "contador";
+
+  useEffect(() => {
+    if (step !== "pagamento" || !isContador) return;
+    fetch("/api/loyalty/cortesia-available", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { count: 0 })
+      .then((d: { count?: number }) => setCortesiaCount(d.count ?? 0))
+      .catch(() => setCortesiaCount(0));
+  }, [step, isContador]);
+
+  const submitCortesia = async () => {
+    setPay(p => ({ ...p, loading: true, error: null, method: "cortesia" }));
+    try {
+      const r = await fetch("/api/loyalty/checkout-cortesia", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ certificateId: Number(certId) }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        setPay(p => ({ ...p, loading: false, error: data.error || "Erro ao processar cortesia." }));
+        return;
+      }
+      setPay({
+        method: "cortesia",
+        orderId: data.orderId,
+        orderNumber: data.orderNumber,
+        pixQr: null, pixCode: null, boletoUrl: null, boletoBarcode: null,
+        isNewUser: false, loading: false, error: null,
+      });
+      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      setStep("processando");
+      window.scrollTo(0, 0);
+    } catch {
+      setPay(p => ({ ...p, loading: false, error: "Erro de rede. Tente novamente." }));
+    }
+  };
 
   /* cupom */
   const [couponCode, setCouponCode] = useState("");
@@ -1936,6 +1976,39 @@ export default function ComprarPage() {
                     <Card>
                       <CardHeader><CardTitle>Escolha a forma de pagamento</CardTitle></CardHeader>
                       <CardContent className="space-y-3">
+                        {/* Cortesia — só para contadores com cartela completa */}
+                        {isContador && cortesiaCount > 0 && (
+                          <div className={`rounded-xl border-2 overflow-hidden transition-colors ${selectedMethod === "cortesia" ? "border-amber-500" : "border-amber-300 hover:border-amber-400"}`}>
+                            <button type="button" className="w-full flex items-center gap-4 px-5 py-4 text-left" onClick={() => setSelectedMethod("cortesia")}>
+                              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedMethod === "cortesia" ? "border-amber-500 bg-amber-500" : "border-amber-400"}`}>
+                                {selectedMethod === "cortesia" && <div className="h-2 w-2 rounded-full bg-white" />}
+                              </div>
+                              <div className="h-9 w-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                                <span className="text-lg">⭐</span>
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-bold text-amber-800">Certificado Cortesia</p>
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full">
+                                    {cortesiaCount} disponível{cortesiaCount > 1 ? "is" : ""}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-700">Cartela de fidelidade completa · sem custo</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="font-bold text-emerald-600 text-lg">R$ 0,00</p>
+                                <p className="text-[10px] text-muted-foreground">grátis</p>
+                              </div>
+                            </button>
+                            {selectedMethod === "cortesia" && (
+                              <div className="px-5 pb-4 bg-amber-50 border-t border-amber-100 text-sm text-amber-800 space-y-1">
+                                <p>🎉 Parabéns! Você completou sua cartela de fidelidade e ganhou este certificado cortesia.</p>
+                                <p className="text-xs text-amber-700">Ao confirmar, uma cortesia será utilizada e o pedido será gerado automaticamente sem cobrança.</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* PIX */}
                         {allowedMethods.includes("pix") && (
                           <div className={`rounded-xl border-2 overflow-hidden transition-colors ${selectedMethod === "pix" ? "border-emerald-500" : "border-muted hover:border-emerald-300"}`}>
@@ -2050,9 +2123,13 @@ export default function ComprarPage() {
 
                     <div className="flex gap-3">
                       <Button variant="outline" onClick={() => setStep("lealplus")} className="w-1/3" disabled={pay.loading}><ArrowLeft className="h-4 w-4 mr-1" />Voltar</Button>
-                      <Button className="flex-1 h-12 text-base bg-emerald-600 hover:bg-emerald-700" onClick={submitOrder} disabled={pay.loading || !selectedMethod}>
+                      <Button
+                        className={`flex-1 h-12 text-base ${selectedMethod === "cortesia" ? "bg-amber-500 hover:bg-amber-600 text-amber-950" : "bg-emerald-600 hover:bg-emerald-700"}`}
+                        onClick={selectedMethod === "cortesia" ? submitCortesia : submitOrder}
+                        disabled={pay.loading || !selectedMethod}
+                      >
                         {pay.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-                        {pay.loading ? "Processando..." : "Finalizar compra"}
+                        {pay.loading ? "Processando..." : selectedMethod === "cortesia" ? "Usar Cortesia" : "Finalizar compra"}
                       </Button>
                     </div>
                   </div>
