@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, Eye } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
-type UserRow = User;
+type UserRow = User & { vendedorId?: number | null; vendedorNome?: string | null };
 
 // tipo = "cliente" | "contador" | "admin" — campo unificado para exibição
 type UserForm = { name: string; email: string; cpfCnpj: string; phone: string; tipo: string; password: string; isActive: boolean };
@@ -136,7 +136,20 @@ function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => voi
             </>
           )}
 
-          {!hasAddress && !hasPJ && !hasResponsible && !user.crcNumber && (
+          {/* Vendedor vinculado (contador) */}
+          {user.vendedorNome && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Indicação</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Vendedor" value={user.vendedorNome} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {!hasAddress && !hasPJ && !hasResponsible && !user.crcNumber && !user.vendedorNome && (
             <p className="text-sm text-muted-foreground text-center py-2">Nenhum dado adicional de cadastro registrado.</p>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import bcrypt from "bcryptjs";
 import { db, pool, usersTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
@@ -7,6 +8,7 @@ import { requireAuth, requireAdmin } from "../middlewares/auth";
 const router = Router();
 
 router.get("/users", requireAdmin, async (req, res): Promise<void> => {
+  const vendedorUser = alias(usersTable, "vendedor_user");
   const users = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -32,7 +34,11 @@ router.get("/users", requireAdmin, async (req, res): Promise<void> => {
     neighborhood: usersTable.neighborhood,
     city: usersTable.city,
     addressState: usersTable.addressState,
-  }).from(usersTable).orderBy(usersTable.createdAt);
+    vendedorId: usersTable.vendedorId,
+    vendedorNome: vendedorUser.name,
+  }).from(usersTable)
+    .leftJoin(vendedorUser, eq(vendedorUser.id, usersTable.vendedorId))
+    .orderBy(usersTable.createdAt);
   res.json(users);
 });
 
