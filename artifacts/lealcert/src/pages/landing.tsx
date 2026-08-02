@@ -223,8 +223,8 @@ function CertSelector({ certs }: { certs: CertFromDB[] }) {
       {/* Contador note */}
       <p className="text-center text-sm text-gray-400">
         É contador ou escritório de contabilidade?{" "}
-        <a href="/entrar" className="text-[#2563eb] font-semibold hover:underline">
-          Acesse o sistema para ver suas condições especiais →
+        <a href="/contadores" className="text-[#2563eb] font-semibold hover:underline">
+          Veja as condições especiais para parceiros →
         </a>
       </p>
     </div>

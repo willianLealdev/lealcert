@@ -14,6 +14,15 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "02/08/2026",
+    version: "1.22",
+    changes: [
+      { type: "novo", text: "Página de captação para contadores (/contadores): funil de vendas explicando benefícios, preço de parceiro, portal de gestão e requisitos de cadastro — com CTA direcionando ao cadastro pré-selecionado como contador" },
+      { type: "melhoria", text: "Cadastro: URL ?userType=contador pré-seleciona automaticamente o tipo 'Contador' na tela de registro" },
+      { type: "melhoria", text: "Landing page: link 'É contador?' agora aponta para a página /contadores em vez de direto para o login" },
+    ],
+  },
+  {
     date: "22/07/2026",
     version: "1.21",
     changes: [

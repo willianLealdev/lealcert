@@ -82,9 +82,10 @@ export default function Register() {
   // Lê parâmetros da URL (vindos do fluxo de novo usuário no login)
   const urlParams = new URLSearchParams(search);
   const urlPersonType = urlParams.get("personType") as "fisica" | "juridica" | null;
+  const urlUserType = urlParams.get("userType") as "contador" | "cliente" | null;
   const urlCpfCnpj = urlParams.get("cpfCnpj") ?? "";
 
-  const [userType, setUserType] = useState<"contador" | "cliente" | "">("");
+  const [userType, setUserType] = useState<"contador" | "cliente" | "">(urlUserType ?? "");
   const [personType, setPersonType] = useState<"fisica" | "juridica" | "">(urlPersonType ?? "");
 
   const [form, setForm] = useState({

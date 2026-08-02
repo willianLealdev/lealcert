@@ -40,6 +40,7 @@ import Landing from "@/pages/landing";
 
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import Contadores from "@/pages/contadores";
 import VerifyEmail from "@/pages/verify-email";
 import ForgotPassword from "@/pages/forgot-password";
 import ChangePassword from "@/pages/change-password";
@@ -136,6 +137,7 @@ function Router() {
       <Route path="/politica-de-privacidade" component={PrivacyPolicy} />
       <Route path="/unsubscribe" component={UnsubscribePage} />
       <Route path="/comprar/:certId" component={ComprarPage} />
+      <Route path="/contadores" component={Contadores} />
       {/* Protected user routes */}
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/orders" component={() => <ProtectedRoute component={Orders} />} />
