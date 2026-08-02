@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useListOrders } from "@workspace/api-client-react";
+import { useListOrders, useGetMe } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,7 +145,9 @@ export default function Orders() {
     search: search || undefined,
   });
 
-  const isDeletable = (status: string) => status === "pending_payment";
+  const { data: me } = useGetMe();
+  const isAdmin = me?.role === "admin" || me?.userType === "admin";
+  const isDeletable = (status: string) => isAdmin && status === "pending_payment";
 
   return (
     <div className="space-y-6">
