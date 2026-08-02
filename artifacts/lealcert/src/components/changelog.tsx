@@ -15,6 +15,18 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "02/08/2026",
+    version: "1.24",
+    changes: [
+      { type: "novo",     text: "Programa de Fidelidade: a cada 10 certificados emitidos, o contador ganha 1 certificado grátis (cortesia). Cartelas visuais com slots 1–10 preenchidos automaticamente após emissão" },
+      { type: "novo",     text: "Página /fidelidade para contadores: visualiza cartelas ativas, disponíveis, usadas e banner de cortesia com botão direto para checkout" },
+      { type: "novo",     text: "Admin /admin/fidelidade: painel com 2 abas — todos os contadores pontuando (ajuste manual de slots clicando nos botões) e lista de cortesias utilizadas" },
+      { type: "melhoria", text: "Dashboard: cards corrigidos — contagem de contadores usa userType correto, adicionados cards 'Clientes (total)' e 'Novos clientes'; PAID_STATUSES expandido para incluir pedidos em validação e emitidos" },
+      { type: "fix",      text: "Dashboard: filtros de top compradores e tiers agora usam userType para distinguir contadores de clientes (antes a lógica estava invertida)" },
+      { type: "melhoria", text: "Sidebar: link 'Fidelidade' aparece automaticamente para contadores na seção 'Benefícios'; admin ganha item 'Fidelidade' no painel de administração" },
+    ],
+  },
+  {
+    date: "02/08/2026",
     version: "1.23",
     changes: [
       { type: "fix", text: "GAR: scheduler agora atualiza o status de pedidos que já têm protocolo — antes o sync parava em 'Agendado' e nunca detectava o certificado emitido automaticamente" },

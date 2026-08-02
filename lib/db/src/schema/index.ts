@@ -17,3 +17,5 @@ export * from "./ip-verifications";
 export * from "./ip-whitelist";
 export * from "./reviews";
 export * from "./nfse-invoices";
+export * from "./loyalty-cartelas";
+export * from "./loyalty-slot-events";

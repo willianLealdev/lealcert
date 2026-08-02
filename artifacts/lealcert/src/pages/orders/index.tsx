@@ -6,7 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Plus, Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
+import { Plus, Search, Trash2, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const STATUS_LABELS: Record<string, string> = {
   created: "Criado",
@@ -25,22 +36,116 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
   cancelled: "destructive",
 };
 
-function formatBRL(v: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
-}
 function formatDate(d: string | Date | null) {
   if (!d) return "—";
   return new Intl.DateTimeFormat("pt-BR").format(new Date(d));
 }
 
+interface DeleteDialogProps {
+  order: { id: number; orderNumber: string } | null;
+  onClose: () => void;
+  onDeleted: () => void;
+}
+
+function DeleteDialog({ order, onClose, onDeleted }: DeleteDialogProps) {
+  const [digits, setDigits] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { toast } = useToast();
+
+  if (!order) return null;
+
+  const last4 = order.orderNumber.slice(-4);
+
+  const handleDelete = async () => {
+    if (digits.length !== 4) {
+      setError("Digite exatamente 4 dígitos.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const r = await fetch(`/api/orders/${order.id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmDigits: digits }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        setError(data.error ?? "Erro ao excluir pedido.");
+        return;
+      }
+      toast({ title: "Pedido excluído com sucesso." });
+      onDeleted();
+      onClose();
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AlertDialog open onOpenChange={(open) => { if (!open) { onClose(); setDigits(""); setError(""); } }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-destructive">Excluir pedido?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <p>
+                Você está prestes a excluir o pedido{" "}
+                <span className="font-mono font-bold text-foreground">{order.orderNumber}</span>.
+                Esta ação não pode ser desfeita.
+              </p>
+              <p className="text-sm">
+                Para confirmar, digite os <strong>últimos 4 dígitos</strong> do número do pedido:{" "}
+                <span className="font-mono font-semibold text-foreground">...{last4}</span>
+              </p>
+              <Input
+                placeholder="4 dígitos"
+                value={digits}
+                maxLength={4}
+                inputMode="numeric"
+                autoFocus
+                onChange={(e) => { setDigits(e.target.value.replace(/\D/g, "")); setError(""); }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleDelete(); }}
+                className={error ? "border-destructive" : ""}
+              />
+              {error && <p className="text-sm text-destructive">{error}</p>}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={loading} onClick={() => { setDigits(""); setError(""); }}>
+            Cancelar
+          </AlertDialogCancel>
+          <Button
+            variant="destructive"
+            disabled={loading || digits.length !== 4}
+            onClick={handleDelete}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+            Excluir pedido
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export default function Orders() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; orderNumber: string } | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: orders, isLoading } = useListOrders({
     status: statusFilter !== "all" ? statusFilter : undefined,
     search: search || undefined,
   });
+
+  const isDeletable = (status: string) => status === "pending_payment";
 
   return (
     <div className="space-y-6">
@@ -102,6 +207,7 @@ export default function Orders() {
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Data</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Protocolo</th>
+                    <th className="px-4 py-3 w-10" />
                   </tr>
                 </thead>
                 <tbody>
@@ -132,6 +238,18 @@ export default function Orders() {
                       <td className="px-4 py-3 hidden sm:table-cell font-mono text-sm text-muted-foreground">
                         {order.protocolNumber || order.garProtocolo || order.safewebSolicitacaoId || "—"}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        {isDeletable(order.status) && (
+                          <button
+                            type="button"
+                            title="Excluir pedido"
+                            onClick={() => setDeleteTarget({ id: order.id, orderNumber: order.orderNumber })}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -140,6 +258,12 @@ export default function Orders() {
           )}
         </CardContent>
       </Card>
+
+      <DeleteDialog
+        order={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onDeleted={() => queryClient.invalidateQueries({ queryKey: ["orders"] })}
+      />
     </div>
   );
 }

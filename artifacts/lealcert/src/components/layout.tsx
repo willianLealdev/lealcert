@@ -43,6 +43,7 @@ import {
   MessageSquare,
   Phone,
   Receipt,
+  Star,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 import { ReviewPrompt } from "@/components/review-prompt";
@@ -52,6 +53,11 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Pedidos", href: "/orders", icon: ShoppingCart },
   { name: "Suporte", href: "/support", icon: LifeBuoy },
+];
+
+// Itens exclusivos para contadores
+const contadorNav = [
+  { name: "Fidelidade", href: "/fidelidade", icon: Star },
 ];
 
 const agenteNav = [
@@ -71,6 +77,7 @@ const adminNav = [
   { name: "Segurança de IP", href: "/admin/ip-security", icon: ShieldCheck },
   { name: "Relatórios GAR", href: "/admin/relatorios-gar", icon: BarChart2 },
   { name: "Notas Fiscais", href: "/admin/nfse", icon: Receipt },
+  { name: "Fidelidade", href: "/admin/fidelidade", icon: Star },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 
@@ -394,6 +401,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={close}
             />
           ))}
+
+          {/* Contador: seção fidelidade */}
+          {user?.role !== "agente" && user?.role !== "admin" && (user as { userType?: string })?.userType === "contador" && (
+            <>
+              {!collapsed ? (
+                <p className="px-3 pt-4 pb-1.5 text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+                  Benefícios
+                </p>
+              ) : (
+                <div className="my-2 border-t border-sidebar-border/30" />
+              )}
+              {contadorNav.map((item) => (
+                <NavItem
+                  key={item.name}
+                  href={item.href}
+                  icon={item.icon}
+                  name={item.name}
+                  active={location === item.href}
+                  collapsed={collapsed}
+                  onClick={close}
+                />
+              ))}
+            </>
+          )}
 
           {user?.role === "agente" && agenteNav.map((item) => (
             <NavItem

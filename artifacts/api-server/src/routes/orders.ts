@@ -485,6 +485,51 @@ router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
   res.json(orderRow(row.order, row.userName, row.certName));
 });
 
+// ── DELETE /orders/:id — exclui pedido aguardando pagamento ──────────────────
+// Disponível para o próprio dono (pending_payment) ou admin (qualquer status pendente)
+router.delete("/orders/:id", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const userId = req.session.userId as number;
+  const role   = req.session.role as string;
+
+  const [order] = await db
+    .select({ id: ordersTable.id, status: ordersTable.status, userId: ordersTable.userId, orderNumber: ordersTable.orderNumber })
+    .from(ordersTable)
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+
+  if (!order) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
+
+  // Usuário comum: só pode excluir o próprio pedido em pending_payment
+  if (role !== "admin") {
+    if (order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+    if (order.status !== "pending_payment") {
+      res.status(400).json({ error: "Apenas pedidos aguardando pagamento podem ser excluídos." });
+      return;
+    }
+  } else {
+    // Admin: pode excluir pending_payment, created ou cancelled
+    const allowedStatuses = ["pending_payment", "created", "cancelled"];
+    if (!allowedStatuses.includes(order.status)) {
+      res.status(400).json({ error: "Pedido não pode ser excluído neste status." });
+      return;
+    }
+  }
+
+  // Confirmar: últimos 4 dígitos do número do pedido
+  const { confirmDigits } = req.body ?? {};
+  const last4 = String(order.orderNumber).slice(-4);
+  if (String(confirmDigits) !== last4) {
+    res.status(400).json({ error: "Os últimos 4 dígitos do número do pedido estão incorretos." });
+    return;
+  }
+
+  await db.delete(ordersTable).where(eq(ordersTable.id, id));
+
+  req.log.info({ orderId: id, deletedBy: userId, role }, "Pedido excluído");
+  res.json({ ok: true });
+});
+
 router.patch("/orders/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   const { status, protocolNumber, scheduledAt, safewebSolicitacaoId } = req.body ?? {};

@@ -5,8 +5,8 @@ import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
 
-// Paid / protocol statuses
-const PAID_STATUSES = ["paid", "protocol_assigned", "completed"] as const;
+// Paid / protocol statuses — inclui todos os estados pós-pagamento
+const PAID_STATUSES = ["paid", "protocol_assigned", "aguardando_validacao", "emitido", "completed"] as const;
 const PENDING_STATUSES = ["created", "pending_payment"] as const;
 
 function getRangeBounds(range: string, from?: string, to?: string): { start: Date; end: Date } {
@@ -156,13 +156,16 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
     name: usersTable.name,
     cpfCnpj: usersTable.cpfCnpj,
     role: usersTable.role,
+    userType: usersTable.userType,
     createdAt: usersTable.createdAt,
   }).from(usersTable);
 
   const allCerts = await db.select({ id: certificatesTable.id, name: certificatesTable.name }).from(certificatesTable);
   const certMap = new Map(allCerts.map(c => [c.id, c.name]));
 
-  const contadores = allUsers.filter(u => u.role === "contador");
+  // Filtra por userType para não confundir clientes com contadores
+  const contadores = allUsers.filter(u => u.userType === "contador");
+  const clientes   = allUsers.filter(u => u.userType === "cliente");
 
   // Period filter helpers
   const inPeriod = (d: Date | string) => { const dt = new Date(d); return dt >= start && dt <= end; };
@@ -174,13 +177,15 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
 
   // ── Cards ────────────────────────────────────────────────────────
   const cards = {
-    total_users: contadores.length,
-    new_users: contadores.filter(u => inPeriod(u.createdAt)).length,
-    orders_period: periodOrders.length,
-    buyers_period: new Set(periodOrders.map(o => o.userId)).size,
-    pending_period: periodOrders.filter(o => isPending(o.status)).length,
-    paid_period: periodOrders.filter(o => o.status === "paid").length,
-    protocol_period: periodOrders.filter(o => isProtocol(o.status)).length,
+    total_users:       contadores.length,
+    total_clientes:    clientes.length,
+    new_users:         contadores.filter(u => inPeriod(u.createdAt)).length,
+    new_clientes:      clientes.filter(u => inPeriod(u.createdAt)).length,
+    orders_period:     periodOrders.length,
+    buyers_period:     new Set(periodOrders.map(o => o.userId)).size,
+    pending_period:    periodOrders.filter(o => isPending(o.status)).length,
+    paid_period:       periodOrders.filter(o => o.status === "paid").length,
+    protocol_period:   periodOrders.filter(o => isProtocol(o.status)).length,
   };
 
   // ── Revenue ──────────────────────────────────────────────────────
@@ -240,7 +245,7 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
   const buyerMap = new Map<number, { name: string; doc: string; c: number; last: string }>();
   for (const o of paidPeriodOrders) {
     const user = allUsers.find(u => u.id === o.userId);
-    if (!user || user.role !== "contador") continue;
+    if (!user || user.userType !== "contador") continue;
     const existing = buyerMap.get(o.userId);
     if (existing) {
       existing.c++;
@@ -284,7 +289,7 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
   const lifetimeMap = new Map<number, { name: string; doc: string; c: number; last: string }>();
   for (const o of paidAll) {
     const user = allUsers.find(u => u.id === o.userId);
-    if (!user || user.role !== "contador") continue;
+    if (!user || user.userType !== "contador") continue;
     const existing = lifetimeMap.get(o.userId);
     if (existing) {
       existing.c++;

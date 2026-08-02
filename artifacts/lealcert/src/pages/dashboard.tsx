@@ -145,26 +145,27 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* Row 1 cards */}
+      {/* Row 1 cards — cadastros */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Contadores (total)"        value={cards.total_users} />
-        <StatCard label="Novos cadastros (período)" value={cards.new_users} />
-        <StatCard label="Pedidos (período)"         value={cards.orders_period} />
-        <StatCard label="Contadores que compraram"  value={cards.buyers_period} />
+        <StatCard label="Contadores (total)"   value={cards.total_users} />
+        <StatCard label="Clientes (total)"     value={(cards as Record<string, number>).total_clientes ?? 0} />
+        <StatCard label="Novos contadores"     value={cards.new_users} />
+        <StatCard label="Novos clientes"       value={(cards as Record<string, number>).new_clientes ?? 0} />
       </div>
 
-      {/* Row 2 cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label="Aguardando pagamento" value={cards.pending_period} />
-        <StatCard label="Pagos"                value={cards.paid_period} />
-        <StatCard label="Com protocolo"        value={cards.protocol_period} />
+      {/* Row 2 cards — pedidos */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Pedidos (período)"        value={cards.orders_period} />
+        <StatCard label="Contadores que compraram" value={cards.buyers_period} />
+        <StatCard label="Aguardando pagamento"     value={cards.pending_period} />
+        <StatCard label="Pagos / Em andamento"     value={cards.paid_period} />
       </div>
 
       {/* Row 3 cards — revenue */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label="Vendas Hoje"   value={brl(revenue.today)} />
-        <StatCard label="Vendas no Mês" value={brl(revenue.month)} />
-        <StatCard label="Vendas Totais" value={brl(revenue.all)} />
+        <StatCard label="Vendas Hoje"         value={brl(revenue.today)} />
+        <StatCard label="Vendas no Mês"       value={brl(revenue.month)} />
+        <StatCard label="Vendas Totais (geral)" value={brl(revenue.all)} />
       </div>
 
       {/* Charts row 1 */}

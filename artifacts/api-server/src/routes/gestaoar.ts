@@ -429,6 +429,12 @@ router.post("/gestaoar/sync-order/:orderId", requireAuth, async (req, res): Prom
         status: "completed",
       }).where(eq(ordersTable.id, orderId));
 
+      // Loyalty: incrementar cartela do contador se for um pedido de contador
+      if (order.userId) {
+        const { incrementLoyaltySlot } = await import("../lib/loyalty");
+        incrementLoyaltySlot(order.userId, orderId).catch((err: unknown) => logger.error({ err }, "Loyalty: erro ao incrementar slot (GAR sync manual)"));
+      }
+
       logger.info({ orderId, garStatus: newGarStatus }, "Certificado emitido — pedido concluído e renovação registrada");
     } else {
       if (newGarStatus && newGarStatus !== order.garStatus) {

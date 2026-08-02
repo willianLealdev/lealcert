@@ -112,6 +112,8 @@ export const ordersTable = pgTable("orders", {
   safewebAgendamentoId: text("safeweb_agendamento_id"),
   safewebAgendamentoDataHora: text("safeweb_agendamento_data_hora"),
   safewebAgendamentoLocalNome: text("safeweb_agendamento_local_nome"),
+  // Método de pagamento utilizado (pix | boleto | cartao | cortesia)
+  paymentMethod: text("payment_method"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
