@@ -588,9 +588,12 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     if (!existing) break;
   } while (true);
 
+  // Se há sessão ativa, o pedido pertence ao usuário logado — sempre.
+  const orderUserId = req.session?.userId ?? userId;
+
   const [order] = await db.insert(ordersTable).values({
     orderNumber,
-    userId,
+    userId: orderUserId,
     certificateId: Number(certificateId),
     status: "pending_payment",
     total: String(total),
