@@ -270,6 +270,14 @@ export default function Landing() {
             <a href="#sobre" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Por que nós</a>
             <a href="#avaliacoes" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Avaliações</a>
             <a href="#contato" className="px-3 py-2 rounded-md hover:bg-gray-100 hover:text-[#0f172a] transition-colors">Contato</a>
+            {/* Destaque para contadores */}
+            <a
+              href="/contadores"
+              className="ml-2 flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold text-xs px-3.5 py-2 rounded-full transition-colors shadow-sm"
+            >
+              <span>⭐</span>
+              <span>Sou Contador</span>
+            </a>
           </div>
           <div className="flex items-center gap-3">
             <a href="/entrar" className="hidden sm:block text-sm font-semibold text-[#0f172a] hover:text-[#2563eb] transition-colors px-4 py-2 rounded-lg border border-gray-300 hover:border-[#2563eb]">
