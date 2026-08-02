@@ -46,7 +46,7 @@ router.post("/loyalty/checkout-cortesia", requireAuth, async (req, res): Promise
   const userId = req.session.userId as number;
 
   const [user] = await db
-    .select({ userType: usersTable.userType, name: usersTable.name, email: usersTable.email, cpfCnpj: usersTable.cpfCnpj })
+    .select({ userType: usersTable.userType, name: usersTable.name, email: usersTable.email, cpfCnpj: usersTable.cpfCnpj, phone: usersTable.phone })
     .from(usersTable)
     .where(eq(usersTable.id, userId))
     .limit(1);
@@ -99,6 +99,7 @@ router.post("/loyalty/checkout-cortesia", requireAuth, async (req, res): Promise
         customerName: user.name ?? "Contador",
         customerCpfCnpj: user.cpfCnpj,
         customerEmail: user.email ?? null,
+        customerPhone: user.phone ?? null,
         paymentMethod: "cortesia",
         termsAcceptedAt: new Date(),
       })
