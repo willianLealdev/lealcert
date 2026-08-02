@@ -322,7 +322,7 @@ function OrderTimeline({ orderId, onEventsChange }: { orderId: number; onEventsC
 }
 
 // ── Componente de Agendamento ─────────────────────────────────────────────────
-function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgendamentoLocalNome, garAgendamentoLink, garHopeUploadUrl, garDocsConfirmedDb, onSuccess }: {
+function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgendamentoLocalNome, garAgendamentoLink, garHopeUploadUrl, garDocsConfirmedDb, orderCompleted, onSuccess }: {
   orderId: number;
   garProtocolo: string;
   garAgendamentoDataHora?: string;
@@ -330,6 +330,7 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
   garAgendamentoLink?: string;
   garHopeUploadUrl?: string;
   garDocsConfirmedDb?: boolean | null;
+  orderCompleted?: boolean;
   onSuccess: () => void;
 }) {
   const { toast } = useToast();
@@ -592,7 +593,7 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
           <p className="text-xs text-green-700">
             Um e-mail de confirmação foi enviado com os detalhes do atendimento.
           </p>
-          <div className="flex gap-2 flex-wrap">
+          {!orderCompleted && <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm" className="border-green-400 text-green-800 hover:bg-green-100" onClick={handleOpenModal}>
               <Calendar className="h-4 w-4 mr-2" />
               Reagendar
@@ -622,7 +623,7 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
+          </div>}
         </CardContent>
 
         <GarSchedulingDialog
@@ -1248,12 +1249,13 @@ function LocaisAndDateDialogBody({ orderId, onSelect }: {
 }
 
 // ── SafewebSchedulingCard ──────────────────────────────────────────────────────
-function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamentoDataHora, safewebAgendamentoLocalNome, onSuccess, open, onOpenChange }: {
+function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamentoDataHora, safewebAgendamentoLocalNome, orderCompleted, onSuccess, open, onOpenChange }: {
   orderId: number;
   safewebSolicitacaoId: string;
   safewebAgendamentoId?: string | null;
   safewebAgendamentoDataHora?: string | null;
   safewebAgendamentoLocalNome?: string | null;
+  orderCompleted?: boolean;
   onSuccess: () => void;
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -1311,20 +1313,24 @@ function SafewebSchedulingCard({ orderId, safewebAgendamentoId, safewebAgendamen
                   )}
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => onOpenChange(true)}>
-                <Calendar className="h-4 w-4 mr-2" />
-                Alterar Agendamento
-              </Button>
+              {!orderCompleted && (
+                <Button variant="outline" size="sm" onClick={() => onOpenChange(true)}>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Alterar Agendamento
+                </Button>
+              )}
             </>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
                 Seu certificado foi registrado na Safeweb. Selecione o local de atendimento e informe a data e hora.
               </p>
-              <Button onClick={() => onOpenChange(true)} className="w-full sm:w-auto">
-                <Calendar className="h-4 w-4 mr-2" />
-                Escolher Local e Data
-              </Button>
+              {!orderCompleted && (
+                <Button onClick={() => onOpenChange(true)} className="w-full sm:w-auto">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Escolher Local e Data
+                </Button>
+              )}
             </>
           )}
         </CardContent>
@@ -2300,6 +2306,7 @@ export default function OrderDetail() {
               garAgendamentoLink={garAgendamentoLink}
               garHopeUploadUrl={garHopeUploadUrl}
               garDocsConfirmedDb={garDocsConfirmedDb}
+              orderCompleted={order.status === "completed"}
               onSuccess={refetch}
             />
           )}
@@ -2312,6 +2319,7 @@ export default function OrderDetail() {
               safewebAgendamentoId={safewebAgendamentoId}
               safewebAgendamentoDataHora={safewebAgendamentoDataHora}
               safewebAgendamentoLocalNome={safewebAgendamentoLocalNome}
+              orderCompleted={order.status === "completed"}
               onSuccess={refetch}
               open={safewebAgendarOpen}
               onOpenChange={setSafewebAgendarOpen}

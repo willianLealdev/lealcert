@@ -19,3 +19,4 @@ export * from "./reviews";
 export * from "./nfse-invoices";
 export * from "./loyalty-cartelas";
 export * from "./loyalty-slot-events";
+export * from "./vendedores";

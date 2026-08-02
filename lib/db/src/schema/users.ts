@@ -1,10 +1,10 @@
-import { pgTable, text, serial, timestamp, boolean, pgEnum, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, pgEnum, jsonb, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export type UserType = "contador" | "cliente";
 
-export const roleEnum = pgEnum("role", ["admin", "contador", "agente"]);
+export const roleEnum = pgEnum("role", ["admin", "contador", "agente", "vendedor"]);
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -43,6 +43,8 @@ export const usersTable = pgTable("users", {
   addressState: text("address_state"),
   registrationIp: text("registration_ip"),
   trustedIps: jsonb("trusted_ips").$type<string[]>().default([]),
+  /** ID do vendedor que cadastrou este contador (null = cadastro direto) */
+  vendedorId: integer("vendedor_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

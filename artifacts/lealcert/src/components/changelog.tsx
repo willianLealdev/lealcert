@@ -15,6 +15,28 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "02/08/2026",
+    version: "1.27",
+    changes: [
+      { type: "fix", text: "Pedido concluído: botões 'Reagendar' e 'Cancelar Agendamento' (GAR e Safeweb) são ocultados quando o status é 'Concluído' — o card de agendamento continua visível com as informações do atendimento" },
+      { type: "fix", text: "Avaliações: campo 'Profissão' no popup de feedback agora detecta corretamente o tipo do usuário — clientes aparecem como 'Cliente' e contadores como 'Contador' (antes hardcoded como 'Contador' para todos)" },
+    ],
+  },
+  {
+    date: "02/08/2026",
+    version: "1.26",
+    changes: [
+      { type: "novo",     text: "Sistema de Vendedores: admin cadastra vendedores com comissão configurável (valor por cert + bônus por meta). Código de afiliado único gerado automaticamente" },
+      { type: "novo",     text: "Painel do Vendedor (/vendedor): dashboard com total de contadores, certificados emitidos (hoje/mês/ano), saldo de ganhos + bônus e ranking top-10 contadores" },
+      { type: "novo",     text: "Vendedor pode cadastrar contadores diretamente (/vendedor/contadores) com senha provisória enviada por e-mail e reset de senha individual" },
+      { type: "novo",     text: "Relatório de vendas do vendedor (/vendedor/relatorio): lista pedidos concluídos dos seus contadores com filtro por período e busca" },
+      { type: "novo",     text: "Extrato de ganhos (/vendedor/ganhos): histórico mensal, progresso para próximo bônus com barra visual e saldo total acumulado" },
+      { type: "novo",     text: "Link de afiliado (/register?ref=CÓDIGO): ao cadastrar via link, novo contador é automaticamente vinculado ao vendedor" },
+      { type: "novo",     text: "Admin /admin/vendedores: listagem, criar/editar, copiar link de afiliado, reset de senha e remoção de vendedores" },
+      { type: "novo",     text: "E-mails de boas-vindas: vendedor recebe e-mail com senha provisória ao ser criado; contador cadastrado pelo vendedor recebe e-mail de acesso" },
+    ],
+  },
+  {
+    date: "02/08/2026",
     version: "1.25",
     changes: [
       { type: "novo",     text: "Checkout: contadores com cartela de fidelidade completa veem opção '⭐ Certificado Cortesia' no topo da lista de pagamentos — R$ 0,00, sem necessidade de dados de pagamento" },

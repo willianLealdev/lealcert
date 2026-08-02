@@ -946,7 +946,7 @@ export default function NewOrder() {
       const payResult = await createPaymentMut.mutateAsync({
         id: orderData.id,
         data: {
-          method: selectedMethod,
+          method: selectedMethod as "pix" | "boleto" | "cartao",
           ...(selectedMethod === "cartao" ? {
             cardNumber: cardNumber.replace(/\D/g, ""),
             cardName: cardName.trim(),

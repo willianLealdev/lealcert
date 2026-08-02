@@ -66,8 +66,13 @@ import AdminRelatoriosGar from "@/pages/admin/relatorios-gar";
 import AdminReviews from "@/pages/admin/reviews";
 import AdminNfse from "@/pages/admin/nfse";
 import AdminFidelidade from "@/pages/admin/fidelidade";
+import AdminVendedores from "@/pages/admin/vendedores";
 import FidelidadePage from "@/pages/fidelidade";
 import AgenteConsultar from "@/pages/agente/consultar";
+import VendedorDashboard from "@/pages/vendedor/dashboard";
+import VendedorContadores from "@/pages/vendedor/contadores";
+import VendedorRelatorio from "@/pages/vendedor/relatorio";
+import VendedorGanhos from "@/pages/vendedor/ganhos";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import ComprarPage from "@/pages/comprar";
 import UnsubscribePage from "@/pages/unsubscribe";
@@ -78,7 +83,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = false, resetKey = 0 }: { component: React.ComponentType; adminOnly?: boolean; agenteOnly?: boolean; resetKey?: number }) {
+function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = false, vendedorOnly = false, resetKey = 0 }: { component: React.ComponentType; adminOnly?: boolean; agenteOnly?: boolean; vendedorOnly?: boolean; resetKey?: number }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -97,6 +102,7 @@ function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = 
   if (!user) return <Login />;
   if (adminOnly && user.role !== "admin") return <NotFound />;
   if (agenteOnly && user.role !== "agente") return <NotFound />;
+  if (vendedorOnly && user.role !== "vendedor" && user.role !== "admin") return <NotFound />;
 
   // Força conclusão do perfil antes de acessar qualquer outra área
   if (user.mustChangePassword) {
@@ -165,6 +171,13 @@ function Router() {
       <Route path="/admin/nfse" component={() => <ProtectedRoute component={AdminNfse} adminOnly />} />
       <Route path="/admin/fidelidade" component={() => <ProtectedRoute component={AdminFidelidade} adminOnly />} />
       <Route path="/fidelidade" component={() => <ProtectedRoute component={FidelidadePage} />} />
+      {/* Admin vendedores */}
+      <Route path="/admin/vendedores" component={() => <ProtectedRoute component={AdminVendedores} adminOnly />} />
+      {/* Vendedor routes */}
+      <Route path="/vendedor" component={() => <ProtectedRoute component={VendedorDashboard} vendedorOnly />} />
+      <Route path="/vendedor/contadores" component={() => <ProtectedRoute component={VendedorContadores} vendedorOnly />} />
+      <Route path="/vendedor/relatorio" component={() => <ProtectedRoute component={VendedorRelatorio} vendedorOnly />} />
+      <Route path="/vendedor/ganhos" component={() => <ProtectedRoute component={VendedorGanhos} vendedorOnly />} />
       {/* Agente routes */}
       <Route path="/consultar" component={() => <ProtectedRoute component={AgenteConsultar} agenteOnly />} />
       <Route component={NotFound} />

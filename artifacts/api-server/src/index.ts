@@ -69,6 +69,34 @@ async function ensureSessionTable() {
   `);
 }
 
+async function ensureVendedoresSchema() {
+  // Adiciona valor 'vendedor' ao enum role (idempotente)
+  await pool.query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'vendedor' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'role')) THEN
+        ALTER TYPE role ADD VALUE 'vendedor';
+      END IF;
+    END $$;
+  `);
+  // Coluna vendedor_id na tabela users
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS vendedor_id integer;
+  `);
+  // Tabela vendedores
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS vendedores (
+      id              SERIAL PRIMARY KEY,
+      user_id         INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      valor_por_cert  NUMERIC(10,2) NOT NULL DEFAULT 5.00,
+      valor_bonus     NUMERIC(10,2) NOT NULL DEFAULT 1000.00,
+      qtd_certs_bonus INTEGER NOT NULL DEFAULT 1000,
+      affiliate_code  TEXT NOT NULL UNIQUE,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+}
+
 async function ensureMarketingColumns() {
   await pool.query(`
     ALTER TABLE marketing_campaigns
@@ -119,6 +147,7 @@ async function main() {
   logger.info("Database migrations complete");
   await ensureSessionTable();
   await ensureMarketingColumns();
+  await ensureVendedoresSchema();
 
   await seed();
 

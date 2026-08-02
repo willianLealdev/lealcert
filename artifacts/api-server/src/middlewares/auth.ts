@@ -24,6 +24,19 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   next();
 }
 
+export function requireVendedor(req: Request, res: Response, next: NextFunction): void {
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Não autenticado." });
+    return;
+  }
+  const role = req.session.role as string | undefined;
+  if (role !== "vendedor" && role !== "admin") {
+    res.status(403).json({ error: "Acesso negado. Apenas vendedores." });
+    return;
+  }
+  next();
+}
+
 export async function requireAgenteOrAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.session?.userId) {
     res.status(401).json({ error: "Não autenticado." });

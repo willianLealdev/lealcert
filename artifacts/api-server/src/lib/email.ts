@@ -547,3 +547,79 @@ export async function sendVerificationEmail(to: string, name: string, code: stri
   });
   logger.info({ to }, "Verification email sent");
 }
+
+export async function sendVendedorWelcomeEmail(to: string, name: string, tempPassword: string): Promise<void> {
+  const cfg = await getEmailConfig();
+  const subject = `Bem-vindo à equipe ${cfg.appName} — acesse sua conta`;
+  const html = emailWrapper(`
+    <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+      <h2 style="color:#0f172a;margin:0 0 8px;font-size:20px;">Olá, ${esc(name)}! 👋</h2>
+      <p style="color:#475569;margin:0 0 16px;">Você foi cadastrado como <strong>Vendedor</strong> na plataforma <strong>${esc(cfg.appName)}</strong>.</p>
+      <p style="color:#475569;margin:0 0 20px;">Use as credenciais abaixo para acessar seu painel. Ao entrar pela primeira vez, você será solicitado a criar uma senha pessoal.</p>
+      <div style="background:#0f172a;border-radius:10px;padding:20px;text-align:center;margin-bottom:20px;">
+        <p style="color:#94a3b8;font-size:12px;margin:0 0 4px;letter-spacing:1px;text-transform:uppercase;">Senha temporária</p>
+        <span style="font-size:28px;font-weight:900;letter-spacing:4px;color:#ffffff;">${esc(tempPassword)}</span>
+      </div>
+      <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px;margin-bottom:24px;">
+        <p style="color:#92400e;font-size:13px;margin:0;">⚠️ Troque essa senha assim que acessar o sistema pela primeira vez.</p>
+      </div>
+      <div style="text-align:center;">
+        <a href="${cfg.siteUrl}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+          Acessar meu painel
+        </a>
+      </div>
+    </div>
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Olá, ${name}!\n\nVocê foi cadastrado como Vendedor na ${cfg.appName}.\n\nSenha temporária: ${tempPassword}\n\nAcesse: ${cfg.siteUrl}/entrar\n\nTroque a senha no primeiro acesso.`;
+
+  const transporter = await createTransporter(cfg);
+  if (!transporter) {
+    logger.info({ to, tempPassword }, "📧 [DEV] Vendedor welcome email (SMTP not configured)");
+    return;
+  }
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to, subject, html, text,
+    envelope: { from: extractEmail(cfg.from), to },
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
+  logger.info({ to }, "Vendedor welcome email sent");
+}
+
+export async function sendContadorWelcomeEmail(to: string, name: string, tempPassword: string): Promise<void> {
+  const cfg = await getEmailConfig();
+  const subject = `Seu acesso à ${cfg.appName} está pronto!`;
+  const html = emailWrapper(`
+    <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+      <h2 style="color:#0f172a;margin:0 0 8px;font-size:20px;">Olá, ${esc(name)}! 🎉</h2>
+      <p style="color:#475569;margin:0 0 16px;">Sua conta na plataforma <strong>${esc(cfg.appName)}</strong> foi criada com sucesso!</p>
+      <p style="color:#475569;margin:0 0 20px;">Use a senha temporária abaixo para entrar. Ao acessar pela primeira vez, você será solicitado a criar uma senha pessoal.</p>
+      <div style="background:#0f172a;border-radius:10px;padding:20px;text-align:center;margin-bottom:20px;">
+        <p style="color:#94a3b8;font-size:12px;margin:0 0 4px;letter-spacing:1px;text-transform:uppercase;">Senha temporária</p>
+        <span style="font-size:28px;font-weight:900;letter-spacing:4px;color:#ffffff;">${esc(tempPassword)}</span>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;margin-bottom:24px;font-size:13px;color:#1e40af;">
+        💡 Ao entrar, você poderá adquirir certificados digitais com praticidade e acompanhar seus pedidos em tempo real.
+      </div>
+      <div style="text-align:center;">
+        <a href="${cfg.siteUrl}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+          Acessar minha conta
+        </a>
+      </div>
+    </div>
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Olá, ${name}!\n\nSua conta na ${cfg.appName} foi criada!\n\nSenha temporária: ${tempPassword}\n\nAcesse: ${cfg.siteUrl}/entrar\n\nNo primeiro acesso, crie uma senha pessoal.`;
+
+  const transporter = await createTransporter(cfg);
+  if (!transporter) {
+    logger.info({ to, tempPassword }, "📧 [DEV] Contador welcome email (SMTP not configured)");
+    return;
+  }
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to, subject, html, text,
+    envelope: { from: extractEmail(cfg.from), to },
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
+  logger.info({ to }, "Contador welcome email sent");
+}

@@ -146,7 +146,7 @@ export default function Orders() {
   });
 
   const { data: me } = useGetMe();
-  const isAdmin = me?.role === "admin" || me?.userType === "admin";
+  const isAdmin = me?.role === "admin";
   const isDeletable = (status: string) => isAdmin && status === "pending_payment";
 
   return (

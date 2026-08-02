@@ -44,6 +44,9 @@ import {
   Phone,
   Receipt,
   Star,
+  Handshake,
+  TrendingUp,
+  DollarSign,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 import { ReviewPrompt } from "@/components/review-prompt";
@@ -64,8 +67,16 @@ const agenteNav = [
   { name: "Consultar Documentos", href: "/consultar", icon: FileSearch },
 ];
 
+const vendedorNav = [
+  { name: "Dashboard", href: "/vendedor", icon: LayoutDashboard },
+  { name: "Meus Contadores", href: "/vendedor/contadores", icon: Users },
+  { name: "Relatório de Vendas", href: "/vendedor/relatorio", icon: TrendingUp },
+  { name: "Meus Ganhos", href: "/vendedor/ganhos", icon: DollarSign },
+];
+
 const adminNav = [
   { name: "Usuários", href: "/admin/users", icon: Users },
+  { name: "Vendedores", href: "/admin/vendedores", icon: Handshake },
   { name: "Agentes", href: "/admin/agentes", icon: UserCog },
   { name: "Catálogo", href: "/admin/certificates", icon: FileBadge },
   { name: "Agenda", href: "/admin/slots", icon: CalendarDays },
@@ -437,6 +448,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               onClick={close}
             />
           ))}
+
+          {/* Vendedor: painel próprio */}
+          {user?.role === "vendedor" && (
+            <>
+              {!collapsed ? (
+                <p className="px-3 pt-4 pb-1.5 text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+                  Vendedor
+                </p>
+              ) : (
+                <div className="my-2 border-t border-sidebar-border/30" />
+              )}
+              {vendedorNav.map((item) => (
+                <NavItem
+                  key={item.name}
+                  href={item.href}
+                  icon={item.icon}
+                  name={item.name}
+                  active={location === item.href || (item.href !== "/vendedor" && location.startsWith(item.href + "/")) || (item.href === "/vendedor" && location === "/vendedor")}
+                  collapsed={collapsed}
+                  onClick={close}
+                />
+              ))}
+            </>
+          )}
 
           {user?.role === "admin" && (
             <>

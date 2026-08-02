@@ -322,6 +322,7 @@ export default function Register() {
     if (form.password.length < 8) { toast({ title: "Senha deve ter no mínimo 8 caracteres", variant: "destructive" }); return; }
     if (form.password !== form.confirm) { toast({ title: "Senhas não conferem", variant: "destructive" }); return; }
 
+    const affiliateCode = urlParams.get("ref") ?? undefined;
     registerMutation.mutate({
       data: {
         name: form.name.trim(),
@@ -343,7 +344,8 @@ export default function Register() {
         neighborhood: form.neighborhood || undefined,
         city: form.city || undefined,
         addressState: form.addressState || undefined,
-      },
+        affiliateCode,
+      } as Parameters<typeof registerMutation.mutate>[0]["data"] & { affiliateCode?: string },
     });
   }
 

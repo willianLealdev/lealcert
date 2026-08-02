@@ -2,7 +2,7 @@ import { Router } from "express";
 import { eq, or, and, not, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
-import { db, usersTable, ipVerificationsTable, settingsTable, ticketsTable, messagesTable } from "@workspace/db";
+import { db, usersTable, ipVerificationsTable, settingsTable, ticketsTable, messagesTable, vendedoresTable } from "@workspace/db";
 import { swConsultaCPF } from "../lib/safeweb";
 import { logger } from "../lib/logger";
 import { sendVerificationEmail, sendWelcomeEmail, sendTempPasswordEmail, sendIpVerificationEmail } from "../lib/email";
@@ -323,6 +323,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     companyName, companyFantasyName,
     responsibleCpf, responsibleName,
     zipCode, street, addressNumber, complement, neighborhood, city, addressState,
+    affiliateCode,
   } = req.body ?? {};
   if (!name || !email || !cpfCnpj || !password) {
     res.status(400).json({ error: "Nome, e-mail, CPF/CNPJ e senha são obrigatórios." });
@@ -457,6 +458,17 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     registrationIp: clientIp,
     trustedIps: [clientIp],
   }).returning({ id: usersTable.id });
+  // Vincula ao vendedor se veio via link de afiliado
+  if (newUser && affiliateCode) {
+    const [vend] = await db.select({ userId: vendedoresTable.userId })
+      .from(vendedoresTable)
+      .where(eq(vendedoresTable.affiliateCode, String(affiliateCode).toUpperCase()))
+      .limit(1);
+    if (vend) {
+      await db.update(usersTable).set({ vendedorId: vend.userId }).where(eq(usersTable.id, newUser.id));
+      logger.info({ newUserId: newUser.id, vendedorUserId: vend.userId, affiliateCode }, "Novo contador vinculado a vendedor via afiliado");
+    }
+  }
   if (newUser) recordRegisterIp(clientIp, newUser.id, digits).catch(() => {});
   try {
     await sendVerificationEmail(email, name, code);

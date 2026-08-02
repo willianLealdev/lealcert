@@ -45,7 +45,10 @@ export function ReviewPrompt() {
       .then(r => r.json())
       .then(data => {
         if (!data.hasReviewed) {
-          setForm(f => ({ ...f, name: user.name || "", role: "Contador" }));
+          const userRole = user.role === "admin" ? "Administrador"
+            : user.userType === "contador" ? "Contador"
+            : "Cliente";
+          setForm(f => ({ ...f, name: user.name || "", role: userRole }));
           setTimeout(() => setVisible(true), 2500);
         } else {
           // Já avaliou no banco — salva localmente pra evitar chamada futura

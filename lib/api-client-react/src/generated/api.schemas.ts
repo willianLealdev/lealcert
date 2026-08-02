@@ -157,6 +157,7 @@ export const AuthUserRole = {
   admin: 'admin',
   contador: 'contador',
   agente: 'agente',
+  vendedor: 'vendedor',
 } as const;
 
 export type AuthUserUserType = typeof AuthUserUserType[keyof typeof AuthUserUserType];

@@ -28,6 +28,8 @@ import checkoutRouter from "./checkout";
 import whatsappMarketingRouter from "./whatsapp-marketing";
 import nfseRouter from "./nfse";
 import loyaltyRouter from "./loyalty";
+import vendedoresAdminRouter from "./vendedores-admin";
+import vendedorRouter from "./vendedor";
 
 const router: IRouter = Router();
 
@@ -60,5 +62,7 @@ router.use(checkoutRouter);
 router.use(whatsappMarketingRouter);
 router.use(nfseRouter);
 router.use(loyaltyRouter);
+router.use(vendedoresAdminRouter);
+router.use(vendedorRouter);
 
 export default router;
