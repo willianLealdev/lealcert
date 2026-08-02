@@ -4730,6 +4730,9 @@ components:
         nfseIssRetido:
           type: string
           nullable: true
+        paymentMethod:
+          type: string
+          nullable: true
         updatedAt:
           type: string
 

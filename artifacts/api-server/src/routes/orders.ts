@@ -83,6 +83,7 @@ function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, 
     safewebAgendamentoId: o.safewebAgendamentoId,
     safewebAgendamentoDataHora: o.safewebAgendamentoDataHora,
     safewebAgendamentoLocalNome: o.safewebAgendamentoLocalNome,
+    paymentMethod: o.paymentMethod ?? null,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
   };

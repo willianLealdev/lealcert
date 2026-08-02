@@ -444,6 +444,7 @@ export interface Order {
   safewebAgendamentoId?: string | null;
   safewebAgendamentoDataHora?: string | null;
   safewebAgendamentoLocalNome?: string | null;
+  paymentMethod?: string | null;
   createdAt: string;
   updatedAt?: string;
 }
