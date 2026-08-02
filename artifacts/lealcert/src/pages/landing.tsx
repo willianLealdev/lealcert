@@ -624,6 +624,13 @@ export default function Landing() {
                   className="h-7 w-auto object-contain brightness-0 invert opacity-80 hover:opacity-100 transition-opacity"
                 />
               </div>
+              <div className="bg-white/5 hover:bg-white/10 transition-colors rounded-lg px-4 py-2 border border-white/10">
+                <img
+                  src="/arjuntos-logo.png"
+                  alt="Arjuntos Certificação Digital"
+                  className="h-7 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
+                />
+              </div>
             </div>
           </div>
         </div>

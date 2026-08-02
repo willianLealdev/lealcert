@@ -2663,6 +2663,9 @@ export default function ComprarPage() {
               <div className="bg-white/5 hover:bg-white/10 transition-colors rounded-lg px-4 py-2 border border-white/10">
                 <img src="/safeweb-logo.png" alt="Safeweb" className="h-7 w-auto object-contain brightness-0 invert opacity-80" />
               </div>
+              <div className="bg-white/5 hover:bg-white/10 transition-colors rounded-lg px-4 py-2 border border-white/10">
+                <img src="/arjuntos-logo.png" alt="Arjuntos Certificação Digital" className="h-7 w-auto object-contain opacity-80" />
+              </div>
             </div>
           </div>
         </div>
