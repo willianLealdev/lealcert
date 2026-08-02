@@ -5,7 +5,7 @@ import { randomBytes } from "crypto";
 import { db, usersTable, ipVerificationsTable, settingsTable, ticketsTable, messagesTable, vendedoresTable } from "@workspace/db";
 import { swConsultaCPF } from "../lib/safeweb";
 import { logger } from "../lib/logger";
-import { sendVerificationEmail, sendWelcomeEmail, sendTempPasswordEmail, sendIpVerificationEmail } from "../lib/email";
+import { sendVerificationEmail, sendWelcomeEmail, sendTempPasswordEmail, sendIpVerificationEmail, sendNovoContadorViaAfiliadoEmail } from "../lib/email";
 import { sendWaText } from "../lib/notify";
 import {
   getClientIp, checkIpStatus, recordLoginAttempt, recordRegisterIp,
@@ -467,6 +467,14 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     if (vend) {
       await db.update(usersTable).set({ vendedorId: vend.userId }).where(eq(usersTable.id, newUser.id));
       logger.info({ newUserId: newUser.id, vendedorUserId: vend.userId, affiliateCode }, "Novo contador vinculado a vendedor via afiliado");
+      // Notifica o vendedor por e-mail
+      const [vendUser] = await db.select({ email: usersTable.email, name: usersTable.name })
+        .from(usersTable).where(eq(usersTable.id, vend.userId)).limit(1);
+      if (vendUser?.email) {
+        sendNovoContadorViaAfiliadoEmail(vendUser.email, vendUser.name, name.trim()).catch(err =>
+          logger.error({ err }, "Erro ao enviar e-mail de novo contador ao vendedor")
+        );
+      }
     }
   }
   if (newUser) recordRegisterIp(clientIp, newUser.id, digits).catch(() => {});

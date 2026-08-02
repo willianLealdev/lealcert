@@ -21,6 +21,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "fix", text: "Tabela vendedor_pagamentos agora criada automaticamente no startup (ausência causava erro 500 em /admin/vendedores)" },
       { type: "fix", text: "Vendedores não aparecem mais na lista de /admin/usuários — gerenciados exclusivamente em /admin/vendedores" },
       { type: "novo", text: "Botão 'Reenviar E-mail' (ícone envelope) na lista de vendedores: reenvia o e-mail de boas-vindas com nova senha provisória a qualquer momento" },
+      { type: "novo", text: "Vendedor recebe e-mail automático quando um novo contador se cadastra pelo seu link de afiliado" },
     ],
   },
   {

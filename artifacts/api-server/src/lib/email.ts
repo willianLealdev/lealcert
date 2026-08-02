@@ -672,3 +672,38 @@ export async function sendContadorWelcomeEmail(to: string, name: string, tempPas
   });
   logger.info({ to }, "Contador welcome email sent");
 }
+
+/** Notifica o vendedor quando um novo contador se cadastra pelo seu link de afiliado */
+export async function sendNovoContadorViaAfiliadoEmail(to: string, vendedorName: string, contadorName: string): Promise<void> {
+  const cfg = await getEmailConfig();
+  const subject = `Novo contador cadastrado pelo seu link — ${cfg.appName}`;
+  const html = emailWrapper(`
+    <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+      <h2 style="color:#0f172a;margin:0 0 8px;font-size:20px;">Olá, ${esc(vendedorName)}! 🎉</h2>
+      <p style="color:#475569;margin:0 0 16px;">Um novo contador se cadastrou pelo seu link de afiliado:</p>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin-bottom:24px;text-align:center;">
+        <p style="color:#166534;font-size:20px;font-weight:700;margin:0;">${esc(contadorName)}</p>
+      </div>
+      <p style="color:#475569;margin:0 0 20px;">Acompanhe seus contadores e comissões no painel.</p>
+      <div style="text-align:center;">
+        <a href="${cfg.siteUrl}/vendedor" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+          Acessar meu painel
+        </a>
+      </div>
+    </div>
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Olá, ${vendedorName}!\n\nUm novo contador se cadastrou pelo seu link de afiliado: ${contadorName}\n\nAcesse seu painel: ${cfg.siteUrl}/vendedor`;
+
+  const transporter = await createTransporter(cfg);
+  if (!transporter) {
+    logger.info({ to, contadorName }, "📧 [DEV] Novo contador via afiliado email (SMTP not configured)");
+    return;
+  }
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to, subject, html, text,
+    envelope: { from: extractEmail(cfg.from), to },
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
+  logger.info({ to, contadorName }, "Novo contador via afiliado email sent");
+}
