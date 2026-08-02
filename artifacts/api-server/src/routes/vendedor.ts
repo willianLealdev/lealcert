@@ -10,7 +10,7 @@
 import { Router } from "express";
 import { eq, and, count, desc, sql, gte, lte } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { db, usersTable, vendedoresTable, ordersTable, loyaltySlotEventsTable } from "@workspace/db";
+import { db, usersTable, vendedoresTable, vendedorPagamentosTable, ordersTable, loyaltySlotEventsTable } from "@workspace/db";
 import { requireVendedor } from "../middlewares/auth";
 import { sendContadorWelcomeEmail, sendTempPasswordEmail } from "../lib/email";
 import { logger } from "../lib/logger";
@@ -316,7 +316,16 @@ router.get("/vendedor/ganhos", requireVendedor, async (req, res): Promise<void> 
   const ganhos = totalCerts * valorPorCert;
   const bonus  = Math.floor(totalCerts / qtdBonus) * valorBonus;
 
-  res.json({ meses, totalCerts, ganhos, bonus, saldoTotal: ganhos + bonus, valorPorCert, valorBonus, qtdCertsBonus: qtdBonus });
+  // Total já pago ao vendedor
+  const [{ totalPagoRaw }] = await db
+    .select({ totalPagoRaw: sql<string>`COALESCE(SUM(${vendedorPagamentosTable.valor}), 0)` })
+    .from(vendedorPagamentosTable)
+    .where(eq(vendedorPagamentosTable.vendedorId, ctx.vendedorId));
+  const totalPago = parseFloat(String(totalPagoRaw));
+  const saldoBruto = ganhos + bonus;
+  const saldoReceber = Math.max(0, saldoBruto - totalPago);
+
+  res.json({ meses, totalCerts, ganhos, bonus, saldoTotal: saldoBruto, totalPago, saldoReceber, valorPorCert, valorBonus, qtdCertsBonus: qtdBonus });
 });
 
 export default router;

@@ -15,6 +15,15 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "02/08/2026",
+    version: "1.28",
+    changes: [
+      { type: "novo", text: "Controle de pagamentos de comissão: admin registra pagamentos realizados a cada vendedor (valor, data, observação) diretamente em /admin/vendedores" },
+      { type: "novo", text: "Visão consolidada de comissões na lista de vendedores: colunas Saldo Bruto, Já Pago e A Receber; cards de total a pagar e total já pago para todos os vendedores" },
+      { type: "novo", text: "Tela Ganhos do vendedor exibe saldo bruto, total pago e saldo a receber lado a lado" },
+    ],
+  },
+  {
+    date: "02/08/2026",
     version: "1.27",
     changes: [
       { type: "fix", text: "Pedido concluído: botões 'Reagendar' e 'Cancelar Agendamento' (GAR e Safeweb) são ocultados quando o status é 'Concluído' — o card de agendamento continua visível com as informações do atendimento" },

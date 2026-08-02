@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Star } from "lucide-react";
+import { DollarSign, TrendingUp, Star, Wallet, CheckCircle } from "lucide-react";
 
 type GanhosData = {
   meses: { mes: string; certsEmitidos: number; ganho: number }[];
@@ -8,6 +8,8 @@ type GanhosData = {
   ganhos: number;
   bonus: number;
   saldoTotal: number;
+  totalPago: number;
+  saldoReceber: number;
   valorPorCert: number;
   valorBonus: number;
   qtdCertsBonus: number;
@@ -45,6 +47,9 @@ export default function VendedorGanhos() {
   const bonusEarnedCount = Math.floor(data.totalCerts / data.qtdCertsBonus);
   const nextBonusAt = data.qtdCertsBonus - (data.totalCerts % data.qtdCertsBonus);
 
+  const totalPago = data.totalPago ?? 0;
+  const saldoReceber = data.saldoReceber ?? data.saldoTotal;
+
   return (
     <div className="space-y-6">
       <div>
@@ -81,14 +86,36 @@ export default function VendedorGanhos() {
         </Card>
       </div>
 
-      {/* Saldo total */}
-      <Card className="bg-gray-900 border-gray-800">
-        <CardContent className="pt-6 pb-5 text-center">
-          <p className="text-gray-400 text-xs uppercase tracking-widest mb-2">Saldo Total Acumulado</p>
-          <p className="text-5xl font-black text-yellow-400">{fmtCurrency(data.saldoTotal)}</p>
-          <p className="text-gray-500 text-xs mt-2">{fmtCurrency(data.ganhos)} em certs + {fmtCurrency(data.bonus)} em bônus</p>
-        </CardContent>
-      </Card>
+      {/* Saldo bruto / pago / a receber */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="bg-gray-900 border-gray-800 sm:col-span-3">
+          <CardContent className="pt-6 pb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+              <div>
+                <p className="text-gray-400 text-xs uppercase tracking-widest mb-1">Saldo Bruto Acumulado</p>
+                <p className="text-3xl sm:text-4xl font-black text-white">{fmtCurrency(data.saldoTotal)}</p>
+                <p className="text-gray-500 text-xs mt-1">{fmtCurrency(data.ganhos)} em certs + {fmtCurrency(data.bonus)} em bônus</p>
+              </div>
+              <div className="border-t sm:border-t-0 sm:border-l border-gray-700 pt-4 sm:pt-0">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <p className="text-gray-400 text-xs uppercase tracking-widest">Já Pago</p>
+                </div>
+                <p className="text-3xl sm:text-4xl font-black text-emerald-400">{fmtCurrency(totalPago)}</p>
+                <p className="text-gray-500 text-xs mt-1">Pagamentos registrados pelo admin</p>
+              </div>
+              <div className="border-t sm:border-t-0 sm:border-l border-gray-700 pt-4 sm:pt-0">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Wallet className="h-4 w-4 text-yellow-400" />
+                  <p className="text-gray-400 text-xs uppercase tracking-widest">A Receber</p>
+                </div>
+                <p className="text-3xl sm:text-4xl font-black text-yellow-400">{fmtCurrency(saldoReceber)}</p>
+                <p className="text-gray-500 text-xs mt-1">Saldo ainda não pago</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Próximo bônus */}
       {data.qtdCertsBonus > 0 && (

@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Loader2, Copy, RefreshCw, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Copy, RefreshCw, Eye, DollarSign, Wallet, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
 type VendedorRow = {
@@ -16,6 +16,12 @@ type VendedorRow = {
   isActive: boolean; mustChangePassword: boolean; createdAt: string;
   vendedorId: number; valorPorCert: string; valorBonus: string; qtdCertsBonus: number;
   affiliateCode: string; totalContadores: number;
+  saldoBruto: number; totalPago: number; saldoDevido: number;
+};
+
+type PagamentoRow = {
+  id: number; valor: string; dataPagamento: string; observacao: string | null;
+  createdAt: string; criadoPorNome: string | null;
 };
 
 type FormData = {
@@ -24,7 +30,10 @@ type FormData = {
   isActive: boolean;
 };
 
+type PagForm = { valor: string; dataPagamento: string; observacao: string };
+
 const EMPTY: FormData = { name: "", email: "", cpfCnpj: "", phone: "", valorPorCert: "5.00", valorBonus: "1000.00", qtdCertsBonus: "1000", isActive: true };
+const EMPTY_PAG: PagForm = { valor: "", dataPagamento: new Date().toISOString().slice(0, 10), observacao: "" };
 
 const apiFetch = (url: string, init?: RequestInit) => fetch(url, { credentials: "include", ...init });
 
@@ -36,6 +45,12 @@ function formatDate(d: string | null | undefined) {
 function formatCurrency(v: string | number) {
   return `R$ ${parseFloat(String(v)).toFixed(2).replace(".", ",")}`;
 }
+
+function formatCurrencyNum(v: number) {
+  return `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// ── Hooks ────────────────────────────────────────────────────────────────────
 
 function useVendedores() {
   return useQuery<VendedorRow[]>({
@@ -97,6 +112,228 @@ function useResetPassword(opts?: { onSuccess?: (data: { tempPassword: string }) 
   });
 }
 
+function usePagamentos(vendedorUserId: number | null) {
+  return useQuery<PagamentoRow[]>({
+    queryKey: ["admin-vendedor-pagamentos", vendedorUserId],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/admin/vendedores/${vendedorUserId}/pagamentos`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    enabled: vendedorUserId !== null,
+  });
+}
+
+function useRegistrarPagamento(vendedorUserId: number | null, opts?: { onSuccess?: () => void; onError?: (e: Error) => void }) {
+  const qc = useQueryClient();
+  return useMutation<unknown, Error, PagForm>({
+    mutationFn: async (data) => {
+      const res = await apiFetch(`/api/admin/vendedores/${vendedorUserId}/pagamentos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ valor: data.valor, dataPagamento: data.dataPagamento, observacao: data.observacao }),
+      });
+      if (!res.ok) { const t = await res.json().catch(() => ({ error: res.statusText })); throw new Error(t.error ?? "Erro"); }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-vendedor-pagamentos", vendedorUserId] });
+      qc.invalidateQueries({ queryKey: ["admin-vendedores"] });
+      opts?.onSuccess?.();
+    },
+    onError: opts?.onError,
+  });
+}
+
+function useExcluirPagamento(vendedorUserId: number | null, opts?: { onSuccess?: () => void }) {
+  const qc = useQueryClient();
+  return useMutation<unknown, Error, number>({
+    mutationFn: async (pagId) => {
+      const res = await apiFetch(`/api/admin/vendedores/${vendedorUserId}/pagamentos/${pagId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(res.statusText);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-vendedor-pagamentos", vendedorUserId] });
+      qc.invalidateQueries({ queryKey: ["admin-vendedores"] });
+      opts?.onSuccess?.();
+    },
+  });
+}
+
+// ── Painel de Pagamentos ──────────────────────────────────────────────────────
+
+function PagamentosPanel({ vendedor, onClose }: { vendedor: VendedorRow; onClose: () => void }) {
+  const { toast } = useToast();
+  const { data: pagamentos, isLoading } = usePagamentos(vendedor.id);
+  const [pagForm, setPagForm] = useState<PagForm>(EMPTY_PAG);
+  const [deletePagId, setDeletePagId] = useState<number | null>(null);
+
+  const registrar = useRegistrarPagamento(vendedor.id, {
+    onSuccess: () => { toast({ title: "Pagamento registrado!" }); setPagForm(EMPTY_PAG); },
+    onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }),
+  });
+  const excluir = useExcluirPagamento(vendedor.id, {
+    onSuccess: () => { toast({ title: "Pagamento removido." }); setDeletePagId(null); },
+  });
+
+  const totalPago = pagamentos?.reduce((s, p) => s + parseFloat(p.valor), 0) ?? 0;
+
+  function setPag(k: keyof PagForm, v: string) { setPagForm(p => ({ ...p, [k]: v })); }
+
+  function handleRegistrar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!pagForm.valor || parseFloat(pagForm.valor) <= 0) {
+      toast({ title: "Valor inválido", variant: "destructive" });
+      return;
+    }
+    registrar.mutate(pagForm);
+  }
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Pagamentos — {vendedor.name}</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto space-y-5 pr-1">
+          {/* Resumo financeiro */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg border bg-muted/30 p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Saldo Bruto</p>
+              <p className="font-bold text-sm">{formatCurrencyNum(vendedor.saldoBruto)}</p>
+            </div>
+            <div className="rounded-lg border bg-emerald-50 border-emerald-200 p-3 text-center">
+              <p className="text-xs text-emerald-700 mb-1 flex items-center justify-center gap-1">
+                <CheckCircle className="h-3 w-3" /> Já Pago
+              </p>
+              <p className="font-bold text-sm text-emerald-700">{formatCurrencyNum(totalPago)}</p>
+            </div>
+            <div className="rounded-lg border bg-amber-50 border-amber-200 p-3 text-center">
+              <p className="text-xs text-amber-700 mb-1 flex items-center justify-center gap-1">
+                <Wallet className="h-3 w-3" /> A Receber
+              </p>
+              <p className="font-bold text-sm text-amber-700">{formatCurrencyNum(Math.max(0, vendedor.saldoBruto - totalPago))}</p>
+            </div>
+          </div>
+
+          {/* Formulário de novo pagamento */}
+          <div className="rounded-lg border p-4 bg-blue-50/50 border-blue-100">
+            <p className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-1.5">
+              <DollarSign className="h-4 w-4" /> Registrar Pagamento
+            </p>
+            <form onSubmit={handleRegistrar} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Valor (R$) *</Label>
+                  <Input
+                    type="number" step="0.01" min="0.01"
+                    placeholder="0,00"
+                    value={pagForm.valor}
+                    onChange={e => setPag("valor", e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Data do Pagamento *</Label>
+                  <Input
+                    type="date"
+                    value={pagForm.dataPagamento}
+                    onChange={e => setPag("dataPagamento", e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Observação</Label>
+                <Input
+                  placeholder="Ex: Pix, transferência, período..."
+                  value={pagForm.observacao}
+                  onChange={e => setPag("observacao", e.target.value)}
+                  maxLength={200}
+                />
+              </div>
+              <Button type="submit" size="sm" disabled={registrar.isPending} className="w-full sm:w-auto">
+                {registrar.isPending ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Registrando...</> : <><Plus className="h-3.5 w-3.5 mr-1.5" />Registrar</>}
+              </Button>
+            </form>
+          </div>
+
+          {/* Histórico de pagamentos */}
+          <div>
+            <p className="text-sm font-semibold mb-2">Histórico de Pagamentos</p>
+            {isLoading ? (
+              <div className="text-center py-6 text-muted-foreground text-sm">Carregando...</div>
+            ) : !pagamentos?.length ? (
+              <div className="text-center py-6 text-muted-foreground text-sm border rounded-lg">Nenhum pagamento registrado ainda.</div>
+            ) : (
+              <div className="rounded-md border overflow-hidden overflow-x-auto">
+                <table className="w-full text-sm min-w-[480px]">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">Data</th>
+                      <th className="text-right px-3 py-2 font-medium text-muted-foreground text-xs">Valor</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">Observação</th>
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs hidden sm:table-cell">Registrado por</th>
+                      <th className="px-3 py-2 w-10" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagamentos.map(p => (
+                      <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                        <td className="px-3 py-2 whitespace-nowrap">{formatDate(p.dataPagamento)}</td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold text-emerald-600 whitespace-nowrap">{formatCurrency(p.valor)}</td>
+                        <td className="px-3 py-2 text-muted-foreground max-w-[180px] truncate">{p.observacao ?? "—"}</td>
+                        <td className="px-3 py-2 text-muted-foreground hidden sm:table-cell text-xs">{p.criadoPorNome ?? "—"}</td>
+                        <td className="px-3 py-2">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeletePagId(p.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-muted/20 font-bold border-t-2">
+                      <td className="px-3 py-2 text-xs">Total pago</td>
+                      <td className="px-3 py-2 text-right font-mono text-emerald-600">{formatCurrencyNum(totalPago)}</td>
+                      <td colSpan={3} />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="mt-2">
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+
+      <AlertDialog open={deletePagId !== null} onOpenChange={() => setDeletePagId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover pagamento?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deletePagId !== null && excluir.mutate(deletePagId)}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Dialog>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function AdminVendedores() {
   const { toast } = useToast();
   const { data: vendedores, isLoading } = useVendedores();
@@ -105,6 +342,7 @@ export default function AdminVendedores() {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [viewVendedor, setViewVendedor] = useState<VendedorRow | null>(null);
+  const [pagVendedor, setPagVendedor] = useState<VendedorRow | null>(null);
 
   const siteUrl = window.location.origin;
 
@@ -135,6 +373,10 @@ export default function AdminVendedores() {
     navigator.clipboard.writeText(url).then(() => toast({ title: "Link copiado!", description: url }));
   }
 
+  // Totais consolidados
+  const totalDevidoGeral = vendedores?.reduce((s, v) => s + (v.saldoDevido ?? 0), 0) ?? 0;
+  const totalPagoGeral   = vendedores?.reduce((s, v) => s + (v.totalPago ?? 0), 0) ?? 0;
+
   const isPending = createVendedor.isPending || updateVendedor.isPending;
 
   return (
@@ -151,6 +393,32 @@ export default function AdminVendedores() {
         </Button>
       </div>
 
+      {/* Resumo consolidado de comissões */}
+      {vendedores && vendedores.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card className="bg-amber-50 border-amber-200">
+            <CardContent className="pt-4 pb-4 flex items-center gap-4">
+              <Wallet className="h-8 w-8 text-amber-500 shrink-0" />
+              <div>
+                <p className="text-xs text-amber-700 font-medium uppercase tracking-wide">Total a pagar (todos)</p>
+                <p className="text-2xl font-black text-amber-800">{formatCurrencyNum(totalDevidoGeral)}</p>
+                <p className="text-xs text-amber-600">Soma do saldo a receber de todos os vendedores</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-emerald-50 border-emerald-200">
+            <CardContent className="pt-4 pb-4 flex items-center gap-4">
+              <CheckCircle className="h-8 w-8 text-emerald-500 shrink-0" />
+              <div>
+                <p className="text-xs text-emerald-700 font-medium uppercase tracking-wide">Total já pago (todos)</p>
+                <p className="text-2xl font-black text-emerald-800">{formatCurrencyNum(totalPagoGeral)}</p>
+                <p className="text-xs text-emerald-600">Soma de todos os pagamentos registrados</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card>
         <CardContent className="pt-6">
           {isLoading ? (
@@ -159,14 +427,15 @@ export default function AdminVendedores() {
             <div className="text-center py-10 text-muted-foreground">Nenhum vendedor cadastrado.</div>
           ) : (
             <div className="rounded-md border overflow-hidden overflow-x-auto">
-              <table className="w-full text-sm min-w-[700px]">
+              <table className="w-full text-sm min-w-[800px]">
                 <thead>
                   <tr className="border-b bg-muted/30">
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">E-mail</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Contadores</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Por cert</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Bônus</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Saldo Bruto</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Já Pago</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">A Receber</th>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
                     <th className="px-4 py-3" />
                   </tr>
@@ -179,13 +448,17 @@ export default function AdminVendedores() {
                       <td className="px-4 py-3">
                         <Badge variant="secondary">{v.totalContadores}</Badge>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-emerald-600">{formatCurrency(v.valorPorCert)}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">{formatCurrency(v.valorBonus)} / {v.qtdCertsBonus} certs</td>
+                      <td className="px-4 py-3 text-right font-mono text-xs font-semibold">{formatCurrencyNum(v.saldoBruto ?? 0)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-emerald-600">{formatCurrencyNum(v.totalPago ?? 0)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-amber-600">{formatCurrencyNum(v.saldoDevido ?? 0)}</td>
                       <td className="px-4 py-3">
                         <Badge variant={v.isActive ? "default" : "destructive"}>{v.isActive ? "Ativo" : "Inativo"}</Badge>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 justify-end">
+                          <Button variant="ghost" size="icon" title="Pagamentos" onClick={() => setPagVendedor(v)}>
+                            <DollarSign className="h-4 w-4 text-emerald-600" />
+                          </Button>
                           <Button variant="ghost" size="icon" title="Ver detalhes" onClick={() => setViewVendedor(v)}><Eye className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" title="Copiar link de afiliado" onClick={() => copyLink(v.affiliateCode)}><Copy className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(v)}><Pencil className="h-4 w-4" /></Button>
@@ -201,6 +474,11 @@ export default function AdminVendedores() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de pagamentos */}
+      {pagVendedor && (
+        <PagamentosPanel vendedor={pagVendedor} onClose={() => setPagVendedor(null)} />
+      )}
 
       {/* Modal detalhes */}
       {viewVendedor && (
@@ -222,6 +500,14 @@ export default function AdminVendedores() {
                   <div><p className="text-xs text-muted-foreground">Por certificado</p><p className="font-semibold text-emerald-600">{formatCurrency(viewVendedor.valorPorCert)}</p></div>
                   <div><p className="text-xs text-muted-foreground">Bônus</p><p className="font-semibold">{formatCurrency(viewVendedor.valorBonus)}</p></div>
                   <div className="col-span-2"><p className="text-xs text-muted-foreground">Meta para bônus</p><p>{viewVendedor.qtdCertsBonus} certificados</p></div>
+                </div>
+              </div>
+              <div className="border rounded-lg p-3 bg-muted/30 space-y-1">
+                <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Saldo Financeiro</p>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div><p className="text-xs text-muted-foreground">Bruto</p><p className="font-bold text-xs">{formatCurrencyNum(viewVendedor.saldoBruto ?? 0)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Pago</p><p className="font-bold text-xs text-emerald-600">{formatCurrencyNum(viewVendedor.totalPago ?? 0)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">A Receber</p><p className="font-bold text-xs text-amber-600">{formatCurrencyNum(viewVendedor.saldoDevido ?? 0)}</p></div>
                 </div>
               </div>
               <div className="border rounded-lg p-3 bg-muted/30">

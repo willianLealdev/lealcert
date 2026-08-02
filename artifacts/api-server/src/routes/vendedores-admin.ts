@@ -1,17 +1,20 @@
 /**
- * Admin: CRUD de vendedores
+ * Admin: CRUD de vendedores + pagamentos de comissão
  * GET    /api/admin/vendedores
  * POST   /api/admin/vendedores
  * GET    /api/admin/vendedores/:id
  * PATCH  /api/admin/vendedores/:id
  * DELETE /api/admin/vendedores/:id
  * POST   /api/admin/vendedores/:id/reset-password
+ * GET    /api/admin/vendedores/:id/pagamentos
+ * POST   /api/admin/vendedores/:id/pagamentos
+ * DELETE /api/admin/vendedores/:id/pagamentos/:pagId
  */
 import { Router } from "express";
-import { eq, and, sql, count } from "drizzle-orm";
+import { eq, and, sql, count, sum, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
-import { db, usersTable, vendedoresTable, ordersTable } from "@workspace/db";
+import { db, usersTable, vendedoresTable, vendedorPagamentosTable, ordersTable, loyaltySlotEventsTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
 import { sendVendedorWelcomeEmail, sendTempPasswordEmail } from "../lib/email";
 import { logger } from "../lib/logger";
@@ -31,6 +34,37 @@ function generateTempPassword(): string {
   let result = "";
   for (let i = 0; i < 8; i++) result += chars[Math.floor(Math.random() * chars.length)];
   return result;
+}
+
+/** Calcula saldo bruto de um vendedor (ganhos por cert + bonus) dado o vendedorId */
+async function calcSaldoBruto(vendedorId: number, vendedorUserId: number, valorPorCert: string, valorBonus: string, qtdCertsBonus: number): Promise<number> {
+  // Busca contadores vinculados
+  const contadoresRows = await db.select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.vendedorId, vendedorUserId));
+  const contadorIds = contadoresRows.map(r => r.id);
+  if (!contadorIds.length) return 0;
+
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(loyaltySlotEventsTable)
+    .where(sql`${loyaltySlotEventsTable.userId} = ANY(${sql.raw(`ARRAY[${contadorIds.join(",")}]::int[]`)})`);
+
+  const totalCerts = Number(total);
+  const vPorCert = parseFloat(valorPorCert);
+  const vBonus   = parseFloat(valorBonus);
+  const ganhos   = totalCerts * vPorCert;
+  const bonus    = Math.floor(totalCerts / qtdCertsBonus) * vBonus;
+  return ganhos + bonus;
+}
+
+/** Calcula total já pago a um vendedor */
+async function calcTotalPago(vendedorId: number): Promise<number> {
+  const [{ total }] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${vendedorPagamentosTable.valor}), 0)` })
+    .from(vendedorPagamentosTable)
+    .where(eq(vendedorPagamentosTable.vendedorId, vendedorId));
+  return parseFloat(String(total));
 }
 
 // ── GET /admin/vendedores ────────────────────────────────────────────────────
@@ -56,13 +90,25 @@ router.get("/admin/vendedores", requireAdmin, async (req, res): Promise<void> =>
     .where(eq(usersTable.role, "vendedor"))
     .orderBy(usersTable.createdAt);
 
-  // Para cada vendedor conta quantos contadores tem
+  // Para cada vendedor conta contadores, calcula saldo bruto e total pago
   const result = await Promise.all(rows.map(async (row) => {
-    const [{ total }] = await db
+    const [{ total: totalC }] = await db
       .select({ total: count() })
       .from(usersTable)
       .where(eq(usersTable.vendedorId, row.id));
-    return { ...row, totalContadores: Number(total) };
+
+    const [saldoBruto, totalPago] = await Promise.all([
+      calcSaldoBruto(row.vendedorId, row.id, row.valorPorCert, row.valorBonus, row.qtdCertsBonus),
+      calcTotalPago(row.vendedorId),
+    ]);
+
+    return {
+      ...row,
+      totalContadores: Number(totalC),
+      saldoBruto,
+      totalPago,
+      saldoDevido: Math.max(0, saldoBruto - totalPago),
+    };
   }));
 
   res.json(result);
@@ -230,6 +276,80 @@ router.post("/admin/vendedores/:id/reset-password", requireAdmin, async (req, re
   }
 
   res.json({ message: "Senha redefinida e e-mail enviado.", tempPassword });
+});
+
+// ── GET /admin/vendedores/:id/pagamentos ─────────────────────────────────────
+router.get("/admin/vendedores/:id/pagamentos", requireAdmin, async (req, res): Promise<void> => {
+  const userId = Number(String(req.params.id));
+
+  // Resolve vendedorId
+  const [vRow] = await db.select({ vendedorId: vendedoresTable.id })
+    .from(vendedoresTable).where(eq(vendedoresTable.userId, userId)).limit(1);
+  if (!vRow) { res.status(404).json({ error: "Vendedor não encontrado." }); return; }
+
+  const pagamentos = await db
+    .select({
+      id: vendedorPagamentosTable.id,
+      valor: vendedorPagamentosTable.valor,
+      dataPagamento: vendedorPagamentosTable.dataPagamento,
+      observacao: vendedorPagamentosTable.observacao,
+      criadoPorUserId: vendedorPagamentosTable.criadoPorUserId,
+      createdAt: vendedorPagamentosTable.createdAt,
+      criadoPorNome: usersTable.name,
+    })
+    .from(vendedorPagamentosTable)
+    .leftJoin(usersTable, eq(usersTable.id, vendedorPagamentosTable.criadoPorUserId))
+    .where(eq(vendedorPagamentosTable.vendedorId, vRow.vendedorId))
+    .orderBy(desc(vendedorPagamentosTable.dataPagamento));
+
+  res.json(pagamentos);
+});
+
+// ── POST /admin/vendedores/:id/pagamentos ─────────────────────────────────────
+router.post("/admin/vendedores/:id/pagamentos", requireAdmin, async (req, res): Promise<void> => {
+  const userId = Number(String(req.params.id));
+  const adminUserId = req.session.userId as number;
+  const { valor, dataPagamento, observacao } = req.body ?? {};
+
+  if (!valor || isNaN(parseFloat(String(valor))) || parseFloat(String(valor)) <= 0) {
+    res.status(400).json({ error: "Valor inválido." });
+    return;
+  }
+
+  const [vRow] = await db.select({ vendedorId: vendedoresTable.id })
+    .from(vendedoresTable).where(eq(vendedoresTable.userId, userId)).limit(1);
+  if (!vRow) { res.status(404).json({ error: "Vendedor não encontrado." }); return; }
+
+  const [pag] = await db.insert(vendedorPagamentosTable).values({
+    vendedorId: vRow.vendedorId,
+    valor: String(parseFloat(String(valor)).toFixed(2)),
+    dataPagamento: dataPagamento ? new Date(String(dataPagamento)) : new Date(),
+    observacao: observacao ? String(observacao).trim() || null : null,
+    criadoPorUserId: adminUserId,
+  }).returning();
+
+  logger.info({ pagamentoId: pag.id, vendedorId: vRow.vendedorId, valor, adminUserId }, "Pagamento de comissão registrado");
+  res.status(201).json(pag);
+});
+
+// ── DELETE /admin/vendedores/:id/pagamentos/:pagId ────────────────────────────
+router.delete("/admin/vendedores/:id/pagamentos/:pagId", requireAdmin, async (req, res): Promise<void> => {
+  const userId = Number(String(req.params.id));
+  const pagId  = Number(String(req.params.pagId));
+
+  const [vRow] = await db.select({ vendedorId: vendedoresTable.id })
+    .from(vendedoresTable).where(eq(vendedoresTable.userId, userId)).limit(1);
+  if (!vRow) { res.status(404).json({ error: "Vendedor não encontrado." }); return; }
+
+  const deleted = await db.delete(vendedorPagamentosTable)
+    .where(and(
+      eq(vendedorPagamentosTable.id, pagId),
+      eq(vendedorPagamentosTable.vendedorId, vRow.vendedorId),
+    ))
+    .returning({ id: vendedorPagamentosTable.id });
+
+  if (!deleted.length) { res.status(404).json({ error: "Pagamento não encontrado." }); return; }
+  res.sendStatus(204);
 });
 
 export default router;
