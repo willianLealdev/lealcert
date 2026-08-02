@@ -401,7 +401,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
           {collapsed && <div className="mb-2" />}
 
-          {user?.role !== "agente" && navigation.map((item) => (
+          {user?.role !== "agente" && user?.role !== "vendedor" && navigation.map((item) => (
             <NavItem
               key={item.name}
               href={item.href}
