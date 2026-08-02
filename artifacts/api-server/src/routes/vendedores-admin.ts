@@ -16,7 +16,7 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { db, usersTable, vendedoresTable, vendedorPagamentosTable, ordersTable, loyaltySlotEventsTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
-import { sendVendedorWelcomeEmail, sendTempPasswordEmail } from "../lib/email";
+import { sendVendedorWelcomeEmail, sendTempPasswordEmail, sendPagamentoRegistradoEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -320,15 +320,33 @@ router.post("/admin/vendedores/:id/pagamentos", requireAdmin, async (req, res): 
     .from(vendedoresTable).where(eq(vendedoresTable.userId, userId)).limit(1);
   if (!vRow) { res.status(404).json({ error: "Vendedor não encontrado." }); return; }
 
+  const dataPag = dataPagamento ? new Date(String(dataPagamento)) : new Date();
   const [pag] = await db.insert(vendedorPagamentosTable).values({
     vendedorId: vRow.vendedorId,
     valor: String(parseFloat(String(valor)).toFixed(2)),
-    dataPagamento: dataPagamento ? new Date(String(dataPagamento)) : new Date(),
+    dataPagamento: dataPag,
     observacao: observacao ? String(observacao).trim() || null : null,
     criadoPorUserId: adminUserId,
   }).returning();
 
   logger.info({ pagamentoId: pag.id, vendedorId: vRow.vendedorId, valor, adminUserId }, "Pagamento de comissão registrado");
+
+  // Notifica o vendedor por e-mail
+  const [vendedorUser] = await db
+    .select({ name: usersTable.name, email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  if (vendedorUser?.email) {
+    sendPagamentoRegistradoEmail({
+      to: vendedorUser.email,
+      name: vendedorUser.name,
+      valor: parseFloat(String(valor)),
+      dataPagamento: dataPag,
+      observacao: observacao ? String(observacao).trim() || null : null,
+    }).catch(err => logger.error({ err }, "Erro ao enviar email de pagamento ao vendedor"));
+  }
+
   res.status(201).json(pag);
 });
 

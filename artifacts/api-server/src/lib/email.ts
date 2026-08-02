@@ -586,6 +586,55 @@ export async function sendVendedorWelcomeEmail(to: string, name: string, tempPas
   logger.info({ to }, "Vendedor welcome email sent");
 }
 
+export async function sendPagamentoRegistradoEmail(opts: {
+  to: string;
+  name: string;
+  valor: number;
+  dataPagamento: Date;
+  observacao?: string | null;
+}): Promise<void> {
+  const cfg = await getEmailConfig();
+  const subject = `💰 Pagamento de comissão registrado — ${cfg.appName}`;
+  const valorFormatted = opts.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const dataFormatted = opts.dataPagamento.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+  const html = emailWrapper(`
+    <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+      <h2 style="color:#0f172a;margin:0 0 8px;font-size:20px;">Olá, ${esc(opts.name)}! 💰</h2>
+      <p style="color:#475569;margin:0 0 20px;">Um pagamento de comissão foi registrado em sua conta.</p>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px;text-align:center;margin-bottom:24px;">
+        <p style="color:#15803d;font-size:13px;margin:0 0 6px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Valor creditado</p>
+        <div style="font-size:36px;font-weight:900;color:#16a34a;">${esc(valorFormatted)}</div>
+        <p style="color:#15803d;font-size:13px;margin:6px 0 0;">Data: ${esc(dataFormatted)}</p>
+      </div>
+      ${opts.observacao ? `
+      <div style="background:#f8fafc;border-left:4px solid #64748b;border-radius:4px;padding:14px;margin-bottom:20px;">
+        <p style="color:#64748b;font-size:12px;margin:0 0 4px;text-transform:uppercase;letter-spacing:1px;">Observação</p>
+        <p style="color:#0f172a;font-size:14px;margin:0;">${esc(opts.observacao)}</p>
+      </div>` : ""}
+      <div style="text-align:center;">
+        <a href="${cfg.siteUrl}/vendedor/ganhos" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+          Ver meu extrato
+        </a>
+      </div>
+    </div>
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Olá, ${opts.name}!\n\nUm pagamento de comissão foi registrado:\n\nValor: ${valorFormatted}\nData: ${dataFormatted}${opts.observacao ? `\nObservação: ${opts.observacao}` : ""}\n\nAcesse seu extrato: ${cfg.siteUrl}/vendedor/ganhos\n\n${cfg.appName}`;
+
+  const transporter = await createTransporter(cfg);
+  if (!transporter) {
+    logger.info({ to: opts.to, valor: opts.valor }, "📧 [DEV] Pagamento registrado email (SMTP not configured)");
+    return;
+  }
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to: opts.to, subject, html, text,
+    envelope: { from: extractEmail(cfg.from), to: opts.to },
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
+  logger.info({ to: opts.to, valor: opts.valor }, "Pagamento registrado email sent");
+}
+
 export async function sendContadorWelcomeEmail(to: string, name: string, tempPassword: string): Promise<void> {
   const cfg = await getEmailConfig();
   const subject = `Seu acesso à ${cfg.appName} está pronto!`;

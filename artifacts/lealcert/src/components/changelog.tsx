@@ -28,6 +28,7 @@ const CHANGELOG: ChangelogEntry[] = [
     changes: [
       { type: "fix", text: "Pedido concluído: botões 'Reagendar' e 'Cancelar Agendamento' (GAR e Safeweb) são ocultados quando o status é 'Concluído' — o card de agendamento continua visível com as informações do atendimento" },
       { type: "fix", text: "Avaliações: campo 'Profissão' no popup de feedback agora detecta corretamente o tipo do usuário — clientes aparecem como 'Cliente' e contadores como 'Contador' (antes hardcoded como 'Contador' para todos)" },
+      { type: "novo", text: "Vendedores: ao registrar um pagamento de comissão pelo painel admin, o vendedor recebe automaticamente um e-mail com o valor, data e observação do pagamento" },
     ],
   },
   {

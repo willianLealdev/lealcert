@@ -34,6 +34,7 @@ vi.mock("../lib/email", () => ({
   sendContadorWelcomeEmail: vi.fn(async () => {}),
   sendTempPasswordEmail: vi.fn(async () => {}),
   sendVendedorWelcomeEmail: vi.fn(async () => {}),
+  sendPagamentoRegistradoEmail: vi.fn(async () => {}),
 }));
 
 vi.mock("../lib/logger", () => ({
@@ -76,10 +77,10 @@ function _makeB(result: Row[]) {
     innerJoin: () => builder,
     leftJoin: () => builder,
     groupBy: () => builder,
-    then: (
-      resolve?: ((v: Row[]) => unknown) | null,
-      reject?: ((e: unknown) => unknown) | null,
-    ) => Promise.resolve(result).then(resolve, reject ?? undefined),
+    then: <TResult1 = Row[], TResult2 = never>(
+      resolve?: ((v: Row[]) => TResult1 | PromiseLike<TResult1>) | null,
+      reject?: ((e: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+    ) => Promise.resolve(result).then(resolve, reject ?? undefined) as PromiseLike<TResult1 | TResult2>,
     catch: (reject: (e: unknown) => unknown) => Promise.resolve(result).catch(reject),
     finally: (fn: () => void) => Promise.resolve(result).finally(fn),
   };
