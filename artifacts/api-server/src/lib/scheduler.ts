@@ -290,8 +290,8 @@ async function syncGarProtocols() {
 
             logger.info({ orderId: order.id, garStatus: newGarStatus }, "GAR status sync: certificado emitido — pedido concluído automaticamente");
 
-            // Loyalty: incrementar cartela do contador
-            if (order.userId) {
+            // Loyalty: incrementar cartela do contador (nunca pontua cortesia)
+            if (order.userId && order.paymentMethod !== "cortesia") {
               const { incrementLoyaltySlot } = await import("./loyalty");
               incrementLoyaltySlot(order.userId, order.id).catch((err: unknown) => logger.error({ err }, "Loyalty: erro ao incrementar slot (scheduler)"));
             }

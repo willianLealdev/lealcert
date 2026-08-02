@@ -489,8 +489,8 @@ router.post("/safeweb/eventos/:tipo", async (req, res): Promise<void> => {
           certName: row.certName ?? undefined,
         }).catch(err => logger.error({ err }, "Notificação emissão Safeweb: erro"));
 
-        // Loyalty: incrementar cartela do contador
-        if (order.userId) {
+        // Loyalty: incrementar cartela do contador (nunca pontua cortesia)
+        if (order.userId && order.paymentMethod !== "cortesia") {
           const { incrementLoyaltySlot } = await import("../lib/loyalty");
           incrementLoyaltySlot(order.userId, order.id).catch((err: unknown) => logger.error({ err }, "Loyalty: erro ao incrementar slot (Safeweb)"));
         }
