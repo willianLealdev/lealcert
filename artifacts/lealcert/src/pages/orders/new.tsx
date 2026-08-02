@@ -352,8 +352,19 @@ export default function NewOrder() {
   const [couponError, setCouponError] = useState<string | null>(null);
 
   // ── Payment method ──
-  type PayMethod = "pix" | "boleto" | "cartao";
+  type PayMethod = "pix" | "boleto" | "cartao" | "cortesia";
   const [selectedMethod, setSelectedMethod] = useState<PayMethod>("pix");
+
+  // ── Cortesia (fidelidade) ──
+  const [cortesiaCount, setCortesiaCount] = useState(0);
+  const isContador = user?.userType === "contador";
+  useEffect(() => {
+    if (step !== 4 || !isContador) return;
+    fetch("/api/loyalty/cortesia-available", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { count: 0 })
+      .then((d: { count?: number }) => setCortesiaCount(d.count ?? 0))
+      .catch(() => setCortesiaCount(0));
+  }, [step, isContador]);
   const [cardNumber, setCardNumber] = useState("");
   const [cardName, setCardName] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
@@ -773,6 +784,27 @@ export default function NewOrder() {
     if (!nfForm.nfZipcode) { toast({ title: "Atenção", description: "Informe o CEP de cobrança para a nota fiscal.", variant: "destructive" }); return; }
     setStep(4);
     window.scrollTo(0, 0);
+  }
+
+  // ── Submit cortesia ──
+  async function handleCortesiaSubmit() {
+    try {
+      const r = await fetch("/api/loyalty/checkout-cortesia", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ certificateId: Number(form.certificateId) }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        toast({ title: "Erro", description: data.error || "Erro ao processar cortesia.", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Cortesia utilizada! 🎉", description: `Pedido ${data.orderNumber} criado sem custo.` });
+      try { localStorage.removeItem("lealcert_order_local"); } catch { /* ignore */ }
+      setLocation(`/orders/${data.orderId}`);
+    } catch {
+      toast({ title: "Erro de rede", description: "Tente novamente.", variant: "destructive" });
+    }
   }
 
   // ── Submit ──
@@ -1958,6 +1990,29 @@ export default function NewOrder() {
               <CardTitle className="text-base flex items-center gap-2"><CreditCard className="h-4 w-4 text-primary" />Forma de Pagamento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* Cortesia — só para contadores com cartela completa */}
+              {isContador && cortesiaCount > 0 && (
+                <button type="button" onClick={() => setSelectedMethod("cortesia")}
+                  className={`w-full flex items-center gap-4 border-2 rounded-xl p-4 transition-all text-left ${selectedMethod === "cortesia" ? "bg-amber-50 border-amber-500 ring-1 ring-amber-400" : "border-amber-300 hover:border-amber-400 hover:bg-amber-50/50"}`}>
+                  <div className="h-11 w-11 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                    <span className="text-2xl">⭐</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-amber-800">Certificado Cortesia</p>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full">
+                        {cortesiaCount} disponível{cortesiaCount > 1 ? "is" : ""}
+                      </span>
+                    </div>
+                    <p className="text-sm text-amber-700">Cartela de fidelidade completa · sem custo</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-emerald-600 text-lg">R$ 0,00</p>
+                    {selectedMethod === "cortesia" && <CheckCircle className="h-5 w-5 text-amber-500 ml-auto mt-1" />}
+                  </div>
+                </button>
+              )}
+
               {/* PIX — sempre disponível */}
               <button type="button" onClick={() => setSelectedMethod("pix")}
                 className={`w-full flex items-center gap-4 border rounded-xl p-4 transition-all text-left ${selectedMethod === "pix" ? "bg-primary/5 border-primary ring-1 ring-primary" : "hover:bg-muted/40"}`}>
@@ -2051,12 +2106,18 @@ export default function NewOrder() {
           </div>
 
           {/* Confirmar */}
-          <Button className="w-full h-12 text-base" onClick={handleSubmit} disabled={createOrder.isPending || createPaymentMut.isPending}>
+          <Button
+            className={`w-full h-12 text-base ${selectedMethod === "cortesia" ? "bg-amber-500 hover:bg-amber-600 text-amber-950" : ""}`}
+            onClick={selectedMethod === "cortesia" ? handleCortesiaSubmit : handleSubmit}
+            disabled={createOrder.isPending || createPaymentMut.isPending}
+          >
             {createOrder.isPending
               ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Criando pedido...</>
               : createPaymentMut.isPending
                 ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processando pagamento...</>
-                : <>Confirmar e Ir para Pagamento <ArrowRight className="h-4 w-4 ml-2" /></>}
+                : selectedMethod === "cortesia"
+                  ? <>⭐ Usar Cortesia — R$ 0,00</>
+                  : <>Confirmar e Ir para Pagamento <ArrowRight className="h-4 w-4 ml-2" /></>}
           </Button>
           <p className="text-xs text-center text-muted-foreground -mt-2">
             Ao confirmar, você concorda com a{" "}
