@@ -235,6 +235,129 @@ export default function Contadores() {
         </div>
       </div>
 
+      {/* ── Preço de parceiro + cupom boas-vindas — DESTAQUE LOGO APÓS O HERO ── */}
+      <section className="py-16 sm:py-20 bg-[#0f172a] text-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+
+          {/* Banner cupom boas-vindas */}
+          <div className="relative mb-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-3xl p-6 sm:p-8 overflow-hidden">
+            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M20 20.5V18H0v5h5v5H0v5h20v-2.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5V33h20v-5h-5v-5h5v-5H23v2.5c0 .83-.67 1.5-1.5 1.5S20 21.33 20 20.5z'/%3E%3C/g%3E%3C/svg%3E\")" }} />
+            <div className="relative flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="text-center sm:text-left">
+                <div className="inline-flex items-center gap-2 bg-white/20 border border-white/30 rounded-full px-3 py-1 text-xs font-bold text-white mb-3">
+                  <Star className="h-3.5 w-3.5 fill-white" />
+                  Oferta exclusiva de boas-vindas
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-black text-white mb-1">
+                  Primeiro certificado por <span className="text-yellow-300">R$ 70</span>
+                </h3>
+                <p className="text-green-100/80 text-sm leading-relaxed max-w-md">
+                  Use o cupom <strong className="text-white">PARCEIRO</strong> no primeiro pedido e pague apenas R$ 70 — em vez de R$ 90. Desconto automático na plataforma, sem precisar pedir.
+                </p>
+              </div>
+              <div className="shrink-0 text-center">
+                <div className="bg-white rounded-2xl px-8 py-5 shadow-xl">
+                  <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Cupom de boas-vindas</p>
+                  <p className="text-3xl font-black text-[#0f172a] tracking-widest mb-1">PARCEIRO</p>
+                  <p className="text-green-600 text-sm font-bold">R$ 70 no 1º certificado</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mb-10">
+            <span className="text-[#f59e0b] font-semibold text-sm uppercase tracking-wider">Condição exclusiva para parceiros</span>
+            <h2 className="text-3xl sm:text-4xl font-black mt-2 mb-3">Preço de parceiro + programa de cortesia</h2>
+            <p className="text-blue-300/60 max-w-xl mx-auto">Valores diferenciados e um programa de fidelidade que recompensa quem emite mais.</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+
+            {/* Card preço */}
+            <div className="relative bg-gradient-to-br from-[#2563eb] to-blue-700 rounded-3xl p-8 overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+              <div className="relative">
+                <div className="inline-flex items-center gap-2 bg-white/20 border border-white/30 rounded-full px-3 py-1 text-xs font-bold text-white mb-4">
+                  <TrendingDown className="h-3.5 w-3.5" />
+                  Preço exclusivo contador
+                </div>
+                <p className="text-blue-200/70 text-sm mb-1">Certificado Digital para seus clientes</p>
+                <div className="flex items-end gap-2 mb-2">
+                  <span className="text-5xl font-black text-white">R$ 90</span>
+                  <span className="text-blue-200/60 text-base mb-1.5">/ certificado</span>
+                </div>
+                <p className="text-blue-100/60 text-xs mb-6">Preço aplicado automaticamente ao fazer login como contador</p>
+                <ul className="space-y-2.5">
+                  {[
+                    "Válido para e-CPF e e-CNPJ",
+                    "Aceito PIX, Boleto e Cartão de Crédito",
+                    "Sem mensalidade, sem fidelidade",
+                    "Sem limite de pedidos por mês",
+                  ].map(item => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-blue-100/80">
+                      <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Card cortesia */}
+            <div className="relative bg-gradient-to-br from-[#f59e0b] to-amber-500 rounded-3xl p-8 overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+              <div className="relative">
+                <div className="inline-flex items-center gap-2 bg-white/30 border border-white/40 rounded-full px-3 py-1 text-xs font-bold text-[#0f172a] mb-4">
+                  <Star className="h-3.5 w-3.5" />
+                  Programa de cortesia
+                </div>
+                <p className="text-amber-900/70 text-sm mb-1">A cada 10 certificados emitidos</p>
+                <div className="flex items-end gap-2 mb-2">
+                  <span className="text-5xl font-black text-[#0f172a]">+1</span>
+                  <span className="text-amber-900/70 text-base mb-1.5">certificado grátis</span>
+                </div>
+                <p className="text-amber-900/60 text-xs mb-6">Cortesia acumulada no portal e disponível para usar como desejar</p>
+                <div className="bg-white/30 rounded-2xl p-4 mb-4">
+                  <p className="text-[#0f172a] text-xs font-bold mb-3">Como funciona na prática:</p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-black ${
+                          i < 9
+                            ? "bg-amber-600/30 text-amber-900 border border-amber-600/40"
+                            : "bg-[#0f172a] text-[#f59e0b] border-2 border-[#f59e0b]"
+                        }`}
+                      >
+                        {i + 1}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[#0f172a] text-xs font-medium">A cada 10 emitidos → 1 cortesia disponível no portal</p>
+                </div>
+                <ul className="space-y-2">
+                  {[
+                    "Usa como quiser — para o escritório ou para um cliente",
+                    "Acumula sem prazo de validade",
+                  ].map(item => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-amber-900/80">
+                      <CheckCircle2 className="h-4 w-4 text-amber-900/70 shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-blue-300/50 text-sm">
+              Condições aplicadas automaticamente após cadastro verificado como contador credenciado no CFC.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── Dores ────────────────────────────────────────────────────────────── */}
       <section className="py-16 sm:py-20 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
@@ -368,105 +491,6 @@ export default function Contadores() {
                 <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Preço diferenciado — destaque ────────────────────────────────────── */}
-      <section className="py-16 sm:py-20 bg-[#0f172a] text-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <span className="text-[#f59e0b] font-semibold text-sm uppercase tracking-wider">Condição exclusiva para parceiros</span>
-            <h2 className="text-3xl sm:text-4xl font-black mt-2 mb-3">Preço de parceiro + programa de cortesia</h2>
-            <p className="text-blue-300/60 max-w-xl mx-auto">Valores diferenciados e um programa de fidelidade que recompensa quem emite mais.</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-
-            {/* Card preço */}
-            <div className="relative bg-gradient-to-br from-[#2563eb] to-blue-700 rounded-3xl p-8 overflow-hidden">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-              <div className="relative">
-                <div className="inline-flex items-center gap-2 bg-white/20 border border-white/30 rounded-full px-3 py-1 text-xs font-bold text-white mb-4">
-                  <TrendingDown className="h-3.5 w-3.5" />
-                  Preço exclusivo contador
-                </div>
-                <p className="text-blue-200/70 text-sm mb-1">Certificado Digital para seus clientes</p>
-                <div className="flex items-end gap-2 mb-2">
-                  <span className="text-5xl font-black text-white">R$ 90</span>
-                  <span className="text-blue-200/60 text-base mb-1.5">/ certificado</span>
-                </div>
-                <p className="text-blue-100/60 text-xs mb-6">Preço aplicado automaticamente ao fazer login como contador</p>
-                <ul className="space-y-2.5">
-                  {[
-                    "Válido para e-CPF e e-CNPJ",
-                    "Aceito PIX, Boleto e Cartão de Crédito",
-                    "Sem mensalidade, sem fidelidade",
-                    "Sem limite de pedidos por mês",
-                  ].map(item => (
-                    <li key={item} className="flex items-center gap-2 text-sm text-blue-100/80">
-                      <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* Card cortesia */}
-            <div className="relative bg-gradient-to-br from-[#f59e0b] to-amber-500 rounded-3xl p-8 overflow-hidden">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-              <div className="relative">
-                <div className="inline-flex items-center gap-2 bg-white/30 border border-white/40 rounded-full px-3 py-1 text-xs font-bold text-[#0f172a] mb-4">
-                  <Star className="h-3.5 w-3.5" />
-                  Programa de cortesia
-                </div>
-                <p className="text-amber-900/70 text-sm mb-1">A cada 10 certificados emitidos</p>
-                <div className="flex items-end gap-2 mb-2">
-                  <span className="text-5xl font-black text-[#0f172a]">+1</span>
-                  <span className="text-amber-900/70 text-base mb-1.5">certificado grátis</span>
-                </div>
-                <p className="text-amber-900/60 text-xs mb-6">Cortesia acumulada no portal e disponível para usar como desejar</p>
-
-                {/* Visualização da contagem */}
-                <div className="bg-white/30 rounded-2xl p-4 mb-4">
-                  <p className="text-[#0f172a] text-xs font-bold mb-3">Como funciona na prática:</p>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-black ${
-                          i < 9
-                            ? "bg-amber-600/30 text-amber-900 border border-amber-600/40"
-                            : "bg-[#0f172a] text-[#f59e0b] border-2 border-[#f59e0b]"
-                        }`}
-                      >
-                        {i + 1}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-[#0f172a] text-xs font-medium">A cada 10 emitidos → 1 cortesia disponível no portal</p>
-                </div>
-
-                <ul className="space-y-2">
-                  {[
-                    "Usa como quiser — para o escritório ou para um cliente",
-                    "Acumula sem prazo de validade",
-                  ].map(item => (
-                    <li key={item} className="flex items-center gap-2 text-sm text-amber-900/80">
-                      <CheckCircle2 className="h-4 w-4 text-amber-900/70 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 text-center">
-            <p className="text-blue-300/50 text-sm">
-              Condições aplicadas automaticamente após cadastro verificado como contador credenciado no CFC.
-            </p>
           </div>
         </div>
       </section>
