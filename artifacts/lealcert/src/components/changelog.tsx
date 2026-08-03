@@ -23,6 +23,8 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "melhoria", text: "Todas as chaves de API da Discagem agora são salvas no banco (Settings) em vez de variáveis de ambiente — gerenciamento via UI admin" },
       { type: "melhoria", text: "Twilio e TTS leem credenciais do banco em tempo real com cache 30s; invalidação automática ao salvar configurações" },
       { type: "novo", text: "Fillers de voz pré-gerados (\"Entendi.\", \"Certo.\", \"Um momento.\", etc.): tocados imediatamente ao receber a fala do contato enquanto IA+TTS processam em paralelo — latência percebida <0.5s" },
+      { type: "novo", text: "Script completo do agente comercial LealCert inserido: 45 seções cobrindo abertura, diagnóstico, objeções, fechamento e conformidade — adaptado para voz (respostas curtas em áudio)" },
+      { type: "novo", text: "Dois agentes de voz configurados: Willian (masculino) e Aline (feminino) — cada campanha seleciona o agente; voz TTS ajustada automaticamente por agente" },
     ],
   },
   {

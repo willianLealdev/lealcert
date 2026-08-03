@@ -21,7 +21,7 @@ import {
   Phone, PhoneCall, PhoneOff, PhoneMissed, Play, Pause, Plus,
   Trash2, RefreshCw, AlertTriangle, CheckCircle2, Mic, Bot,
   Volume2, Users, Clock, TrendingUp, Voicemail, Ban, ChevronDown,
-  ChevronUp, FileText, Loader2, PhoneIncoming,
+  ChevronUp, FileText, Loader2, PhoneIncoming, User,
 } from "lucide-react";
 
 // ── Tipos ─────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ interface Campaign {
   id: number; name: string; status: string;
   pauseReason?: string | null; pausedApi?: string | null;
   targetType: string; manualNumber?: string | null;
-  aiModel: string; ttsProvider: string; ttsVoiceId?: string | null;
+  aiModel: string; agentName: string; ttsProvider: string; ttsVoiceId?: string | null;
   windowMorningStart: number; windowMorningEnd: number;
   windowAfternoonStart: number; windowAfternoonEnd: number;
   windowDays: string; maxConcurrentCalls: number; maxAttempts: number;
@@ -128,7 +128,7 @@ function formatDate(d?: string | null): string {
 // ── Formulário padrão de campanha ─────────────────────────────────
 const EMPTY_FORM = {
   name: "", targetType: "all", manualNumber: "", selectedContactIds: [] as number[],
-  aiModel: "claude", ttsProvider: "cartesia", ttsVoiceId: "",
+  aiModel: "deepseek", agentName: "Willian", ttsProvider: "cartesia", ttsVoiceId: "",
   windowMorningStart: 9, windowMorningEnd: 12,
   windowAfternoonStart: 13, windowAfternoonEnd: 16,
   windowDays: ["mon","tue","wed","thu"] as string[],
@@ -232,7 +232,7 @@ export default function AdminDiscagem() {
   });
 
   const testCall = useMutation({
-    mutationFn: () => apiFetch("/admin/discagem/test-call", { method: "POST", body: JSON.stringify({ phoneNumber: testNumber, aiModel: form.aiModel, ttsProvider: form.ttsProvider }) }),
+    mutationFn: () => apiFetch("/admin/discagem/test-call", { method: "POST", body: JSON.stringify({ phoneNumber: testNumber, aiModel: form.aiModel, agentName: form.agentName, ttsProvider: form.ttsProvider }) }),
     onSuccess: () => { setShowTestModal(false); toast({ title: "Ligação de teste disparada!", description: `Discando para ${testNumber}` }); },
     onError: (e: Error) => toast({ title: "Erro na ligação de teste", description: e.message, variant: "destructive" }),
   });
@@ -252,6 +252,7 @@ export default function AdminDiscagem() {
       manualNumber: camp.manualNumber ?? "",
       selectedContactIds: [],
       aiModel: camp.aiModel,
+      agentName: (camp as any).agentName ?? "Willian",
       ttsProvider: camp.ttsProvider,
       ttsVoiceId: camp.ttsVoiceId ?? "",
       windowMorningStart: camp.windowMorningStart,
@@ -364,7 +365,8 @@ export default function AdminDiscagem() {
                   )}
                 </div>
                 <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Bot className="h-3 w-3" />{camp.aiModel === "claude" ? "Claude" : "DeepSeek"}</span>
+                  <span className="flex items-center gap-1"><User className="h-3 w-3" />{(camp as any).agentName ?? "Willian"}</span>
+                  <span className="flex items-center gap-1"><Bot className="h-3 w-3" />{camp.aiModel === "claude" ? "Claude" : camp.aiModel === "openai" ? "GPT" : "DeepSeek"}</span>
                   <span className="flex items-center gap-1"><Volume2 className="h-3 w-3" />{camp.ttsProvider === "cartesia" ? "Cartesia" : "ElevenLabs"}</span>
                   <span className="flex items-center gap-1"><Users className="h-3 w-3" />
                     {camp.targetType === "all" ? "Todos" : camp.targetType === "clientes" ? "Clientes" : camp.targetType === "contadores" ? "Contadores" : camp.targetType === "manual_number" ? camp.manualNumber : "Selecionados"}
@@ -541,7 +543,29 @@ export default function AdminDiscagem() {
             )}
 
             <Separator />
-            <p className="text-xs font-semibold text-primary uppercase tracking-wider">Motor de IA e voz</p>
+            <p className="text-xs font-semibold text-primary uppercase tracking-wider">Agente e motor de IA</p>
+
+            {/* Seletor de agente */}
+            <div className="space-y-1.5">
+              <Label>Agente (persona de voz)</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {(["Willian", "Aline"] as const).map(name => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, agentName: name }))}
+                    className={`rounded-lg border-2 p-3 text-left transition-all ${form.agentName === name ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground"}`}
+                  >
+                    <p className="font-semibold text-sm">{name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {name === "Willian" ? "Voz masculina — formal" : "Voz feminina — formal"}
+                    </p>
+                    {form.agentName === name && <p className="text-xs text-primary mt-1 font-medium">● Selecionado</p>}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">A voz TTS será ajustada automaticamente para o agente. Você pode sobrescrever pelo Voice ID abaixo.</p>
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -549,8 +573,9 @@ export default function AdminDiscagem() {
                 <Select value={form.aiModel} onValueChange={v => setForm(f => ({ ...f, aiModel: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="deepseek">DeepSeek — econômico</SelectItem>
                     <SelectItem value="claude">Claude (Anthropic)</SelectItem>
-                    <SelectItem value="deepseek">DeepSeek</SelectItem>
+                    <SelectItem value="openai">GPT (OpenAI)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -567,8 +592,8 @@ export default function AdminDiscagem() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Voice ID (opcional)</Label>
-              <Input value={form.ttsVoiceId} onChange={e => setForm(f => ({ ...f, ttsVoiceId: e.target.value }))} placeholder={form.ttsProvider === "cartesia" ? "ID da voz Cartesia" : "ID da voz ElevenLabs"} />
+              <Label>Voice ID (opcional — sobrescreve o padrão do agente)</Label>
+              <Input value={form.ttsVoiceId} onChange={e => setForm(f => ({ ...f, ttsVoiceId: e.target.value }))} placeholder={form.ttsProvider === "cartesia" ? "ID Cartesia — deixe vazio para usar o padrão" : "ID ElevenLabs — deixe vazio para usar o padrão"} />
             </div>
 
             <Separator />

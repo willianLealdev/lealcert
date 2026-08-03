@@ -104,7 +104,7 @@ router.post("/discagem/voice/:callId", async (req, res): Promise<void> => {
 
     // Gera abertura da conversa via IA
     const openingHistory = [{ role: "user" as const, text: "[INÍCIO DA LIGAÇÃO]", ts: new Date().toISOString() }];
-    const aiResp = await runAgentTurn(openingHistory, campaign.aiModel as any, undefined);
+    const aiResp = await runAgentTurn(openingHistory, campaign.aiModel as any, (campaign as any).agentName ?? "Willian", undefined);
 
     getConvHistory(callId).push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
 
@@ -154,7 +154,7 @@ router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> =>
   history.push({ role: "user", text: speechResult, ts: new Date().toISOString() });
 
   const processingPromise: Promise<PendingPayload> = (async () => {
-    const aiResp = await runAgentTurn(history, campaign.aiModel as any, undefined);
+    const aiResp = await runAgentTurn(history, campaign.aiModel as any, (campaign as any).agentName ?? "Willian", undefined);
     history.push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
     const { id: ttsId } = await synthesize(aiResp.text, campaign.ttsProvider as any, campaign.ttsVoiceId ?? undefined);
     const url = await audioUrl(ttsId);
@@ -395,7 +395,7 @@ router.get("/admin/discagem/campaigns", requireAdmin, async (req, res): Promise<
 router.post("/admin/discagem/campaigns", requireAdmin, async (req, res): Promise<void> => {
   const {
     name, targetType, targetContactIds, manualNumber,
-    aiModel, ttsProvider, ttsVoiceId,
+    aiModel, agentName, ttsProvider, ttsVoiceId,
     windowMorningStart, windowMorningEnd, windowAfternoonStart, windowAfternoonEnd,
     windowDays, maxConcurrentCalls, maxAttempts,
   } = req.body ?? {};
@@ -425,7 +425,7 @@ router.post("/admin/discagem/campaigns", requireAdmin, async (req, res): Promise
 
 router.put("/admin/discagem/campaigns/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const allowed = ["name", "aiModel", "ttsProvider", "ttsVoiceId",
+  const allowed = ["name", "aiModel", "agentName", "ttsProvider", "ttsVoiceId",
     "windowMorningStart", "windowMorningEnd", "windowAfternoonStart", "windowAfternoonEnd",
     "windowDays", "maxConcurrentCalls", "maxAttempts", "targetType",
     "targetContactIds", "manualNumber"];
@@ -575,7 +575,7 @@ router.get("/admin/discagem/contacts", requireAdmin, async (req, res): Promise<v
 
 // ─── Teste: discar um número agora ───────────────────────────────
 router.post("/admin/discagem/test-call", requireAdmin, async (req, res): Promise<void> => {
-  const { phoneNumber, aiModel, ttsProvider, ttsVoiceId } = req.body ?? {};
+  const { phoneNumber, aiModel, agentName, ttsProvider, ttsVoiceId } = req.body ?? {};
   if (!phoneNumber) { res.status(400).json({ error: "phoneNumber obrigatório" }); return; }
 
   // Cria campanha temporária de teste
@@ -584,7 +584,8 @@ router.post("/admin/discagem/test-call", requireAdmin, async (req, res): Promise
     status: "running",
     targetType: "manual_number",
     manualNumber: phoneNumber,
-    aiModel: aiModel ?? "claude",
+    aiModel: aiModel ?? "deepseek",
+    agentName: agentName ?? "Willian",
     ttsProvider: ttsProvider ?? "cartesia",
     ttsVoiceId: ttsVoiceId ?? null,
     maxConcurrentCalls: 1,

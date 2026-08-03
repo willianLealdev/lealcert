@@ -7,6 +7,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { getDiscagemSettings } from "./settings-reader";
+import { AGENT_SYSTEM_PROMPT, AGENT_VOICE_IDS, type AgentName } from "./config";
 
 export type AiModel = "claude" | "deepseek" | "openai";
 
@@ -100,17 +101,14 @@ async function callOpenAI(turns: ConversationTurn[], systemPrompt: string, apiKe
 export async function runAgentTurn(
   turns: ConversationTurn[],
   preferredModel: AiModel = "deepseek",
+  agentName: string = "Willian",
   customSystemPrompt?: string,
 ): Promise<AgentResponse> {
   const cfg = await getDiscagemSettings();
-  const systemPrompt = customSystemPrompt ?? cfg.claudeApiKey ? undefined : undefined;
 
-  // System prompt padrão — substituir quando o script for fornecido
-  const prompt = systemPrompt ?? `
-Você é um assistente de vendas da LealCert, especialista em certificados digitais.
-⚠️ Script do agente não configurado — aguardando inserção do script de abordagem.
-Por enquanto, cumprimente e informe que ligará novamente em breve.
-  `.trim();
+  // Injeta o nome do agente no prompt padrão (ou usa o customizado)
+  const prompt = customSystemPrompt
+    ?? AGENT_SYSTEM_PROMPT.replaceAll("{AGENT_NAME}", agentName);
 
   const lastUserText = turns.at(-1)?.text ?? "";
 

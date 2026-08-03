@@ -16,9 +16,10 @@ export const discagemCampaignsTable = pgTable("discagem_campaigns", {
   manualNumber: text("manual_number"),             // para discar um número avulso
 
   // IA
-  aiModel: text("ai_model").notNull().default("claude"),    // claude | deepseek
+  aiModel: text("ai_model").notNull().default("claude"),    // claude | deepseek | openai
+  agentName: text("agent_name").notNull().default("Willian"), // Willian | Aline
   ttsProvider: text("tts_provider").notNull().default("cartesia"), // cartesia | elevenlabs
-  ttsVoiceId: text("tts_voice_id"),                 // voice id do provedor escolhido
+  ttsVoiceId: text("tts_voice_id"),                 // voice id do provedor (auto se null)
 
   // JANELA DE HORÁRIO (horas inteiras em horário de Brasília)
   windowMorningStart: integer("window_morning_start").notNull().default(9),
