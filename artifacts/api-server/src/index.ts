@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduler } from "./lib/scheduler";
+import { startScheduler as startDiscagemScheduler } from "./lib/discagem/scheduler";
 import { pool, db, usersTable } from "@workspace/db";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -171,6 +172,8 @@ async function main() {
 
     logger.info({ port }, "Server listening");
     startScheduler();
+    // Discagem scheduler só inicia se houver campanhas running (retomada após restart)
+    startDiscagemScheduler();
   });
 }
 

@@ -30,6 +30,7 @@ import nfseRouter from "./nfse";
 import loyaltyRouter from "./loyalty";
 import vendedoresAdminRouter from "./vendedores-admin";
 import vendedorRouter from "./vendedor";
+import discagemRouter from "./discagem";
 
 const router: IRouter = Router();
 
@@ -64,5 +65,6 @@ router.use(nfseRouter);
 router.use(loyaltyRouter);
 router.use(vendedoresAdminRouter);
 router.use(vendedorRouter);
+router.use(discagemRouter);
 
 export default router;

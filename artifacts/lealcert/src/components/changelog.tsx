@@ -14,6 +14,18 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "03/08/2026",
+    version: "1.30",
+    changes: [
+      { type: "novo", text: "Sistema de Discagem Automática com IA: agentes autônomos ligam para contatos via Twilio + Claude/DeepSeek + Cartesia/ElevenLabs" },
+      { type: "novo", text: "Painel de campanhas com dashboard em tempo real: ligações ativas, fila, taxa de atendimento e histórico completo" },
+      { type: "novo", text: "Alerta automático quando créditos de qualquer API esgotam: sistema pausa e indica qual API precisa ser recarregada" },
+      { type: "novo", text: "Alvos de discagem configuráveis: todos os contatos, clientes, contadores, número avulso ou ligação de teste imediata" },
+      { type: "novo", text: "Janela de horário editável por campanha (dias da semana + manhã/tarde); retentativa automática no próximo dia útil" },
+      { type: "novo", text: "Transcrição e player de gravação integrados para auditoria de cada ligação finalizada" },
+    ],
+  },
+  {
     date: "02/08/2026",
     version: "1.29",
     changes: [

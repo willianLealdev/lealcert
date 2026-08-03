@@ -1,0 +1,57 @@
+version: "3.9"
+
+# Docker Compose para o sistema de discagem no VPS (EasyPanel + Traefik)
+# Use junto com o docker-compose.yml principal do LealCert, ou standalone.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - PUBLIC_HOSTNAME=${PUBLIC_HOSTNAME}
+      # ── IA ──────────────────────────────────────────────
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      # ── TTS ─────────────────────────────────────────────
+      - CARTESIA_API_KEY=${CARTESIA_API_KEY}
+      - CARTESIA_VOICE_ID=${CARTESIA_VOICE_ID}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      # ── STT ─────────────────────────────────────────────
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+      # ── Twilio ──────────────────────────────────────────
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lealcert.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.lealcert.tls.certresolver=le"
+      - "traefik.http.services.lealcert.loadbalancer.server.port=8080"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lealcert
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lealcert"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
