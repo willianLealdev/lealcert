@@ -69,6 +69,11 @@ export const discagemCallsTable = pgTable("discagem_calls", {
   recordingUrl: text("recording_url"),
   durationSeconds: integer("duration_seconds"),
 
+  // E-mail de follow-up
+  contactEmail: text("contact_email"),            // e-mail capturado durante a ligação
+  wantsFollowupEmail: boolean("wants_followup_email").notNull().default(false),
+  followupEmailSentAt: timestamp("followup_email_sent_at", { withTimezone: true }),
+
   // Metadados
   aiModelUsed: text("ai_model_used"),
   ttsProviderUsed: text("tts_provider_used"),

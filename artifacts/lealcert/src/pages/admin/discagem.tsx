@@ -21,7 +21,7 @@ import {
   Phone, PhoneCall, PhoneOff, PhoneMissed, Play, Pause, Plus,
   Trash2, RefreshCw, AlertTriangle, CheckCircle2, Mic, Bot,
   Volume2, Users, Clock, TrendingUp, Voicemail, Ban, ChevronDown,
-  ChevronUp, FileText, Loader2, PhoneIncoming, User,
+  ChevronUp, FileText, Loader2, PhoneIncoming, User, Mail,
 } from "lucide-react";
 
 // ── Tipos ─────────────────────────────────────────────────────────
@@ -45,6 +45,8 @@ interface CallRecord {
   recordingUrl?: string | null; startedAt?: string | null;
   endedAt?: string | null; createdAt: string; error?: string | null;
   aiModelUsed?: string | null; ttsProviderUsed?: string | null;
+  contactEmail?: string | null; wantsFollowupEmail?: boolean;
+  followupEmailSentAt?: string | null;
 }
 
 interface CampaignStatus {
@@ -359,6 +361,8 @@ export default function AdminDiscagem() {
   const [testNumber, setTestNumber] = useState("");
   const [showTestModal, setShowTestModal] = useState(false);
   const [expandedCampaignId, setExpandedCampaignId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<"campanhas" | "relatorio">("campanhas");
+  const [reportPeriod, setReportPeriod] = useState<"today" | "week" | "month" | "all">("week");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Queries ───────────────────────────────────────────────────────
@@ -385,6 +389,24 @@ export default function AdminDiscagem() {
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ["discagem-contacts"],
     queryFn: () => apiFetch("/admin/discagem/contacts"),
+    staleTime: 30000,
+  });
+
+  interface ReportRow {
+    phoneNumber: string;
+    contactName: string | null;
+    totalAttempts: number;
+    answered: boolean;
+    lastCallAt: string;
+    lastStatus: string;
+    totalDuration: number;
+    campaignNames: string;
+  }
+
+  const { data: reportRows = [], isLoading: reportLoading, refetch: refetchReport } = useQuery<ReportRow[]>({
+    queryKey: ["discagem-report", reportPeriod],
+    queryFn: () => apiFetch(`/admin/discagem/report?period=${reportPeriod}`),
+    enabled: activeTab === "relatorio",
     staleTime: 30000,
   });
 
@@ -530,6 +552,26 @@ export default function AdminDiscagem() {
         </div>
       </div>
 
+      {/* Abas */}
+      <div className="flex gap-1 border-b">
+        {([
+          { key: "campanhas", label: "Campanhas", icon: <Bot className="h-4 w-4" /> },
+          { key: "relatorio", label: "Relatório de contatos", icon: <TrendingUp className="h-4 w-4" /> },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              activeTab === tab.key
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}>
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "campanhas" && <>
       {/* Alertas de crédito esgotado */}
       {creditErrors.map(c => (
         <div key={c.id} className="rounded-lg border border-orange-300 bg-orange-50 p-4 flex items-start gap-3">
@@ -732,6 +774,125 @@ export default function AdminDiscagem() {
           </div>
         ))}
       </div>
+      {/* fim aba campanhas */}
+      </>}
+
+      {/* ─── Aba: Relatório por contato ──────────────────────────────── */}
+      {activeTab === "relatorio" && (
+        <div className="space-y-4">
+          {/* Filtro de período */}
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              {([
+                { key: "today", label: "Hoje" },
+                { key: "week",  label: "7 dias" },
+                { key: "month", label: "30 dias" },
+                { key: "all",   label: "Tudo" },
+              ] as const).map(p => (
+                <button key={p.key} onClick={() => setReportPeriod(p.key)}
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                    reportPeriod === p.key
+                      ? "bg-background shadow text-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <Button size="sm" variant="outline" onClick={() => refetchReport()}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Atualizar
+            </Button>
+          </div>
+
+          {/* Resumo rápido */}
+          {reportRows.length > 0 && (() => {
+            const total = reportRows.length;
+            const atendidas = reportRows.filter(r => r.answered).length;
+            const naoAtendidas = total - atendidas;
+            const totalTent = reportRows.reduce((s, r) => s + r.totalAttempts, 0);
+            const pct = total > 0 ? Math.round((atendidas / total) * 100) : 0;
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { label: "Contatos únicos", value: total, icon: <Users className="h-4 w-4 text-primary" /> },
+                  { label: "Atenderam", value: atendidas, icon: <CheckCircle2 className="h-4 w-4 text-green-500" /> },
+                  { label: "Não atenderam", value: naoAtendidas, icon: <PhoneMissed className="h-4 w-4 text-yellow-500" /> },
+                  { label: "Taxa de atendimento", value: `${pct}%`, icon: <TrendingUp className="h-4 w-4 text-blue-500" /> },
+                ].map(s => (
+                  <div key={s.label} className="rounded-lg border bg-card p-3 flex items-center gap-3">
+                    {s.icon}
+                    <div>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                      <p className="text-xl font-bold">{s.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Tabela */}
+          <div className="rounded-lg border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-2 pl-3 font-medium text-muted-foreground">Contato</th>
+                  <th className="text-left p-2 font-medium text-muted-foreground">Telefone</th>
+                  <th className="text-center p-2 font-medium text-muted-foreground">Atendeu?</th>
+                  <th className="text-center p-2 font-medium text-muted-foreground">Tentativas</th>
+                  <th className="text-left p-2 font-medium text-muted-foreground">Última ligação</th>
+                  <th className="text-left p-2 font-medium text-muted-foreground">Duração total</th>
+                  <th className="text-left p-2 pr-3 font-medium text-muted-foreground">Campanha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reportLoading && (
+                  <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                    Carregando relatório...
+                  </td></tr>
+                )}
+                {!reportLoading && reportRows.length === 0 && (
+                  <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    <PhoneOff className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    Nenhuma ligação encontrada no período selecionado.
+                  </td></tr>
+                )}
+                {reportRows.map((row, i) => (
+                  <tr key={i} className="border-t hover:bg-muted/30 transition-colors">
+                    <td className="p-2 pl-3 font-medium">{row.contactName ?? "—"}</td>
+                    <td className="p-2 font-mono text-xs text-muted-foreground">{row.phoneNumber}</td>
+                    <td className="p-2 text-center">
+                      {row.answered
+                        ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full"><CheckCircle2 className="h-3 w-3" /> Sim</span>
+                        : <span className="inline-flex items-center gap-1 text-xs font-medium text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full"><PhoneMissed className="h-3 w-3" /> Não</span>
+                      }
+                    </td>
+                    <td className="p-2 text-center">
+                      <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold ${row.totalAttempts >= 3 ? "bg-orange-100 text-orange-700" : "bg-muted text-foreground"}`}>
+                        {row.totalAttempts}
+                      </span>
+                    </td>
+                    <td className="p-2 text-muted-foreground text-xs">{formatDate(row.lastCallAt)}</td>
+                    <td className="p-2 text-muted-foreground">
+                      {row.totalDuration > 0 ? formatDuration(row.totalDuration) : "—"}
+                    </td>
+                    <td className="p-2 pr-3 text-xs text-muted-foreground truncate max-w-[180px]" title={row.campaignNames}>
+                      {row.campaignNames ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {reportRows.length > 0 && (
+            <p className="text-xs text-muted-foreground text-right">
+              {reportRows.length} contato{reportRows.length !== 1 ? "s" : ""} · ordenado por data da última ligação
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ─── Modal: Criar / Editar campanha ─────────────────────────── */}
       <Dialog open={showForm} onOpenChange={v => { if (!v) { setShowForm(false); setEditId(null); } }}>
@@ -945,6 +1106,34 @@ export default function AdminDiscagem() {
                 <div className="rounded-lg bg-muted/40 p-3">
                   <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">Gravação</p>
                   <audio controls className="w-full" src={viewCall.recordingUrl} />
+                </div>
+              )}
+
+              {/* E-mail de follow-up */}
+              {viewCall.wantsFollowupEmail && viewCall.contactEmail && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-0.5">E-mail de follow-up</p>
+                    <p className="text-sm font-medium text-blue-900">{viewCall.contactEmail}</p>
+                    {viewCall.followupEmailSentAt && (
+                      <p className="text-xs text-blue-600 mt-0.5">✓ Enviado em {formatDate(viewCall.followupEmailSentAt)}</p>
+                    )}
+                  </div>
+                  {!viewCall.followupEmailSentAt && (
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                      onClick={async () => {
+                        try {
+                          await apiFetch(`/admin/discagem/calls/${viewCall.id}/send-email`, { method: "POST" });
+                          toast({ title: "E-mail enviado!", description: `Material enviado para ${viewCall.contactEmail}` });
+                          setViewCall(v => v ? { ...v, followupEmailSentAt: new Date().toISOString() } : v);
+                          queryClient.invalidateQueries({ queryKey: ["discagem-calls"] });
+                        } catch (e: any) {
+                          toast({ title: "Erro ao enviar", description: e.message, variant: "destructive" });
+                        }
+                      }}>
+                      <Mail className="h-3.5 w-3.5 mr-1" /> Enviar e-mail
+                    </Button>
+                  )}
                 </div>
               )}
 

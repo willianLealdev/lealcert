@@ -8,6 +8,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { getDiscagemSettings } from "./settings-reader";
 import { AGENT_SYSTEM_PROMPT, AGENT_VOICE_IDS, type AgentName } from "./config";
+import { getSiteCacheBlock, refreshSiteCache } from "./site-cache";
+
+// Inicia o cache do site em background (sem bloquear)
+refreshSiteCache().catch(() => {});
 
 export type AiModel = "claude" | "deepseek" | "openai";
 
@@ -22,6 +26,7 @@ export interface AgentResponse {
   shouldEndCall: boolean;
   isOptOut: boolean;
   modelUsed: AiModel;
+  capturedEmail?: string | null;  // e-mail capturado via [REGISTRAR_EMAIL:xxx]
 }
 
 // ── Detecção de opt-out ──────────────────────────────────────────
@@ -106,9 +111,11 @@ export async function runAgentTurn(
 ): Promise<AgentResponse> {
   const cfg = await getDiscagemSettings();
 
-  // Injeta o nome do agente no prompt padrão (ou usa o customizado)
-  const prompt = customSystemPrompt
+  // Injeta o nome do agente + conteúdo atual do site no prompt
+  const siteBlock = getSiteCacheBlock();
+  const basePrompt = customSystemPrompt
     ?? AGENT_SYSTEM_PROMPT.replaceAll("{AGENT_NAME}", agentName);
+  const prompt = siteBlock ? `${basePrompt}\n\n${siteBlock}` : basePrompt;
 
   const lastUserText = turns.at(-1)?.text ?? "";
 
@@ -147,9 +154,17 @@ export async function runAgentTurn(
 
       const isOptOut = detectOptOut(lastUserText);
       const shouldEndCall = isOptOut || /\[(ENCERRAR|FIM|OPTOUT)\]/i.test(text);
-      const cleanText = text.replace(/\[(ENCERRAR|FIM|OPTOUT)\]/gi, "").trim();
 
-      return { text: cleanText, shouldEndCall, isOptOut, modelUsed: model };
+      // Extrai e-mail capturado via [REGISTRAR_EMAIL:xxx]
+      const emailMatch = text.match(/\[REGISTRAR_EMAIL:([^\]]+)\]/i);
+      const capturedEmail = emailMatch ? emailMatch[1].trim() : null;
+
+      const cleanText = text
+        .replace(/\[(ENCERRAR|FIM|OPTOUT)\]/gi, "")
+        .replace(/\[REGISTRAR_EMAIL:[^\]]+\]/gi, "")
+        .trim();
+
+      return { text: cleanText, shouldEndCall, isOptOut, modelUsed: model, capturedEmail };
 
     } catch (err: unknown) {
       lastError = err;

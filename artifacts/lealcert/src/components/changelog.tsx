@@ -26,6 +26,9 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "novo", text: "Script completo do agente comercial LealCert inserido: 45 seções cobrindo abertura, diagnóstico, objeções, fechamento e conformidade — adaptado para voz (respostas curtas em áudio)" },
       { type: "novo", text: "Dois agentes de voz configurados: Willian (masculino) e Aline (feminino) — cada campanha seleciona o agente; voz TTS ajustada automaticamente por agente" },
       { type: "novo", text: "Filtro de DDD por campanha: seletor visual com todos os DDDs do Brasil organizados por região e estado (Sudeste, Sul, Centro-Oeste, Nordeste, Norte); seleção rápida por estado ou região inteira; chips removíveis no sumário" },
+      { type: "novo", text: "Relatório de contatos da discagem: aba dedicada com filtro por período (Hoje / 7 dias / 30 dias / Tudo), cards de resumo (contatos únicos, atenderam, não atenderam, taxa), tabela por contato com número de tentativas, duração total acumulada e campanhas" },
+      { type: "novo", text: "Agente de discagem: número WhatsApp (17) 3176-0105 injetado no script como contato oficial de suporte ao cliente; conteúdo do site lealcert.com.br pré-carregado no prompt (cache 4h) para responder dúvidas não cobertas pelo script" },
+      { type: "novo", text: "Fluxo de e-mail de follow-up na discagem: agente captura e-mail via [REGISTRAR_EMAIL:], salva na ligação; botão 'Enviar e-mail' no detalhe da ligação envia HTML via SMTP com material da parceria" },
     ],
   },
   {

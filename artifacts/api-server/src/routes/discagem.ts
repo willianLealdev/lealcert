@@ -26,7 +26,7 @@ import { Router } from "express";
 import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { createReadStream, existsSync } from "node:fs";
 import path from "node:path";
-import { db } from "@workspace/db";
+import { db, pool } from "@workspace/db";
 import {
   discagemCampaignsTable,
   discagemCallsTable,
@@ -84,6 +84,7 @@ interface PendingPayload {
   audioUrl: string;
   shouldEndCall: boolean;
   isOptOut: boolean;
+  capturedEmail?: string | null;
   history: { role: "user" | "assistant"; text: string; ts: string }[];
   err?: unknown;
 }
@@ -167,8 +168,8 @@ router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> =>
     history.push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
     const { id: ttsId } = await synthesize(aiResp.text, campaign.ttsProvider as any, campaign.ttsVoiceId ?? undefined);
     const url = await audioUrl(ttsId);
-    return { audioUrl: url, shouldEndCall: aiResp.shouldEndCall, isOptOut: aiResp.isOptOut, history };
-  })().catch(err => ({ audioUrl: "", shouldEndCall: true, isOptOut: false, history, err }));
+    return { audioUrl: url, shouldEndCall: aiResp.shouldEndCall, isOptOut: aiResp.isOptOut, capturedEmail: aiResp.capturedEmail, history };
+  })().catch(err => ({ audioUrl: "", shouldEndCall: true, isOptOut: false, capturedEmail: null, history, err }));
 
   pendingResults.set(callId, { promise: processingPromise, startedAt: Date.now() });
 
@@ -260,10 +261,18 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
   if (payload.shouldEndCall) {
     // Salva transcript e encerra
     const [callRow] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
+    // Acumula e-mails capturados ao longo da conversa (pode ter sido detectado em qualquer turno)
+    const allEmails = payload.history
+      .filter(t => t.role === "assistant")
+      .map(t => { const m = t.text.match(/\[REGISTRAR_EMAIL:([^\]]+)\]/i); return m ? m[1].trim() : null; })
+      .filter(Boolean);
+    const capturedEmail = payload.capturedEmail ?? allEmails.at(-1) ?? null;
+
     await db.update(discagemCallsTable).set({
       transcript: JSON.stringify(payload.history),
       status: payload.isOptOut ? "optout" : "answered",
       outcome: payload.isOptOut ? "optout" : "answered",
+      ...(capturedEmail ? { contactEmail: capturedEmail, wantsFollowupEmail: true } : {}),
     }).where(eq(discagemCallsTable.id, callId));
 
     if (payload.isOptOut && callRow?.contactId) {
@@ -568,6 +577,138 @@ router.get("/admin/discagem/campaigns/:id/calls", requireAdmin, async (req, res)
   }
   const calls = await query.orderBy(desc(discagemCallsTable.createdAt)).limit(500);
   res.json(calls);
+});
+
+// ─── Relatório por contato ────────────────────────────────────────
+// GET /admin/discagem/report?period=today|week|month|all
+router.get("/admin/discagem/report", requireAdmin, async (req, res): Promise<void> => {
+  const period = (req.query.period as string) ?? "all";
+
+  // Calcula data de corte no fuso de Brasília
+  let since: Date | null = null;
+  if (period === "today") {
+    const now = new Date();
+    const brStr = now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" });
+    const [m, d, y] = brStr.split("/");
+    // Meia-noite de hoje em Brasília = UTC−3
+    since = new Date(`${y}-${m}-${d}T03:00:00.000Z`);
+    if (since > now) since = new Date(since.getTime() - 86400000); // dia anterior se passou da meia-noite UTC
+  } else if (period === "week") {
+    since = new Date(Date.now() - 7 * 86400000);
+  } else if (period === "month") {
+    since = new Date(Date.now() - 30 * 86400000);
+  }
+
+  const params: unknown[] = [];
+  const whereClause = since ? (params.push(since), "WHERE dc.created_at >= $1") : "";
+
+  const { rows } = await pool.query<{
+    phoneNumber: string;
+    contactName: string | null;
+    totalAttempts: number;
+    answered: boolean;
+    lastCallAt: string;
+    lastStatus: string;
+    totalDuration: number;
+    campaignNames: string;
+  }>(`
+    SELECT
+      dc.phone_number        AS "phoneNumber",
+      dc.contact_name        AS "contactName",
+      COUNT(*)::int          AS "totalAttempts",
+      BOOL_OR(dc.status = 'answered') AS "answered",
+      MAX(dc.created_at)     AS "lastCallAt",
+      (SELECT dc2.status FROM discagem_calls dc2
+       WHERE dc2.phone_number = dc.phone_number
+       ORDER BY dc2.created_at DESC LIMIT 1) AS "lastStatus",
+      SUM(COALESCE(dc.duration_seconds, 0))::int AS "totalDuration",
+      STRING_AGG(DISTINCT dcamp.name, ', ') AS "campaignNames"
+    FROM discagem_calls dc
+    LEFT JOIN discagem_campaigns dcamp ON dcamp.id = dc.campaign_id
+    ${whereClause}
+    GROUP BY dc.phone_number, dc.contact_name
+    ORDER BY MAX(dc.created_at) DESC
+    LIMIT 500
+  `, params);
+
+  res.json(rows);
+});
+
+// ─── Enviar e-mail de follow-up para contato da ligação ──────────
+router.post("/admin/discagem/calls/:id/send-email", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+
+  const [call] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, id));
+  if (!call) { res.status(404).json({ error: "Ligação não encontrada" }); return; }
+  if (!call.contactEmail) { res.status(400).json({ error: "Nenhum e-mail registrado para essa ligação" }); return; }
+
+  // Busca configurações SMTP
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = parseInt(process.env.SMTP_PORT ?? "587", 10);
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpFrom = process.env.SMTP_FROM ?? smtpUser ?? "noreply@lealcert.com.br";
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    res.status(500).json({ error: "SMTP não configurado — verifique as variáveis de ambiente SMTP_*" });
+    return;
+  }
+
+  const contactName = call.contactName ?? "Contador";
+  const html = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
+  <img src="https://lealcert.com.br/logo.png" alt="LealCert" style="height:48px;margin-bottom:24px" onerror="this.style.display='none'" />
+  <h2 style="color:#1a2e4a">Olá, ${contactName}!</h2>
+  <p>Conforme conversamos por telefone, segue o material sobre a parceria LealCert para escritórios de contabilidade.</p>
+  <h3 style="color:#2563eb">Por que ser parceiro LealCert?</h3>
+  <ul>
+    <li><strong>Custo para o parceiro:</strong> R$ 90,00 por certificado</li>
+    <li><strong>Margem livre:</strong> você define o preço ao cliente final</li>
+    <li><strong>Exemplo:</strong> e-CNPJ A1 → venda a R$ 274,00 = margem bruta de R$ 184,00</li>
+    <li><strong>Bônus de fidelidade:</strong> a cada 10 certificados, 1 de cortesia</li>
+    <li><strong>Cupom no 1º certificado:</strong> PARCEIRO (R$ 70,00 no lugar de R$ 90,00)</li>
+    <li><strong>Processo 100% online</strong> com videoconferência — sem deslocamento</li>
+  </ul>
+  <h3 style="color:#2563eb">Como começar</h3>
+  <p>
+    Acesse <a href="https://lealcert.com.br/contadores" style="color:#2563eb">lealcert.com.br/contadores</a>,
+    clique em <strong>Cadastre-se</strong> e informe seu CRC para validação.
+  </p>
+  <p style="margin-top:24px">
+    Dúvidas? Fale diretamente pelo WhatsApp: <strong>(17) 3176-0105</strong>
+  </p>
+  <hr style="margin:24px 0;border:none;border-top:1px solid #e5e7eb" />
+  <p style="font-size:12px;color:#6b7280">
+    LealCert Certificados Digitais · lealcert.com.br<br/>
+    Você recebeu este e-mail pois demonstrou interesse durante contato telefônico.
+  </p>
+</div>`;
+
+  try {
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.default.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+
+    await transporter.sendMail({
+      from: `"LealCert Certificados Digitais" <${smtpFrom}>`,
+      to: call.contactEmail,
+      subject: "Material sobre Parceria LealCert — Certificados Digitais",
+      html,
+    });
+
+    await db.update(discagemCallsTable)
+      .set({ followupEmailSentAt: new Date() })
+      .where(eq(discagemCallsTable.id, id));
+
+    res.json({ ok: true, sentTo: call.contactEmail });
+  } catch (err) {
+    console.error("[discagem] Erro ao enviar e-mail:", err);
+    res.status(500).json({ error: "Falha ao enviar e-mail: " + (err instanceof Error ? err.message : String(err)) });
+  }
 });
 
 // ─── Lista contatos disponíveis ───────────────────────────────────
