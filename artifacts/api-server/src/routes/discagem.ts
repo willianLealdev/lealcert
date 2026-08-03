@@ -56,6 +56,15 @@ import { AGENT_SYSTEM_PROMPT } from "../lib/discagem/config";
 
 const router = Router();
 
+// ─── Helpers ─────────────────────────────────────────────────────
+/** Normaliza filtro de DDD: aceita "11,17" ou ["11","17"] → "11,17" ou null */
+function normalizeDdd(v: string | string[] | null | undefined): string | null {
+  if (!v) return null;
+  const raw = Array.isArray(v) ? v.join(",") : v;
+  const cleaned = raw.split(",").map(d => d.trim().replace(/\D/g, "")).filter(d => d.length === 2);
+  return cleaned.length > 0 ? cleaned.join(",") : null;
+}
+
 // ─── Mapa em memória: callId → histórico de conversa ─────────────
 const conversationCache = new Map<number, { role: "user" | "assistant"; text: string; ts: string }[]>();
 
@@ -394,7 +403,7 @@ router.get("/admin/discagem/campaigns", requireAdmin, async (req, res): Promise<
 
 router.post("/admin/discagem/campaigns", requireAdmin, async (req, res): Promise<void> => {
   const {
-    name, targetType, targetContactIds, manualNumber,
+    name, targetType, targetContactIds, manualNumber, filterDdd,
     aiModel, agentName, ttsProvider, ttsVoiceId,
     windowMorningStart, windowMorningEnd, windowAfternoonStart, windowAfternoonEnd,
     windowDays, maxConcurrentCalls, maxAttempts,
@@ -402,13 +411,17 @@ router.post("/admin/discagem/campaigns", requireAdmin, async (req, res): Promise
 
   if (!name) { res.status(400).json({ error: "Nome obrigatório" }); return; }
 
+  // Normaliza DDDs: aceita "11,17" ou ["11","17"]
+  const dddNorm = normalizeDdd(filterDdd);
+
   const [camp] = await db.insert(discagemCampaignsTable).values({
     name,
     status: "draft",
     targetType: targetType ?? "all",
     targetContactIds: targetContactIds ? JSON.stringify(targetContactIds) : null,
     manualNumber: manualNumber ?? null,
-    aiModel: aiModel ?? "claude",
+    filterDdd: dddNorm,
+    aiModel: aiModel ?? "deepseek",
     ttsProvider: ttsProvider ?? "cartesia",
     ttsVoiceId: ttsVoiceId ?? null,
     windowMorningStart: windowMorningStart ?? 9,
@@ -428,7 +441,7 @@ router.put("/admin/discagem/campaigns/:id", requireAdmin, async (req, res): Prom
   const allowed = ["name", "aiModel", "agentName", "ttsProvider", "ttsVoiceId",
     "windowMorningStart", "windowMorningEnd", "windowAfternoonStart", "windowAfternoonEnd",
     "windowDays", "maxConcurrentCalls", "maxAttempts", "targetType",
-    "targetContactIds", "manualNumber"];
+    "targetContactIds", "manualNumber", "filterDdd"];
 
   const updates: Record<string, unknown> = {};
   for (const k of allowed) {
@@ -436,6 +449,7 @@ router.put("/admin/discagem/campaigns/:id", requireAdmin, async (req, res): Prom
   }
   if (updates.targetContactIds) updates.targetContactIds = JSON.stringify(updates.targetContactIds);
   if (updates.windowDays) updates.windowDays = JSON.stringify(updates.windowDays);
+  if ("filterDdd" in updates) updates.filterDdd = normalizeDdd(updates.filterDdd as string | string[] | null);
 
   const [camp] = await db.update(discagemCampaignsTable).set(updates as any).where(eq(discagemCampaignsTable.id, id)).returning();
   if (!camp) { res.status(404).json({ error: "Campanha não encontrada" }); return; }

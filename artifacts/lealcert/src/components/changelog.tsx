@@ -25,6 +25,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "novo", text: "Fillers de voz pré-gerados (\"Entendi.\", \"Certo.\", \"Um momento.\", etc.): tocados imediatamente ao receber a fala do contato enquanto IA+TTS processam em paralelo — latência percebida <0.5s" },
       { type: "novo", text: "Script completo do agente comercial LealCert inserido: 45 seções cobrindo abertura, diagnóstico, objeções, fechamento e conformidade — adaptado para voz (respostas curtas em áudio)" },
       { type: "novo", text: "Dois agentes de voz configurados: Willian (masculino) e Aline (feminino) — cada campanha seleciona o agente; voz TTS ajustada automaticamente por agente" },
+      { type: "novo", text: "Filtro de DDD por campanha: seletor visual com todos os DDDs do Brasil organizados por região e estado (Sudeste, Sul, Centro-Oeste, Nordeste, Norte); seleção rápida por estado ou região inteira; chips removíveis no sumário" },
     ],
   },
   {

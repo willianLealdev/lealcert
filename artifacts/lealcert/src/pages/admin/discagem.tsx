@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,10 +125,220 @@ function formatDate(d?: string | null): string {
   return new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+// ── Mapa de DDDs do Brasil por região → estado ────────────────────
+const DDD_REGIONS = [
+  {
+    region: "Sudeste",
+    color: "text-blue-600",
+    states: [
+      { uf: "SP", name: "São Paulo",       ddds: ["11","12","13","14","15","16","17","18","19"] },
+      { uf: "RJ", name: "Rio de Janeiro",  ddds: ["21","22","24"] },
+      { uf: "ES", name: "Espírito Santo",  ddds: ["27","28"] },
+      { uf: "MG", name: "Minas Gerais",    ddds: ["31","32","33","34","35","37","38"] },
+    ],
+  },
+  {
+    region: "Sul",
+    color: "text-green-600",
+    states: [
+      { uf: "PR", name: "Paraná",           ddds: ["41","42","43","44","45","46"] },
+      { uf: "SC", name: "Santa Catarina",   ddds: ["47","48","49"] },
+      { uf: "RS", name: "Rio Grande do Sul",ddds: ["51","53","54","55"] },
+    ],
+  },
+  {
+    region: "Centro-Oeste",
+    color: "text-yellow-600",
+    states: [
+      { uf: "DF", name: "Distrito Federal", ddds: ["61"] },
+      { uf: "GO", name: "Goiás",            ddds: ["62","64"] },
+      { uf: "MT", name: "Mato Grosso",      ddds: ["65","66"] },
+      { uf: "MS", name: "Mato Grosso do Sul",ddds: ["67"] },
+    ],
+  },
+  {
+    region: "Nordeste",
+    color: "text-orange-600",
+    states: [
+      { uf: "BA", name: "Bahia",            ddds: ["71","73","74","75","77"] },
+      { uf: "SE", name: "Sergipe",          ddds: ["79"] },
+      { uf: "PE", name: "Pernambuco",       ddds: ["81","87"] },
+      { uf: "PB", name: "Paraíba",          ddds: ["83"] },
+      { uf: "AL", name: "Alagoas",          ddds: ["82"] },
+      { uf: "RN", name: "Rio Grande do Norte", ddds: ["84"] },
+      { uf: "CE", name: "Ceará",            ddds: ["85","88"] },
+      { uf: "PI", name: "Piauí",            ddds: ["86","89"] },
+      { uf: "MA", name: "Maranhão",         ddds: ["98","99"] },
+    ],
+  },
+  {
+    region: "Norte",
+    color: "text-teal-600",
+    states: [
+      { uf: "PA", name: "Pará",             ddds: ["91","93","94"] },
+      { uf: "AM", name: "Amazonas",         ddds: ["92","97"] },
+      { uf: "RR", name: "Roraima",          ddds: ["95"] },
+      { uf: "AP", name: "Amapá",            ddds: ["96"] },
+      { uf: "AC", name: "Acre",             ddds: ["68"] },
+      { uf: "RO", name: "Rondônia",         ddds: ["69"] },
+      { uf: "TO", name: "Tocantins",        ddds: ["63"] },
+    ],
+  },
+] as const;
+
+// ── Seletor de DDD visual ─────────────────────────────────────────
+function DddSelector({
+  value,
+  onChange,
+}: {
+  value: string;          // "11,17,21" ou ""
+  onChange: (v: string) => void;
+}) {
+  const selected = useMemo(
+    () => new Set(value ? value.split(",").map(d => d.trim()).filter(Boolean) : []),
+    [value],
+  );
+
+  function toggle(ddd: string) {
+    const next = new Set(selected);
+    next.has(ddd) ? next.delete(ddd) : next.add(ddd);
+    onChange([...next].sort().join(","));
+  }
+
+  function toggleState(ddds: readonly string[]) {
+    const allSelected = ddds.every(d => selected.has(d));
+    const next = new Set(selected);
+    ddds.forEach(d => allSelected ? next.delete(d) : next.add(d));
+    onChange([...next].sort().join(","));
+  }
+
+  function toggleRegion(states: readonly { ddds: readonly string[] }[]) {
+    const allDdds = states.flatMap(s => [...s.ddds]);
+    const allSelected = allDdds.every(d => selected.has(d));
+    const next = new Set(selected);
+    allDdds.forEach(d => allSelected ? next.delete(d) : next.add(d));
+    onChange([...next].sort().join(","));
+  }
+
+  function clearAll() { onChange(""); }
+  function selectAll() {
+    const all = DDD_REGIONS.flatMap(r => r.states.flatMap(s => [...s.ddds]));
+    onChange([...new Set(all)].sort().join(","));
+  }
+
+  const total = selected.size;
+
+  return (
+    <div className="space-y-3">
+      {/* Cabeçalho / resumo */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          {total === 0
+            ? "Nenhum DDD selecionado — vai ligar para todos"
+            : `${total} DDD${total > 1 ? "s" : ""} selecionado${total > 1 ? "s" : ""}`}
+        </span>
+        <div className="flex gap-2">
+          <button type="button" onClick={selectAll}
+            className="text-xs text-primary hover:underline">Todos</button>
+          {total > 0 && (
+            <button type="button" onClick={clearAll}
+              className="text-xs text-destructive hover:underline">Limpar</button>
+          )}
+        </div>
+      </div>
+
+      {/* Regiões */}
+      <div className="space-y-4 max-h-72 overflow-y-auto rounded-lg border bg-muted/30 p-3">
+        {DDD_REGIONS.map(({ region, color, states }) => {
+          const allDdds = states.flatMap(s => [...s.ddds]);
+          const regionSelected = allDdds.filter(d => selected.has(d)).length;
+          const regionTotal = allDdds.length;
+          const regionFull = regionSelected === regionTotal;
+
+          return (
+            <div key={region}>
+              {/* Cabeçalho da região */}
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-xs font-bold uppercase tracking-wider ${color}`}>{region}</span>
+                <button type="button"
+                  onClick={() => toggleRegion(states)}
+                  className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                    regionFull
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : regionSelected > 0
+                      ? "bg-primary/10 text-primary border-primary/40"
+                      : "text-muted-foreground border-border hover:border-muted-foreground"
+                  }`}>
+                  {regionFull ? "✓ Região" : regionSelected > 0 ? `${regionSelected}/${regionTotal}` : "Região"}
+                </button>
+              </div>
+
+              {/* Estados */}
+              <div className="space-y-2 pl-1">
+                {states.map(({ uf, name, ddds }) => {
+                  const stateSelected = ddds.filter(d => selected.has(d)).length;
+                  const stateFull = stateSelected === ddds.length;
+
+                  return (
+                    <div key={uf} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <button type="button"
+                          onClick={() => toggleState(ddds)}
+                          className={`text-xs font-medium px-1.5 py-0.5 rounded border transition-colors ${
+                            stateFull
+                              ? "bg-primary/10 text-primary border-primary/50"
+                              : stateSelected > 0
+                              ? "bg-primary/5 text-primary border-primary/30"
+                              : "text-muted-foreground border-transparent hover:border-border"
+                          }`}>
+                          {uf}
+                        </button>
+                        <span className="text-xs text-muted-foreground">{name}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 pl-8">
+                        {ddds.map(ddd => (
+                          <button
+                            key={ddd}
+                            type="button"
+                            onClick={() => toggle(ddd)}
+                            className={`h-7 w-10 rounded text-xs font-mono font-semibold border transition-all ${
+                              selected.has(ddd)
+                                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-primary/5"
+                            }`}>
+                            {ddd}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Chips dos selecionados */}
+      {total > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {[...selected].sort().map(ddd => (
+            <button key={ddd} type="button" onClick={() => toggle(ddd)}
+              className="inline-flex items-center gap-0.5 text-xs bg-primary/10 text-primary border border-primary/30 rounded-full px-2 py-0.5 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors">
+              {ddd} ×
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Formulário padrão de campanha ─────────────────────────────────
 const EMPTY_FORM = {
   name: "", targetType: "all", manualNumber: "", selectedContactIds: [] as number[],
   aiModel: "deepseek", agentName: "Willian", ttsProvider: "cartesia", ttsVoiceId: "",
+  filterDdd: "",
   windowMorningStart: 9, windowMorningEnd: 12,
   windowAfternoonStart: 13, windowAfternoonEnd: 16,
   windowDays: ["mon","tue","wed","thu"] as string[],
@@ -255,6 +465,7 @@ export default function AdminDiscagem() {
       agentName: (camp as any).agentName ?? "Willian",
       ttsProvider: camp.ttsProvider,
       ttsVoiceId: camp.ttsVoiceId ?? "",
+      filterDdd: (camp as any).filterDdd ?? "",
       windowMorningStart: camp.windowMorningStart,
       windowMorningEnd: camp.windowMorningEnd,
       windowAfternoonStart: camp.windowAfternoonStart,
@@ -364,12 +575,28 @@ export default function AdminDiscagem() {
                     </span>
                   )}
                 </div>
-                <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><User className="h-3 w-3" />{(camp as any).agentName ?? "Willian"}</span>
                   <span className="flex items-center gap-1"><Bot className="h-3 w-3" />{camp.aiModel === "claude" ? "Claude" : camp.aiModel === "openai" ? "GPT" : "DeepSeek"}</span>
                   <span className="flex items-center gap-1"><Volume2 className="h-3 w-3" />{camp.ttsProvider === "cartesia" ? "Cartesia" : "ElevenLabs"}</span>
                   <span className="flex items-center gap-1"><Users className="h-3 w-3" />
                     {camp.targetType === "all" ? "Todos" : camp.targetType === "clientes" ? "Clientes" : camp.targetType === "contadores" ? "Contadores" : camp.targetType === "manual_number" ? camp.manualNumber : "Selecionados"}
+                    {(camp as any).filterDdd ? (() => {
+                      const ddds = ((camp as any).filterDdd as string).split(",").filter(Boolean);
+                      // Agrupa por estado para exibição compacta
+                      const stateMap = new Map<string, string>();
+                      for (const r of DDD_REGIONS) {
+                        for (const s of r.states) {
+                          for (const d of s.ddds) stateMap.set(d, s.uf);
+                        }
+                      }
+                      const ufs = [...new Set(ddds.map(d => stateMap.get(d) ?? d))];
+                      return (
+                        <span className="ml-1 text-primary font-medium">
+                          · DDD: {ufs.slice(0, 4).join(", ")}{ufs.length > 4 ? ` +${ufs.length - 4}` : ""}
+                        </span>
+                      );
+                    })() : null}
                   </span>
                   <span className="flex items-center gap-1"><Phone className="h-3 w-3" />
                     {camp.totalCalled} ligadas · {camp.totalAnswered} atendidas
@@ -539,6 +766,20 @@ export default function AdminDiscagem() {
               <div className="space-y-1.5">
                 <Label>Número</Label>
                 <Input value={form.manualNumber} onChange={e => setForm(f => ({ ...f, manualNumber: e.target.value }))} placeholder="+5511999990000" />
+              </div>
+            )}
+
+            {/* Filtro por DDD — só exibe quando alvo não é número avulso */}
+            {form.targetType !== "manual_number" && (
+              <div className="space-y-2">
+                <div>
+                  <Label>Filtro por DDD <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Selecione os DDDs que essa campanha vai ligar. Deixe vazio para ligar para todos.</p>
+                </div>
+                <DddSelector
+                  value={form.filterDdd}
+                  onChange={v => setForm(f => ({ ...f, filterDdd: v }))}
+                />
               </div>
             )}
 

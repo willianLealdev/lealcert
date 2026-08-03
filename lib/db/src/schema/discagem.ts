@@ -14,6 +14,7 @@ export const discagemCampaignsTable = pgTable("discagem_campaigns", {
   // all | clientes | contadores | contact_ids | manual_number
   targetContactIds: text("target_contact_ids"),   // JSON array of contact IDs
   manualNumber: text("manual_number"),             // para discar um número avulso
+  filterDdd: text("filter_ddd"),                  // DDDs permitidos, ex: "11,17,21" (null = todos)
 
   // IA
   aiModel: text("ai_model").notNull().default("claude"),    // claude | deepseek | openai

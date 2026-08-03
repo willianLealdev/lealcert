@@ -240,8 +240,25 @@ export async function populateCampaignCalls(
     contacts = await query;
   }
 
+  // Extrai DDD de um número brasileiro (11 dígitos após +55/55 ou 2 primeiros dígitos)
+  function extractDdd(phone: string): string {
+    const digits = phone.replace(/\D/g, "");
+    // Remove código do país 55 ou +55
+    const local = digits.startsWith("55") && digits.length >= 12 ? digits.slice(2) : digits;
+    return local.slice(0, 2);
+  }
+
   // Filtra contatos sem telefone
-  const valid = contacts.filter(c => c.phone && c.phone.trim() !== "");
+  const withPhone = contacts.filter(c => c.phone && c.phone.trim() !== "");
+
+  // Filtra por DDD (se configurado)
+  const allowedDdds: string[] | null = campaign.filterDdd
+    ? campaign.filterDdd.split(",").map(d => d.trim()).filter(Boolean)
+    : null;
+
+  const valid = allowedDdds && allowedDdds.length > 0
+    ? withPhone.filter(c => allowedDdds.includes(extractDdd(c.phone!)))
+    : withPhone;
 
   if (valid.length === 0) return 0;
 
