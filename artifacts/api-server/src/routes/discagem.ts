@@ -36,6 +36,7 @@ import { requireAdmin } from "../middlewares/auth";
 import { runAgentTurn, detectCreditError } from "../lib/discagem/ai-agent";
 import { synthesize, audioUrl, TMP_AUDIO_DIR } from "../lib/discagem/tts";
 import { invalidateDiscagemSettingsCache } from "../lib/discagem/settings-reader";
+import { getFillerUrl, initFillerAudio } from "../lib/discagem/filler-audio";
 import {
   twimlOpeningGather,
   twimlReplyGather,
@@ -62,6 +63,27 @@ function getConvHistory(callId: number) {
   if (!conversationCache.has(callId)) conversationCache.set(callId, []);
   return conversationCache.get(callId)!;
 }
+
+// ─── Mapa de resultados pendentes (filler pattern) ────────────────
+// Após o /speech disparar processamento em background, armazena aqui
+// até o /reply buscar. TTL automático: limpo quando /reply consome.
+interface PendingResult {
+  promise: Promise<PendingPayload>;
+  startedAt: number;
+}
+interface PendingPayload {
+  audioUrl: string;
+  shouldEndCall: boolean;
+  isOptOut: boolean;
+  history: { role: "user" | "assistant"; text: string; ts: string }[];
+  err?: unknown;
+}
+
+const pendingResults = new Map<number, PendingResult>();
+
+// Garante que fillers são gerados antes da primeira chamada real
+// (dispara em background no import do módulo)
+initFillerAudio().catch(e => console.warn("[discagem] initFillerAudio falhou:", e));
 
 // ─────────────────────────────────────────────────────────────────
 // WEBHOOK: TwiML inicial (Twilio chama quando a ligação conecta)
@@ -105,7 +127,7 @@ router.post("/discagem/voice/:callId", async (req, res): Promise<void> => {
 });
 
 // ─────────────────────────────────────────────────────────────────
-// WEBHOOK: Speech result → resposta da IA
+// WEBHOOK: Speech result → toca filler IMEDIATAMENTE + processa em background
 // ─────────────────────────────────────────────────────────────────
 router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> => {
   const callId = parseInt(Array.isArray(req.params.callId) ? req.params.callId[0] : req.params.callId, 10);
@@ -117,50 +139,136 @@ router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> =>
     return;
   }
 
-  try {
-    const [call] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
-    if (!call) { res.type("text/xml").send(twimlHangup()); return; }
+  // ── 1. Busca dados necessários ──────────────────────────────────
+  const [call] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
+  if (!call) { res.type("text/xml").send(twimlHangup()); return; }
 
-    const [campaign] = await db.select().from(discagemCampaignsTable).where(eq(discagemCampaignsTable.id, call.campaignId!));
-    if (!campaign) { res.type("text/xml").send(twimlHangup()); return; }
+  const [campaign] = await db.select().from(discagemCampaignsTable).where(eq(discagemCampaignsTable.id, call.campaignId!));
+  if (!campaign) { res.type("text/xml").send(twimlHangup()); return; }
 
-    const history = getConvHistory(callId);
-    history.push({ role: "user", text: speechResult, ts: new Date().toISOString() });
+  const { publicHostname } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
+  const base = publicHostname || process.env.PUBLIC_HOSTNAME || "";
 
+  // ── 2. Dispara IA + TTS em background (não aguarda) ─────────────
+  const history = getConvHistory(callId);
+  history.push({ role: "user", text: speechResult, ts: new Date().toISOString() });
+
+  const processingPromise: Promise<PendingPayload> = (async () => {
     const aiResp = await runAgentTurn(history, campaign.aiModel as any, undefined);
     history.push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
+    const { id: ttsId } = await synthesize(aiResp.text, campaign.ttsProvider as any, campaign.ttsVoiceId ?? undefined);
+    const url = await audioUrl(ttsId);
+    return { audioUrl: url, shouldEndCall: aiResp.shouldEndCall, isOptOut: aiResp.isOptOut, history };
+  })().catch(err => ({ audioUrl: "", shouldEndCall: true, isOptOut: false, history, err }));
 
-    const { id: ttsId2 } = await synthesize(aiResp.text, campaign.ttsProvider as any, campaign.ttsVoiceId ?? undefined);
-    const url = await audioUrl(ttsId2);
+  pendingResults.set(callId, { promise: processingPromise, startedAt: Date.now() });
 
-    if (aiResp.shouldEndCall) {
-      // Salva transcript e encerra
-      await db.update(discagemCallsTable).set({
-        transcript: JSON.stringify(history),
-        status: aiResp.isOptOut ? "optout" : "answered",
-        outcome: aiResp.isOptOut ? "optout" : "answered",
-      }).where(eq(discagemCallsTable.id, callId));
+  // ── 3. Responde IMEDIATAMENTE com filler + redirect ──────────────
+  // O Twilio toca o filler (~0.8s) enquanto a IA processa em paralelo.
+  // Quando o Twilio chamar /reply, o resultado já deve estar pronto.
+  const fillerGroup = speechResult.length > 40 ? "thinking" : "ack";
+  const fUrl = await getFillerUrl(fillerGroup);
+  const replyUrl = `${base}/api/discagem/voice/${callId}/reply?attempt=1`;
 
-      if (aiResp.isOptOut && call.contactId) {
-        await db.update(marketingContactsTable).set({ status: "optout" }).where(eq(marketingContactsTable.id, call.contactId));
+  if (fUrl) {
+    // Toca filler e redireciona para buscar resultado
+    res.type("text/xml").send(
+      `<?xml version="1.0" encoding="UTF-8"?><Response><Play>${fUrl}</Play><Redirect method="POST">${replyUrl}</Redirect></Response>`
+    );
+  } else {
+    // Sem filler disponível ainda — usa Pause curto como fallback
+    res.type("text/xml").send(
+      `<?xml version="1.0" encoding="UTF-8"?><Response><Pause length="1"/><Redirect method="POST">${replyUrl}</Redirect></Response>`
+    );
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// WEBHOOK: Reply — busca resultado do background e responde com TwiML real
+// Chamado pelo Twilio após o filler terminar (~0.8–1.2s depois)
+// ─────────────────────────────────────────────────────────────────
+router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => {
+  const callId = parseInt(Array.isArray(req.params.callId) ? req.params.callId[0] : req.params.callId, 10);
+  const attempt = parseInt((req.query.attempt as string) ?? "1", 10);
+
+  const pending = pendingResults.get(callId);
+  if (!pending) {
+    // Resultado não existe (chamada inválida ou já consumida)
+    res.type("text/xml").send(twimlHangup());
+    return;
+  }
+
+  const { publicHostname } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
+  const base = publicHostname || process.env.PUBLIC_HOSTNAME || "";
+
+  // Aguarda o resultado, com timeout para não bloquear o Twilio (máx 5s extra)
+  let payload: PendingPayload;
+  try {
+    payload = await Promise.race([
+      pending.promise,
+      new Promise<PendingPayload>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 5000)
+      ),
+    ]);
+  } catch (err: unknown) {
+    // Ainda processando ou erro → toca mais um filler e tenta novamente (máx 3 tentativas)
+    if (attempt < 3) {
+      const fUrl = await getFillerUrl("thinking");
+      const nextUrl = `${base}/api/discagem/voice/${callId}/reply?attempt=${attempt + 1}`;
+      if (fUrl) {
+        res.type("text/xml").send(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Play>${fUrl}</Play><Redirect method="POST">${nextUrl}</Redirect></Response>`
+        );
+      } else {
+        res.type("text/xml").send(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Pause length="1"/><Redirect method="POST">${nextUrl}</Redirect></Response>`
+        );
       }
-
-      res.type("text/xml").send(twimlHangup(url));
       return;
     }
+    // Timeout total (raro) — encerra com elegância
+    pendingResults.delete(callId);
+    res.type("text/xml").send(twimlHangup());
+    return;
+  }
 
-    const { publicHostname: ph2 } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
-    const gatherAction = `${ph2 || process.env.PUBLIC_HOSTNAME}/api/discagem/voice/${callId}/speech`;
-    res.type("text/xml").send(twimlReplyGather(url, gatherAction));
-  } catch (err: unknown) {
-    console.error("[discagem-speech] Erro:", err);
-    const creditApi = (err as any)?.creditError as string | undefined;
+  // Consome o resultado (remove do mapa)
+  pendingResults.delete(callId);
+
+  // Trata erros de crédito que vieram do background
+  if (payload.err) {
+    const creditApi = (payload.err as any)?.creditError as string | undefined;
     if (creditApi) {
-      const [call] = await db.select({ campaignId: discagemCallsTable.campaignId }).from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
-      if (call?.campaignId) await pauseCampaignForCredit(call.campaignId, creditApi, (err as Error).message);
+      const [callRow] = await db.select({ campaignId: discagemCallsTable.campaignId })
+        .from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
+      if (callRow?.campaignId) await pauseCampaignForCredit(callRow.campaignId, creditApi, (payload.err as Error).message);
     }
     res.type("text/xml").send(twimlHangup());
+    return;
   }
+
+  // ── Resultado pronto — responde com TwiML real ───────────────────
+  if (payload.shouldEndCall) {
+    // Salva transcript e encerra
+    const [callRow] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
+    await db.update(discagemCallsTable).set({
+      transcript: JSON.stringify(payload.history),
+      status: payload.isOptOut ? "optout" : "answered",
+      outcome: payload.isOptOut ? "optout" : "answered",
+    }).where(eq(discagemCallsTable.id, callId));
+
+    if (payload.isOptOut && callRow?.contactId) {
+      await db.update(marketingContactsTable)
+        .set({ status: "optout" })
+        .where(eq(marketingContactsTable.id, callRow.contactId));
+    }
+
+    res.type("text/xml").send(twimlHangup(payload.audioUrl));
+    return;
+  }
+
+  const gatherAction = `${base}/api/discagem/voice/${callId}/speech`;
+  res.type("text/xml").send(twimlReplyGather(payload.audioUrl, gatherAction));
 });
 
 // ─────────────────────────────────────────────────────────────────

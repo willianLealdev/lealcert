@@ -22,6 +22,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "novo", text: "Fallback automático de TTS: se Cartesia esgotar crédito → ElevenLabs → pausa com alerta; ordem configurável por campanha" },
       { type: "melhoria", text: "Todas as chaves de API da Discagem agora são salvas no banco (Settings) em vez de variáveis de ambiente — gerenciamento via UI admin" },
       { type: "melhoria", text: "Twilio e TTS leem credenciais do banco em tempo real com cache 30s; invalidação automática ao salvar configurações" },
+      { type: "novo", text: "Fillers de voz pré-gerados (\"Entendi.\", \"Certo.\", \"Um momento.\", etc.): tocados imediatamente ao receber a fala do contato enquanto IA+TTS processam em paralelo — latência percebida <0.5s" },
     ],
   },
   {
