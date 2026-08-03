@@ -35,6 +35,7 @@ import {
 import { requireAdmin } from "../middlewares/auth";
 import { runAgentTurn, detectCreditError } from "../lib/discagem/ai-agent";
 import { synthesize, audioUrl, TMP_AUDIO_DIR } from "../lib/discagem/tts";
+import { invalidateDiscagemSettingsCache } from "../lib/discagem/settings-reader";
 import {
   twimlOpeningGather,
   twimlReplyGather,
@@ -86,10 +87,11 @@ router.post("/discagem/voice/:callId", async (req, res): Promise<void> => {
     getConvHistory(callId).push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
 
     // Gera áudio da abertura
-    const audioId = await synthesize(aiResp.text, campaign.ttsProvider as any, campaign.ttsVoiceId ?? undefined);
-    const url = audioUrl(audioId);
+    const { id: ttsId, providerUsed: ttsUsed } = await synthesize(aiResp.text, campaign.ttsProvider as any, campaign.ttsVoiceId ?? undefined);
+    const url = await audioUrl(ttsId);
 
-    const gatherAction = `${process.env.PUBLIC_HOSTNAME}/api/discagem/voice/${callId}/speech`;
+    const { publicHostname } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
+    const gatherAction = `${publicHostname || process.env.PUBLIC_HOSTNAME}/api/discagem/voice/${callId}/speech`;
     res.type("text/xml").send(twimlOpeningGather(url, gatherAction));
   } catch (err: unknown) {
     console.error("[discagem-voice] Erro no TwiML inicial:", err);
@@ -128,8 +130,8 @@ router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> =>
     const aiResp = await runAgentTurn(history, campaign.aiModel as any, undefined);
     history.push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
 
-    const audioId = await synthesize(aiResp.text, campaign.ttsProvider as any, campaign.ttsVoiceId ?? undefined);
-    const url = audioUrl(audioId);
+    const { id: ttsId2 } = await synthesize(aiResp.text, campaign.ttsProvider as any, campaign.ttsVoiceId ?? undefined);
+    const url = await audioUrl(ttsId2);
 
     if (aiResp.shouldEndCall) {
       // Salva transcript e encerra
@@ -147,7 +149,8 @@ router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> =>
       return;
     }
 
-    const gatherAction = `${process.env.PUBLIC_HOSTNAME}/api/discagem/voice/${callId}/speech`;
+    const { publicHostname: ph2 } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
+    const gatherAction = `${ph2 || process.env.PUBLIC_HOSTNAME}/api/discagem/voice/${callId}/speech`;
     res.type("text/xml").send(twimlReplyGather(url, gatherAction));
   } catch (err: unknown) {
     console.error("[discagem-speech] Erro:", err);

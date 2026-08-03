@@ -1,22 +1,25 @@
 /**
- * Twilio — inicia chamadas outbound e gera TwiML.
+ * Twilio — lê credenciais do banco (Settings → Discagem),
+ * com fallback para variáveis de ambiente.
  */
+
+import { getDiscagemSettings } from "./settings-reader";
 
 export interface OutboundCallOptions {
   to: string;
-  callbackBaseUrl: string;  // ex: https://meusite.com/api/discagem
+  callbackBaseUrl: string;
   callId: number;
   campaignId: number;
 }
 
-/** Inicia uma chamada outbound via Twilio REST API */
 export async function initiateCall(opts: OutboundCallOptions): Promise<string> {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
+  const cfg = await getDiscagemSettings();
+  const sid = cfg.twilioAccountSid;
+  const token = cfg.twilioAuthToken;
+  const from = cfg.twilioPhoneNumber;
 
   if (!sid || !token || !from) {
-    throw new Error("Credenciais Twilio não configuradas (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_PHONE_NUMBER)");
+    throw new Error("Credenciais Twilio não configuradas. Acesse Configurações → Discagem para inserir Account SID, Auth Token e número.");
   }
 
   const voiceUrl = `${opts.callbackBaseUrl}/voice/${opts.callId}`;
@@ -35,7 +38,6 @@ export async function initiateCall(opts: OutboundCallOptions): Promise<string> {
     AsyncAmdStatusCallbackMethod: "POST",
     Timeout: "30",
     Record: "true",
-    RecordingStatusCallback: statusUrl,
   });
 
   const res = await fetch(
@@ -53,8 +55,6 @@ export async function initiateCall(opts: OutboundCallOptions): Promise<string> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as any;
     const msg = err?.message || `HTTP ${res.status}`;
-
-    // Detecta crédito insuficiente
     if (res.status === 402 || (err?.code && [20003, 20005, 21211, 21212].includes(err.code))) {
       const e = new Error(`CREDIT_ERROR: Twilio — ${msg}`);
       (e as any).creditError = "TWILIO";
@@ -67,10 +67,10 @@ export async function initiateCall(opts: OutboundCallOptions): Promise<string> {
   return data.sid as string;
 }
 
-/** Encerra uma chamada em andamento */
 export async function hangupCall(twilioSid: string): Promise<void> {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
+  const cfg = await getDiscagemSettings();
+  const sid = cfg.twilioAccountSid;
+  const token = cfg.twilioAuthToken;
   if (!sid || !token) return;
 
   await fetch(
@@ -86,12 +86,11 @@ export async function hangupCall(twilioSid: string): Promise<void> {
   );
 }
 
-// ── TwiML builders ─────────────────────────────────────────────────
+// ── TwiML builders ────────────────────────────────────────────────
 export function twimlResponse(twiml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><Response>${twiml}</Response>`;
 }
 
-/** TwiML inicial: fala a mensagem de abertura e abre Gather */
 export function twimlOpeningGather(audioUrl: string, gatherAction: string): string {
   return twimlResponse(`
     <Play>${audioUrl}</Play>
@@ -102,7 +101,6 @@ export function twimlOpeningGather(audioUrl: string, gatherAction: string): stri
   `);
 }
 
-/** TwiML de resposta: toca a resposta gerada e reabre Gather */
 export function twimlReplyGather(audioUrl: string, gatherAction: string): string {
   return twimlResponse(`
     <Play>${audioUrl}</Play>
@@ -113,15 +111,11 @@ export function twimlReplyGather(audioUrl: string, gatherAction: string): string
   `);
 }
 
-/** TwiML de encerramento */
 export function twimlHangup(audioUrl?: string): string {
-  if (audioUrl) {
-    return twimlResponse(`<Play>${audioUrl}</Play><Hangup/>`);
-  }
+  if (audioUrl) return twimlResponse(`<Play>${audioUrl}</Play><Hangup/>`);
   return twimlResponse(`<Hangup/>`);
 }
 
-/** TwiML para caixa postal — encerra imediatamente */
 export function twimlVoicemailHangup(): string {
   return twimlResponse(`<Hangup/>`);
 }

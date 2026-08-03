@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight,
-  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff, Bot, Megaphone, Receipt,
+  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff, Bot, Megaphone, Receipt, Volume2, Mic,
 } from "lucide-react";
 import { useSendTestPush } from "@workspace/api-client-react";
 import { usePush } from "@/lib/use-push";
@@ -121,6 +121,18 @@ export default function AdminSettings() {
     claudeApiKey: "",
     claudeModel: "claude-3-5-haiku-20241022",
     zeroBounceApiKey: "",
+    // Discagem IA
+    twilioAccountSid: "",
+    twilioAuthToken: "",
+    twilioPhoneNumber: "",
+    cartesiaApiKey: "",
+    cartesiaVoiceId: "a0e99841-438c-4a64-b679-ae501e7d6091",
+    elevenlabsApiKey: "",
+    elevenlabsVoiceId: "21m00Tcm4TlvDq8ikWAM",
+    deepgramApiKey: "",
+    discagemAiFallback: '["deepseek","claude","openai"]',
+    discagemTtsFallback: '["cartesia","elevenlabs"]',
+    discagemPublicHostname: "",
     resendApiKey: "",
     mktUseResend: "0",
     nfseAmbiente: "homologacao",
@@ -212,6 +224,18 @@ export default function AdminSettings() {
         resendApiKey: (s as unknown as Record<string, string>).resendApiKey ?? "",
         mktUseResend: (s as unknown as Record<string, string>).mktUseResend ?? "0",
         claudeModel: s.claudeModel ?? "claude-3-5-haiku-20241022",
+        // Discagem
+        twilioAccountSid: (s as unknown as Record<string, string>).twilioAccountSid ?? "",
+        twilioAuthToken: (s as unknown as Record<string, string>).twilioAuthToken ?? "",
+        twilioPhoneNumber: (s as unknown as Record<string, string>).twilioPhoneNumber ?? "",
+        cartesiaApiKey: (s as unknown as Record<string, string>).cartesiaApiKey ?? "",
+        cartesiaVoiceId: (s as unknown as Record<string, string>).cartesiaVoiceId ?? "a0e99841-438c-4a64-b679-ae501e7d6091",
+        elevenlabsApiKey: (s as unknown as Record<string, string>).elevenlabsApiKey ?? "",
+        elevenlabsVoiceId: (s as unknown as Record<string, string>).elevenlabsVoiceId ?? "21m00Tcm4TlvDq8ikWAM",
+        deepgramApiKey: (s as unknown as Record<string, string>).deepgramApiKey ?? "",
+        discagemAiFallback: (s as unknown as Record<string, string>).discagemAiFallback ?? '["deepseek","claude","openai"]',
+        discagemTtsFallback: (s as unknown as Record<string, string>).discagemTtsFallback ?? '["cartesia","elevenlabs"]',
+        discagemPublicHostname: (s as unknown as Record<string, string>).discagemPublicHostname ?? "",
         nfseAmbiente: (s as unknown as Record<string, string>).nfseAmbiente ?? "homologacao",
         nfseAutoEmit: (s as unknown as Record<string, string>).nfseAutoEmit ?? "0",
         nfseTokenTest: (s as unknown as Record<string, string>).nfseTokenTest ?? "",
@@ -317,6 +341,9 @@ export default function AdminSettings() {
           </TabsTrigger>
           <TabsTrigger value="ia" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Bot className="h-4 w-4" /><span>IA</span>
+          </TabsTrigger>
+          <TabsTrigger value="discagem" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Phone className="h-4 w-4" /><span>Discagem</span>
           </TabsTrigger>
           <TabsTrigger value="nfse" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Receipt className="h-4 w-4" /><span>NFS-e</span>
@@ -431,6 +458,167 @@ export default function AdminSettings() {
                 </div>
               </CardContent>
             </Card>
+            <SaveButton />
+          </form>
+        </TabsContent>
+
+        {/* ── DISCAGEM IA ─────────────────────────────────────────────────── */}
+        <TabsContent value="discagem">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+            {/* Twilio */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Phone className="h-5 w-5 text-primary" />
+                  <CardTitle>Twilio — Voz</CardTitle>
+                </div>
+                <CardDescription>Credenciais para realizar chamadas outbound. Encontre em console.twilio.com.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Account SID</Label>
+                  <MaskedInput value={form.twilioAccountSid} onChange={v => set("twilioAccountSid", v)} placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Auth Token</Label>
+                  <MaskedInput value={form.twilioAuthToken} onChange={v => set("twilioAuthToken", v)} placeholder="Token secreto do Twilio" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Número de telefone Twilio</Label>
+                  <Input value={form.twilioPhoneNumber} onChange={e => set("twilioPhoneNumber", e.target.value)} placeholder="+5511000000000" />
+                  <p className="text-xs text-muted-foreground">Número comprado no Twilio com capacidade de voz (formato E.164).</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">URL pública da aplicação</Label>
+                  <Input value={form.discagemPublicHostname} onChange={e => set("discagemPublicHostname", e.target.value)} placeholder="https://meusite.com.br" />
+                  <p className="text-xs text-muted-foreground">O Twilio chama esta URL nos webhooks de voz. Deve ser acessível publicamente (não localhost).</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* TTS */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Volume2 className="h-5 w-5 text-primary" />
+                  <CardTitle>Voz (TTS) — Prioridade e Fallback</CardTitle>
+                </div>
+                <CardDescription>
+                  Se o primeiro provedor ficar sem crédito, o sistema usa o próximo automaticamente.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="text-xs">Ordem de prioridade</Label>
+                  <Select
+                    value={form.discagemTtsFallback}
+                    onValueChange={v => set("discagemTtsFallback", v)}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='["cartesia","elevenlabs"]'>1º Cartesia → 2º ElevenLabs</SelectItem>
+                      <SelectItem value='["elevenlabs","cartesia"]'>1º ElevenLabs → 2º Cartesia</SelectItem>
+                      <SelectItem value='["cartesia"]'>Somente Cartesia</SelectItem>
+                      <SelectItem value='["elevenlabs"]'>Somente ElevenLabs</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Cartesia */}
+                <div className="rounded-lg border p-4 space-y-3">
+                  <p className="font-semibold text-sm">Cartesia</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Chave de API</Label>
+                    <MaskedInput value={form.cartesiaApiKey} onChange={v => set("cartesiaApiKey", v)} placeholder="Cartesia API Key" />
+                    <p className="text-xs text-muted-foreground"><a href="https://play.cartesia.ai/console" target="_blank" rel="noopener noreferrer" className="underline">play.cartesia.ai/console</a></p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Voice ID</Label>
+                    <Input value={form.cartesiaVoiceId} onChange={e => set("cartesiaVoiceId", e.target.value)} placeholder="a0e99841-438c-4a64-b679-ae501e7d6091" />
+                    <p className="text-xs text-muted-foreground">ID da voz no Cartesia. Encontre em <a href="https://play.cartesia.ai/voices" target="_blank" rel="noopener noreferrer" className="underline">play.cartesia.ai/voices</a></p>
+                  </div>
+                </div>
+
+                {/* ElevenLabs */}
+                <div className="rounded-lg border p-4 space-y-3">
+                  <p className="font-semibold text-sm">ElevenLabs</p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Chave de API</Label>
+                    <MaskedInput value={form.elevenlabsApiKey} onChange={v => set("elevenlabsApiKey", v)} placeholder="ElevenLabs API Key" />
+                    <p className="text-xs text-muted-foreground"><a href="https://elevenlabs.io/settings/api-keys" target="_blank" rel="noopener noreferrer" className="underline">elevenlabs.io/settings/api-keys</a></p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Voice ID</Label>
+                    <Input value={form.elevenlabsVoiceId} onChange={e => set("elevenlabsVoiceId", e.target.value)} placeholder="21m00Tcm4TlvDq8ikWAM" />
+                    <p className="text-xs text-muted-foreground">ID da voz no ElevenLabs. Padrão: Rachel (multilíngue). <a href="https://elevenlabs.io/voice-library" target="_blank" rel="noopener noreferrer" className="underline">Biblioteca de vozes</a></p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* IA Fallback */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  <CardTitle>IA (Agente) — Prioridade e Fallback</CardTitle>
+                </div>
+                <CardDescription>
+                  Se o primeiro modelo ficar sem crédito, o agente muda automaticamente para o próximo.
+                  As chaves são configuradas na aba <strong>IA</strong>.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Ordem de prioridade</Label>
+                  <Select
+                    value={form.discagemAiFallback}
+                    onValueChange={v => set("discagemAiFallback", v)}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='["deepseek","claude","openai"]'>1º DeepSeek → 2º Claude → 3º GPT</SelectItem>
+                      <SelectItem value='["claude","deepseek","openai"]'>1º Claude → 2º DeepSeek → 3º GPT</SelectItem>
+                      <SelectItem value='["openai","claude","deepseek"]'>1º GPT → 2º Claude → 3º DeepSeek</SelectItem>
+                      <SelectItem value='["deepseek","claude"]'>1º DeepSeek → 2º Claude</SelectItem>
+                      <SelectItem value='["claude","openai"]'>1º Claude → 2º GPT</SelectItem>
+                      <SelectItem value='["deepseek"]'>Somente DeepSeek</SelectItem>
+                      <SelectItem value='["claude"]'>Somente Claude</SelectItem>
+                      <SelectItem value='["openai"]'>Somente GPT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Configure as chaves de API de cada modelo na aba <strong>IA</strong> acima.
+                  </p>
+                </div>
+                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 space-y-1">
+                  <p><strong>Como o fallback funciona:</strong></p>
+                  <p>1. O agente tenta o 1º modelo da lista.</p>
+                  <p>2. Se receber erro de crédito esgotado, muda para o 2º.</p>
+                  <p>3. Se todos acabarem, a campanha é pausada com alerta na tela.</p>
+                  <p>4. Assim que você recarregar os créditos, clique em <strong>Retomar</strong> — o sistema continua do ponto onde parou.</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Deepgram */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Mic className="h-5 w-5 text-primary" />
+                  <CardTitle>Deepgram — Transcrição STT</CardTitle>
+                </div>
+                <CardDescription>Usado para transcrição pós-chamada de alta qualidade. Opcional.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label className="text-xs">Chave de API</Label>
+                  <MaskedInput value={form.deepgramApiKey} onChange={v => set("deepgramApiKey", v)} placeholder="Deepgram API Key" />
+                  <p className="text-xs text-muted-foreground"><a href="https://console.deepgram.com/signup" target="_blank" rel="noopener noreferrer" className="underline">console.deepgram.com</a></p>
+                </div>
+              </CardContent>
+            </Card>
+
             <SaveButton />
           </form>
         </TabsContent>

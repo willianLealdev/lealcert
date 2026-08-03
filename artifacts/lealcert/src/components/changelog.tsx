@@ -15,6 +15,17 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "03/08/2026",
+    version: "1.31",
+    changes: [
+      { type: "novo", text: "Configurações → aba Discagem: Twilio (SID, token, número, URL pública), Cartesia (chave + Voice ID), ElevenLabs (chave + Voice ID), Deepgram (STT)" },
+      { type: "novo", text: "Fallback automático de IA: se DeepSeek esgotar crédito → Claude → GPT → pausa com alerta; ordem configurável por campanha" },
+      { type: "novo", text: "Fallback automático de TTS: se Cartesia esgotar crédito → ElevenLabs → pausa com alerta; ordem configurável por campanha" },
+      { type: "melhoria", text: "Todas as chaves de API da Discagem agora são salvas no banco (Settings) em vez de variáveis de ambiente — gerenciamento via UI admin" },
+      { type: "melhoria", text: "Twilio e TTS leem credenciais do banco em tempo real com cache 30s; invalidação automática ao salvar configurações" },
+    ],
+  },
+  {
+    date: "03/08/2026",
     version: "1.30",
     changes: [
       { type: "novo", text: "Sistema de Discagem Automática com IA: agentes autônomos ligam para contatos via Twilio + Claude/DeepSeek + Cartesia/ElevenLabs" },

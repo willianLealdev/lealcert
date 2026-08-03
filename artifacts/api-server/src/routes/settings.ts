@@ -47,6 +47,18 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     zeroBounceApiKey: mask(s.zeroBounceApiKey),
     resendApiKey: mask((s as unknown as Record<string, string>).resendApiKey),
     mktUseResend: (s as unknown as Record<string, string>).mktUseResend ?? "0",
+    // Discagem IA
+    twilioAccountSid: mask(s.twilioAccountSid),
+    twilioAuthToken: mask(s.twilioAuthToken),
+    twilioPhoneNumber: s.twilioPhoneNumber ?? "",
+    cartesiaApiKey: mask(s.cartesiaApiKey),
+    cartesiaVoiceId: s.cartesiaVoiceId ?? "a0e99841-438c-4a64-b679-ae501e7d6091",
+    elevenlabsApiKey: mask(s.elevenlabsApiKey),
+    elevenlabsVoiceId: s.elevenlabsVoiceId ?? "21m00Tcm4TlvDq8ikWAM",
+    deepgramApiKey: mask(s.deepgramApiKey),
+    discagemAiFallback: s.discagemAiFallback ?? '["deepseek","claude","openai"]',
+    discagemTtsFallback: s.discagemTtsFallback ?? '["cartesia","elevenlabs"]',
+    discagemPublicHostname: s.discagemPublicHostname ?? "",
     // NFS-e
     nfseAmbiente: s.nfseAmbiente ?? "homologacao",
     nfseAutoEmit: s.nfseAutoEmit ?? "0",
@@ -128,6 +140,11 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     resendApiKey,
     mktUseResend,
     aiProvider,
+    twilioAccountSid, twilioAuthToken, twilioPhoneNumber,
+    cartesiaApiKey, cartesiaVoiceId,
+    elevenlabsApiKey, elevenlabsVoiceId,
+    deepgramApiKey,
+    discagemAiFallback, discagemTtsFallback, discagemPublicHostname,
     nfseAmbiente, nfseAutoEmit,
     nfseTokenTest, nfseTokenProd,
     nfsePrestadorCnpj, nfsePrestadorIm,
@@ -202,6 +219,18 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("claudeApiKey", claudeApiKey);
   set("zeroBounceApiKey", zeroBounceApiKey);
   set("resendApiKey", resendApiKey);
+  // Discagem IA
+  set("twilioAccountSid", twilioAccountSid);
+  set("twilioAuthToken", twilioAuthToken);
+  if (twilioPhoneNumber !== undefined) u.twilioPhoneNumber = twilioPhoneNumber;
+  set("cartesiaApiKey", cartesiaApiKey);
+  if (cartesiaVoiceId !== undefined) u.cartesiaVoiceId = cartesiaVoiceId;
+  set("elevenlabsApiKey", elevenlabsApiKey);
+  if (elevenlabsVoiceId !== undefined) u.elevenlabsVoiceId = elevenlabsVoiceId;
+  set("deepgramApiKey", deepgramApiKey);
+  if (discagemAiFallback !== undefined) u.discagemAiFallback = discagemAiFallback;
+  if (discagemTtsFallback !== undefined) u.discagemTtsFallback = discagemTtsFallback;
+  if (discagemPublicHostname !== undefined) u.discagemPublicHostname = discagemPublicHostname;
   if (mktUseResend !== undefined) u.mktUseResend = mktUseResend;
   // NFS-e
   if (nfseAmbiente !== undefined) u.nfseAmbiente = nfseAmbiente;
@@ -220,6 +249,9 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     .set(u as Parameters<typeof db.update>[0] extends infer T ? Record<string, unknown> : never)
     .where(eq(settingsTable.id, s.id))
     .returning();
+
+  // Invalida cache de settings de discagem ao salvar
+  try { const { invalidateDiscagemSettingsCache } = await import("../lib/discagem/settings-reader"); invalidateDiscagemSettingsCache(); } catch {}
 
   res.json(serializeSettings(updated));
 });

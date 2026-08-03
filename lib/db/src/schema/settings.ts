@@ -79,6 +79,25 @@ export const settingsTable = pgTable("settings", {
   // Resend — API de envio para e-mail marketing
   resendApiKey: text("resend_api_key"),
   mktUseResend: text("mkt_use_resend").default("0"),   // 0 = SMTP | 1 = Resend
+  // ─── Discagem Automática com IA ─────────────────────────────────────────
+  // Twilio (voz)
+  twilioAccountSid: text("twilio_account_sid"),
+  twilioAuthToken: text("twilio_auth_token"),
+  twilioPhoneNumber: text("twilio_phone_number"),
+  // TTS
+  cartesiaApiKey: text("cartesia_api_key"),
+  cartesiaVoiceId: text("cartesia_voice_id").default("a0e99841-438c-4a64-b679-ae501e7d6091"),
+  elevenlabsApiKey: text("elevenlabs_api_key"),
+  elevenlabsVoiceId: text("elevenlabs_voice_id").default("21m00Tcm4TlvDq8ikWAM"),
+  // STT
+  deepgramApiKey: text("deepgram_api_key"),
+  // Fallback: lista ordenada de prioridade (JSON)
+  // ex: '["deepseek","claude","openai"]' — tenta nessa ordem se crédito acabar
+  discagemAiFallback: text("discagem_ai_fallback").default('["deepseek","claude","openai"]'),
+  // ex: '["cartesia","elevenlabs"]'
+  discagemTtsFallback: text("discagem_tts_fallback").default('["cartesia","elevenlabs"]'),
+  // URL pública (usada pelo Twilio para chamar os webhooks)
+  discagemPublicHostname: text("discagem_public_hostname"),
   // NFS-e (Nota Fiscal de Serviço Eletrônica) — BrasilNFe
   nfseAmbiente: text("nfse_ambiente").default("homologacao"),          // homologacao | producao
   nfseAutoEmit: text("nfse_auto_emit").default("0"),                   // 0 = manual | 1 = automático

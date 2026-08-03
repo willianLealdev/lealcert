@@ -1,22 +1,20 @@
 /**
- * Text-to-Speech: Cartesia e ElevenLabs.
- * Gera áudio MP3, salva em /tmp, retorna o caminho local.
- * A rota GET /api/discagem/audio/:id serve o arquivo.
+ * Text-to-Speech com fallback automático entre Cartesia e ElevenLabs.
+ * Ordem configurada em Settings → Discagem → "Prioridade TTS".
  */
 
 import { writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { getDiscagemSettings } from "./settings-reader";
 
 export type TtsProvider = "cartesia" | "elevenlabs";
 
 export const TMP_AUDIO_DIR = "/tmp/discagem-audio";
 
 async function ensureDir() {
-  if (!existsSync(TMP_AUDIO_DIR)) {
-    await mkdir(TMP_AUDIO_DIR, { recursive: true });
-  }
+  if (!existsSync(TMP_AUDIO_DIR)) await mkdir(TMP_AUDIO_DIR, { recursive: true });
 }
 
 function audioId(): string {
@@ -24,12 +22,7 @@ function audioId(): string {
 }
 
 // ── Cartesia ─────────────────────────────────────────────────────
-async function synthesizeCartesia(text: string, voiceId?: string): Promise<string> {
-  const apiKey = process.env.CARTESIA_API_KEY;
-  if (!apiKey) throw new Error("CARTESIA_API_KEY não configurada");
-
-  const vid = voiceId || process.env.CARTESIA_VOICE_ID || "a0e99841-438c-4a64-b679-ae501e7d6091";
-
+async function synthesizeCartesia(text: string, apiKey: string, voiceId: string): Promise<string> {
   const res = await fetch("https://api.cartesia.ai/tts/bytes", {
     method: "POST",
     headers: {
@@ -40,7 +33,7 @@ async function synthesizeCartesia(text: string, voiceId?: string): Promise<strin
     body: JSON.stringify({
       transcript: text,
       model_id: "sonic-multilingual",
-      voice: { mode: "id", id: vid },
+      voice: { mode: "id", id: voiceId },
       output_format: { container: "mp3", encoding: "mp3", sample_rate: 44100 },
       language: "pt",
     }),
@@ -49,7 +42,7 @@ async function synthesizeCartesia(text: string, voiceId?: string): Promise<strin
   if (!res.ok) {
     const err = await res.text();
     if (res.status === 402 || err.toLowerCase().includes("credit") || err.toLowerCase().includes("insufficient")) {
-      const e = new Error(`CREDIT_ERROR: ${err}`);
+      const e = new Error(`CREDIT_ERROR: Cartesia — ${err}`);
       (e as any).creditError = "CARTESIA";
       throw e;
     }
@@ -58,25 +51,15 @@ async function synthesizeCartesia(text: string, voiceId?: string): Promise<strin
 
   await ensureDir();
   const id = audioId();
-  const filePath = path.join(TMP_AUDIO_DIR, `${id}.mp3`);
-  const buf = Buffer.from(await res.arrayBuffer());
-  await writeFile(filePath, buf);
+  await writeFile(path.join(TMP_AUDIO_DIR, `${id}.mp3`), Buffer.from(await res.arrayBuffer()));
   return id;
 }
 
 // ── ElevenLabs ───────────────────────────────────────────────────
-async function synthesizeElevenLabs(text: string, voiceId?: string): Promise<string> {
-  const apiKey = process.env.ELEVENLABS_API_KEY;
-  if (!apiKey) throw new Error("ELEVENLABS_API_KEY não configurada");
-
-  const vid = voiceId || "21m00Tcm4TlvDq8ikWAM"; // Rachel (pt-BR compatível)
-
-  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${vid}`, {
+async function synthesizeElevenLabs(text: string, apiKey: string, voiceId: string): Promise<string> {
+  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
     method: "POST",
-    headers: {
-      "xi-api-key": apiKey,
-      "Content-Type": "application/json",
-    },
+    headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
       text,
       model_id: "eleven_multilingual_v2",
@@ -87,7 +70,7 @@ async function synthesizeElevenLabs(text: string, voiceId?: string): Promise<str
   if (!res.ok) {
     const err = await res.text();
     if (res.status === 401 || res.status === 402 || err.toLowerCase().includes("credit") || err.toLowerCase().includes("quota")) {
-      const e = new Error(`CREDIT_ERROR: ${err}`);
+      const e = new Error(`CREDIT_ERROR: ElevenLabs — ${err}`);
       (e as any).creditError = "ELEVENLABS";
       throw e;
     }
@@ -96,26 +79,58 @@ async function synthesizeElevenLabs(text: string, voiceId?: string): Promise<str
 
   await ensureDir();
   const id = audioId();
-  const filePath = path.join(TMP_AUDIO_DIR, `${id}.mp3`);
-  const buf = Buffer.from(await res.arrayBuffer());
-  await writeFile(filePath, buf);
+  await writeFile(path.join(TMP_AUDIO_DIR, `${id}.mp3`), Buffer.from(await res.arrayBuffer()));
   return id;
 }
 
-// ── Interface pública ─────────────────────────────────────────────
+// ── Interface pública com fallback ────────────────────────────────
 export async function synthesize(
   text: string,
-  provider: TtsProvider = "cartesia",
-  voiceId?: string,
-): Promise<string> {
-  if (provider === "elevenlabs") {
-    return synthesizeElevenLabs(text, voiceId);
+  preferredProvider: TtsProvider = "cartesia",
+  voiceIdOverride?: string,
+): Promise<{ id: string; providerUsed: TtsProvider }> {
+  const cfg = await getDiscagemSettings();
+
+  // Fallback: coloca o preferido primeiro
+  const order = [
+    preferredProvider,
+    ...cfg.ttsFallback.filter(p => p !== preferredProvider),
+  ] as TtsProvider[];
+
+  let lastError: unknown;
+
+  for (const provider of order) {
+    try {
+      if (provider === "cartesia" && cfg.cartesiaApiKey) {
+        const vid = voiceIdOverride || cfg.cartesiaVoiceId;
+        const id = await synthesizeCartesia(text, cfg.cartesiaApiKey, vid);
+        return { id, providerUsed: "cartesia" };
+      } else if (provider === "elevenlabs" && cfg.elevenlabsApiKey) {
+        const vid = voiceIdOverride || cfg.elevenlabsVoiceId;
+        const id = await synthesizeElevenLabs(text, cfg.elevenlabsApiKey, vid);
+        return { id, providerUsed: "elevenlabs" };
+      }
+      // Chave não configurada — pula
+    } catch (err: unknown) {
+      lastError = err;
+      const isCreditErr = (err as any)?.creditError;
+      if (isCreditErr) {
+        console.warn(`[tts] Crédito esgotado em ${provider}, tentando próximo...`);
+        if (provider === order.at(-1)) throw err; // último da lista
+        continue;
+      }
+      throw err;
+    }
   }
-  return synthesizeCartesia(text, voiceId);
+
+  const e = new Error("CREDIT_ERROR: Todos os provedores TTS sem crédito ou sem chave configurada");
+  (e as any).creditError = "ALL_TTS";
+  throw e;
 }
 
-/** Gera a URL pública do áudio para usar no TwiML <Play> */
-export function audioUrl(id: string): string {
-  const host = process.env.PUBLIC_HOSTNAME || "http://localhost:8080";
+/** URL pública do áudio para usar no TwiML <Play> */
+export async function audioUrl(id: string): Promise<string> {
+  const cfg = await getDiscagemSettings();
+  const host = cfg.publicHostname || process.env.PUBLIC_HOSTNAME || "http://localhost:8080";
   return `${host}/api/discagem/audio/${id}`;
 }

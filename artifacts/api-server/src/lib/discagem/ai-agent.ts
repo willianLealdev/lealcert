@@ -1,13 +1,14 @@
 /**
- * Motor de IA para o agente de discagem.
- * Suporta: Claude (Anthropic) e DeepSeek (via OpenAI-compatible API).
+ * Motor de IA com fallback automático entre provedores.
+ * Ordem configurada em Settings → Discagem → "Prioridade IA".
+ * Se um provedor falhar por crédito esgotado, tenta o próximo da lista.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import { AGENT_SYSTEM_PROMPT } from "./config";
+import { getDiscagemSettings } from "./settings-reader";
 
-export type AiModel = "claude" | "deepseek";
+export type AiModel = "claude" | "deepseek" | "openai";
 
 export interface ConversationTurn {
   role: "user" | "assistant";
@@ -19,7 +20,7 @@ export interface AgentResponse {
   text: string;
   shouldEndCall: boolean;
   isOptOut: boolean;
-  model: AiModel;
+  modelUsed: AiModel;
 }
 
 // ── Detecção de opt-out ──────────────────────────────────────────
@@ -40,76 +41,77 @@ export function detectOptOut(text: string): boolean {
   return OPT_OUT_PATTERNS.some((p) => p.test(text));
 }
 
-// ── Detecção de erro de crédito por API ─────────────────────────
+// ── Detecção de erro de crédito ──────────────────────────────────
 export function detectCreditError(error: unknown): string | null {
   const msg = error instanceof Error ? error.message : String(error);
   const lower = msg.toLowerCase();
-  if (lower.includes("insufficient_quota") || lower.includes("credit") || lower.includes("billing") || lower.includes("quota")) {
+  if (
+    lower.includes("insufficient_quota") ||
+    lower.includes("credit") ||
+    lower.includes("billing") ||
+    lower.includes("quota") ||
+    lower.includes("rate_limit") ||
+    lower.includes("overloaded") ||
+    lower.includes("529")
+  ) {
     return msg;
   }
   return null;
 }
 
 // ── Claude ──────────────────────────────────────────────────────
-async function callClaude(
-  turns: ConversationTurn[],
-  systemPrompt: string,
-): Promise<string> {
-  const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
-  });
-
-  const messages = turns.map((t) => ({
-    role: t.role as "user" | "assistant",
-    content: t.text,
-  }));
-
+async function callClaude(turns: ConversationTurn[], systemPrompt: string, apiKey: string, model: string): Promise<string> {
+  const client = new Anthropic({ apiKey });
+  const messages = turns.map(t => ({ role: t.role as "user" | "assistant", content: t.text }));
   const response = await client.messages.create({
-    model: "claude-opus-4-5",
+    model,
     max_tokens: 300,
     system: systemPrompt,
     messages,
   });
-
   const block = response.content[0];
   if (block.type !== "text") throw new Error("Claude returned non-text block");
   return block.text;
 }
 
 // ── DeepSeek ─────────────────────────────────────────────────────
-async function callDeepSeek(
-  turns: ConversationTurn[],
-  systemPrompt: string,
-): Promise<string> {
-  const client = new OpenAI({
-    apiKey: process.env.DEEPSEEK_API_KEY!,
-    baseURL: "https://api.deepseek.com",
-  });
-
+async function callDeepSeek(turns: ConversationTurn[], systemPrompt: string, apiKey: string, model: string): Promise<string> {
+  const client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
-    ...turns.map((t) => ({
-      role: t.role as "user" | "assistant",
-      content: t.text,
-    })),
+    ...turns.map(t => ({ role: t.role as "user" | "assistant", content: t.text })),
   ];
-
-  const response = await client.chat.completions.create({
-    model: "deepseek-chat",
-    max_tokens: 300,
-    messages,
-  });
-
+  const response = await client.chat.completions.create({ model, max_tokens: 300, messages });
   return response.choices[0]?.message?.content ?? "";
 }
 
-// ── Entrada principal ────────────────────────────────────────────
+// ── OpenAI ──────────────────────────────────────────────────────
+async function callOpenAI(turns: ConversationTurn[], systemPrompt: string, apiKey: string, model: string): Promise<string> {
+  const client = new OpenAI({ apiKey });
+  const messages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "system", content: systemPrompt },
+    ...turns.map(t => ({ role: t.role as "user" | "assistant", content: t.text })),
+  ];
+  const response = await client.chat.completions.create({ model, max_tokens: 300, messages });
+  return response.choices[0]?.message?.content ?? "";
+}
+
+// ── Entrada principal com fallback ───────────────────────────────
 export async function runAgentTurn(
   turns: ConversationTurn[],
-  model: AiModel = "claude",
+  preferredModel: AiModel = "deepseek",
   customSystemPrompt?: string,
 ): Promise<AgentResponse> {
-  const systemPrompt = customSystemPrompt || AGENT_SYSTEM_PROMPT;
+  const cfg = await getDiscagemSettings();
+  const systemPrompt = customSystemPrompt ?? cfg.claudeApiKey ? undefined : undefined;
+
+  // System prompt padrão — substituir quando o script for fornecido
+  const prompt = systemPrompt ?? `
+Você é um assistente de vendas da LealCert, especialista em certificados digitais.
+⚠️ Script do agente não configurado — aguardando inserção do script de abordagem.
+Por enquanto, cumprimente e informe que ligará novamente em breve.
+  `.trim();
+
   const lastUserText = turns.at(-1)?.text ?? "";
 
   // Verificação de opt-out antes de chamar a IA
@@ -118,23 +120,58 @@ export async function runAgentTurn(
       text: "Entendido. Vou retirar seu número da nossa lista. Tenha um ótimo dia!",
       shouldEndCall: true,
       isOptOut: true,
-      model,
+      modelUsed: preferredModel,
     };
   }
 
-  let text: string;
-  if (model === "claude") {
-    text = await callClaude(turns, systemPrompt);
-  } else {
-    text = await callDeepSeek(turns, systemPrompt);
+  // Ordena a lista de fallback: coloca o preferredModel primeiro
+  const fallbackOrder = [
+    preferredModel,
+    ...cfg.aiFallback.filter(m => m !== preferredModel),
+  ] as AiModel[];
+
+  let lastError: unknown;
+
+  for (const model of fallbackOrder) {
+    try {
+      let text = "";
+
+      if (model === "claude" && cfg.claudeApiKey) {
+        text = await callClaude(turns, prompt, cfg.claudeApiKey, cfg.claudeModel);
+      } else if (model === "deepseek" && cfg.deepseekApiKey) {
+        text = await callDeepSeek(turns, prompt, cfg.deepseekApiKey, cfg.deepseekModel);
+      } else if (model === "openai" && cfg.openaiApiKey) {
+        text = await callOpenAI(turns, prompt, cfg.openaiApiKey, cfg.openaiModel);
+      } else {
+        // Chave não configurada — pula para o próximo
+        continue;
+      }
+
+      const isOptOut = detectOptOut(lastUserText);
+      const shouldEndCall = isOptOut || /\[(ENCERRAR|FIM|OPTOUT)\]/i.test(text);
+      const cleanText = text.replace(/\[(ENCERRAR|FIM|OPTOUT)\]/gi, "").trim();
+
+      return { text: cleanText, shouldEndCall, isOptOut, modelUsed: model };
+
+    } catch (err: unknown) {
+      lastError = err;
+      const creditErr = detectCreditError(err);
+      if (creditErr) {
+        // Marca erro de crédito neste modelo e tenta o próximo
+        console.warn(`[ai-agent] Crédito esgotado em ${model}, tentando próximo...`);
+        const e = new Error(`CREDIT_ERROR: ${model.toUpperCase()} — ${creditErr}`);
+        (e as any).creditError = model.toUpperCase();
+        (e as any).triedAll = model === fallbackOrder.at(-1);
+        if ((e as any).triedAll) throw e;
+        continue;
+      }
+      // Erro não relacionado a crédito — propaga imediatamente
+      throw err;
+    }
   }
 
-  // Detecta opt-out na resposta gerada pela IA (ela pode ter decidido encerrar)
-  const isOptOut = detectOptOut(lastUserText);
-  const shouldEndCall = isOptOut || /\[ENCERRAR\]|\[FIM\]/i.test(text);
-
-  // Remove marcações internas do texto final
-  const cleanText = text.replace(/\[(ENCERRAR|FIM|OPTOUT)\]/gi, "").trim();
-
-  return { text: cleanText, shouldEndCall, isOptOut, model };
+  // Todos os modelos falharam por crédito esgotado
+  const e = new Error(`CREDIT_ERROR: Todos os modelos de IA sem crédito — ${fallbackOrder.join(", ")}`);
+  (e as any).creditError = "ALL_AI";
+  throw e;
 }
