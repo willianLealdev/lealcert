@@ -127,8 +127,12 @@ export default function AdminSettings() {
     twilioPhoneNumber: "",
     cartesiaApiKey: "",
     cartesiaVoiceId: "a0e99841-438c-4a64-b679-ae501e7d6091",
+    willianCartesiaVoiceId: "a0e99841-438c-4a64-b679-ae501e7d6091",
+    alineCartesiaVoiceId: "694f9389-aac1-45b6-b726-9d9369183238",
     elevenlabsApiKey: "",
     elevenlabsVoiceId: "21m00Tcm4TlvDq8ikWAM",
+    willianElevenlabsVoiceId: "TxGEqnHWrfWFTfGW9XjX",
+    alineElevenlabsVoiceId: "21m00Tcm4TlvDq8ikWAM",
     deepgramApiKey: "",
     discagemAiFallback: '["deepseek","claude","openai"]',
     discagemTtsFallback: '["cartesia","elevenlabs"]',
@@ -230,8 +234,12 @@ export default function AdminSettings() {
         twilioPhoneNumber: (s as unknown as Record<string, string>).twilioPhoneNumber ?? "",
         cartesiaApiKey: (s as unknown as Record<string, string>).cartesiaApiKey ?? "",
         cartesiaVoiceId: (s as unknown as Record<string, string>).cartesiaVoiceId ?? "a0e99841-438c-4a64-b679-ae501e7d6091",
+        willianCartesiaVoiceId: (s as unknown as Record<string, string>).willianCartesiaVoiceId ?? "a0e99841-438c-4a64-b679-ae501e7d6091",
+        alineCartesiaVoiceId: (s as unknown as Record<string, string>).alineCartesiaVoiceId ?? "694f9389-aac1-45b6-b726-9d9369183238",
         elevenlabsApiKey: (s as unknown as Record<string, string>).elevenlabsApiKey ?? "",
         elevenlabsVoiceId: (s as unknown as Record<string, string>).elevenlabsVoiceId ?? "21m00Tcm4TlvDq8ikWAM",
+        willianElevenlabsVoiceId: (s as unknown as Record<string, string>).willianElevenlabsVoiceId ?? "TxGEqnHWrfWFTfGW9XjX",
+        alineElevenlabsVoiceId: (s as unknown as Record<string, string>).alineElevenlabsVoiceId ?? "21m00Tcm4TlvDq8ikWAM",
         deepgramApiKey: (s as unknown as Record<string, string>).deepgramApiKey ?? "",
         discagemAiFallback: (s as unknown as Record<string, string>).discagemAiFallback ?? '["deepseek","claude","openai"]',
         discagemTtsFallback: (s as unknown as Record<string, string>).discagemTtsFallback ?? '["cartesia","elevenlabs"]',
@@ -533,10 +541,21 @@ export default function AdminSettings() {
                     <p className="text-xs text-muted-foreground"><a href="https://play.cartesia.ai/console" target="_blank" rel="noopener noreferrer" className="underline">play.cartesia.ai/console</a></p>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Voice ID</Label>
+                    <Label className="text-xs">Voice ID padrão (fallback global)</Label>
                     <Input value={form.cartesiaVoiceId} onChange={e => set("cartesiaVoiceId", e.target.value)} placeholder="a0e99841-438c-4a64-b679-ae501e7d6091" />
-                    <p className="text-xs text-muted-foreground">ID da voz no Cartesia. Encontre em <a href="https://play.cartesia.ai/voices" target="_blank" rel="noopener noreferrer" className="underline">play.cartesia.ai/voices</a></p>
+                    <p className="text-xs text-muted-foreground">Usado apenas se o agente não tiver ID próprio. Encontre em <a href="https://play.cartesia.ai/voices" target="_blank" rel="noopener noreferrer" className="underline">play.cartesia.ai/voices</a></p>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Voice ID — Willian (Cartesia)</Label>
+                      <Input value={(form as any).willianCartesiaVoiceId} onChange={e => set("willianCartesiaVoiceId", e.target.value)} placeholder="a0e99841-438c-4a64-b679-ae501e7d6091" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Voice ID — Aline (Cartesia)</Label>
+                      <Input value={(form as any).alineCartesiaVoiceId} onChange={e => set("alineCartesiaVoiceId", e.target.value)} placeholder="694f9389-aac1-45b6-b726-9d9369183238" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">IDs por agente sobrescrevem o padrão global. Deixe em branco para usar o padrão.</p>
                 </div>
 
                 {/* ElevenLabs */}
@@ -548,10 +567,21 @@ export default function AdminSettings() {
                     <p className="text-xs text-muted-foreground"><a href="https://elevenlabs.io/settings/api-keys" target="_blank" rel="noopener noreferrer" className="underline">elevenlabs.io/settings/api-keys</a></p>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Voice ID</Label>
+                    <Label className="text-xs">Voice ID padrão (fallback global)</Label>
                     <Input value={form.elevenlabsVoiceId} onChange={e => set("elevenlabsVoiceId", e.target.value)} placeholder="21m00Tcm4TlvDq8ikWAM" />
-                    <p className="text-xs text-muted-foreground">ID da voz no ElevenLabs. Padrão: Rachel (multilíngue). <a href="https://elevenlabs.io/voice-library" target="_blank" rel="noopener noreferrer" className="underline">Biblioteca de vozes</a></p>
+                    <p className="text-xs text-muted-foreground">Padrão: Rachel (multilíngue). <a href="https://elevenlabs.io/voice-library" target="_blank" rel="noopener noreferrer" className="underline">Biblioteca de vozes</a></p>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Voice ID — Willian (ElevenLabs)</Label>
+                      <Input value={(form as any).willianElevenlabsVoiceId} onChange={e => set("willianElevenlabsVoiceId", e.target.value)} placeholder="TxGEqnHWrfWFTfGW9XjX" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Voice ID — Aline (ElevenLabs)</Label>
+                      <Input value={(form as any).alineElevenlabsVoiceId} onChange={e => set("alineElevenlabsVoiceId", e.target.value)} placeholder="21m00Tcm4TlvDq8ikWAM" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">IDs por agente sobrescrevem o padrão global. Deixe em branco para usar o padrão.</p>
                 </div>
               </CardContent>
             </Card>

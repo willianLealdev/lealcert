@@ -87,8 +87,14 @@ export const settingsTable = pgTable("settings", {
   // TTS
   cartesiaApiKey: text("cartesia_api_key"),
   cartesiaVoiceId: text("cartesia_voice_id").default("a0e99841-438c-4a64-b679-ae501e7d6091"),
+  // Vozes por agente — Cartesia
+  willianCartesiaVoiceId: text("willian_cartesia_voice_id").default("a0e99841-438c-4a64-b679-ae501e7d6091"),
+  alineCartesiaVoiceId: text("aline_cartesia_voice_id").default("694f9389-aac1-45b6-b726-9d9369183238"),
   elevenlabsApiKey: text("elevenlabs_api_key"),
   elevenlabsVoiceId: text("elevenlabs_voice_id").default("21m00Tcm4TlvDq8ikWAM"),
+  // Vozes por agente — ElevenLabs
+  willianElevenlabsVoiceId: text("willian_elevenlabs_voice_id").default("TxGEqnHWrfWFTfGW9XjX"),
+  alineElevenlabsVoiceId: text("aline_elevenlabs_voice_id").default("21m00Tcm4TlvDq8ikWAM"),
   // STT
   deepgramApiKey: text("deepgram_api_key"),
   // Fallback: lista ordenada de prioridade (JSON)

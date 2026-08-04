@@ -53,8 +53,12 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     twilioPhoneNumber: s.twilioPhoneNumber ?? "",
     cartesiaApiKey: mask(s.cartesiaApiKey),
     cartesiaVoiceId: s.cartesiaVoiceId ?? "a0e99841-438c-4a64-b679-ae501e7d6091",
+    willianCartesiaVoiceId: (s as any).willianCartesiaVoiceId ?? "a0e99841-438c-4a64-b679-ae501e7d6091",
+    alineCartesiaVoiceId: (s as any).alineCartesiaVoiceId ?? "694f9389-aac1-45b6-b726-9d9369183238",
     elevenlabsApiKey: mask(s.elevenlabsApiKey),
     elevenlabsVoiceId: s.elevenlabsVoiceId ?? "21m00Tcm4TlvDq8ikWAM",
+    willianElevenlabsVoiceId: (s as any).willianElevenlabsVoiceId ?? "TxGEqnHWrfWFTfGW9XjX",
+    alineElevenlabsVoiceId: (s as any).alineElevenlabsVoiceId ?? "21m00Tcm4TlvDq8ikWAM",
     deepgramApiKey: mask(s.deepgramApiKey),
     discagemAiFallback: s.discagemAiFallback ?? '["deepseek","claude","openai"]',
     discagemTtsFallback: s.discagemTtsFallback ?? '["cartesia","elevenlabs"]',
@@ -142,7 +146,9 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     aiProvider,
     twilioAccountSid, twilioAuthToken, twilioPhoneNumber,
     cartesiaApiKey, cartesiaVoiceId,
+    willianCartesiaVoiceId, alineCartesiaVoiceId,
     elevenlabsApiKey, elevenlabsVoiceId,
+    willianElevenlabsVoiceId, alineElevenlabsVoiceId,
     deepgramApiKey,
     discagemAiFallback, discagemTtsFallback, discagemPublicHostname,
     nfseAmbiente, nfseAutoEmit,
@@ -225,8 +231,12 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (twilioPhoneNumber !== undefined) u.twilioPhoneNumber = twilioPhoneNumber;
   set("cartesiaApiKey", cartesiaApiKey);
   if (cartesiaVoiceId !== undefined) u.cartesiaVoiceId = cartesiaVoiceId;
+  if (willianCartesiaVoiceId !== undefined) u.willianCartesiaVoiceId = willianCartesiaVoiceId;
+  if (alineCartesiaVoiceId !== undefined) u.alineCartesiaVoiceId = alineCartesiaVoiceId;
   set("elevenlabsApiKey", elevenlabsApiKey);
   if (elevenlabsVoiceId !== undefined) u.elevenlabsVoiceId = elevenlabsVoiceId;
+  if (willianElevenlabsVoiceId !== undefined) u.willianElevenlabsVoiceId = willianElevenlabsVoiceId;
+  if (alineElevenlabsVoiceId !== undefined) u.alineElevenlabsVoiceId = alineElevenlabsVoiceId;
   set("deepgramApiKey", deepgramApiKey);
   if (discagemAiFallback !== undefined) u.discagemAiFallback = discagemAiFallback;
   if (discagemTtsFallback !== undefined) u.discagemTtsFallback = discagemTtsFallback;

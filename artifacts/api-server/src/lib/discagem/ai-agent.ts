@@ -9,9 +9,31 @@ import OpenAI from "openai";
 import { getDiscagemSettings } from "./settings-reader";
 import { AGENT_SYSTEM_PROMPT, AGENT_VOICE_IDS, type AgentName } from "./config";
 import { getSiteCacheBlock, refreshSiteCache } from "./site-cache";
+import { db, couponsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 
 // Inicia o cache do site em background (sem bloquear)
 refreshSiteCache().catch(() => {});
+
+// ── Cache do status do cupom PARCEIRO (TTL 10min) ────────────────
+let cupomCache: { active: boolean; expiresAt: number } | null = null;
+
+async function getCupomParceiroStatus(): Promise<boolean> {
+  const now = Date.now();
+  if (cupomCache && now < cupomCache.expiresAt) return cupomCache.active;
+  try {
+    const [row] = await db
+      .select({ active: couponsTable.active })
+      .from(couponsTable)
+      .where(and(eq(couponsTable.code, "PARCEIRO"), eq(couponsTable.active, true)))
+      .limit(1);
+    const active = !!row;
+    cupomCache = { active, expiresAt: now + 10 * 60 * 1000 };
+    return active;
+  } catch {
+    return false;
+  }
+}
 
 export type AiModel = "claude" | "deepseek" | "openai";
 
@@ -25,6 +47,8 @@ export interface AgentResponse {
   text: string;
   shouldEndCall: boolean;
   isOptOut: boolean;
+  transferToHuman: boolean;       // [TRANSFERIR_HUMANO]
+  callbackRequested: boolean;     // [SOLICITAR_CALLBACK_HUMANO]
   modelUsed: AiModel;
   capturedEmail?: string | null;  // e-mail capturado via [REGISTRAR_EMAIL:xxx]
 }
@@ -111,10 +135,18 @@ export async function runAgentTurn(
 ): Promise<AgentResponse> {
   const cfg = await getDiscagemSettings();
 
-  // Injeta o nome do agente + conteúdo atual do site no prompt
-  const siteBlock = getSiteCacheBlock();
-  const basePrompt = customSystemPrompt
-    ?? AGENT_SYSTEM_PROMPT.replaceAll("{AGENT_NAME}", agentName);
+  // Injeta nome do agente, status do cupom e conteúdo do site no prompt
+  const [cupomAtivo, siteBlock] = await Promise.all([
+    getCupomParceiroStatus(),
+    Promise.resolve(getSiteCacheBlock()),
+  ]);
+  const cupomLine = cupomAtivo
+    ? "Cupom PARCEIRO está ATIVO: primeiro certificado por R$ 70,00 (normalmente R$ 90,00). Mencione-o quando fizer sentido."
+    : "Cupom PARCEIRO está INATIVO no momento. NÃO mencione este cupom.";
+
+  const basePrompt = (customSystemPrompt ?? AGENT_SYSTEM_PROMPT)
+    .replaceAll("{AGENT_NAME}", agentName)
+    .replaceAll("{CUPOM_PARCEIRO_ATIVO}", cupomLine);
   const prompt = siteBlock ? `${basePrompt}\n\n${siteBlock}` : basePrompt;
 
   const lastUserText = turns.at(-1)?.text ?? "";
@@ -125,6 +157,8 @@ export async function runAgentTurn(
       text: "Entendido. Vou retirar seu número da nossa lista. Tenha um ótimo dia!",
       shouldEndCall: true,
       isOptOut: true,
+      transferToHuman: false,
+      callbackRequested: false,
       modelUsed: preferredModel,
     };
   }
@@ -153,18 +187,22 @@ export async function runAgentTurn(
       }
 
       const isOptOut = detectOptOut(lastUserText);
-      const shouldEndCall = isOptOut || /\[(ENCERRAR|FIM|OPTOUT)\]/i.test(text);
+      const transferToHuman   = /\[TRANSFERIR_HUMANO\]/i.test(text);
+      const callbackRequested = /\[SOLICITAR_CALLBACK_HUMANO\]/i.test(text);
+      const shouldEndCall = isOptOut || transferToHuman || callbackRequested
+        || /\[(ENCERRAR|FIM|OPTOUT)\]/i.test(text);
 
       // Extrai e-mail capturado via [REGISTRAR_EMAIL:xxx]
       const emailMatch = text.match(/\[REGISTRAR_EMAIL:([^\]]+)\]/i);
       const capturedEmail = emailMatch ? emailMatch[1].trim() : null;
 
+      // Remove todos os comandos internos do texto falado
       const cleanText = text
-        .replace(/\[(ENCERRAR|FIM|OPTOUT)\]/gi, "")
+        .replace(/\[(ENCERRAR|FIM|OPTOUT|TRANSFERIR_HUMANO|SOLICITAR_CALLBACK_HUMANO)\]/gi, "")
         .replace(/\[REGISTRAR_EMAIL:[^\]]+\]/gi, "")
         .trim();
 
-      return { text: cleanText, shouldEndCall, isOptOut, modelUsed: model, capturedEmail };
+      return { text: cleanText, shouldEndCall, isOptOut, transferToHuman, callbackRequested, modelUsed: model, capturedEmail };
 
     } catch (err: unknown) {
       lastError = err;
@@ -187,4 +225,16 @@ export async function runAgentTurn(
   const e = new Error(`CREDIT_ERROR: Todos os modelos de IA sem crédito — ${fallbackOrder.join(", ")}`);
   (e as any).creditError = "ALL_AI";
   throw e;
+}
+
+// Re-exporta para uso nos fallbacks do opt-out inline
+export function makeOptOutResponse(modelUsed: AiModel): AgentResponse {
+  return {
+    text: "Entendido. Vou retirar seu número da nossa lista. Tenha um ótimo dia!",
+    shouldEndCall: true,
+    isOptOut: true,
+    transferToHuman: false,
+    callbackRequested: false,
+    modelUsed,
+  };
 }

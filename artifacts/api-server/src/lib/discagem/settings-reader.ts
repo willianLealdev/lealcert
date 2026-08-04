@@ -23,9 +23,13 @@ export interface DiscagemSettings {
   // TTS — lista ordenada de prioridade
   ttsFallback: string[];  // ex: ["cartesia","elevenlabs"]
   cartesiaApiKey: string;
-  cartesiaVoiceId: string;
+  cartesiaVoiceId: string;         // fallback global Cartesia
+  willianCartesiaVoiceId: string;  // voz Cartesia do agente Willian
+  alineCartesiaVoiceId: string;    // voz Cartesia do agente Aline
   elevenlabsApiKey: string;
-  elevenlabsVoiceId: string;
+  elevenlabsVoiceId: string;       // fallback global ElevenLabs
+  willianElevenlabsVoiceId: string;
+  alineElevenlabsVoiceId: string;
   // STT
   deepgramApiKey: string;
   // URL pública (para webhooks Twilio)
@@ -61,8 +65,12 @@ export async function getDiscagemSettings(): Promise<DiscagemSettings> {
     ttsFallback: parseFallback(s.discagemTtsFallback, ["cartesia", "elevenlabs"]),
     cartesiaApiKey: s.cartesiaApiKey ?? process.env.CARTESIA_API_KEY ?? "",
     cartesiaVoiceId: s.cartesiaVoiceId ?? process.env.CARTESIA_VOICE_ID ?? "a0e99841-438c-4a64-b679-ae501e7d6091",
+    willianCartesiaVoiceId: (s as any).willianCartesiaVoiceId ?? "a0e99841-438c-4a64-b679-ae501e7d6091",
+    alineCartesiaVoiceId: (s as any).alineCartesiaVoiceId ?? "694f9389-aac1-45b6-b726-9d9369183238",
     elevenlabsApiKey: s.elevenlabsApiKey ?? process.env.ELEVENLABS_API_KEY ?? "",
     elevenlabsVoiceId: s.elevenlabsVoiceId ?? "21m00Tcm4TlvDq8ikWAM",
+    willianElevenlabsVoiceId: (s as any).willianElevenlabsVoiceId ?? "TxGEqnHWrfWFTfGW9XjX",
+    alineElevenlabsVoiceId: (s as any).alineElevenlabsVoiceId ?? "21m00Tcm4TlvDq8ikWAM",
     deepgramApiKey: s.deepgramApiKey ?? process.env.DEEPGRAM_API_KEY ?? "",
     publicHostname: s.discagemPublicHostname ?? process.env.PUBLIC_HOSTNAME ?? "",
   };

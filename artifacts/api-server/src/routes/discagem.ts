@@ -35,7 +35,7 @@ import {
 import { requireAdmin } from "../middlewares/auth";
 import { runAgentTurn, detectCreditError } from "../lib/discagem/ai-agent";
 import { synthesize, audioUrl, TMP_AUDIO_DIR } from "../lib/discagem/tts";
-import { invalidateDiscagemSettingsCache } from "../lib/discagem/settings-reader";
+import { invalidateDiscagemSettingsCache, getDiscagemSettings } from "../lib/discagem/settings-reader";
 import { getFillerUrl, initFillerAudio } from "../lib/discagem/filler-audio";
 import {
   twimlOpeningGather,
@@ -65,6 +65,27 @@ function normalizeDdd(v: string | string[] | null | undefined): string | null {
   return cleaned.length > 0 ? cleaned.join(",") : null;
 }
 
+// ─── Resolve o voice ID correto por agente ────────────────────────
+// Prioridade: ttsVoiceId da campanha > ID do agente nas settings > fallback global nas settings
+async function resolveVoiceId(
+  campaignVoiceId: string | null | undefined,
+  agentName: string,
+  provider: "cartesia" | "elevenlabs",
+): Promise<string | undefined> {
+  if (campaignVoiceId) return campaignVoiceId;
+  const cfg = await getDiscagemSettings();
+  const name = (agentName ?? "Willian").toLowerCase();
+  if (provider === "cartesia") {
+    if (name === "willian") return cfg.willianCartesiaVoiceId || cfg.cartesiaVoiceId;
+    if (name === "aline")   return cfg.alineCartesiaVoiceId   || cfg.cartesiaVoiceId;
+    return cfg.cartesiaVoiceId;
+  } else {
+    if (name === "willian") return cfg.willianElevenlabsVoiceId || cfg.elevenlabsVoiceId;
+    if (name === "aline")   return cfg.alineElevenlabsVoiceId   || cfg.elevenlabsVoiceId;
+    return cfg.elevenlabsVoiceId;
+  }
+}
+
 // ─── Mapa em memória: callId → histórico de conversa ─────────────
 const conversationCache = new Map<number, { role: "user" | "assistant"; text: string; ts: string }[]>();
 
@@ -84,6 +105,8 @@ interface PendingPayload {
   audioUrl: string;
   shouldEndCall: boolean;
   isOptOut: boolean;
+  transferToHuman?: boolean;
+  callbackRequested?: boolean;
   capturedEmail?: string | null;
   history: { role: "user" | "assistant"; text: string; ts: string }[];
   err?: unknown;
@@ -119,7 +142,8 @@ router.post("/discagem/voice/:callId", async (req, res): Promise<void> => {
     getConvHistory(callId).push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
 
     // Gera áudio da abertura
-    const { id: ttsId, providerUsed: ttsUsed } = await synthesize(aiResp.text, campaign.ttsProvider as any, campaign.ttsVoiceId ?? undefined);
+    const resolvedVoiceId = await resolveVoiceId(campaign.ttsVoiceId, (campaign as any).agentName ?? "Willian", campaign.ttsProvider as any);
+    const { id: ttsId, providerUsed: ttsUsed } = await synthesize(aiResp.text, campaign.ttsProvider as any, resolvedVoiceId);
     const url = await audioUrl(ttsId);
 
     const { publicHostname } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
@@ -166,10 +190,11 @@ router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> =>
   const processingPromise: Promise<PendingPayload> = (async () => {
     const aiResp = await runAgentTurn(history, campaign.aiModel as any, (campaign as any).agentName ?? "Willian", undefined);
     history.push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
-    const { id: ttsId } = await synthesize(aiResp.text, campaign.ttsProvider as any, campaign.ttsVoiceId ?? undefined);
+    const resolvedVoiceId2 = await resolveVoiceId(campaign.ttsVoiceId, (campaign as any).agentName ?? "Willian", campaign.ttsProvider as any);
+    const { id: ttsId } = await synthesize(aiResp.text, campaign.ttsProvider as any, resolvedVoiceId2);
     const url = await audioUrl(ttsId);
-    return { audioUrl: url, shouldEndCall: aiResp.shouldEndCall, isOptOut: aiResp.isOptOut, capturedEmail: aiResp.capturedEmail, history };
-  })().catch(err => ({ audioUrl: "", shouldEndCall: true, isOptOut: false, capturedEmail: null, history, err }));
+    return { audioUrl: url, shouldEndCall: aiResp.shouldEndCall, isOptOut: aiResp.isOptOut, transferToHuman: aiResp.transferToHuman, callbackRequested: aiResp.callbackRequested, capturedEmail: aiResp.capturedEmail, history };
+  })().catch(err => ({ audioUrl: "", shouldEndCall: true, isOptOut: false, transferToHuman: false, callbackRequested: false, capturedEmail: null, history, err }));
 
   pendingResults.set(callId, { promise: processingPromise, startedAt: Date.now() });
 
@@ -268,10 +293,15 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
       .filter(Boolean);
     const capturedEmail = payload.capturedEmail ?? allEmails.at(-1) ?? null;
 
+    const outcome = payload.isOptOut          ? "optout"
+                  : payload.transferToHuman   ? "transferred"
+                  : payload.callbackRequested ? "callback_requested"
+                  : "answered";
+
     await db.update(discagemCallsTable).set({
       transcript: JSON.stringify(payload.history),
       status: payload.isOptOut ? "optout" : "answered",
-      outcome: payload.isOptOut ? "optout" : "answered",
+      outcome,
       ...(capturedEmail ? { contactEmail: capturedEmail, wantsFollowupEmail: true } : {}),
     }).where(eq(discagemCallsTable.id, callId));
 
