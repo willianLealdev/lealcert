@@ -58,7 +58,7 @@ const PRODUCT_INFO: Record<string, { label: string; sub: string; desc: string; c
 
 const STEPS = [
   { n: "01", icon: FileText, title: "Faça seu cadastro", desc: "Acesse o sistema, crie seu cadastro com CPF ou CNPJ e escolha o certificado ideal para o seu caso." },
-  { n: "02", icon: CreditCard, title: "Realize o pagamento", desc: "Aceito PIX (qualquer valor), Boleto (a partir de R$ 125) e Cartão de Crédito (a partir de R$ 150). Confirmação automática e instantânea via PIX." },
+  { n: "02", icon: CreditCard, title: "Realize o pagamento", desc: "Aceito PIX (qualquer valor), Boleto (a partir de R$ 80) e Cartão de Crédito (a partir de R$ 150). Confirmação automática e instantânea via PIX." },
   { n: "03", icon: CalendarCheck, title: "Agende a videoconferência", desc: "Escolha o melhor horário para uma breve videochamada com nosso agente credenciado ICP-Brasil." },
   { n: "04", icon: BadgeCheck, title: "Receba seu certificado", desc: "Após a verificação, seu certificado é emitido e entregue digitalmente em minutos." },
 ];
@@ -608,7 +608,7 @@ export default function Landing() {
                 </div>
               </div>
             </div>
-            <p className="text-gray-500 text-xs">PIX: qualquer valor · Boleto: a partir de R$ 125 · Cartão: a partir de R$ 150</p>
+            <p className="text-gray-500 text-xs">PIX: qualquer valor · Boleto: a partir de R$ 80 · Cartão: a partir de R$ 150</p>
           </div>
 
           <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">

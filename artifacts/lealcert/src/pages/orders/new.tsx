@@ -536,7 +536,7 @@ export default function NewOrder() {
       : Math.min(appliedCoupon.value, subtotal)
     : 0;
   const total = Math.max(0, subtotal - discount);
-  const allowedMethods: PayMethod[] = total >= 150 ? ["pix", "boleto", "cartao"] : total >= 125 ? ["pix", "boleto"] : ["pix"];
+  const allowedMethods: PayMethod[] = total >= 150 ? ["pix", "boleto", "cartao"] : total >= 80 ? ["pix", "boleto"] : ["pix"];
 
   function pickProduct(p: string) { setPickedProduct(p); setPickedIssuance(""); setPickedValidity(""); set("certificateId", ""); }
   function pickIssuance(i: string) { setPickedIssuance(i); setPickedValidity(""); set("certificateId", ""); }
@@ -2094,7 +2094,7 @@ export default function NewOrder() {
                 {selectedMethod === "pix" && <CheckCircle className="h-5 w-5 text-primary shrink-0" />}
               </button>
 
-              {/* Boleto — disponível a partir de R$ 125 */}
+              {/* Boleto — disponível a partir de R$ 80 */}
               {allowedMethods.includes("boleto") && (
                 <button type="button" onClick={() => setSelectedMethod("boleto")}
                   className={`w-full flex items-center gap-4 border rounded-xl p-4 transition-all text-left ${selectedMethod === "boleto" ? "bg-primary/5 border-primary ring-1 ring-primary" : "hover:bg-muted/40"}`}>

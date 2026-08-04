@@ -818,7 +818,7 @@ export default function ComprarPage() {
   };
 
   const finalPrice = Math.max(0, certPrice + (dados.extendedWarranty ? LEALPLUS_PRICE : 0) - couponDiscount);
-  const allowedMethods: PayMethod[] = finalPrice >= 150 ? ["pix", "boleto", "cartao"] : finalPrice >= 125 ? ["pix", "boleto"] : ["pix"];
+  const allowedMethods: PayMethod[] = finalPrice >= 150 ? ["pix", "boleto", "cartao"] : finalPrice >= 80 ? ["pix", "boleto"] : ["pix"];
 
   const [pay, setPay] = useState<PayState>({
     method: null, orderId: null, orderNumber: null,
@@ -2652,7 +2652,7 @@ export default function ComprarPage() {
               </div>
             </div>
             <p className="text-center text-gray-600 text-[10px] mt-3">
-              PIX: qualquer valor &nbsp;·&nbsp; Boleto: a partir de R$ 125,00 &nbsp;·&nbsp; Cartão: a partir de R$ 150,00
+              PIX: qualquer valor &nbsp;·&nbsp; Boleto: a partir de R$ 80,00 &nbsp;·&nbsp; Cartão: a partir de R$ 150,00
             </p>
           </div>
 

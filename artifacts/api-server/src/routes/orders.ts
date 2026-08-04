@@ -628,8 +628,8 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
   if (method === "cartao" && total < 150) {
     res.status(400).json({ error: "Cartão de crédito disponível apenas para valores acima de R$ 150,00." }); return;
   }
-  if (method === "boleto" && total < 125) {
-    res.status(400).json({ error: "Boleto disponível apenas para valores acima de R$ 125,00." }); return;
+  if (method === "boleto" && total < 80) {
+    res.status(400).json({ error: "Boleto disponível apenas para valores acima de R$ 80,00." }); return;
   }
   if (!["pix", "boleto", "cartao"].includes(method)) {
     res.status(400).json({ error: "Método de pagamento inválido." }); return;
