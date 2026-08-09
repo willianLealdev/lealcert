@@ -539,7 +539,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="min-w-0">
                   <p className="font-medium text-sidebar-foreground truncate text-xs">{user?.name}</p>
                   <p className="text-xs text-sidebar-foreground/50 capitalize">
-                    {user?.role === "admin" ? "Administrador" : user?.role === "agente" ? "Agente de Registro" : user?.userType === "cliente" ? "Cliente" : "Contador"}
+                    {user?.role === "admin" ? "Administrador" : user?.role === "agente" ? "Agente de Registro" : user?.role === "vendedor" ? "Vendedor" : user?.userType === "cliente" ? "Cliente" : "Contador"}
                   </p>
                 </div>
               )}
