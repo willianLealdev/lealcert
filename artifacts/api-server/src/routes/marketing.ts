@@ -933,8 +933,8 @@ router.delete("/marketing/contacts/:id", async (req, res): Promise<void> => {
 
 // ─── Bounces ──────────────────────────────────────────────────────────────────
 router.get("/marketing/bounces", async (_req, res): Promise<void> => {
-  // Busca contatos que tiveram pelo menos um envio falhado em marketing_sends
-  // (independente de ter bounced=true — contatos com bounced=true sem envio registrado também entram)
+  // Busca todos os contatos com bounced=true OU com pelo menos um envio falhado.
+  // Usa LEFT JOIN para pegar o último envio falhado (por ms.id, evitando dependência de created_at).
   const rows = await db.execute<{
     id: number; name: string; email: string; type: string; tags: string | null; created_at: Date;
     last_error: string | null; last_sent_at: Date | null; campaign_name: string | null; campaign_id: number | null;
@@ -942,29 +942,22 @@ router.get("/marketing/bounces", async (_req, res): Promise<void> => {
   }>(sql`
     SELECT
       c.id, c.name, c.email, c.type, c.tags, c.created_at, c.bounced,
-      s.error     AS last_error,
-      s.sent_at   AS last_sent_at,
-      camp.name   AS campaign_name,
-      camp.id     AS campaign_id
+      s.error       AS last_error,
+      s.sent_at     AS last_sent_at,
+      camp.name     AS campaign_name,
+      camp.id       AS campaign_id
     FROM marketing_contacts c
-    INNER JOIN LATERAL (
+    LEFT JOIN LATERAL (
       SELECT ms.error, ms.sent_at, ms.campaign_id
       FROM marketing_sends ms
       WHERE ms.contact_id = c.id AND ms.status = 'failed'
-      ORDER BY ms.created_at DESC
+      ORDER BY ms.id DESC
       LIMIT 1
     ) s ON true
     LEFT JOIN marketing_campaigns camp ON camp.id = s.campaign_id
-    UNION
-    SELECT
-      c.id, c.name, c.email, c.type, c.tags, c.created_at, c.bounced,
-      NULL AS last_error, NULL AS last_sent_at, NULL AS campaign_name, NULL AS campaign_id
-    FROM marketing_contacts c
     WHERE c.bounced = true
-      AND NOT EXISTS (
-        SELECT 1 FROM marketing_sends ms WHERE ms.contact_id = c.id AND ms.status = 'failed'
-      )
-    ORDER BY last_sent_at DESC NULLS LAST, created_at DESC
+       OR s.error IS NOT NULL
+    ORDER BY s.sent_at DESC NULLS LAST, c.created_at DESC
   `);
 
   res.json(rows.rows.map(r => ({
