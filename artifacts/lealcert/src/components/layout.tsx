@@ -48,6 +48,7 @@ import {
   TrendingUp,
   DollarSign,
   Bot,
+  Monitor,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 import { ReviewPrompt } from "@/components/review-prompt";
@@ -91,6 +92,7 @@ const adminNav = [
   { name: "Relatórios GAR", href: "/admin/relatorios-gar", icon: BarChart2 },
   { name: "Notas Fiscais", href: "/admin/nfse", icon: Receipt },
   { name: "Fidelidade", href: "/admin/fidelidade", icon: Star },
+  { name: "Visitas ao Site", href: "/admin/site-visits", icon: Monitor },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 

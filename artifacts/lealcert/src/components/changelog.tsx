@@ -14,6 +14,17 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "13/08/2026",
+    version: "1.32",
+    changes: [
+      { type: "novo", text: "Rastreamento de visitas ao site: cada página visitada registra IP, geolocalização (país, cidade, provedor), dispositivo, sessão e usuário logado (se houver)" },
+      { type: "novo", text: "Painel 'Visitas ao Site' no admin: cards de resumo (total, IPs únicos, sessões, usuários logados), top páginas com barras de progresso, por país com bandeira, por dispositivo" },
+      { type: "novo", text: "Tabela de visitas recentes com filtro por página clicando no gráfico, paginação e filtro por período (hoje / 7 dias / 30 dias)" },
+      { type: "melhoria", text: "IDs de voz TTS (Cartesia/ElevenLabs) por agente (Willian e Aline) agora configuráveis na tela de Settings — não mais hardcoded no código" },
+      { type: "fix", text: "Usuário com role 'vendedor' aparecia como 'Cliente' na sidebar — exibe corretamente 'Vendedor'" },
+    ],
+  },
+  {
     date: "03/08/2026",
     version: "1.31",
     changes: [

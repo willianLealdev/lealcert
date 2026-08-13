@@ -31,6 +31,7 @@ import loyaltyRouter from "./loyalty";
 import vendedoresAdminRouter from "./vendedores-admin";
 import vendedorRouter from "./vendedor";
 import discagemRouter from "./discagem";
+import siteVisitsRouter from "./site-visits";
 
 const router: IRouter = Router();
 
@@ -66,5 +67,6 @@ router.use(loyaltyRouter);
 router.use(vendedoresAdminRouter);
 router.use(vendedorRouter);
 router.use(discagemRouter);
+router.use(siteVisitsRouter);
 
 export default router;

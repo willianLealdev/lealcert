@@ -1,5 +1,6 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { useState, useEffect, useRef, Component } from "react";
+import { usePageTracker } from "@/lib/use-page-tracker";
 import type { ReactNode, ErrorInfo } from "react";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -68,6 +69,7 @@ import AdminNfse from "@/pages/admin/nfse";
 import AdminFidelidade from "@/pages/admin/fidelidade";
 import AdminVendedores from "@/pages/admin/vendedores";
 import AdminDiscagem from "@/pages/admin/discagem";
+import AdminSiteVisits from "@/pages/admin/site-visits";
 import FidelidadePage from "@/pages/fidelidade";
 import AgenteConsultar from "@/pages/agente/consultar";
 import VendedorDashboard from "@/pages/vendedor/dashboard";
@@ -125,6 +127,7 @@ function Router() {
   const [location] = useLocation();
   const [newOrderKey, setNewOrderKey] = useState(0);
   const prevLocationRef = useRef("");
+  usePageTracker();
 
   useEffect(() => {
     if (location === "/orders/new" && prevLocationRef.current !== "/orders/new") {
@@ -176,6 +179,8 @@ function Router() {
       <Route path="/admin/vendedores" component={() => <ProtectedRoute component={AdminVendedores} adminOnly />} />
       {/* Discagem IA */}
       <Route path="/admin/discagem" component={() => <ProtectedRoute component={AdminDiscagem} adminOnly />} />
+      {/* Visitas ao Site */}
+      <Route path="/admin/site-visits" component={() => <ProtectedRoute component={AdminSiteVisits} adminOnly />} />
       {/* Vendedor routes */}
       <Route path="/vendedor" component={() => <ProtectedRoute component={VendedorDashboard} vendedorOnly />} />
       <Route path="/vendedor/contadores" component={() => <ProtectedRoute component={VendedorContadores} vendedorOnly />} />
