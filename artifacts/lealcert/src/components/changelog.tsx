@@ -14,6 +14,16 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "14/08/2026",
+    version: "1.33",
+    changes: [
+      { type: "novo", text: "Visitas ao Site: filtro por país — dropdown no topo, clique no card do país ou clique direto na coluna de localização da tabela filtram tudo instantaneamente" },
+      { type: "fix", text: "Marketing: jitter de ±30% no intervalo entre lotes reduzia a pausa até 30% e causava envio ~43% acima do configurado — corrigido para ±5%" },
+      { type: "fix", text: "Marketing: fila de domínio próprio sem intervalo configurado enviava tudo sem pausa (0ms) — agora usa fallback seguro igual ao Gmail" },
+      { type: "fix", text: "Bounces: query retornava vazio se contato tinha bounced=true mas envio não era 'failed' — reescrita para LEFT JOIN + WHERE bounced=true" },
+    ],
+  },
+  {
     date: "13/08/2026",
     version: "1.32",
     changes: [
