@@ -51,6 +51,8 @@ Sistema completo para venda e gestão de certificados digitais (e-CPF, e-CNPJ, A
 
 ## User preferences
 
+- **Git push:** O agente NUNCA executa `git push`. Apenas commita. O usuário faz `git push github main` no shell do Replit quando quiser.
+
 - All UI text in Brazilian Portuguese
 - Brand: deep navy sidebar (#0f172a), cobalt blue primary (#2563eb), gold accent (#f59e0b)
 - Logo at `artifacts/lealcert/public/logo.png`
