@@ -933,45 +933,50 @@ router.delete("/marketing/contacts/:id", async (req, res): Promise<void> => {
 
 // ─── Bounces ──────────────────────────────────────────────────────────────────
 router.get("/marketing/bounces", async (_req, res): Promise<void> => {
-  // Busca todos os contatos com bounced=true OU com pelo menos um envio falhado.
-  // Usa LEFT JOIN para pegar o último envio falhado (por ms.id, evitando dependência de created_at).
-  const rows = await db.execute<{
-    id: number; name: string; email: string; type: string; tags: string | null; created_at: Date;
-    last_error: string | null; last_sent_at: Date | null; campaign_name: string | null; campaign_id: number | null;
-    bounced: boolean;
-  }>(sql`
-    SELECT
-      c.id, c.name, c.email, c.type, c.tags, c.created_at, c.bounced,
-      s.error       AS last_error,
-      s.sent_at     AS last_sent_at,
-      camp.name     AS campaign_name,
-      camp.id       AS campaign_id
-    FROM marketing_contacts c
-    LEFT JOIN LATERAL (
-      SELECT ms.error, ms.sent_at, ms.campaign_id
-      FROM marketing_sends ms
-      WHERE ms.contact_id = c.id AND ms.status = 'failed'
-      ORDER BY ms.id DESC
-      LIMIT 1
-    ) s ON true
-    LEFT JOIN marketing_campaigns camp ON camp.id = s.campaign_id
-    WHERE c.bounced = true
-       OR s.error IS NOT NULL
-    ORDER BY s.sent_at DESC NULLS LAST, c.created_at DESC
-  `);
+  try {
+    // Busca contatos com bounced=true OU com pelo menos um envio falhado.
+    // Usa DISTINCT ON para pegar o último send falhado por contato (evita LATERAL).
+    const rows = await db.execute<{
+      id: number; name: string; email: string; type: string; tags: string | null; created_at: Date;
+      last_error: string | null; last_sent_at: Date | null; campaign_name: string | null; campaign_id: number | null;
+      bounced: boolean;
+    }>(sql`
+      SELECT
+        c.id, c.name, c.email, c.type, c.tags, c.created_at, c.bounced,
+        last_send.error       AS last_error,
+        last_send.sent_at     AS last_sent_at,
+        camp.name             AS campaign_name,
+        camp.id               AS campaign_id
+      FROM marketing_contacts c
+      LEFT JOIN (
+        SELECT DISTINCT ON (contact_id)
+          contact_id, error, sent_at, campaign_id
+        FROM marketing_sends
+        WHERE status = 'failed'
+        ORDER BY contact_id, id DESC
+      ) last_send ON last_send.contact_id = c.id
+      LEFT JOIN marketing_campaigns camp ON camp.id = last_send.campaign_id
+      WHERE c.bounced = true
+         OR last_send.contact_id IS NOT NULL
+      ORDER BY last_send.sent_at DESC NULLS LAST, c.created_at DESC
+    `);
 
-  res.json(rows.rows.map(r => ({
-    id: r.id,
-    name: r.name,
-    email: r.email,
-    type: r.type,
-    tags: r.tags,
-    createdAt: r.created_at,
-    lastError: r.last_error,
-    lastSentAt: r.last_sent_at,
-    campaignName: r.campaign_name,
-    campaignId: r.campaign_id,
-  })));
+    res.json(rows.rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      type: r.type,
+      tags: r.tags,
+      createdAt: r.created_at,
+      lastError: r.last_error,
+      lastSentAt: r.last_sent_at,
+      campaignName: r.campaign_name,
+      campaignId: r.campaign_id,
+    })));
+  } catch (err: any) {
+    console.error("[marketing/bounces] erro na query:", err?.message ?? err);
+    res.status(500).json({ error: "Erro ao buscar bounces", detail: err?.message });
+  }
 });
 
 router.patch("/marketing/bounces/:id/restore", async (req, res): Promise<void> => {
