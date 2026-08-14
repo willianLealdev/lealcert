@@ -10,7 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Monitor, Smartphone, Tablet, Globe, Users, Eye, TrendingUp, RefreshCw, MapPin, Wifi,
+  Monitor, Smartphone, Tablet, Globe, Users, Eye, TrendingUp, RefreshCw, MapPin, Wifi, X,
 } from "lucide-react";
 
 type Period = "1d" | "7d" | "30d";
@@ -64,17 +64,28 @@ function relTime(ts: string) {
 }
 
 // Barra horizontal simples
-function BarRow({ label, value, max, sub }: { label: string; value: number; max: number; sub?: string }) {
+function BarRow({ label, value, max, sub, selected, onClick }: {
+  label: string; value: number; max: number; sub?: string; selected?: boolean; onClick?: () => void;
+}) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
-    <div className="space-y-1">
+    <div
+      className={`space-y-1 rounded-lg p-1.5 -mx-1.5 transition-colors ${onClick ? "cursor-pointer hover:bg-muted/50" : ""} ${selected ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
+      onClick={onClick}
+    >
       <div className="flex justify-between text-xs">
         <span className="font-medium truncate max-w-[60%]">{label}</span>
         <span className="text-muted-foreground">{value.toLocaleString("pt-BR")}{sub ? ` (${sub})` : ""}</span>
       </div>
       <div className="h-2 bg-muted rounded-full overflow-hidden">
-        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+        <div
+          className={`h-full rounded-full transition-all ${selected ? "bg-primary" : "bg-primary/60"}`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
+      {selected && (
+        <Badge variant="outline" className="text-[10px] mt-0.5">Filtrando ✓</Badge>
+      )}
     </div>
   );
 }
@@ -82,29 +93,55 @@ function BarRow({ label, value, max, sub }: { label: string; value: number; max:
 export default function AdminSiteVisits() {
   const [period, setPeriod] = useState<Period>("7d");
   const [selectedPath, setSelectedPath] = useState<string>("");
+  const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [page, setPage] = useState(1);
 
+  // Stats sempre com filtro de país aplicado (exceto byCountry que vem completo para o seletor)
+  const statsUrl = `/admin/site-visits/stats?period=${period}${selectedCountry ? `&country=${encodeURIComponent(selectedCountry)}` : ""}`;
+  const recentUrl = `/admin/site-visits/recent?period=${period}&page=${page}${selectedPath ? `&path=${encodeURIComponent(selectedPath)}` : ""}${selectedCountry ? `&country=${encodeURIComponent(selectedCountry)}` : ""}`;
+
   const { data: stats, isLoading: loadingStats, refetch: refetchStats } = useQuery<Stats>({
-    queryKey: ["site-visits-stats", period],
-    queryFn: () => apiFetch(`/admin/site-visits/stats?period=${period}`),
+    queryKey: ["site-visits-stats", period, selectedCountry],
+    queryFn: () => apiFetch(statsUrl),
     refetchInterval: 60_000,
   });
 
   const { data: recent, isLoading: loadingRecent, refetch: refetchRecent } = useQuery<{ visits: Visit[]; total: number; page: number; limit: number }>({
-    queryKey: ["site-visits-recent", period, selectedPath, page],
-    queryFn: () => apiFetch(`/admin/site-visits/recent?period=${period}&page=${page}${selectedPath ? `&path=${encodeURIComponent(selectedPath)}` : ""}`),
+    queryKey: ["site-visits-recent", period, selectedPath, selectedCountry, page],
+    queryFn: () => apiFetch(recentUrl),
     refetchInterval: 60_000,
   });
 
-  const totalVisits = parseInt(stats?.overview?.total_visits ?? "0", 10);
-  const uniqueIps = parseInt(stats?.overview?.unique_ips ?? "0", 10);
+  const totalVisits    = parseInt(stats?.overview?.total_visits    ?? "0", 10);
+  const uniqueIps      = parseInt(stats?.overview?.unique_ips      ?? "0", 10);
   const uniqueSessions = parseInt(stats?.overview?.unique_sessions ?? "0", 10);
-  const loggedUsers = parseInt(stats?.overview?.logged_users ?? "0", 10);
-  const maxPageVisits = Math.max(...(stats?.topPages?.map(p => parseInt(p.visits, 10)) ?? [1]));
+  const loggedUsers    = parseInt(stats?.overview?.logged_users    ?? "0", 10);
+  const maxPageVisits    = Math.max(...(stats?.topPages?.map(p => parseInt(p.visits, 10))   ?? [1]));
   const maxCountryVisits = Math.max(...(stats?.byCountry?.map(c => parseInt(c.visits, 10)) ?? [1]));
 
   const periodLabel = period === "1d" ? "hoje" : period === "7d" ? "últimos 7 dias" : "últimos 30 dias";
-  const totalPages = Math.ceil((recent?.total ?? 0) / (recent?.limit ?? 50));
+  const totalPages  = Math.ceil((recent?.total ?? 0) / (recent?.limit ?? 50));
+
+  const hasFilter = !!selectedPath || !!selectedCountry;
+
+  function clearAllFilters() {
+    setSelectedPath("");
+    setSelectedCountry("");
+    setPage(1);
+  }
+
+  function toggleCountry(code: string) {
+    setSelectedCountry(prev => prev === code ? "" : code);
+    setPage(1);
+  }
+
+  function togglePath(path: string) {
+    setSelectedPath(prev => prev === path ? "" : path);
+    setPage(1);
+  }
+
+  // País selecionado para mostrar label
+  const selectedCountryData = stats?.byCountry?.find(c => c.country_code === selectedCountry);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -114,7 +151,27 @@ export default function AdminSiteVisits() {
           <h1 className="text-2xl font-bold">Visitas ao Site</h1>
           <p className="text-sm text-muted-foreground">Acompanhe em tempo real onde seus clientes estão navegando</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Seletor de país */}
+          <Select
+            value={selectedCountry || "__all__"}
+            onValueChange={v => { setSelectedCountry(v === "__all__" ? "" : v); setPage(1); }}
+          >
+            <SelectTrigger className="w-44">
+              <MapPin className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Todos os países" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">🌐 Todos os países</SelectItem>
+              {stats?.byCountry?.map(c => (
+                <SelectItem key={c.country_code} value={c.country_code}>
+                  {flagEmoji(c.country_code)} {c.country ?? "Desconhecido"} ({parseInt(c.visits, 10).toLocaleString("pt-BR")})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Período */}
           <Select value={period} onValueChange={v => { setPeriod(v as Period); setPage(1); }}>
             <SelectTrigger className="w-36">
               <SelectValue />
@@ -125,11 +182,37 @@ export default function AdminSiteVisits() {
               <SelectItem value="30d">Últimos 30 dias</SelectItem>
             </SelectContent>
           </Select>
+
+          {hasFilter && (
+            <Button variant="outline" size="sm" onClick={clearAllFilters} className="gap-1.5 text-muted-foreground">
+              <X className="h-3.5 w-3.5" /> Limpar filtros
+            </Button>
+          )}
+
           <Button variant="outline" size="icon" onClick={() => { refetchStats(); refetchRecent(); }}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      {/* Banner de filtro ativo */}
+      {hasFilter && (
+        <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl text-sm flex-wrap">
+          <span className="text-muted-foreground">Filtrando por:</span>
+          {selectedCountry && (
+            <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => { setSelectedCountry(""); setPage(1); }}>
+              {flagEmoji(selectedCountry)} {selectedCountryData?.country ?? selectedCountry}
+              <X className="h-3 w-3" />
+            </Badge>
+          )}
+          {selectedPath && (
+            <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => { setSelectedPath(""); setPage(1); }}>
+              📄 {selectedPath}
+              <X className="h-3 w-3" />
+            </Badge>
+          )}
+        </div>
+      )}
 
       {/* Cards resumo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -179,20 +262,18 @@ export default function AdminSiteVisits() {
             <CardTitle className="text-base">Páginas mais visitadas</CardTitle>
             <CardDescription>Clique em uma página para filtrar as visitas recentes</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-1">
             {loadingStats && <p className="text-sm text-muted-foreground">Carregando...</p>}
             {stats?.topPages?.map(p => (
-              <div key={p.path} className="cursor-pointer hover:opacity-80" onClick={() => { setSelectedPath(selectedPath === p.path ? "" : p.path); setPage(1); }}>
-                <BarRow
-                  label={p.page_title || p.path}
-                  value={parseInt(p.visits, 10)}
-                  max={maxPageVisits}
-                  sub={`${p.uniques} únicos`}
-                />
-                {selectedPath === p.path && (
-                  <Badge variant="outline" className="text-xs mt-1">Filtrando por esta página ✓</Badge>
-                )}
-              </div>
+              <BarRow
+                key={p.path}
+                label={p.page_title || p.path}
+                value={parseInt(p.visits, 10)}
+                max={maxPageVisits}
+                sub={`${p.uniques} únicos`}
+                selected={selectedPath === p.path}
+                onClick={() => togglePath(p.path)}
+              />
             ))}
             {!loadingStats && !stats?.topPages?.length && (
               <p className="text-sm text-muted-foreground">Nenhuma visita registrada no período.</p>
@@ -204,13 +285,28 @@ export default function AdminSiteVisits() {
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2"><MapPin className="h-4 w-4" />Por País</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <MapPin className="h-4 w-4" />Por País
+                <span className="text-xs font-normal text-muted-foreground ml-auto">Clique para filtrar</span>
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-1">
               {stats?.byCountry?.map(c => (
-                <div key={c.country_code} className="flex items-center justify-between text-sm">
-                  <span>{flagEmoji(c.country_code)} {c.country ?? "Desconhecido"}</span>
-                  <span className="font-medium">{parseInt(c.visits, 10).toLocaleString("pt-BR")}</span>
+                <div
+                  key={c.country_code}
+                  className={`flex items-center justify-between text-sm rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${
+                    selectedCountry === c.country_code
+                      ? "bg-primary/10 ring-1 ring-primary/30"
+                      : "hover:bg-muted/50"
+                  }`}
+                  onClick={() => toggleCountry(c.country_code)}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {flagEmoji(c.country_code)}
+                    <span className="truncate max-w-[120px]">{c.country ?? "Desconhecido"}</span>
+                    {selectedCountry === c.country_code && <Badge variant="outline" className="text-[9px] px-1 py-0">✓</Badge>}
+                  </span>
+                  <span className="font-medium text-xs shrink-0">{parseInt(c.visits, 10).toLocaleString("pt-BR")}</span>
                 </div>
               ))}
               {!loadingStats && !stats?.byCountry?.length && (
@@ -245,15 +341,9 @@ export default function AdminSiteVisits() {
             <div>
               <CardTitle className="text-base">Visitas Recentes</CardTitle>
               <CardDescription>
-                {selectedPath ? `Filtrando: ${selectedPath} — ` : ""}
                 {recent?.total?.toLocaleString("pt-BR") ?? 0} visitas encontradas
               </CardDescription>
             </div>
-            {selectedPath && (
-              <Button variant="ghost" size="sm" onClick={() => { setSelectedPath(""); setPage(1); }}>
-                Limpar filtro
-              </Button>
-            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -285,9 +375,13 @@ export default function AdminSiteVisits() {
                     </TableCell>
                     <TableCell>
                       {v.country ? (
-                        <span className="flex items-center gap-1">
+                        <button
+                          className="flex items-center gap-1 text-left hover:underline"
+                          onClick={() => toggleCountry(v.country_code)}
+                          title="Filtrar por este país"
+                        >
                           {flagEmoji(v.country_code)} {v.city ? `${v.city}, ` : ""}{v.country}
-                        </span>
+                        </button>
                       ) : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>

@@ -109,38 +109,45 @@ router.get("/admin/site-visits/stats", requireAdmin, async (req: any, res) => {
   try {
     const period = (req.query.period as string) || "7d";
     const days = period === "1d" ? 1 : period === "30d" ? 30 : 7;
+    const countryFilter = (req.query.country as string) || null;
+
+    // Cláusula de país (opcional)
+    const countryClause = countryFilter ? ` AND country_code = $2` : "";
+    const params = (extra: number[]) => countryFilter ? [days, countryFilter, ...extra] : [days, ...extra];
+    const shift = countryFilter ? 3 : 2; // próximo $N disponível
 
     const [overview, topPages, byDevice, byCountry, byDay] = await Promise.all([
       pool.query(
         `SELECT COUNT(*) AS total_visits, COUNT(DISTINCT ip) AS unique_ips,
                 COUNT(DISTINCT session_id) AS unique_sessions,
                 COUNT(DISTINCT CASE WHEN user_id IS NOT NULL THEN user_id END) AS logged_users
-         FROM site_visits WHERE created_at >= NOW() - ($1 || ' days')::interval`,
-        [days],
+         FROM site_visits WHERE created_at >= NOW() - ($1 || ' days')::interval${countryClause}`,
+        params([]),
       ),
       pool.query(
         `SELECT path, page_title, COUNT(*) AS visits, COUNT(DISTINCT ip) AS uniques
-         FROM site_visits WHERE created_at >= NOW() - ($1 || ' days')::interval
+         FROM site_visits WHERE created_at >= NOW() - ($1 || ' days')::interval${countryClause}
          GROUP BY path, page_title ORDER BY visits DESC LIMIT 15`,
-        [days],
+        params([]),
       ),
       pool.query(
         `SELECT device, COUNT(*) AS visits FROM site_visits
-         WHERE created_at >= NOW() - ($1 || ' days')::interval
+         WHERE created_at >= NOW() - ($1 || ' days')::interval${countryClause}
          GROUP BY device ORDER BY visits DESC`,
-        [days],
+        params([]),
       ),
+      // byCountry sempre sem filtro de país (mostra todos para o seletor)
       pool.query(
         `SELECT country, country_code, COUNT(*) AS visits FROM site_visits
          WHERE created_at >= NOW() - ($1 || ' days')::interval AND country IS NOT NULL
-         GROUP BY country, country_code ORDER BY visits DESC LIMIT 10`,
+         GROUP BY country, country_code ORDER BY visits DESC`,
         [days],
       ),
       pool.query(
         `SELECT DATE(created_at) AS day, COUNT(*) AS visits, COUNT(DISTINCT ip) AS uniques
-         FROM site_visits WHERE created_at >= NOW() - ($1 || ' days')::interval
+         FROM site_visits WHERE created_at >= NOW() - ($1 || ' days')::interval${countryClause}
          GROUP BY day ORDER BY day`,
-        [days],
+        params([]),
       ),
     ]);
 
@@ -162,41 +169,43 @@ router.get("/admin/site-visits/recent", requireAdmin, async (req: any, res) => {
     const page = parseInt((req.query.page as string) || "1", 10);
     const limit = 50;
     const offset = (page - 1) * limit;
-    const filterPath = (req.query.path as string) || null;
+    const filterPath    = (req.query.path    as string) || null;
+    const filterCountry = (req.query.country as string) || null;
     const period = (req.query.period as string) || "7d";
     const days = period === "1d" ? 1 : period === "30d" ? 30 : 7;
 
+    // Monta cláusulas WHERE dinamicamente
+    const whereParts = [`sv.created_at >= NOW() - ($1 || ' days')::interval`];
+    const queryParams: (string | number)[] = [days];
+
+    if (filterPath) {
+      queryParams.push(filterPath);
+      whereParts.push(`sv.path = $${queryParams.length}`);
+    }
+    if (filterCountry) {
+      queryParams.push(filterCountry);
+      whereParts.push(`sv.country_code = $${queryParams.length}`);
+    }
+
+    const whereClause = whereParts.join(" AND ");
+
+    const limitParam  = queryParams.length + 1;
+    const offsetParam = queryParams.length + 2;
+
     const [rows, countRow] = await Promise.all([
-      filterPath
-        ? pool.query(
-            `SELECT sv.id, sv.path, sv.page_title, sv.ip, sv.country, sv.country_code, sv.city, sv.region, sv.isp,
-                    sv.device, sv.user_agent, sv.referrer, sv.session_id, sv.created_at,
-                    u.name AS user_name, u.email AS user_email
-             FROM site_visits sv LEFT JOIN users u ON u.id = sv.user_id
-             WHERE sv.created_at >= NOW() - ($1 || ' days')::interval AND sv.path = $2
-             ORDER BY sv.created_at DESC LIMIT $3 OFFSET $4`,
-            [days, filterPath, limit, offset],
-          )
-        : pool.query(
-            `SELECT sv.id, sv.path, sv.page_title, sv.ip, sv.country, sv.country_code, sv.city, sv.region, sv.isp,
-                    sv.device, sv.user_agent, sv.referrer, sv.session_id, sv.created_at,
-                    u.name AS user_name, u.email AS user_email
-             FROM site_visits sv LEFT JOIN users u ON u.id = sv.user_id
-             WHERE sv.created_at >= NOW() - ($1 || ' days')::interval
-             ORDER BY sv.created_at DESC LIMIT $2 OFFSET $3`,
-            [days, limit, offset],
-          ),
-      filterPath
-        ? pool.query(
-            `SELECT COUNT(*) AS total FROM site_visits
-             WHERE created_at >= NOW() - ($1 || ' days')::interval AND path = $2`,
-            [days, filterPath],
-          )
-        : pool.query(
-            `SELECT COUNT(*) AS total FROM site_visits
-             WHERE created_at >= NOW() - ($1 || ' days')::interval`,
-            [days],
-          ),
+      pool.query(
+        `SELECT sv.id, sv.path, sv.page_title, sv.ip, sv.country, sv.country_code, sv.city, sv.region, sv.isp,
+                sv.device, sv.user_agent, sv.referrer, sv.session_id, sv.created_at,
+                u.name AS user_name, u.email AS user_email
+         FROM site_visits sv LEFT JOIN users u ON u.id = sv.user_id
+         WHERE ${whereClause}
+         ORDER BY sv.created_at DESC LIMIT $${limitParam} OFFSET $${offsetParam}`,
+        [...queryParams, limit, offset],
+      ),
+      pool.query(
+        `SELECT COUNT(*) AS total FROM site_visits sv WHERE ${whereClause}`,
+        queryParams,
+      ),
     ]);
 
     res.json({ visits: rows.rows, total: parseInt(countRow.rows[0]?.total || "0", 10), page, limit });
