@@ -1652,8 +1652,10 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
     logger.info({ campaignId, includedProviders: opts.includedProviders, originalCounts, filteredCounts: { outros: buckets.outros.length, gmail: buckets.gmail.length, outlook: buckets.outlook.length, yahoo: buckets.yahoo.length, uolbol: buckets.uolbol.length } }, "Filtro de provedores aplicado");
   }
 
-  // Total after provider filter
-  const filteredTotal = buckets.outros.length + buckets.gmail.length + buckets.outlook.length + buckets.yahoo.length + buckets.uolbol.length;
+  // Total after provider filter (contatos restantes = ainda não enviados)
+  const remainingTotal = buckets.outros.length + buckets.gmail.length + buckets.outlook.length + buckets.yahoo.length + buckets.uolbol.length;
+  // totalContacts = já enviados + restantes (preserva o total real mesmo em retomadas)
+  const filteredTotal = alreadySentCount + remainingTotal;
 
   // Mark campaign as sending with total count
   await db.update(marketingCampaignsTable).set({
