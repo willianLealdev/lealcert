@@ -1827,9 +1827,9 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
       sentInBatch++;
       const isLast = i === queue.length - 1;
       if (sentInBatch >= currentBatch && !isLast) {
-        // Re-lê do DB (suporte a edição ao vivo) + jitter ±30%
+        // Re-lê do DB (suporte a edição ao vivo) + jitter ±5% (evita sincronização sem distorcer a taxa)
         const live = await getLiveEmailRate(defaultBatch, defaultPauseMs);
-        const jitter = 0.7 + Math.random() * 0.6;
+        const jitter = 0.95 + Math.random() * 0.1;
         const jitteredPause = Math.round(live.pauseMs * jitter);
         logger.info({ campaignId, provider: providerName, sentInBatch, pauseSecs: jitteredPause / 1000, nextBatch: live.batch }, "Lote completo — aguardando pausa");
         await new Promise(r => setTimeout(r, jitteredPause));
@@ -1846,9 +1846,10 @@ export async function dispatchCampaign(campaignId: number, opts: DispatchOptions
   const pauseFor  = (k: keyof typeof PROVIDER_QUEUES) => userIntervalMs ?? PROVIDER_QUEUES[k].pauseMs;
 
   // ── 1. Domínio próprio ────────────────────────────────────────────────────
-  const outrosBatch = userBatchSize ?? null;
-  const outrosPause = userIntervalMs ?? null;
-  await sendProviderQueue(buckets.outros, "Outros", outrosBatch ?? buckets.outros.length, outrosPause ?? 0);
+  // Fallback seguro: se não configurado, usa os mesmos defaults do Gmail (10 por lote, 12min pausa)
+  const outrosBatch = userBatchSize ?? PROVIDER_QUEUES.gmail.batchSize;
+  const outrosPause = userIntervalMs ?? PROVIDER_QUEUES.gmail.pauseMs;
+  await sendProviderQueue(buckets.outros, "Outros", outrosBatch, outrosPause);
 
   // ── 2. Gmail ──────────────────────────────────────────────────────────────
   await sendProviderQueue(buckets.gmail, "Gmail", batchFor("gmail"), pauseFor("gmail"));
