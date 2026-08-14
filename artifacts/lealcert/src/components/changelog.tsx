@@ -15,12 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "14/08/2026",
-    version: "1.33",
+    version: "1.34",
     changes: [
+      { type: "fix", text: "Marketing: total de contatos da campanha estava sendo sobrescrito com os 'restantes' a cada retomada — corrigido para sempre refletir enviados + restantes" },
+      { type: "fix", text: "Bounces: rota sem try-catch fazia o frontend ficar em 'Carregando...' eternamente quando a query falhava — agora retorna erro 500 com detalhe" },
+      { type: "fix", text: "Bounces: query reescrita com DISTINCT ON eliminando LATERAL JOIN que causava falha silenciosa em produção" },
       { type: "novo", text: "Visitas ao Site: filtro por país — dropdown no topo, clique no card do país ou clique direto na coluna de localização da tabela filtram tudo instantaneamente" },
-      { type: "fix", text: "Marketing: jitter de ±30% no intervalo entre lotes reduzia a pausa até 30% e causava envio ~43% acima do configurado — corrigido para ±5%" },
-      { type: "fix", text: "Marketing: fila de domínio próprio sem intervalo configurado enviava tudo sem pausa (0ms) — agora usa fallback seguro igual ao Gmail" },
-      { type: "fix", text: "Bounces: query retornava vazio se contato tinha bounced=true mas envio não era 'failed' — reescrita para LEFT JOIN + WHERE bounced=true" },
+      { type: "fix", text: "Marketing: jitter de ±30% no intervalo entre lotes causava envio até 43% acima do configurado — corrigido para ±5%" },
+      { type: "fix", text: "Marketing: fila de domínio próprio sem intervalo configurado enviava tudo sem pausa — agora usa fallback seguro" },
     ],
   },
   {
