@@ -150,6 +150,19 @@ router.post("/discagem/voice/:callId", async (req, res): Promise<void> => {
 });
 
 // ─────────────────────────────────────────────────────────────────
+// WEBHOOK: Fallback para Gather quando Deepgram falha a conectar
+// Redireciona a call de volta ao fluxo Gather normal
+// ─────────────────────────────────────────────────────────────────
+router.post("/discagem/voice/:callId/speech-gather-fallback", async (req, res): Promise<void> => {
+  const callId = parseInt(Array.isArray(req.params.callId) ? req.params.callId[0] : req.params.callId, 10);
+  const { publicHostname } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
+  const base = publicHostname || process.env.PUBLIC_HOSTNAME || "";
+  const gatherAction = `${base}/api/discagem/voice/${callId}/speech`;
+  // Retorna Gather vazio (sem áudio) — a IA já falou na abertura, agora escuta
+  res.type("text/xml").send(twimlOpeningGather("", gatherAction).replace("<Play></Play>", "").replace("<Play/>", ""));
+});
+
+// ─────────────────────────────────────────────────────────────────
 // WEBHOOK: Speech result → toca filler IMEDIATAMENTE + processa em background
 // ─────────────────────────────────────────────────────────────────
 router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> => {

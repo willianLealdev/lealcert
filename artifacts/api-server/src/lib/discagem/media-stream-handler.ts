@@ -73,19 +73,33 @@ export function setupMediaStreamWebSocket(server: Server): void {
       return;
     }
 
+    // Parâmetros validados para Deepgram streaming com mulaw 8kHz
+    // Nota: utterance_end_ms requer interim_results=true — usamos só endpointing
     const dgUrl = "wss://api.deepgram.com/v1/listen?" + new URLSearchParams({
-      encoding:         "mulaw",
-      sample_rate:      "8000",
-      language:         "pt-BR",
-      punctuate:        "true",
-      endpointing:      "500",   // 500ms de silêncio = fim de fala
-      interim_results:  "false",
-      utterance_end_ms: "1000",
+      encoding:        "mulaw",
+      sample_rate:     "8000",
+      model:           "nova-2",
+      language:        "pt-BR",
+      punctuate:       "true",
+      endpointing:     "500",   // 500ms de silêncio = fim de fala → speech_final=true
+      interim_results: "false", // só resultados finais (menor tráfego)
     }).toString();
 
     deepgramWs = new WebSocket(dgUrl, {
       headers: { Authorization: `Token ${cfg.deepgramApiKey}` },
     });
+
+    // Fallback para Gather se o Deepgram não conectar
+    async function fallbackToGather(reason: string): Promise<void> {
+      console.warn(`[media-stream] Fallback para Gather callId=${callId} — motivo: ${reason}`);
+      streamModeCalls.delete(callId);
+      const base = cfg.publicHostname || process.env.PUBLIC_HOSTNAME || "";
+      const gatherUrl = `${base}/api/discagem/voice/${callId}/speech-gather-fallback`;
+      const [call] = await db.select({ twilioCallSid: discagemCallsTable.twilioCallSid })
+        .from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
+      const sid = twilioCallSid || call?.twilioCallSid;
+      if (sid) await redirectTwilioCall(sid, gatherUrl);
+    }
 
     deepgramWs.on("open", () => {
       console.info(`[media-stream] Deepgram conectado callId=${callId}`);
@@ -96,16 +110,15 @@ export function setupMediaStreamWebSocket(server: Server): void {
       try {
         const msg = JSON.parse(data.toString());
 
-        // Aceita tanto speech_final quanto UtteranceEnd como sinal de fim de fala
+        // speech_final=true = Deepgram detectou fim de fala via endpointing
         const isSpeechFinal = msg.type === "Results" && msg.speech_final === true;
-        const isUtteranceEnd = msg.type === "UtteranceEnd";
-        if (!isSpeechFinal && !isUtteranceEnd) return;
+        if (!isSpeechFinal) return;
 
         const transcript: string = (
           msg.channel?.alternatives?.[0]?.transcript ?? ""
         ).trim();
 
-        if (!transcript) return; // fala vazia (ruído)
+        if (!transcript) return; // fala vazia (ruído / silêncio)
         isProcessing = true;
 
         console.info(`[media-stream] Transcript callId=${callId}: "${transcript}"`);
@@ -143,12 +156,16 @@ export function setupMediaStreamWebSocket(server: Server): void {
       }
     });
 
-    deepgramWs.on("error", (err) => {
-      console.error(`[media-stream] Deepgram error callId=${callId}:`, err.message);
+    deepgramWs.on("error", async (err) => {
+      console.error(`[media-stream] Deepgram error callId=${callId}: ${err.message}`);
+      // Se a conexão falhou por HTTP 400/401/403, faz fallback para Gather
+      if (err.message.includes("400") || err.message.includes("401") || err.message.includes("403")) {
+        await fallbackToGather(err.message).catch(() => {});
+      }
     });
 
-    deepgramWs.on("close", () => {
-      console.info(`[media-stream] Deepgram desconectado callId=${callId}`);
+    deepgramWs.on("close", (code) => {
+      console.info(`[media-stream] Deepgram desconectado callId=${callId} code=${code}`);
     });
 
     // ── Processa mensagens do Twilio ───────────────────────────────
