@@ -282,17 +282,12 @@ async function schedulerTick(): Promise<void> {
       .where(eq(discagemCampaignsTable.status, "running"));
 
     for (const campaign of runningCampaigns) {
-      if (!isWithinWindow(campaign)) continue;
-
-      // Quantas chamadas simultâneas ainda posso fazer
-      const currentActive = activeCalls.size;
-      const slots = campaign.maxConcurrentCalls - currentActive;
-      if (slots <= 0) continue;
-
-      const contacts = await fetchNextContacts(campaign, slots);
+      // ── Verifica conclusão ANTES do window check ──────────────────
+      // Uma campanha sem contatos pendentes e sem calls ativas deve ser
+      // marcada como completed independente do horário de discagem.
+      const contacts = await fetchNextContacts(campaign, campaign.maxConcurrentCalls);
 
       if (contacts.length === 0) {
-        // Verifica se ainda há chamadas em andamento
         const inProgress = await db
           .select({ count: sql<number>`count(*)::int` })
           .from(discagemCallsTable)
@@ -304,17 +299,29 @@ async function schedulerTick(): Promise<void> {
           );
         const total = inProgress[0]?.count ?? 0;
         if (total === 0) {
-          // Campanha concluída
+          // Campanha concluída — marca independente do horário
           await db
             .update(discagemCampaignsTable)
             .set({ status: "completed", completedAt: new Date() })
             .where(eq(discagemCampaignsTable.id, campaign.id));
+          console.log(`[discagem-scheduler] Campanha ${campaign.id} concluída (sem contatos pendentes)`);
         }
         continue;
       }
 
+      // ── Fora do horário de discagem → aguarda, não dispara ────────
+      if (!isWithinWindow(campaign)) continue;
+
+      // Quantas chamadas simultâneas ainda posso fazer
+      const currentActive = activeCalls.size;
+      const slots = campaign.maxConcurrentCalls - currentActive;
+      if (slots <= 0) continue;
+
+      // Usa os contatos já buscados, limitados ao número de slots
+      const contactsToFire = contacts.slice(0, slots);
+
       // Dispara em paralelo (até slots disponíveis)
-      await Promise.allSettled(contacts.map(c => fireCall(campaign, c)));
+      await Promise.allSettled(contactsToFire.map(c => fireCall(campaign, c)));
     }
   } catch (err) {
     console.error("[discagem-scheduler] Erro no tick:", err);
