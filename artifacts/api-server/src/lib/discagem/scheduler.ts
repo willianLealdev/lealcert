@@ -126,6 +126,11 @@ async function fireCall(
 
     const creditErr = (err as any)?.creditError as string | undefined;
     if (creditErr) {
+      // Marca a call como falhou antes de pausar a campanha
+      await db
+        .update(discagemCallsTable)
+        .set({ status: "failed", error: (err as Error).message, endedAt: new Date() })
+        .where(eq(discagemCallsTable.id, callRecord.callId));
       // Pausa campanha por falta de crédito
       await pauseCampaignForCredit(campaign.id, creditErr, (err as Error).message);
       return;
