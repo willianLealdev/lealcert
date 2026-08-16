@@ -6,7 +6,7 @@
  * consulta apenas contatos com status pendente/retry.
  */
 
-import { and, eq, lte, isNull, inArray, sql } from "drizzle-orm";
+import { and, eq, lte, isNull, inArray, sql, lt, isNotNull } from "drizzle-orm";
 import { db, pool } from "@workspace/db";
 import { discagemCampaignsTable, discagemCallsTable, marketingContactsTable } from "@workspace/db";
 import { initiateCall } from "./twilio-client";
@@ -163,9 +163,73 @@ export async function pauseCampaignForCredit(
     .where(eq(discagemCampaignsTable.id, campaignId));
 }
 
+// ── Reconcilia ligações travadas consultando Twilio ───────────────
+async function reconcileStuckCalls(): Promise<void> {
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+  // Calls com SID travadas em dialing/in_progress há mais de 5 min
+  const stuckWithSid = await db
+    .select({
+      id: discagemCallsTable.id,
+      twilioCallSid: discagemCallsTable.twilioCallSid,
+    })
+    .from(discagemCallsTable)
+    .where(
+      and(
+        inArray(discagemCallsTable.status, ["dialing", "in_progress"]),
+        isNotNull(discagemCallsTable.twilioCallSid),
+        lt(discagemCallsTable.startedAt, fiveMinutesAgo),
+      )
+    );
+
+  for (const call of stuckWithSid) {
+    try {
+      const { twilioAccountSid, twilioAuthToken } = await getDiscagemSettings();
+      if (!twilioAccountSid || !twilioAuthToken) break;
+
+      const res = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls/${call.twilioCallSid}.json`,
+        { headers: { Authorization: `Basic ${Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString("base64")}` } }
+      );
+      if (!res.ok) continue;
+      const data = await res.json() as { status: string; duration?: string };
+
+      const twilioStatus = data.status; // completed, busy, no-answer, failed, canceled
+      let newStatus: string | null = null;
+      if (twilioStatus === "completed") newStatus = "no_answer";
+      else if (twilioStatus === "busy")  newStatus = "no_answer";
+      else if (twilioStatus === "no-answer") newStatus = "no_answer";
+      else if (twilioStatus === "failed" || twilioStatus === "canceled") newStatus = "failed";
+
+      if (newStatus) {
+        console.log(`[discagem-reconcile] Call ${call.id} (${call.twilioCallSid}) travada → Twilio diz "${twilioStatus}" → marcando ${newStatus}`);
+        await db.update(discagemCallsTable)
+          .set({ status: newStatus as any, endedAt: new Date() })
+          .where(eq(discagemCallsTable.id, call.id));
+      }
+    } catch (err) {
+      console.error(`[discagem-reconcile] Erro ao reconciliar call ${call.id}:`, err);
+    }
+  }
+
+  // Calls SEM SID travadas em dialing há mais de 5 min → falhou antes de chegar ao Twilio
+  await db.update(discagemCallsTable)
+    .set({ status: "failed", error: "Sem SID Twilio após 5min — falhou antes de iniciar", endedAt: new Date() })
+    .where(
+      and(
+        eq(discagemCallsTable.status, "dialing"),
+        isNull(discagemCallsTable.twilioCallSid),
+        lt(discagemCallsTable.startedAt, fiveMinutesAgo),
+      )
+    );
+}
+
 // ── Tick principal do scheduler ──────────────────────────────────
 async function schedulerTick(): Promise<void> {
   try {
+    // Reconcilia ligações que travaram sem receber callback do Twilio
+    await reconcileStuckCalls();
+
     // Busca todas campanhas em estado "running"
     const runningCampaigns = await db
       .select()
