@@ -144,9 +144,15 @@ export async function runAgentTurn(
     ? "Cupom PARCEIRO está ATIVO: primeiro certificado por R$ 70,00 (normalmente R$ 90,00). Mencione-o quando fizer sentido."
     : "Cupom PARCEIRO está INATIVO no momento. NÃO mencione este cupom.";
 
+  // Saudação dinâmica baseada no horário de Brasília
+  const nowBrasilia = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const hour = nowBrasilia.getHours();
+  const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+
   const basePrompt = (customSystemPrompt ?? AGENT_SYSTEM_PROMPT)
     .replaceAll("{AGENT_NAME}", agentName)
-    .replaceAll("{CUPOM_PARCEIRO_ATIVO}", cupomLine);
+    .replaceAll("{CUPOM_PARCEIRO_ATIVO}", cupomLine)
+    .replaceAll("{SAUDACAO}", saudacao);
   const prompt = siteBlock ? `${basePrompt}\n\n${siteBlock}` : basePrompt;
 
   const lastUserText = turns.at(-1)?.text ?? "";

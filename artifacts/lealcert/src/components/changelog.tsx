@@ -22,6 +22,8 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "fix", text: "Discagem: abertura genérica sem apresentação foi eliminada — era percebida como grossa e despreparada" },
       { type: "melhoria", text: "Discagem: tabela de ligações agora exibe duração real e Call SID clicável (link direto para o Twilio) para análise de cada chamada" },
       { type: "fix", text: "Discagem: duração ficava zerada quando o reconciliador fechava a call — agora busca o valor real da API do Twilio antes de salvar" },
+      { type: "melhoria", text: "Discagem IA: saudação agora é calculada dinamicamente pelo horário de Brasília — Bom dia até 12h, Boa tarde até 18h, Boa noite após 18h" },
+      { type: "fix", text: "Discagem IA: proibidos fillers isolados ('Sim.', 'Entendo.', 'Certo.', 'Ok.') no início de respostas — soavam robóticos e sem sentido ao telefone" },
     ],
   },
   {
