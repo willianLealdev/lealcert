@@ -340,7 +340,7 @@ function DddSelector({
 // ── Formulário padrão de campanha ─────────────────────────────────
 const EMPTY_FORM = {
   name: "", targetType: "all", manualNumber: "", selectedContactIds: [] as number[],
-  aiModel: "deepseek", agentName: "Willian", ttsProvider: "cartesia", ttsVoiceId: "",
+  aiModel: "deepseek", agentName: "Willian", ttsProvider: "elevenlabs", ttsVoiceId: "",
   filterDdd: "",
   windowMorningStart: 9, windowMorningEnd: 12,
   windowAfternoonStart: 13, windowAfternoonEnd: 16,

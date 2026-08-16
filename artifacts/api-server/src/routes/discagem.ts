@@ -467,6 +467,10 @@ router.post("/admin/discagem/campaigns", requireAdmin, async (req, res): Promise
   // Normaliza DDDs: aceita "11,17" ou ["11","17"]
   const dddNorm = normalizeDdd(filterDdd);
 
+  // Usa o provider configurado nas settings como padrão (não "cartesia" fixo)
+  const cfgForCamp = await getDiscagemSettings();
+  const defaultProviderForCamp = cfgForCamp.ttsFallback[0] ?? "cartesia";
+
   const [camp] = await db.insert(discagemCampaignsTable).values({
     name,
     status: "draft",
@@ -475,7 +479,7 @@ router.post("/admin/discagem/campaigns", requireAdmin, async (req, res): Promise
     manualNumber: manualNumber ?? null,
     filterDdd: dddNorm,
     aiModel: aiModel ?? "deepseek",
-    ttsProvider: ttsProvider ?? "cartesia",
+    ttsProvider: ttsProvider ?? defaultProviderForCamp,
     ttsVoiceId: ttsVoiceId ?? null,
     windowMorningStart: windowMorningStart ?? 9,
     windowMorningEnd: windowMorningEnd ?? 12,
@@ -791,6 +795,10 @@ router.post("/admin/discagem/test-call", requireAdmin, async (req, res): Promise
   if (!rawPhone) { res.status(400).json({ error: "phoneNumber obrigatório" }); return; }
   const phoneNumber = normalizePhoneE164(String(rawPhone));
 
+  // Usa o provider configurado nas settings como padrão (não "cartesia" fixo)
+  const cfg = await getDiscagemSettings();
+  const defaultProvider = cfg.ttsFallback[0] ?? "cartesia";
+
   // Cria campanha temporária de teste
   const [camp] = await db.insert(discagemCampaignsTable).values({
     name: `Teste ${new Date().toISOString()}`,
@@ -799,7 +807,7 @@ router.post("/admin/discagem/test-call", requireAdmin, async (req, res): Promise
     manualNumber: phoneNumber,
     aiModel: aiModel ?? "deepseek",
     agentName: agentName ?? "Willian",
-    ttsProvider: ttsProvider ?? "cartesia",
+    ttsProvider: ttsProvider ?? defaultProvider,
     ttsVoiceId: ttsVoiceId ?? null,
     maxConcurrentCalls: 1,
     maxAttempts: 1,
