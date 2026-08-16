@@ -10,6 +10,7 @@ import { and, eq, lte, isNull, inArray, sql } from "drizzle-orm";
 import { db, pool } from "@workspace/db";
 import { discagemCampaignsTable, discagemCallsTable, marketingContactsTable } from "@workspace/db";
 import { initiateCall } from "./twilio-client";
+import { getDiscagemSettings } from "./settings-reader";
 import { detectCreditError } from "./ai-agent";
 import {
   DISCAGEM_TIMEZONE,
@@ -99,7 +100,9 @@ async function fireCall(
   campaign: typeof discagemCampaignsTable.$inferSelect,
   callRecord: { callId: number; phone: string; name: string | null; contactId: number | null },
 ): Promise<void> {
-  const baseUrl = `${process.env.PUBLIC_HOSTNAME}/api/discagem`;
+  const { publicHostname } = await getDiscagemSettings();
+  const hostname = publicHostname || process.env.PUBLIC_HOSTNAME || "";
+  const baseUrl = `${hostname}/api/discagem`;
 
   try {
     await db

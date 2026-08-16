@@ -800,9 +800,10 @@ router.post("/admin/discagem/test-call", requireAdmin, async (req, res): Promise
   }).returning();
 
   try {
+    const { publicHostname } = await getDiscagemSettings();
     const twilioSid = await initiateCall({
       to: phoneNumber,
-      callbackBaseUrl: `${process.env.PUBLIC_HOSTNAME}/api/discagem`,
+      callbackBaseUrl: `${publicHostname || process.env.PUBLIC_HOSTNAME || ""}/api/discagem`,
       callId: call.id,
       campaignId: camp.id,
     });
