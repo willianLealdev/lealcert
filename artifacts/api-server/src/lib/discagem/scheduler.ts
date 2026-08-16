@@ -165,7 +165,7 @@ export async function pauseCampaignForCredit(
 
 // ── Reconcilia ligações travadas consultando Twilio ───────────────
 async function reconcileStuckCalls(): Promise<void> {
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const fiveMinutesAgo = new Date(Date.now() - 1 * 60 * 1000);
 
   // Calls com SID travadas em dialing/in_progress há mais de 5 min
   const stuckWithSid = await db

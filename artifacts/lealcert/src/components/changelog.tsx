@@ -24,6 +24,8 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "fix", text: "Discagem: ligação ficava presa em 'Discando' para sempre quando havia erro de crédito/auth — agora é marcada como 'Falhou' corretamente antes de pausar a campanha" },
       { type: "fix", text: "Discagem: modelo Cartesia 'sonic-multilingual' descontinuado — atualizado para 'sonic-2'; IA voltou a falar durante as ligações" },
       { type: "fix", text: "Discagem: URL de callback do Twilio usava variável de ambiente vazia em vez do hostname configurado nas Settings — ligação conectava mas desligava sem áudio" },
+      { type: "fix", text: "Discagem: reconciliador de status reduzido de 5 para 1 minuto — tela atualiza em até 60s após desligar" },
+      { type: "improvement", text: "Discagem: abertura da IA reformulada para ser mais natural — primeira fala curta, adapta tom entre secretária e decisor, reage ao que a pessoa diz em vez de seguir roteiro fixo" },
     ],
   },
   {
