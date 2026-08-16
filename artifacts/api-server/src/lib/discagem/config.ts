@@ -27,22 +27,6 @@ export const NO_ANSWER_TIMEOUT_SECS = 30;
 export const AGENT_NAMES = ["Willian", "Aline"] as const;
 export type AgentName = typeof AGENT_NAMES[number];
 
-// ─── Vozes TTS por agente ────────────────────────────────────────
-// Os IDs de voz agora são lidos do banco (tabela settings).
-// Configure em Admin → Configurações → Discagem → TTS.
-// Estes valores são usados apenas como fallback de último recurso
-// caso a coluna do banco ainda não exista (ambientes legados).
-export const AGENT_VOICE_IDS: Record<AgentName, { cartesia: string; elevenlabs: string }> = {
-  Willian: {
-    cartesia: "a0e99841-438c-4a64-b679-ae501e7d6091",
-    elevenlabs: "TxGEqnHWrfWFTfGW9XjX",
-  },
-  Aline: {
-    cartesia: "694f9389-aac1-45b6-b726-9d9369183238",
-    elevenlabs: "21m00Tcm4TlvDq8ikWAM",
-  },
-};
-
 // ─── Script do agente ────────────────────────────────────────────
 // {AGENT_NAME} é substituído pelo nome do agente da campanha (Willian ou Aline).
 //

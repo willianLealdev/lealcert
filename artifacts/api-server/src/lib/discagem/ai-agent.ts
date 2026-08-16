@@ -7,7 +7,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { getDiscagemSettings } from "./settings-reader";
-import { AGENT_SYSTEM_PROMPT, AGENT_VOICE_IDS, type AgentName } from "./config";
+import { AGENT_SYSTEM_PROMPT, type AgentName } from "./config";
 import { getSiteCacheBlock, refreshSiteCache } from "./site-cache";
 import { db, couponsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
