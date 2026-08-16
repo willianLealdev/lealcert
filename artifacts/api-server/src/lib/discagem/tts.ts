@@ -101,16 +101,29 @@ export async function synthesize(
 
   for (const provider of order) {
     try {
-      if (provider === "cartesia" && cfg.cartesiaApiKey) {
+      if (provider === "cartesia") {
+        if (!cfg.cartesiaApiKey) {
+          console.warn(`[tts] Cartesia pulado — API key não configurada`);
+          continue;
+        }
         const vid = voiceIdOverride || cfg.cartesiaVoiceId;
+        if (!vid) { console.warn("[tts] Cartesia: voice ID não configurado"); continue; }
         const id = await synthesizeCartesia(text, cfg.cartesiaApiKey, vid);
+        if (provider !== preferredProvider) console.warn(`[tts] Fallback para Cartesia (preferido: ${preferredProvider})`);
         return { id, providerUsed: "cartesia" };
-      } else if (provider === "elevenlabs" && cfg.elevenlabsApiKey) {
+      } else if (provider === "elevenlabs") {
+        if (!cfg.elevenlabsApiKey) {
+          console.warn(`[tts] ElevenLabs pulado — API key não configurada (adicione em Configurações → Discagem → Chave ElevenLabs)`);
+          continue;
+        }
         const vid = voiceIdOverride || cfg.elevenlabsVoiceId;
+        if (!vid) {
+          console.warn("[tts] ElevenLabs pulado — Voice ID não configurado (adicione em Configurações → Discagem → Voice ID ElevenLabs)");
+          continue;
+        }
         const id = await synthesizeElevenLabs(text, cfg.elevenlabsApiKey, vid);
         return { id, providerUsed: "elevenlabs" };
       }
-      // Chave não configurada — pula
     } catch (err: unknown) {
       lastError = err;
       const isCreditErr = (err as any)?.creditError;
@@ -119,6 +132,7 @@ export async function synthesize(
         if (provider === order.at(-1)) throw err; // último da lista
         continue;
       }
+      console.warn(`[tts] Erro em ${provider}:`, (err as Error).message);
       throw err;
     }
   }

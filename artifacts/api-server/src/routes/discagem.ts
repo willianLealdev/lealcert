@@ -328,10 +328,19 @@ router.post("/discagem/status/:callId", async (req, res): Promise<void> => {
 
   res.sendStatus(204);
 
+  // Estados que indicam que a ligação está TERMINADA
+  // Twilio envia "initiated", "ringing", "in-progress" ANTES desses — ignoramos
+  const TERMINAL_STATES = new Set(["completed", "failed", "no-answer", "busy", "canceled"]);
+  if (!TERMINAL_STATES.has(callStatus)) {
+    // Estado intermediário (initiated/ringing/in-progress) — não limpar memória ainda
+    return;
+  }
+
   try {
     const [call] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
     if (!call) return;
 
+    // Captura histórico ANTES de limpar o cache
     const history = getConvHistory(callId);
     conversationCache.delete(callId);
     pendingResults.delete(callId);
@@ -365,7 +374,7 @@ router.post("/discagem/status/:callId", async (req, res): Promise<void> => {
           retryAfter: nextDay,
         });
       }
-    } else if (callStatus === "failed") {
+    } else if (callStatus === "failed" || callStatus === "canceled") {
       newStatus = "failed";
       outcome = "failed";
     }
