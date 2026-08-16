@@ -132,8 +132,10 @@ router.post("/discagem/voice/:callId", async (req, res): Promise<void> => {
     const [campaign] = await db.select().from(discagemCampaignsTable).where(eq(discagemCampaignsTable.id, call.campaignId!));
     if (!campaign) { res.type("text/xml").send(twimlHangup()); return; }
 
-    // Atualiza status
-    await db.update(discagemCallsTable).set({ status: "in_progress" }).where(eq(discagemCallsTable.id, callId));
+    // Atualiza status (startedAt como fallback caso não tenha sido setado em dialing)
+    await db.update(discagemCallsTable)
+      .set({ status: "in_progress", startedAt: sql`COALESCE(started_at, NOW())` })
+      .where(eq(discagemCallsTable.id, callId));
 
     // Gera abertura da conversa via IA
     const openingHistory = [{ role: "user" as const, text: "[INÍCIO DA LIGAÇÃO]", ts: new Date().toISOString() }];
@@ -807,7 +809,7 @@ router.post("/admin/discagem/test-call", requireAdmin, async (req, res): Promise
       callId: call.id,
       campaignId: camp.id,
     });
-    await db.update(discagemCallsTable).set({ twilioCallSid: twilioSid, status: "dialing" }).where(eq(discagemCallsTable.id, call.id));
+    await db.update(discagemCallsTable).set({ twilioCallSid: twilioSid, status: "dialing", startedAt: new Date() }).where(eq(discagemCallsTable.id, call.id));
     res.json({ ok: true, callId: call.id, twilioSid });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

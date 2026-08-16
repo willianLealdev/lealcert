@@ -17,8 +17,11 @@ const CHANGELOG: ChangelogEntry[] = [
     date: "16/08/2026",
     version: "1.36",
     changes: [
-      { type: "fix", text: "Discagem: tela não atualizava após desligar a ligação — reconciliador agora verifica a cada 20s (era 60s) e corrige o status na tela automaticamente" },
-      { type: "fix", text: "Discagem: reconciliador marcava ligação atendida como 'Não atendeu' — agora 'completed' no Twilio é corretamente exibido como 'Atendida'" },
+      { type: "fix", text: "Discagem: tela ficava presa em 'Em conversa' após desligar — causa raiz: rota de teste não gravava started_at no banco, fazendo o reconciliador nunca encontrar a call" },
+      { type: "fix", text: "Discagem: rota /test-call agora salva started_at ao marcar 'dialing'; webhook de voz usa COALESCE para garantir que started_at nunca fique NULL" },
+      { type: "fix", text: "Discagem: reconciliador agora reconcilia calls com started_at NULL imediatamente (além das >20s), cobrindo qualquer call perdida por esse bug" },
+      { type: "fix", text: "Discagem: reconciliador força hangup no Twilio para calls presas >3 min em 'in_progress' (Gather TwiML aberto sem resposta)" },
+      { type: "fix", text: "Discagem: reconciliador corrigia 'Completed' → 'Não atendeu' — agora mapeia corretamente como 'Atendida'" },
     ],
   },
   {

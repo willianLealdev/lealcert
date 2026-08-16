@@ -6,10 +6,10 @@
  * consulta apenas contatos com status pendente/retry.
  */
 
-import { and, eq, lte, isNull, inArray, sql, lt, isNotNull } from "drizzle-orm";
+import { and, or, eq, lte, isNull, inArray, sql, lt, isNotNull } from "drizzle-orm";
 import { db, pool } from "@workspace/db";
 import { discagemCampaignsTable, discagemCallsTable, marketingContactsTable } from "@workspace/db";
-import { initiateCall } from "./twilio-client";
+import { initiateCall, hangupCall } from "./twilio-client";
 import { getDiscagemSettings } from "./settings-reader";
 import { detectCreditError } from "./ai-agent";
 import {
@@ -163,66 +163,99 @@ export async function pauseCampaignForCredit(
     .where(eq(discagemCampaignsTable.id, campaignId));
 }
 
-// ── Reconcilia ligações travadas consultando Twilio ───────────────
+// ── Reconcilia ligações travadas consultando / forçando hangup ────
 async function reconcileStuckCalls(): Promise<void> {
-  // 20s: tempo suficiente para Twilio disparar o webhook normal;
-  // abaixo disso reconciliamos para não deixar a tela travada.
-  const threshold = new Date(Date.now() - 20 * 1000);
+  const cfg = await getDiscagemSettings();
+  const { twilioAccountSid, twilioAuthToken } = cfg;
+  if (!twilioAccountSid || !twilioAuthToken) return;
 
-  // Calls com SID travadas em dialing/in_progress há mais de 20s
+  const authHeader = `Basic ${Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString("base64")}`;
+
+  // Threshold 1 — 20s: webhook normal não chegou, consulta status no Twilio
+  const threshold20s  = new Date(Date.now() - 20  * 1000);
+  // Threshold 2 — 3 min: call ainda in_progress → forçar hangup (Gather aberto)
+  const threshold3min = new Date(Date.now() - 3 * 60 * 1000);
+
   const stuckWithSid = await db
     .select({
-      id: discagemCallsTable.id,
+      id:           discagemCallsTable.id,
       twilioCallSid: discagemCallsTable.twilioCallSid,
+      status:       discagemCallsTable.status,
+      startedAt:    discagemCallsTable.startedAt,
+      campaignId:   discagemCallsTable.campaignId,
     })
     .from(discagemCallsTable)
     .where(
       and(
         inArray(discagemCallsTable.status, ["dialing", "in_progress"]),
         isNotNull(discagemCallsTable.twilioCallSid),
-        lt(discagemCallsTable.startedAt, threshold),
+        // startedAt NULL = rota de teste não setou; trata como stuck imediatamente
+        or(
+          lt(discagemCallsTable.startedAt, threshold20s),
+          isNull(discagemCallsTable.startedAt),
+        ),
       )
     );
 
   for (const call of stuckWithSid) {
     try {
-      const { twilioAccountSid, twilioAuthToken } = await getDiscagemSettings();
-      if (!twilioAccountSid || !twilioAuthToken) break;
-
+      // ── Fase 1: consulta status atual no Twilio ─────────────────
       const res = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls/${call.twilioCallSid}.json`,
-        { headers: { Authorization: `Basic ${Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString("base64")}` } }
+        { headers: { Authorization: authHeader } }
       );
       if (!res.ok) continue;
       const data = await res.json() as { status: string; duration?: string };
+      const twilioStatus = data.status;
 
-      const twilioStatus = data.status; // completed, busy, no-answer, failed, canceled
       let newStatus: string | null = null;
-      // "completed" = Twilio finalizou a call (alguém atendeu e desligou)
-      if (twilioStatus === "completed") newStatus = "answered";
-      else if (twilioStatus === "busy")      newStatus = "no_answer";
-      else if (twilioStatus === "no-answer") newStatus = "no_answer";
-      else if (twilioStatus === "failed" || twilioStatus === "canceled") newStatus = "failed";
+
+      if (twilioStatus === "completed") {
+        // Twilio fechou normalmente — marca como answered
+        newStatus = "answered";
+      } else if (twilioStatus === "busy") {
+        newStatus = "no_answer";
+      } else if (twilioStatus === "no-answer") {
+        newStatus = "no_answer";
+      } else if (twilioStatus === "failed" || twilioStatus === "canceled") {
+        newStatus = "failed";
+      } else if (
+        (twilioStatus === "in-progress" || twilioStatus === "ringing") &&
+        call.startedAt &&
+        call.startedAt < threshold3min
+      ) {
+        // ── Fase 2: call aberta há mais de 3 min → force hangup ──
+        console.log(`[discagem-reconcile] Call ${call.id} presa em "${twilioStatus}" há >3min → forçando hangup`);
+        try {
+          await hangupCall(call.twilioCallSid!);
+        } catch (e) {
+          console.warn(`[discagem-reconcile] hangup falhou para ${call.twilioCallSid}:`, e);
+        }
+        // Marca localmente como answered (estava em conversa) ou failed
+        newStatus = call.status === "in_progress" ? "answered" : "failed";
+      }
 
       if (newStatus) {
-        console.log(`[discagem-reconcile] Call ${call.id} (${call.twilioCallSid}) travada → Twilio diz "${twilioStatus}" → marcando ${newStatus}`);
+        console.log(`[discagem-reconcile] Call ${call.id} (${call.twilioCallSid}) → Twilio="${twilioStatus}" → marcando ${newStatus}`);
         await db.update(discagemCallsTable)
           .set({ status: newStatus as any, endedAt: new Date() })
           .where(eq(discagemCallsTable.id, call.id));
+
+        markCallInactive(call.id);
       }
     } catch (err) {
-      console.error(`[discagem-reconcile] Erro ao reconciliar call ${call.id}:`, err);
+      console.error(`[discagem-reconcile] Erro call ${call.id}:`, err);
     }
   }
 
-  // Calls SEM SID travadas em dialing há mais de 20s → falhou antes de chegar ao Twilio
+  // Calls SEM SID travadas em dialing há mais de 20s → falhou antes do Twilio
   await db.update(discagemCallsTable)
     .set({ status: "failed", error: "Sem SID Twilio após 20s — falhou antes de iniciar", endedAt: new Date() })
     .where(
       and(
         eq(discagemCallsTable.status, "dialing"),
         isNull(discagemCallsTable.twilioCallSid),
-        lt(discagemCallsTable.startedAt, threshold),
+        lt(discagemCallsTable.startedAt, threshold20s),
       )
     );
 }
