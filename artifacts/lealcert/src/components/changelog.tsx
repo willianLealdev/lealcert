@@ -15,6 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.36",
+    changes: [
+      { type: "fix", text: "Discagem: tela não atualizava após desligar a ligação — reconciliador agora verifica a cada 20s (era 60s) e corrige o status na tela automaticamente" },
+      { type: "fix", text: "Discagem: reconciliador marcava ligação atendida como 'Não atendeu' — agora 'completed' no Twilio é corretamente exibido como 'Atendida'" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.35",
     changes: [
       { type: "fix", text: "Discagem: erro de autenticação Twilio aparecia como 'crédito esgotado' — agora exibe mensagem correta pedindo para verificar Account SID e Auth Token" },

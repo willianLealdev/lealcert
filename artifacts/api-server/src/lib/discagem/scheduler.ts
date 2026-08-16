@@ -165,9 +165,11 @@ export async function pauseCampaignForCredit(
 
 // ── Reconcilia ligações travadas consultando Twilio ───────────────
 async function reconcileStuckCalls(): Promise<void> {
-  const fiveMinutesAgo = new Date(Date.now() - 1 * 60 * 1000);
+  // 20s: tempo suficiente para Twilio disparar o webhook normal;
+  // abaixo disso reconciliamos para não deixar a tela travada.
+  const threshold = new Date(Date.now() - 20 * 1000);
 
-  // Calls com SID travadas em dialing/in_progress há mais de 5 min
+  // Calls com SID travadas em dialing/in_progress há mais de 20s
   const stuckWithSid = await db
     .select({
       id: discagemCallsTable.id,
@@ -178,7 +180,7 @@ async function reconcileStuckCalls(): Promise<void> {
       and(
         inArray(discagemCallsTable.status, ["dialing", "in_progress"]),
         isNotNull(discagemCallsTable.twilioCallSid),
-        lt(discagemCallsTable.startedAt, fiveMinutesAgo),
+        lt(discagemCallsTable.startedAt, threshold),
       )
     );
 
@@ -196,8 +198,9 @@ async function reconcileStuckCalls(): Promise<void> {
 
       const twilioStatus = data.status; // completed, busy, no-answer, failed, canceled
       let newStatus: string | null = null;
-      if (twilioStatus === "completed") newStatus = "no_answer";
-      else if (twilioStatus === "busy")  newStatus = "no_answer";
+      // "completed" = Twilio finalizou a call (alguém atendeu e desligou)
+      if (twilioStatus === "completed") newStatus = "answered";
+      else if (twilioStatus === "busy")      newStatus = "no_answer";
       else if (twilioStatus === "no-answer") newStatus = "no_answer";
       else if (twilioStatus === "failed" || twilioStatus === "canceled") newStatus = "failed";
 
@@ -212,14 +215,14 @@ async function reconcileStuckCalls(): Promise<void> {
     }
   }
 
-  // Calls SEM SID travadas em dialing há mais de 5 min → falhou antes de chegar ao Twilio
+  // Calls SEM SID travadas em dialing há mais de 20s → falhou antes de chegar ao Twilio
   await db.update(discagemCallsTable)
-    .set({ status: "failed", error: "Sem SID Twilio após 5min — falhou antes de iniciar", endedAt: new Date() })
+    .set({ status: "failed", error: "Sem SID Twilio após 20s — falhou antes de iniciar", endedAt: new Date() })
     .where(
       and(
         eq(discagemCallsTable.status, "dialing"),
         isNull(discagemCallsTable.twilioCallSid),
-        lt(discagemCallsTable.startedAt, fiveMinutesAgo),
+        lt(discagemCallsTable.startedAt, threshold),
       )
     );
 }
