@@ -15,6 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.40",
+    changes: [
+      { type: "fix", text: "Discagem IA: provider padrão 'cartesia' hardcoded ignorava ElevenLabs mesmo com chave configurada — test-call e criação de campanhas agora herdam o provider das configurações globais (discagem_tts_fallback)" },
+      { type: "fix", text: "Discagem IA: formulário de nova campanha inicializava ttsProvider='cartesia' sempre — agora inicia com 'elevenlabs' refletindo o que está configurado" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.39",
     changes: [
       { type: "fix", text: "Discagem IA: transcrição das ligações nunca era salva em modo stream — Twilio envia eventos para cada mudança de estado (ringing, in-progress…) e o histórico era apagado antes de 'completed'. Corrigido: só processa eventos terminais (completed/failed/no-answer/busy)" },
