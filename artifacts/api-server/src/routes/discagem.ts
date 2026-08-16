@@ -53,6 +53,7 @@ import {
   twimlVoicemailHangup,
   initiateCall,
   hangupCall,
+  fetchCallDuration,
 } from "../lib/discagem/twilio-client";
 import {
   startScheduler,
@@ -309,7 +310,7 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
 router.post("/discagem/status/:callId", async (req, res): Promise<void> => {
   const callId = parseInt(Array.isArray(req.params.callId) ? req.params.callId[0] : req.params.callId, 10);
   const callStatus: string = req.body?.CallStatus ?? "";
-  const duration: string = req.body?.CallDuration ?? "0";
+  const twilioSidFromBody: string = req.body?.CallSid ?? "";
   const recordingUrl: string = req.body?.RecordingUrl ?? "";
 
   res.sendStatus(204);
@@ -356,10 +357,15 @@ router.post("/discagem/status/:callId", async (req, res): Promise<void> => {
       outcome = "failed";
     }
 
+    // Busca duração real via REST API do Twilio — o webhook CallDuration chega
+    // como "0" antes do Twilio finalizar o cálculo, então sempre consultamos a API
+    const sid = call.twilioCallSid || twilioSidFromBody;
+    const realDuration = sid ? await fetchCallDuration(sid) : 0;
+
     await db.update(discagemCallsTable).set({
       status: newStatus,
       outcome,
-      durationSeconds: parseInt(duration, 10) || 0,
+      durationSeconds: realDuration,
       recordingUrl: recordingUrl || call.recordingUrl,
       transcript: history.length > 0 ? JSON.stringify(history) : call.transcript,
       endedAt: new Date(),

@@ -84,6 +84,30 @@ export async function initiateCall(opts: OutboundCallOptions): Promise<string> {
   return data.sid as string;
 }
 
+/** Busca a duração real de uma call via REST API do Twilio (em segundos) */
+export async function fetchCallDuration(twilioSid: string): Promise<number> {
+  const cfg = await getDiscagemSettings();
+  const sid = cfg.twilioAccountSid;
+  const token = cfg.twilioAuthToken;
+  if (!sid || !token || !twilioSid) return 0;
+
+  try {
+    const resp = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${sid}/Calls/${twilioSid}.json`,
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`,
+        },
+      },
+    );
+    if (!resp.ok) return 0;
+    const data = await resp.json() as { duration?: string };
+    return parseInt(data.duration ?? "0", 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function hangupCall(twilioSid: string): Promise<void> {
   const cfg = await getDiscagemSettings();
   const sid = cfg.twilioAccountSid;
