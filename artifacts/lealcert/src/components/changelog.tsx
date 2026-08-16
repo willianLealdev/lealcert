@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.44",
+    changes: [
+      { type: "fix", text: "Discagem IA: transcrição das ligações sumia quando o servidor reiniciava — o histórico da conversa ficava só em memória (conversationCache) e era perdido. Agora o transcript é salvo no banco a cada turno concluído (cada vez que /reply serve o áudio), então o botão 'Ver' aparece imediatamente após o primeiro turno e sobrevive a qualquer restart do servidor" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.43",
     changes: [
       { type: "fix", text: "Discagem IA: prompt dizia 'fornecedor' em todos os lugares — corrigido para 'certificadora' (abertura, diagnóstico, objeção, histórico)" },

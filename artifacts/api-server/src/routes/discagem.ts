@@ -272,9 +272,19 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
     return;
   }
 
+  // ── Persiste o transcript parcial a cada turno ───────────────────
+  // A conversationCache é em memória — um restart do servidor apaga tudo.
+  // Salvando no banco a cada /reply, o histórico sobrevive a reinicios e
+  // o botão "Ver" aparece assim que o primeiro turno é concluído.
+  if (payload.history.length > 0) {
+    await db.update(discagemCallsTable).set({
+      transcript: JSON.stringify(payload.history),
+    }).where(eq(discagemCallsTable.id, callId)).catch(() => {});
+  }
+
   // ── Resultado pronto — responde com TwiML real ───────────────────
   if (payload.shouldEndCall) {
-    // Salva transcript e encerra
+    // Salva transcript final (com status e outcome) e encerra
     const [callRow] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
     // Acumula e-mails capturados ao longo da conversa (pode ter sido detectado em qualquer turno)
     const allEmails = payload.history
