@@ -15,6 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.42",
+    changes: [
+      { type: "fix", text: "Discagem IA: prompt usava 'fornecedor' em vez de 'certificadora' — corrigido em todas as ocorrências (abertura, diagnóstico, objeção)" },
+      { type: "melhoria", text: "Discagem IA: lista de certificadoras adicionada ao prompt — Certisign, Soluti, Safeweb, Serasa Experian, Valid, SERPRO, DigitalSign, Sincor, BR RFB, Receita Federal, Caixa, Imprensa Oficial, Justiça, Defesa, Presidência, Prodemge, CNDL, Fenacon, OAB, Notarial. Agente reconhece quando o contato menciona qualquer uma, destaca que Safeweb é a certificadora da Leal Cert, e usa as outras como ponto de comparação sem criticar" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.41",
     changes: [
       { type: "fix", text: "Discagem IA: call travava indefinidamente quando contato ficava em silêncio ou dizia algo incompreensível — Deepgram nunca disparava speech_final e o agente nunca voltava a falar. Adicionado timeout de 20 segundos: se nenhum áudio audível for detectado, o sistema injeta [SEM_VOZ] no pipeline e o agente reage naturalmente ('Olá? Está me ouvindo?')" },
