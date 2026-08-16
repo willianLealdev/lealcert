@@ -22,6 +22,8 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "fix", text: "Discagem: geo-permission bloqueada no Twilio agora exibe mensagem clara orientando habilitar o país em console.twilio.com" },
       { type: "fix", text: "Discagem: número sem código de país agora recebe +55 automaticamente (brasileiro) ou +1 (americano com 10 dígitos)" },
       { type: "fix", text: "Discagem: ligação ficava presa em 'Discando' para sempre quando havia erro de crédito/auth — agora é marcada como 'Falhou' corretamente antes de pausar a campanha" },
+      { type: "fix", text: "Discagem: modelo Cartesia 'sonic-multilingual' descontinuado — atualizado para 'sonic-2'; IA voltou a falar durante as ligações" },
+      { type: "fix", text: "Discagem: URL de callback do Twilio usava variável de ambiente vazia em vez do hostname configurado nas Settings — ligação conectava mas desligava sem áudio" },
     ],
   },
   {

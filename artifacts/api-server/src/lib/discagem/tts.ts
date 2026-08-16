@@ -32,7 +32,7 @@ async function synthesizeCartesia(text: string, apiKey: string, voiceId: string)
     },
     body: JSON.stringify({
       transcript: text,
-      model_id: "sonic-multilingual",
+      model_id: "sonic-2",
       voice: { mode: "id", id: voiceId },
       output_format: { container: "mp3", encoding: "mp3", sample_rate: 44100 },
       language: "pt",
