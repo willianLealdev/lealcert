@@ -14,6 +14,16 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "16/08/2026",
+    version: "1.35",
+    changes: [
+      { type: "fix", text: "Discagem: erro de autenticação Twilio aparecia como 'crédito esgotado' — agora exibe mensagem correta pedindo para verificar Account SID e Auth Token" },
+      { type: "fix", text: "Discagem: número inválido (sem código de país) aparecia como 'crédito esgotado' — agora exibe mensagem clara pedindo formato E.164" },
+      { type: "fix", text: "Discagem: geo-permission bloqueada no Twilio agora exibe mensagem clara orientando habilitar o país em console.twilio.com" },
+      { type: "fix", text: "Discagem: número sem código de país agora recebe +55 automaticamente (brasileiro) ou +1 (americano com 10 dígitos)" },
+    ],
+  },
+  {
     date: "14/08/2026",
     version: "1.34",
     changes: [

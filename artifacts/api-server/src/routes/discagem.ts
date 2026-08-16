@@ -759,9 +759,23 @@ router.get("/admin/discagem/contacts", requireAdmin, async (req, res): Promise<v
 });
 
 // ─── Teste: discar um número agora ───────────────────────────────
+/** Normaliza número para E.164. Se não tiver +, assume Brasil (+55). */
+function normalizePhoneE164(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (raw.trim().startsWith("+")) return `+${digits}`;
+  // Número americano: 10 dígitos sem código de país → +1
+  if (digits.length === 10 && digits.startsWith("1") === false) return `+1${digits}`;
+  // Número brasileiro: 10-11 dígitos → +55
+  if (digits.length === 10 || digits.length === 11) return `+55${digits}`;
+  // Já tem DDI embutido (12-13 dígitos com 55 na frente)
+  if (digits.length >= 12) return `+${digits}`;
+  return `+55${digits}`;
+}
+
 router.post("/admin/discagem/test-call", requireAdmin, async (req, res): Promise<void> => {
-  const { phoneNumber, aiModel, agentName, ttsProvider, ttsVoiceId } = req.body ?? {};
-  if (!phoneNumber) { res.status(400).json({ error: "phoneNumber obrigatório" }); return; }
+  const { phoneNumber: rawPhone, aiModel, agentName, ttsProvider, ttsVoiceId } = req.body ?? {};
+  if (!rawPhone) { res.status(400).json({ error: "phoneNumber obrigatório" }); return; }
+  const phoneNumber = normalizePhoneE164(String(rawPhone));
 
   // Cria campanha temporária de teste
   const [camp] = await db.insert(discagemCampaignsTable).values({

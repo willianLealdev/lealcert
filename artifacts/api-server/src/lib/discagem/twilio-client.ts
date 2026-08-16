@@ -55,10 +55,27 @@ export async function initiateCall(opts: OutboundCallOptions): Promise<string> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as any;
     const msg = err?.message || `HTTP ${res.status}`;
-    if (res.status === 402 || (err?.code && [20003, 20005, 21211, 21212].includes(err.code))) {
+    // Autenticação inválida (Account SID ou Auth Token errado)
+    if (err?.code === 20003) {
+      throw new Error(`Credenciais Twilio inválidas — verifique o Account SID e Auth Token em Configurações → Discagem. Twilio: ${msg}`);
+    }
+    // Conta desativada
+    if (err?.code === 20005) {
+      throw new Error(`Conta Twilio desativada. Twilio: ${msg}`);
+    }
+    // Crédito insuficiente
+    if (res.status === 402) {
       const e = new Error(`CREDIT_ERROR: Twilio — ${msg}`);
       (e as any).creditError = "TWILIO";
       throw e;
+    }
+    // Número inválido (formato errado, sem código de país, etc.)
+    if (err?.code && [21211, 21212].includes(err.code)) {
+      throw new Error(`Número de telefone inválido — use o formato E.164 com código do país (ex: +5511999999999 ou +12025551234). Twilio: ${msg}`);
+    }
+    // Geo-permission bloqueada
+    if (err?.code === 21215) {
+      throw new Error(`País bloqueado no Twilio — acesse console.twilio.com → Voice → Geo Permissions e habilite o país de destino. Twilio: ${msg}`);
     }
     throw new Error(`Twilio initiateCall falhou: ${msg}`);
   }
