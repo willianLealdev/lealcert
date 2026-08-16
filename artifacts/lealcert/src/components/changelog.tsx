@@ -15,6 +15,16 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.43",
+    changes: [
+      { type: "fix", text: "Discagem IA: prompt dizia 'fornecedor' em todos os lugares — corrigido para 'certificadora' (abertura, diagnóstico, objeção, histórico)" },
+      { type: "fix", text: "Discagem IA: '.br' saindo com pronúncia estranha no TTS — reescrito como 'ponto be erre' em todas as URLs faladas" },
+      { type: "melhoria", text: "Discagem IA: lista de certificadoras simplificada para reconhecimento apenas (sem misturar estratégia de vendas no bloco de vocabulário)" },
+      { type: "melhoria", text: "Discagem IA: script completo de cadastro e orientação ao parceiro contador adicionado ao prompt — benefícios (preço R$90, margem, portal, 24h, videoconferência, programa de cortesia, cupom PARCEIRO), passo a passo real do site (CRC, pedido, pagamento, vídeo, emissão) e fechamento natural. Agente orienta um passo de cada vez, adapta ao ritmo da conversa" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.42",
     changes: [
       { type: "fix", text: "Discagem IA: prompt usava 'fornecedor' em vez de 'certificadora' — corrigido em todas as ocorrências (abertura, diagnóstico, objeção)" },
