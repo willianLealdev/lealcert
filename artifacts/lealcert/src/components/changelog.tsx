@@ -15,6 +15,17 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.39",
+    changes: [
+      { type: "fix", text: "Discagem IA: transcrição das ligações nunca era salva em modo stream — Twilio envia eventos para cada mudança de estado (ringing, in-progress…) e o histórico era apagado antes de 'completed'. Corrigido: só processa eventos terminais (completed/failed/no-answer/busy)" },
+      { type: "fix", text: "Discagem IA: silêncio de 4-5s após o contato falar — stream mode agora envia TwiML inline com filler de áudio antes de redirecionar para /reply, eliminando pausa em branco" },
+      { type: "fix", text: "Discagem IA: ElevenLabs selecionado mas Cartesia sendo usado sem aviso — sistema agora loga exatamente o que falta (chave de API ou Voice ID) ao pular um provider" },
+      { type: "fix", text: "Discagem IA: fillers de áudio usavam palavras proibidas pelo prompt ('Claro.', 'Com certeza.', 'Ok.') — substituídos por sons naturais de pensamento ('Hmm...', 'Aham.', 'Deixa eu ver.')" },
+      { type: "melhoria", text: "Discagem IA: prompt atualizado para lidar com 'Sim, sou eu' (confirmação sem nome) — agente não tenta inserir '[Nome]' e vai direto ao motivo da ligação de forma natural" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.38",
     changes: [
       { type: "melhoria", text: "Discagem IA: integração com Twilio Media Streams + Deepgram STT — áudio flui em tempo real via WebSocket, transcrição começa enquanto a pessoa ainda fala" },
