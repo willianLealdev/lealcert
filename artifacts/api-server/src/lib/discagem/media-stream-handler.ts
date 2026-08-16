@@ -17,18 +17,25 @@ import { discagemCallsTable, discagemCampaignsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getDiscagemSettings } from "./settings-reader";
 import { processSpeechTurn, streamModeCalls } from "./conversation-state";
+import { getFillerUrl } from "./filler-audio";
 
-// ── Redireciona a call Twilio para uma nova URL TwiML ─────────────
-async function redirectTwilioCall(twilioSid: string, twimlUrl: string): Promise<void> {
-  const { twilioAccountSid, twilioAuthToken } = await getDiscagemSettings();
-  if (!twilioAccountSid || !twilioAuthToken) return;
-  const auth = Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString("base64");
+// ── Redireciona a call Twilio via URL TwiML ───────────────────────
+async function redirectTwilioCall(
+  twilioSid: string,
+  accountSid: string,
+  authToken: string,
+  payload: { url: string } | { twiml: string },
+): Promise<void> {
+  const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  const body = "url" in payload
+    ? new URLSearchParams({ Url: payload.url, Method: "POST" })
+    : new URLSearchParams({ Twiml: payload.twiml });
   const resp = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls/${twilioSid}.json`,
+    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${twilioSid}.json`,
     {
       method: "POST",
       headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ Url: twimlUrl, Method: "POST" }).toString(),
+      body: body.toString(),
     },
   );
   if (!resp.ok) {
@@ -89,6 +96,8 @@ export function setupMediaStreamWebSocket(server: Server): void {
       headers: { Authorization: `Token ${cfg.deepgramApiKey}` },
     });
 
+    const { twilioAccountSid, twilioAuthToken } = cfg;
+
     // Fallback para Gather se o Deepgram não conectar
     async function fallbackToGather(reason: string): Promise<void> {
       console.warn(`[media-stream] Fallback para Gather callId=${callId} — motivo: ${reason}`);
@@ -98,7 +107,9 @@ export function setupMediaStreamWebSocket(server: Server): void {
       const [call] = await db.select({ twilioCallSid: discagemCallsTable.twilioCallSid })
         .from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
       const sid = twilioCallSid || call?.twilioCallSid;
-      if (sid) await redirectTwilioCall(sid, gatherUrl);
+      if (sid && twilioAccountSid && twilioAuthToken) {
+        await redirectTwilioCall(sid, twilioAccountSid, twilioAuthToken, { url: gatherUrl });
+      }
     }
 
     deepgramWs.on("open", () => {
@@ -139,14 +150,18 @@ export function setupMediaStreamWebSocket(server: Server): void {
         // Dispara IA+TTS em background
         processSpeechTurn(callId, campaign as any, transcript);
 
-        // Redireciona a call Twilio → /reply (que já tem filler retry logic)
-        const { publicHostname } = cfg;
-        const base = publicHostname || process.env.PUBLIC_HOSTNAME || "";
+        // Redireciona a call Twilio com filler inline para eliminar silêncio
+        // Twilio toca o filler (~0.8s) enquanto a IA processa em paralelo
+        const base = cfg.publicHostname || process.env.PUBLIC_HOSTNAME || "";
         const replyUrl = `${base}/api/discagem/voice/${callId}/reply?attempt=1`;
-
         const sid = twilioCallSid || call.twilioCallSid;
-        if (sid) {
-          await redirectTwilioCall(sid, replyUrl);
+
+        if (sid && twilioAccountSid && twilioAuthToken) {
+          const fillerUrl = await getFillerUrl(transcript.length > 40 ? "thinking" : "ack");
+          const twiml = fillerUrl
+            ? `<?xml version="1.0" encoding="UTF-8"?><Response><Play>${fillerUrl}</Play><Redirect method="POST">${replyUrl}</Redirect></Response>`
+            : `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect method="POST">${replyUrl}</Redirect></Response>`;
+          await redirectTwilioCall(sid, twilioAccountSid, twilioAuthToken, { twiml });
         }
 
         // Deepgram vai fechar junto com a stream (o redirect encerra a stream)

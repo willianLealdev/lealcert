@@ -19,15 +19,16 @@ import { audioUrl } from "./tts";
 const FILLER_DIR = path.join(TMP_AUDIO_DIR, "fillers");
 const FILLER_MANIFEST = path.join(FILLER_DIR, "manifest.json");
 
-// Frases de preenchimento — variadas para soar natural, não robótico
+// Frases de preenchimento — curtas, neutras, sem as palavras proibidas no prompt
+// NUNCA usar: "Claro", "Com certeza", "Perfeito", "Certo", "Ok", "Entendido", "Entendo"
 export const FILLER_PHRASES = [
   "Hmm...",
-  "Entendi.",
-  "Certo.",
-  "Ok.",
-  "Um instante.",
-  "Com certeza.",
-  "Claro.",
+  "Aham.",
+  "É...",
+  "Pois é.",
+  "Um momento.",
+  "Deixa eu ver.",
+  "Hm, sim.",
   "Aham.",
 ];
 
@@ -97,8 +98,8 @@ export async function initFillerAudio(): Promise<void> {
  *        "ack"      = fillers de confirmação rápida
  *        "any"      = qualquer um
  */
-const THINKING_FILLERS = ["Hmm...", "Um instante.", "Aham."];
-const ACK_FILLERS = ["Entendi.", "Certo.", "Ok.", "Claro.", "Com certeza."];
+const THINKING_FILLERS = ["Hmm...", "Um momento.", "Deixa eu ver.", "É..."];
+const ACK_FILLERS = ["Aham.", "Pois é.", "Hm, sim.", "É."];
 
 export async function getFillerUrl(group: "thinking" | "ack" | "any" = "any"): Promise<string | null> {
   await initFillerAudio();
