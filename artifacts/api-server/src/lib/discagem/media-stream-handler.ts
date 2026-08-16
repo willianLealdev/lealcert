@@ -71,6 +71,8 @@ export function setupMediaStreamWebSocket(server: Server): void {
     let twilioCallSid = "";
     let deepgramWs: WebSocket | null = null;
     let isProcessing = false; // impede double-trigger por turno
+    let silenceTimer: ReturnType<typeof setTimeout> | null = null;
+    let emptyTranscriptCount = 0; // quantas vezes speech_final veio vazio seguido
 
     // ── Conecta ao Deepgram streaming ──────────────────────────────
     const cfg = await getDiscagemSettings().catch(() => null);
@@ -112,8 +114,48 @@ export function setupMediaStreamWebSocket(server: Server): void {
       }
     }
 
+    // ── Handler de silêncio / fala incompreensível ─────────────────
+    // Chamado quando: (a) timeout de 20s sem nenhum transcript, ou
+    // (b) speech_final com transcript vazio 2+ vezes seguidas.
+    // Injeta "[SEM_VOZ]" no pipeline para que a IA responda naturalmente.
+    async function handleSilenceOrEmpty(): Promise<void> {
+      if (isProcessing) return;
+      isProcessing = true;
+      silenceTimer = null;
+      console.info(`[media-stream] Silêncio/vazio detectado callId=${callId} — injetando [SEM_VOZ]`);
+
+      const [call] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
+      if (!call) return;
+      const [campaign] = await db.select().from(discagemCampaignsTable).where(eq(discagemCampaignsTable.id, call.campaignId!));
+      if (!campaign) return;
+
+      // Dispara IA com input especial de silêncio
+      processSpeechTurn(callId, campaign as any, "[SEM_VOZ]");
+
+      const base = cfg.publicHostname || process.env.PUBLIC_HOSTNAME || "";
+      const replyUrl = `${base}/api/discagem/voice/${callId}/reply?attempt=1`;
+      const sid = twilioCallSid || call.twilioCallSid;
+      if (sid && twilioAccountSid && twilioAuthToken) {
+        const fillerUrl = await getFillerUrl("thinking");
+        const twiml = fillerUrl
+          ? `<?xml version="1.0" encoding="UTF-8"?><Response><Play>${fillerUrl}</Play><Redirect method="POST">${replyUrl}</Redirect></Response>`
+          : `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect method="POST">${replyUrl}</Redirect></Response>`;
+        await redirectTwilioCall(sid, twilioAccountSid, twilioAuthToken, { twiml });
+      }
+
+      deepgramWs?.close();
+    }
+
+    // Inicia o timer de silêncio — será (re)iniciado em cada turno de stream
+    function resetSilenceTimer(): void {
+      if (silenceTimer) clearTimeout(silenceTimer);
+      // 20 segundos sem fala → age como silêncio
+      silenceTimer = setTimeout(() => handleSilenceOrEmpty().catch(() => {}), 20_000);
+    }
+
     deepgramWs.on("open", () => {
       console.info(`[media-stream] Deepgram conectado callId=${callId}`);
+      resetSilenceTimer(); // começa a contar ao abrir a stream
     });
 
     deepgramWs.on("message", async (data: Buffer) => {
@@ -129,7 +171,22 @@ export function setupMediaStreamWebSocket(server: Server): void {
           msg.channel?.alternatives?.[0]?.transcript ?? ""
         ).trim();
 
-        if (!transcript) return; // fala vazia (ruído / silêncio)
+        if (!transcript) {
+          // Deepgram disparou speech_final mas sem palavras (ruído/murmúrio/voz baixa)
+          emptyTranscriptCount++;
+          console.info(`[media-stream] Transcript vazio callId=${callId} (${emptyTranscriptCount}x) — aguardando mais fala`);
+          // Na 2ª vez consecutiva sem conteúdo, trata como silêncio e age
+          if (emptyTranscriptCount >= 2) {
+            await handleSilenceOrEmpty();
+          }
+          // Senão, reseta o timer para dar mais 20s de chance
+          resetSilenceTimer();
+          return;
+        }
+
+        // Transcript válido — cancela timer de silêncio e reseta contadores
+        if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+        emptyTranscriptCount = 0;
         isProcessing = true;
 
         console.info(`[media-stream] Transcript callId=${callId}: "${transcript}"`);
@@ -206,6 +263,7 @@ export function setupMediaStreamWebSocket(server: Server): void {
 
           case "stop":
             console.info(`[media-stream] Stream parado callId=${callId}`);
+            if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
             deepgramWs?.close();
             break;
         }

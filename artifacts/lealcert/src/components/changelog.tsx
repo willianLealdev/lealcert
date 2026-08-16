@@ -15,6 +15,15 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.41",
+    changes: [
+      { type: "fix", text: "Discagem IA: call travava indefinidamente quando contato ficava em silêncio ou dizia algo incompreensível — Deepgram nunca disparava speech_final e o agente nunca voltava a falar. Adicionado timeout de 20 segundos: se nenhum áudio audível for detectado, o sistema injeta [SEM_VOZ] no pipeline e o agente reage naturalmente ('Olá? Está me ouvindo?')" },
+      { type: "fix", text: "Discagem IA: Deepgram disparando speech_final com transcript vazio (ruído/murmúrio) causava retorno silencioso sem redirecionamento. Após 2 transcripts vazios consecutivos, o sistema trata como silêncio e retoma a conversa" },
+      { type: "melhoria", text: "Discagem IA: prompt atualizado para lidar com [SEM_VOZ] — agente verifica a linha de forma natural e encerra educadamente após 3+ tentativas sem resposta" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.40",
     changes: [
       { type: "fix", text: "Discagem IA: provider padrão 'cartesia' hardcoded ignorava ElevenLabs mesmo com chave configurada — test-call e criação de campanhas agora herdam o provider das configurações globais (discagem_tts_fallback)" },
