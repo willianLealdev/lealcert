@@ -25,10 +25,10 @@ export const FILLER_PHRASES = [
   "Entendi.",
   "Certo.",
   "Ok.",
-  "Deixa eu ver.",
-  "Um momento.",
+  "Um instante.",
+  "Com certeza.",
   "Claro.",
-  "Sim, sim.",
+  "Aham.",
 ];
 
 interface FillerManifest {
@@ -97,8 +97,8 @@ export async function initFillerAudio(): Promise<void> {
  *        "ack"      = fillers de confirmação rápida
  *        "any"      = qualquer um
  */
-const THINKING_FILLERS = ["Deixa eu ver.", "Um momento.", "Hmm..."];
-const ACK_FILLERS = ["Entendi.", "Certo.", "Ok.", "Claro.", "Sim, sim."];
+const THINKING_FILLERS = ["Hmm...", "Um instante.", "Aham."];
+const ACK_FILLERS = ["Entendi.", "Certo.", "Ok.", "Claro.", "Com certeza."];
 
 export async function getFillerUrl(group: "thinking" | "ack" | "any" = "any"): Promise<string | null> {
   await initFillerAudio();
