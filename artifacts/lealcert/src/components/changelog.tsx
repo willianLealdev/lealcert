@@ -15,6 +15,16 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.38",
+    changes: [
+      { type: "melhoria", text: "Discagem IA: integração com Twilio Media Streams + Deepgram STT — áudio flui em tempo real via WebSocket, transcrição começa enquanto a pessoa ainda fala" },
+      { type: "melhoria", text: "Discagem IA: latência de resposta reduzida — Deepgram detecta fim de fala em ~500ms de silêncio vs ~1s do Gather anterior; pipeline IA+TTS dispara imediatamente" },
+      { type: "melhoria", text: "Discagem IA: fallback automático para modo Gather (Twilio STT) caso a chave do Deepgram não esteja configurada — nenhuma campanha quebra" },
+      { type: "melhoria", text: "Discagem: estado de conversa movido para módulo compartilhado (conversation-state.ts) — pipeline de voz mais robusto e sem duplicação de lógica" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.37",
     changes: [
       { type: "melhoria", text: "Discagem: abertura completamente reescrita — agente agora cumprimenta com 'Bom dia/Boa tarde', apresenta nome E empresa na primeira fala e pergunta 'Com quem eu falo?'" },

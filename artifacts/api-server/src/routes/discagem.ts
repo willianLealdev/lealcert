@@ -36,11 +36,19 @@ import { requireAdmin } from "../middlewares/auth";
 import { runAgentTurn, detectCreditError } from "../lib/discagem/ai-agent";
 import { synthesize, audioUrl, TMP_AUDIO_DIR } from "../lib/discagem/tts";
 import { resolveVoiceId, consumePreGeneratedOpening, preGenerateOpening } from "../lib/discagem/opening-pregenerate";
+import {
+  conversationCache, pendingResults, streamModeCalls,
+  getConvHistory, processSpeechTurn,
+  type PendingPayload, type PendingResult,
+} from "../lib/discagem/conversation-state";
 import { invalidateDiscagemSettingsCache, getDiscagemSettings } from "../lib/discagem/settings-reader";
 import { getFillerUrl, initFillerAudio } from "../lib/discagem/filler-audio";
 import {
   twimlOpeningGather,
   twimlReplyGather,
+  twimlOpeningStream,
+  twimlReplyStream,
+  twimlFillerRedirect,
   twimlHangup,
   twimlVoicemailHangup,
   initiateCall,
@@ -68,33 +76,8 @@ function normalizeDdd(v: string | string[] | null | undefined): string | null {
 
 // resolveVoiceId e preGenerateOpening vivem em opening-pregenerate.ts
 
-// ─── Mapa em memória: callId → histórico de conversa ─────────────
-const conversationCache = new Map<number, { role: "user" | "assistant"; text: string; ts: string }[]>();
-
-function getConvHistory(callId: number) {
-  if (!conversationCache.has(callId)) conversationCache.set(callId, []);
-  return conversationCache.get(callId)!;
-}
-
-// ─── Mapa de resultados pendentes (filler pattern) ────────────────
-// Após o /speech disparar processamento em background, armazena aqui
-// até o /reply buscar. TTL automático: limpo quando /reply consome.
-interface PendingResult {
-  promise: Promise<PendingPayload>;
-  startedAt: number;
-}
-interface PendingPayload {
-  audioUrl: string;
-  shouldEndCall: boolean;
-  isOptOut: boolean;
-  transferToHuman?: boolean;
-  callbackRequested?: boolean;
-  capturedEmail?: string | null;
-  history: { role: "user" | "assistant"; text: string; ts: string }[];
-  err?: unknown;
-}
-
-const pendingResults = new Map<number, PendingResult>();
+// conversationCache, pendingResults, streamModeCalls, getConvHistory,
+// processSpeechTurn, PendingPayload, PendingResult → conversation-state.ts
 
 // Garante que fillers são gerados antes da primeira chamada real
 // (dispara em background no import do módulo)
@@ -140,9 +123,20 @@ router.post("/discagem/voice/:callId", async (req, res): Promise<void> => {
 
     getConvHistory(callId).push({ role: "assistant", text: agentText, ts: new Date().toISOString() });
 
-    const { publicHostname } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
-    const gatherAction = `${publicHostname || process.env.PUBLIC_HOSTNAME}/api/discagem/voice/${callId}/speech`;
-    res.type("text/xml").send(twimlOpeningGather(url, gatherAction));
+    const { publicHostname, deepgramApiKey } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
+    const base = publicHostname || process.env.PUBLIC_HOSTNAME || "";
+
+    if (deepgramApiKey) {
+      // ── Modo Media Streams (Deepgram STT) ─────────────────────────
+      streamModeCalls.add(callId);
+      const wsUrl = base.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+      const streamUrl = `${wsUrl}/api/discagem/media-stream/${callId}`;
+      res.type("text/xml").send(twimlOpeningStream(url, streamUrl));
+    } else {
+      // ── Modo Gather (Twilio STT fallback) ─────────────────────────
+      const gatherAction = `${base}/api/discagem/voice/${callId}/speech`;
+      res.type("text/xml").send(twimlOpeningGather(url, gatherAction));
+    }
   } catch (err: unknown) {
     console.error("[discagem-voice] Erro no TwiML inicial:", err);
     const creditApi = (err as any)?.creditError as string | undefined;
@@ -177,20 +171,8 @@ router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> =>
   const { publicHostname } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
   const base = publicHostname || process.env.PUBLIC_HOSTNAME || "";
 
-  // ── 2. Dispara IA + TTS em background (não aguarda) ─────────────
-  const history = getConvHistory(callId);
-  history.push({ role: "user", text: speechResult, ts: new Date().toISOString() });
-
-  const processingPromise: Promise<PendingPayload> = (async () => {
-    const aiResp = await runAgentTurn(history, campaign.aiModel as any, (campaign as any).agentName ?? "Willian", undefined);
-    history.push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
-    const resolvedVoiceId2 = await resolveVoiceId(campaign.ttsVoiceId, (campaign as any).agentName ?? "Willian", campaign.ttsProvider as any);
-    const { id: ttsId } = await synthesize(aiResp.text, campaign.ttsProvider as any, resolvedVoiceId2);
-    const url = await audioUrl(ttsId);
-    return { audioUrl: url, shouldEndCall: aiResp.shouldEndCall, isOptOut: aiResp.isOptOut, transferToHuman: aiResp.transferToHuman, callbackRequested: aiResp.callbackRequested, capturedEmail: aiResp.capturedEmail, history };
-  })().catch(err => ({ audioUrl: "", shouldEndCall: true, isOptOut: false, transferToHuman: false, callbackRequested: false, capturedEmail: null, history, err }));
-
-  pendingResults.set(callId, { promise: processingPromise, startedAt: Date.now() });
+  // ── 2. Dispara IA + TTS em background via conversation-state ─────
+  processSpeechTurn(callId, campaign as any, speechResult);
 
   // ── 3. Responde IMEDIATAMENTE com filler + redirect ──────────────
   // O Twilio toca o filler (~0.8s) enquanto a IA processa em paralelo.
@@ -309,8 +291,16 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
     return;
   }
 
-  const gatherAction = `${base}/api/discagem/voice/${callId}/speech`;
-  res.type("text/xml").send(twimlReplyGather(payload.audioUrl, gatherAction));
+  if (streamModeCalls.has(callId)) {
+    // ── Modo Media Streams: reconecta o stream após tocar o áudio ───
+    const wsUrl = base.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+    const streamUrl = `${wsUrl}/api/discagem/media-stream/${callId}`;
+    res.type("text/xml").send(twimlReplyStream(payload.audioUrl, streamUrl));
+  } else {
+    // ── Modo Gather: retorna ao fluxo normal de speech ───────────────
+    const gatherAction = `${base}/api/discagem/voice/${callId}/speech`;
+    res.type("text/xml").send(twimlReplyGather(payload.audioUrl, gatherAction));
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────
@@ -330,6 +320,8 @@ router.post("/discagem/status/:callId", async (req, res): Promise<void> => {
 
     const history = getConvHistory(callId);
     conversationCache.delete(callId);
+    pendingResults.delete(callId);
+    streamModeCalls.delete(callId);
     markCallInactive(callId);
 
     let newStatus = call.status;

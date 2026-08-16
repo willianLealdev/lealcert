@@ -128,6 +128,34 @@ export function twimlReplyGather(audioUrl: string, gatherAction: string): string
   `);
 }
 
+/** TwiML de abertura com Media Streams (Deepgram STT) */
+export function twimlOpeningStream(audioUrl: string, streamUrl: string): string {
+  return twimlResponse(`
+    <Play>${audioUrl}</Play>
+    <Connect>
+      <Stream url="${streamUrl}" />
+    </Connect>
+  `);
+}
+
+/** TwiML de reply com Media Streams — toca áudio e reconecta o stream */
+export function twimlReplyStream(audioUrl: string, streamUrl: string): string {
+  return twimlResponse(`
+    <Play>${audioUrl}</Play>
+    <Connect>
+      <Stream url="${streamUrl}" />
+    </Connect>
+  `);
+}
+
+/** TwiML de filler enquanto a IA processa — redireciona para /reply */
+export function twimlFillerRedirect(fillerUrl: string, replyUrl: string): string {
+  return twimlResponse(`
+    <Play>${fillerUrl}</Play>
+    <Redirect method="POST">${replyUrl}</Redirect>
+  `);
+}
+
 export function twimlHangup(audioUrl?: string): string {
   if (audioUrl) return twimlResponse(`<Play>${audioUrl}</Play><Hangup/>`);
   return twimlResponse(`<Hangup/>`);

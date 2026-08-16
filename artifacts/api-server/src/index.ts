@@ -1,7 +1,9 @@
+import http from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduler } from "./lib/scheduler";
 import { startScheduler as startDiscagemScheduler } from "./lib/discagem/scheduler";
+import { setupMediaStreamWebSocket } from "./lib/discagem/media-stream-handler";
 import { pool, db, usersTable } from "@workspace/db";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -164,7 +166,10 @@ async function main() {
 
   await seed();
 
-  app.listen(port, (err) => {
+  const server = http.createServer(app);
+  setupMediaStreamWebSocket(server);
+
+  server.listen(port, (err?: Error) => {
     if (err) {
       logger.error({ err }, "Error listening on port");
       process.exit(1);
