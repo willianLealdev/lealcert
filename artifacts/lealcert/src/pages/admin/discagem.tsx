@@ -47,6 +47,7 @@ interface CallRecord {
   aiModelUsed?: string | null; ttsProviderUsed?: string | null;
   contactEmail?: string | null; wantsFollowupEmail?: boolean;
   followupEmailSentAt?: string | null;
+  twilioCallSid?: string | null;
 }
 
 interface CampaignStatus {
@@ -736,12 +737,13 @@ export default function AdminDiscagem() {
                           <th className="text-left p-2 font-medium text-muted-foreground">Duração</th>
                           <th className="text-left p-2 font-medium text-muted-foreground">Horário</th>
                           <th className="text-left p-2 font-medium text-muted-foreground">Tent.</th>
+                          <th className="text-left p-2 font-medium text-muted-foreground">Call SID</th>
                           <th className="text-left p-2 pr-3 font-medium text-muted-foreground">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
                         {calls.length === 0 && (
-                          <tr><td colSpan={7} className="p-6 text-center text-muted-foreground text-sm">Nenhuma ligação encontrada.</td></tr>
+                          <tr><td colSpan={8} className="p-6 text-center text-muted-foreground text-sm">Nenhuma ligação encontrada.</td></tr>
                         )}
                         {calls.map(call => (
                           <tr key={call.id} className="border-t hover:bg-muted/30 transition-colors">
@@ -755,6 +757,19 @@ export default function AdminDiscagem() {
                             <td className="p-2 text-muted-foreground">{formatDuration(call.durationSeconds)}</td>
                             <td className="p-2 text-muted-foreground text-xs">{formatDate(call.startedAt)}</td>
                             <td className="p-2 text-center text-muted-foreground">{call.attemptNumber}</td>
+                            <td className="p-2">
+                              {call.twilioCallSid ? (
+                                <a
+                                  href={`https://console.twilio.com/us1/monitor/logs/calls/${call.twilioCallSid}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-mono text-xs text-primary hover:underline"
+                                  title={call.twilioCallSid}
+                                >
+                                  {call.twilioCallSid.slice(0, 12)}…
+                                </a>
+                              ) : <span className="text-muted-foreground text-xs">—</span>}
+                            </td>
                             <td className="p-2 pr-3">
                               {(call.transcript || call.recordingUrl) && (
                                 <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
@@ -1143,6 +1158,22 @@ export default function AdminDiscagem() {
                 <div><p className="text-xs text-muted-foreground">Início</p><p className="font-medium">{formatDate(viewCall.startedAt)}</p></div>
                 <div><p className="text-xs text-muted-foreground">IA usada</p><p className="font-medium">{viewCall.aiModelUsed ?? "—"}</p></div>
               </div>
+              {viewCall.twilioCallSid && (
+                <div className="rounded-lg bg-muted/40 px-3 py-2 flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Call SID (Twilio)</p>
+                    <p className="font-mono text-xs text-foreground">{viewCall.twilioCallSid}</p>
+                  </div>
+                  <a
+                    href={`https://console.twilio.com/us1/monitor/logs/calls/${viewCall.twilioCallSid}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline shrink-0"
+                  >
+                    Ver no Twilio ↗
+                  </a>
+                </div>
+              )}
 
               {/* Transcript */}
               {viewCall.transcript && (

@@ -20,6 +20,8 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "melhoria", text: "Discagem: abertura completamente reescrita — agente agora cumprimenta com 'Bom dia/Boa tarde', apresenta nome E empresa na primeira fala e pergunta 'Com quem eu falo?'" },
       { type: "melhoria", text: "Discagem: fluxo pós-nome definido — ao ouvir o nome, agente reage com cordialidade, confirma se é o responsável pelos certificados e só então apresenta o motivo da ligação" },
       { type: "fix", text: "Discagem: abertura genérica sem apresentação foi eliminada — era percebida como grossa e despreparada" },
+      { type: "melhoria", text: "Discagem: tabela de ligações agora exibe duração real e Call SID clicável (link direto para o Twilio) para análise de cada chamada" },
+      { type: "fix", text: "Discagem: duração ficava zerada quando o reconciliador fechava a call — agora busca o valor real da API do Twilio antes de salvar" },
     ],
   },
   {

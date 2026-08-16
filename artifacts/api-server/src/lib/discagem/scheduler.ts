@@ -205,8 +205,9 @@ async function reconcileStuckCalls(): Promise<void> {
         { headers: { Authorization: authHeader } }
       );
       if (!res.ok) continue;
-      const data = await res.json() as { status: string; duration?: string };
+      const data = await res.json() as { status: string; duration?: string | number };
       const twilioStatus = data.status;
+      const twilioDuration = data.duration ? parseInt(String(data.duration), 10) : null;
 
       let newStatus: string | null = null;
 
@@ -236,9 +237,13 @@ async function reconcileStuckCalls(): Promise<void> {
       }
 
       if (newStatus) {
-        console.log(`[discagem-reconcile] Call ${call.id} (${call.twilioCallSid}) → Twilio="${twilioStatus}" → marcando ${newStatus}`);
+        console.log(`[discagem-reconcile] Call ${call.id} (${call.twilioCallSid}) → Twilio="${twilioStatus}" dur=${twilioDuration}s → marcando ${newStatus}`);
         await db.update(discagemCallsTable)
-          .set({ status: newStatus as any, endedAt: new Date() })
+          .set({
+            status: newStatus as any,
+            endedAt: new Date(),
+            ...(twilioDuration !== null && twilioDuration > 0 ? { durationSeconds: twilioDuration } : {}),
+          })
           .where(eq(discagemCallsTable.id, call.id));
 
         markCallInactive(call.id);
