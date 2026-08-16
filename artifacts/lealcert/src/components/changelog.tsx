@@ -15,6 +15,15 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.37",
+    changes: [
+      { type: "melhoria", text: "Discagem: abertura completamente reescrita — agente agora cumprimenta com 'Bom dia/Boa tarde', apresenta nome E empresa na primeira fala e pergunta 'Com quem eu falo?'" },
+      { type: "melhoria", text: "Discagem: fluxo pós-nome definido — ao ouvir o nome, agente reage com cordialidade, confirma se é o responsável pelos certificados e só então apresenta o motivo da ligação" },
+      { type: "fix", text: "Discagem: abertura genérica sem apresentação foi eliminada — era percebida como grossa e despreparada" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.36",
     changes: [
       { type: "fix", text: "Discagem: tela ficava presa em 'Em conversa' após desligar — causa raiz: rota de teste não gravava started_at no banco, fazendo o reconciliador nunca encontrar a call" },
