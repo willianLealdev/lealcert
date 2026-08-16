@@ -126,6 +126,16 @@ async function callOpenAI(turns: ConversationTurn[], systemPrompt: string, apiKe
   return response.choices[0]?.message?.content ?? "";
 }
 
+// ── Remove fillers robóticos do início da resposta ───────────────
+// O modelo às vezes ignora a regra do prompt — aqui garantimos em código.
+const FILLER_PATTERN = /^(claro[,!.]?\s*|com certeza[,!.]?\s*|perfeito[,!.]?\s*|ótimo[,!.]?\s*|excelente[,!.]?\s*|com prazer[,!.]?\s*|entendido[,!.]?\s*|entendo[,!.]?\s*|certo[,!.]?\s*|ok[,!.]?\s*|okay[,!.]?\s*|sim[,!.]?\s*|ah[,!.]?\s*|hmm[,!.]?\s*|ah sim[,!.]?\s*|que bom[,!.]?\s*|que ótimo[,!.]?\s*|maravilha[,!.]?\s*)+/i;
+
+function stripOpeningFiller(text: string): string {
+  const stripped = text.replace(FILLER_PATTERN, "").trim();
+  // Se após remover ficou vazio (filler era a resposta inteira), mantém o original
+  return stripped.length > 0 ? stripped : text.trim();
+}
+
 // ── Entrada principal com fallback ───────────────────────────────
 export async function runAgentTurn(
   turns: ConversationTurn[],
@@ -203,10 +213,13 @@ export async function runAgentTurn(
       const capturedEmail = emailMatch ? emailMatch[1].trim() : null;
 
       // Remove todos os comandos internos do texto falado
-      const cleanText = text
+      const strippedCommands = text
         .replace(/\[(ENCERRAR|FIM|OPTOUT|TRANSFERIR_HUMANO|SOLICITAR_CALLBACK_HUMANO)\]/gi, "")
         .replace(/\[REGISTRAR_EMAIL:[^\]]+\]/gi, "")
         .trim();
+
+      // Remove fillers robóticos do início da resposta (o modelo às vezes ignora a regra do prompt)
+      const cleanText = stripOpeningFiller(strippedCommands);
 
       return { text: cleanText, shouldEndCall, isOptOut, transferToHuman, callbackRequested, modelUsed: model, capturedEmail };
 

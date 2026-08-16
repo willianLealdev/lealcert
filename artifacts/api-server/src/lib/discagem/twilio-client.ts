@@ -112,7 +112,7 @@ export function twimlOpeningGather(audioUrl: string, gatherAction: string): stri
   return twimlResponse(`
     <Play>${audioUrl}</Play>
     <Gather input="speech" action="${gatherAction}" method="POST"
-      timeout="8" speechTimeout="auto" language="pt-BR">
+      timeout="8" speechTimeout="1" language="pt-BR" speechModel="phone_call">
     </Gather>
     <Redirect method="POST">${gatherAction}?hangup=1</Redirect>
   `);
@@ -122,7 +122,7 @@ export function twimlReplyGather(audioUrl: string, gatherAction: string): string
   return twimlResponse(`
     <Play>${audioUrl}</Play>
     <Gather input="speech" action="${gatherAction}" method="POST"
-      timeout="8" speechTimeout="auto" language="pt-BR">
+      timeout="8" speechTimeout="1" language="pt-BR" speechModel="phone_call">
     </Gather>
     <Redirect method="POST">${gatherAction}?hangup=1</Redirect>
   `);
