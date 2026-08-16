@@ -11,6 +11,7 @@ import { db, pool } from "@workspace/db";
 import { discagemCampaignsTable, discagemCallsTable, marketingContactsTable } from "@workspace/db";
 import { initiateCall, hangupCall } from "./twilio-client";
 import { getDiscagemSettings } from "./settings-reader";
+import { preGenerateOpening } from "./opening-pregenerate";
 import { detectCreditError } from "./ai-agent";
 import {
   DISCAGEM_TIMEZONE,
@@ -111,6 +112,9 @@ async function fireCall(
       .where(eq(discagemCallsTable.id, callRecord.callId));
 
     markCallActive(callRecord.callId);
+
+    // Pré-gera áudio de abertura antes de ligar (elimina silêncio quando a pessoa atender)
+    await preGenerateOpening(callRecord.callId, campaign);
 
     const twilioSid = await initiateCall({
       to: callRecord.phone,

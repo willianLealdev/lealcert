@@ -35,6 +35,7 @@ import {
 import { requireAdmin } from "../middlewares/auth";
 import { runAgentTurn, detectCreditError } from "../lib/discagem/ai-agent";
 import { synthesize, audioUrl, TMP_AUDIO_DIR } from "../lib/discagem/tts";
+import { resolveVoiceId, consumePreGeneratedOpening, preGenerateOpening } from "../lib/discagem/opening-pregenerate";
 import { invalidateDiscagemSettingsCache, getDiscagemSettings } from "../lib/discagem/settings-reader";
 import { getFillerUrl, initFillerAudio } from "../lib/discagem/filler-audio";
 import {
@@ -65,26 +66,7 @@ function normalizeDdd(v: string | string[] | null | undefined): string | null {
   return cleaned.length > 0 ? cleaned.join(",") : null;
 }
 
-// ─── Resolve o voice ID correto por agente ────────────────────────
-// Prioridade: ttsVoiceId da campanha > ID do agente nas settings > fallback global nas settings
-async function resolveVoiceId(
-  campaignVoiceId: string | null | undefined,
-  agentName: string,
-  provider: "cartesia" | "elevenlabs",
-): Promise<string | undefined> {
-  if (campaignVoiceId) return campaignVoiceId;
-  const cfg = await getDiscagemSettings();
-  const name = (agentName ?? "Willian").toLowerCase();
-  if (provider === "cartesia") {
-    if (name === "willian") return cfg.willianCartesiaVoiceId || cfg.cartesiaVoiceId;
-    if (name === "aline")   return cfg.alineCartesiaVoiceId   || cfg.cartesiaVoiceId;
-    return cfg.cartesiaVoiceId;
-  } else {
-    if (name === "willian") return cfg.willianElevenlabsVoiceId || cfg.elevenlabsVoiceId;
-    if (name === "aline")   return cfg.alineElevenlabsVoiceId   || cfg.elevenlabsVoiceId;
-    return cfg.elevenlabsVoiceId;
-  }
-}
+// resolveVoiceId e preGenerateOpening vivem em opening-pregenerate.ts
 
 // ─── Mapa em memória: callId → histórico de conversa ─────────────
 const conversationCache = new Map<number, { role: "user" | "assistant"; text: string; ts: string }[]>();
@@ -137,16 +119,26 @@ router.post("/discagem/voice/:callId", async (req, res): Promise<void> => {
       .set({ status: "in_progress", startedAt: sql`COALESCE(started_at, NOW())` })
       .where(eq(discagemCallsTable.id, callId));
 
-    // Gera abertura da conversa via IA
-    const openingHistory = [{ role: "user" as const, text: "[INÍCIO DA LIGAÇÃO]", ts: new Date().toISOString() }];
-    const aiResp = await runAgentTurn(openingHistory, campaign.aiModel as any, (campaign as any).agentName ?? "Willian", undefined);
+    // Usa áudio pré-gerado (sem silêncio) ou gera on-demand como fallback
+    const preGen = consumePreGeneratedOpening(callId);
+    let url: string;
+    let agentText: string;
 
-    getConvHistory(callId).push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
+    if (preGen) {
+      url = preGen.audioUrl;
+      agentText = preGen.agentText;
+      console.info(`[discagem-voice] Usando opening pré-gerado callId=${callId}`);
+    } else {
+      console.info(`[discagem-voice] Gerando opening on-demand callId=${callId}`);
+      const openingHistory = [{ role: "user" as const, text: "[INÍCIO DA LIGAÇÃO]", ts: new Date().toISOString() }];
+      const aiResp = await runAgentTurn(openingHistory, campaign.aiModel as any, (campaign as any).agentName ?? "Willian", undefined);
+      agentText = aiResp.text;
+      const resolvedVoiceId = await resolveVoiceId(campaign.ttsVoiceId, (campaign as any).agentName ?? "Willian", campaign.ttsProvider as any);
+      const { id: ttsId } = await synthesize(agentText, campaign.ttsProvider as any, resolvedVoiceId);
+      url = await audioUrl(ttsId);
+    }
 
-    // Gera áudio da abertura
-    const resolvedVoiceId = await resolveVoiceId(campaign.ttsVoiceId, (campaign as any).agentName ?? "Willian", campaign.ttsProvider as any);
-    const { id: ttsId, providerUsed: ttsUsed } = await synthesize(aiResp.text, campaign.ttsProvider as any, resolvedVoiceId);
-    const url = await audioUrl(ttsId);
+    getConvHistory(callId).push({ role: "assistant", text: agentText, ts: new Date().toISOString() });
 
     const { publicHostname } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
     const gatherAction = `${publicHostname || process.env.PUBLIC_HOSTNAME}/api/discagem/voice/${callId}/speech`;
@@ -803,6 +795,8 @@ router.post("/admin/discagem/test-call", requireAdmin, async (req, res): Promise
 
   try {
     const { publicHostname } = await getDiscagemSettings();
+    // Pré-gera áudio de abertura antes de ligar (elimina silêncio quando a pessoa atender)
+    await preGenerateOpening(call.id, camp);
     const twilioSid = await initiateCall({
       to: phoneNumber,
       callbackBaseUrl: `${publicHostname || process.env.PUBLIC_HOSTNAME || ""}/api/discagem`,
