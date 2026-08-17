@@ -1,10 +1,13 @@
 /**
  * Text-to-Speech com fallback automático entre Cartesia e ElevenLabs.
  * Ordem configurada em Settings → Discagem → "Prioridade TTS".
+ *
+ * synthesizeMulawBuffer() → buffer mulaw 8kHz para streaming via WebSocket Twilio.
  */
 
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import crypto from "node:crypto";
 import { getDiscagemSettings } from "./settings-reader";
@@ -19,6 +22,32 @@ async function ensureDir() {
 
 function audioId(): string {
   return crypto.randomBytes(12).toString("hex");
+}
+
+// ── Conversão MP3 → mulaw 8kHz via ffmpeg ────────────────────────
+export async function mp3ToMulaw(mp3Buffer: Buffer): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const ff = spawn("ffmpeg", [
+      "-i", "pipe:0",
+      "-ar", "8000",
+      "-ac", "1",
+      "-f", "mulaw",
+      "pipe:1",
+    ]);
+    const chunks: Buffer[] = [];
+    ff.stdout.on("data", (c: Buffer) => chunks.push(c));
+    ff.stdout.on("end", () => resolve(Buffer.concat(chunks)));
+    ff.stderr.on("data", () => {}); // ffmpeg logs stderr — suprimir
+    ff.on("error", reject);
+    ff.stdin.write(mp3Buffer);
+    ff.stdin.end();
+  });
+}
+
+/** Converte arquivo MP3 salvo em disco para buffer mulaw 8kHz */
+export async function mp3FileToMulaw(mp3Path: string): Promise<Buffer> {
+  const mp3Buffer = await readFile(mp3Path);
+  return mp3ToMulaw(mp3Buffer);
 }
 
 // ── Cartesia ─────────────────────────────────────────────────────
@@ -55,7 +84,7 @@ async function synthesizeCartesia(text: string, apiKey: string, voiceId: string)
   return id;
 }
 
-// ── ElevenLabs ───────────────────────────────────────────────────
+// ── ElevenLabs (MP3) ─────────────────────────────────────────────
 async function synthesizeElevenLabs(text: string, apiKey: string, voiceId: string): Promise<string> {
   const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
     method: "POST",
@@ -83,10 +112,38 @@ async function synthesizeElevenLabs(text: string, apiKey: string, voiceId: strin
   return id;
 }
 
+// ── ElevenLabs (mulaw 8kHz direto) ───────────────────────────────
+async function synthesizeElevenLabsMulaw(text: string, apiKey: string, voiceId: string): Promise<Buffer> {
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=ulaw_8000`,
+    {
+      method: "POST",
+      headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    if (res.status === 401 || res.status === 402 || err.toLowerCase().includes("credit") || err.toLowerCase().includes("quota")) {
+      const e = new Error(`CREDIT_ERROR: ElevenLabs — ${err}`);
+      (e as any).creditError = "ELEVENLABS";
+      throw e;
+    }
+    throw new Error(`ElevenLabs mulaw error ${res.status}: ${err}`);
+  }
+
+  return Buffer.from(await res.arrayBuffer());
+}
+
 // ── Interface pública com fallback ────────────────────────────────
 export async function synthesize(
   text: string,
-  preferredProvider: TtsProvider = "cartesia",
+  preferredProvider: TtsProvider = "elevenlabs",
   voiceIdOverride?: string,
 ): Promise<{ id: string; providerUsed: TtsProvider }> {
   const cfg = await getDiscagemSettings();
@@ -140,6 +197,37 @@ export async function synthesize(
   const e = new Error("CREDIT_ERROR: Todos os provedores TTS sem crédito ou sem chave configurada");
   (e as any).creditError = "ALL_TTS";
   throw e;
+}
+
+/**
+ * Síntese direta em mulaw 8kHz — para streaming de saída via WebSocket Twilio.
+ * Tenta ElevenLabs (output nativo ulaw_8000) e converte via ffmpeg como fallback.
+ */
+export async function synthesizeMulawBuffer(
+  text: string,
+  preferredProvider: TtsProvider = "elevenlabs",
+  voiceIdOverride?: string,
+): Promise<Buffer> {
+  const cfg = await getDiscagemSettings();
+
+  // Prioridade: ElevenLabs com saída nativa ulaw_8000 (sem conversão)
+  if (cfg.elevenlabsApiKey) {
+    const vid = voiceIdOverride || cfg.elevenlabsVoiceId;
+    if (vid) {
+      try {
+        const buf = await synthesizeElevenLabsMulaw(text, cfg.elevenlabsApiKey, vid);
+        console.info(`[tts] mulaw via ElevenLabs nativo (${buf.length} bytes)`);
+        return buf;
+      } catch (e) {
+        console.warn("[tts] ElevenLabs mulaw nativo falhou, convertendo via ffmpeg:", (e as Error).message);
+      }
+    }
+  }
+
+  // Fallback: gera MP3 via qualquer provider e converte com ffmpeg
+  const { id } = await synthesize(text, preferredProvider, voiceIdOverride);
+  const mp3Path = path.join(TMP_AUDIO_DIR, `${id}.mp3`);
+  return mp3FileToMulaw(mp3Path);
 }
 
 /** URL pública do áudio para usar no TwiML <Play> */

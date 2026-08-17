@@ -15,6 +15,17 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.45",
+    changes: [
+      { type: "fix", text: "Discagem IA: eliminados os sons 'amham/hmm' — eram fillers de áudio tocados enquanto a IA processava; frases trocadas por respostas neutras sem sons guturais" },
+      { type: "fix", text: "Discagem IA: barge-in real implementado — stream WebSocket agora é bidirecional (track=both_tracks); ao detectar fala do usuário durante reprodução do agente, envia evento 'clear' ao Twilio e interrompe imediatamente; conversa agora funciona com interrupção natural" },
+      { type: "fix", text: "Discagem IA: período de graça de 3s após início do stream + 1.5s após cada fala do agente — elimina eco do TTS disparando o handler de silêncio" },
+      { type: "fix", text: "Discagem IA: abordagem simplificada — após confirmar o interlocutor, vai direto ao pedido de 2 minutos; se recusar, oferece e-mail; se recusar também, encerra com elegância; sem interrogatório de diagnóstico antes do 'sim'" },
+      { type: "fix", text: "Discagem IA: ttsProvider default corrigido em conversation-state.ts (estava 'cartesia' hardcoded, agora 'elevenlabs')" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.44",
     changes: [
       { type: "fix", text: "Discagem IA: transcrição das ligações sumia quando o servidor reiniciava — o histórico da conversa ficava só em memória (conversationCache) e era perdido. Agora o transcript é salvo no banco a cada turno concluído (cada vez que /reply serve o áudio), então o botão 'Ver' aparece imediatamente após o primeiro turno e sobrevive a qualquer restart do servidor" },

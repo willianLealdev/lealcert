@@ -152,22 +152,30 @@ export function twimlReplyGather(audioUrl: string, gatherAction: string): string
   `);
 }
 
-/** TwiML de abertura com Media Streams (Deepgram STT) */
+/**
+ * TwiML de abertura com Media Streams bidirecional.
+ * track="both_tracks" permite que o servidor envie áudio de saída (outbound)
+ * pelo WebSocket — essencial para barge-in real (interrupção do agente).
+ */
 export function twimlOpeningStream(audioUrl: string, streamUrl: string): string {
   return twimlResponse(`
     <Play>${audioUrl}</Play>
     <Connect>
-      <Stream url="${streamUrl}" />
+      <Stream url="${streamUrl}" track="both_tracks" />
     </Connect>
   `);
 }
 
-/** TwiML de reply com Media Streams — toca áudio e reconecta o stream */
+/**
+ * TwiML de reply com Media Streams bidirecional.
+ * Em modo stream, /reply é chamado só em fallback — o handler bidirecional
+ * normalmente mantém o stream aberto sem redirect.
+ */
 export function twimlReplyStream(audioUrl: string, streamUrl: string): string {
   return twimlResponse(`
     <Play>${audioUrl}</Play>
     <Connect>
-      <Stream url="${streamUrl}" />
+      <Stream url="${streamUrl}" track="both_tracks" />
     </Connect>
   `);
 }

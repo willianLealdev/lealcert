@@ -1,46 +1,57 @@
 /**
- * Twilio Media Streams + Deepgram — streaming STT em tempo real.
+ * Twilio Media Streams + Deepgram — streaming STT bidirecional em tempo real.
  *
- * Fluxo por turno:
- * 1. Twilio envia áudio raw (mulaw 8kHz) via WebSocket
- * 2. Forwarda para Deepgram streaming
- * 3. Deepgram detecta fim de fala (endpointing ~500ms de silêncio)
- * 4. Dispara pipeline IA+TTS em background (via processSpeechTurn)
- * 5. Redireciona a call Twilio para /reply (que já tem filler retry logic)
- * 6. /reply toca o áudio e reconecta o stream para o próximo turno
+ * Arquitetura persistente (v2):
+ * 1. Stream abre com track="both_tracks" e FICA ABERTO durante toda a call
+ * 2. Áudio do agente é enviado como frames mulaw via WebSocket outbound
+ *    → permite barge-in real: ao detectar fala do usuário, envia `clear` e para
+ * 3. Deepgram roda continuamente com interim_results=true para detectar fala
+ *    o mais cedo possível
+ * 4. Sem redirecionamentos entre turnos — elimina o eco e os sons de "amham"
  */
 
 import { WebSocket, WebSocketServer } from "ws";
 import type { Server, IncomingMessage } from "http";
+import path from "node:path";
 import { db } from "@workspace/db";
-import { discagemCallsTable, discagemCampaignsTable } from "@workspace/db";
+import {
+  discagemCallsTable,
+  discagemCampaignsTable,
+  marketingContactsTable,
+} from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getDiscagemSettings } from "./settings-reader";
-import { processSpeechTurn, streamModeCalls } from "./conversation-state";
-import { getFillerUrl } from "./filler-audio";
+import {
+  pendingResults, streamModeCalls,
+  getConvHistory, processSpeechTurn,
+  type PendingPayload,
+} from "./conversation-state";
+import { getFillerMulawBuffer } from "./filler-audio";
+import { mp3FileToMulaw, TMP_AUDIO_DIR } from "./tts";
+import { pauseCampaignForCredit } from "./scheduler";
+import { hangupCall } from "./twilio-client";
 
-// ── Redireciona a call Twilio via URL TwiML ───────────────────────
-async function redirectTwilioCall(
-  twilioSid: string,
-  accountSid: string,
-  authToken: string,
-  payload: { url: string } | { twiml: string },
-): Promise<void> {
-  const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-  const body = "url" in payload
-    ? new URLSearchParams({ Url: payload.url, Method: "POST" })
-    : new URLSearchParams({ Twiml: payload.twiml });
-  const resp = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${twilioSid}.json`,
-    {
-      method: "POST",
-      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
-    },
-  );
-  if (!resp.ok) {
-    const txt = await resp.text();
-    console.warn(`[media-stream] redirectTwilioCall falhou (${resp.status}): ${txt}`);
+// ── Envia frames mulaw via WebSocket outbound (Twilio track="both_tracks") ──
+function sendMulawOutbound(ws: WebSocket, streamSid: string, buffer: Buffer): void {
+  // Envia em blocos de 3200 bytes ≈ 400ms — evita saturar o buffer do WS
+  const CHUNK = 3200;
+  for (let i = 0; i < buffer.length; i += CHUNK) {
+    if (ws.readyState !== WebSocket.OPEN) break;
+    ws.send(JSON.stringify({
+      event: "media",
+      streamSid,
+      media: {
+        track: "outbound",
+        payload: buffer.slice(i, Math.min(i + CHUNK, buffer.length)).toString("base64"),
+      },
+    }));
+  }
+}
+
+// ── Para o áudio outbound imediatamente ──────────────────────────
+function clearOutbound(ws: WebSocket, streamSid: string): void {
+  if (ws.readyState === WebSocket.OPEN && streamSid) {
+    ws.send(JSON.stringify({ event: "clear", streamSid }));
   }
 }
 
@@ -48,7 +59,6 @@ async function redirectTwilioCall(
 export function setupMediaStreamWebSocket(server: Server): void {
   const wss = new WebSocketServer({ noServer: true });
 
-  // Intercepta upgrade HTTP → WebSocket apenas no path correto
   server.on("upgrade", (req: IncomingMessage, socket, head) => {
     const url = req.url ?? "";
     if (!url.startsWith("/api/discagem/media-stream/")) {
@@ -68,172 +78,285 @@ export function setupMediaStreamWebSocket(server: Server): void {
     const callId = parseInt(match[1], 10);
     if (isNaN(callId)) { ws.close(); return; }
 
+    let streamSid = "";
     let twilioCallSid = "";
     let deepgramWs: WebSocket | null = null;
-    let isProcessing = false; // impede double-trigger por turno
-    let silenceTimer: ReturnType<typeof setTimeout> | null = null;
-    let emptyTranscriptCount = 0; // quantas vezes speech_final veio vazio seguido
 
-    // ── Conecta ao Deepgram streaming ──────────────────────────────
+    // ── Estado de controle por turno ──────────────────────────────
+    let isProcessing = false;    // IA+TTS rodando
+    let isTtsPlaying = false;    // enviando áudio outbound agora
+    let bargeInResolve: (() => void) | null = null; // resolve quando user interrompe
+    let silenceTimer: ReturnType<typeof setTimeout> | null = null;
+    let emptyTranscriptCount = 0;
+    let gracePeriod = true;      // 3s após stream abrir — ignora eco do TTS anterior
+
     const cfg = await getDiscagemSettings().catch(() => null);
     if (!cfg?.deepgramApiKey) {
-      console.warn(`[media-stream] callId=${callId} Deepgram API key ausente — fechando stream`);
+      console.warn(`[media-stream] callId=${callId} Deepgram API key ausente`);
       ws.close();
       return;
     }
 
-    // Parâmetros validados para Deepgram streaming com mulaw 8kHz
-    // Nota: utterance_end_ms requer interim_results=true — usamos só endpointing
+    const { twilioAccountSid, twilioAuthToken } = cfg;
+
+    // ── Carrega call e campanha uma vez ───────────────────────────
+    const [callRow] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
+    const [campaignRow] = callRow?.campaignId
+      ? await db.select().from(discagemCampaignsTable).where(eq(discagemCampaignsTable.id, callRow.campaignId))
+      : [null];
+
+    if (!callRow || !campaignRow) {
+      console.warn(`[media-stream] callId=${callId} call/campaign não encontrado`);
+      ws.close();
+      return;
+    }
+
+    // ── Deepgram com interim_results para barge-in precoce ────────
     const dgUrl = "wss://api.deepgram.com/v1/listen?" + new URLSearchParams({
       encoding:        "mulaw",
       sample_rate:     "8000",
       model:           "nova-2",
       language:        "pt-BR",
       punctuate:       "true",
-      endpointing:     "500",   // 500ms de silêncio = fim de fala → speech_final=true
-      interim_results: "false", // só resultados finais (menor tráfego)
+      endpointing:     "400",          // 400ms silêncio = fim de fala
+      interim_results: "true",         // detecção precoce para barge-in
     }).toString();
 
     deepgramWs = new WebSocket(dgUrl, {
       headers: { Authorization: `Token ${cfg.deepgramApiKey}` },
     });
 
-    const { twilioAccountSid, twilioAuthToken } = cfg;
-
-    // Fallback para Gather se o Deepgram não conectar
-    async function fallbackToGather(reason: string): Promise<void> {
-      console.warn(`[media-stream] Fallback para Gather callId=${callId} — motivo: ${reason}`);
-      streamModeCalls.delete(callId);
-      const base = cfg.publicHostname || process.env.PUBLIC_HOSTNAME || "";
-      const gatherUrl = `${base}/api/discagem/voice/${callId}/speech-gather-fallback`;
-      const [call] = await db.select({ twilioCallSid: discagemCallsTable.twilioCallSid })
-        .from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
-      const sid = twilioCallSid || call?.twilioCallSid;
-      if (sid && twilioAccountSid && twilioAuthToken) {
-        await redirectTwilioCall(sid, twilioAccountSid, twilioAuthToken, { url: gatherUrl });
+    // ── Hangup via REST API Twilio ────────────────────────────────
+    async function hangupViaRest(): Promise<void> {
+      const sid = twilioCallSid || callRow.twilioCallSid;
+      if (sid) {
+        await hangupCall(sid).catch(e =>
+          console.warn(`[media-stream] hangup falhou callId=${callId}:`, e.message),
+        );
       }
     }
 
-    // ── Handler de silêncio / fala incompreensível ─────────────────
-    // Chamado quando: (a) timeout de 20s sem nenhum transcript, ou
-    // (b) speech_final com transcript vazio 2+ vezes seguidas.
-    // Injeta "[SEM_VOZ]" no pipeline para que a IA responda naturalmente.
-    async function handleSilenceOrEmpty(): Promise<void> {
+    // ── Salva status final da call ────────────────────────────────
+    async function saveCallEnd(result: PendingPayload): Promise<void> {
+      const allEmails = result.history
+        .filter(t => t.role === "assistant")
+        .map(t => { const m = t.text.match(/\[REGISTRAR_EMAIL:([^\]]+)\]/i); return m ? m[1].trim() : null; })
+        .filter(Boolean);
+      const capturedEmail = result.capturedEmail ?? allEmails.at(-1) ?? null;
+
+      const outcome = result.isOptOut        ? "optout"
+                    : result.transferToHuman ? "transferred"
+                    : result.callbackRequested ? "callback_requested"
+                    : "answered";
+
+      await db.update(discagemCallsTable).set({
+        status: result.isOptOut ? "optout" : "answered",
+        outcome,
+        transcript: result.history.length > 0 ? JSON.stringify(result.history) : undefined,
+        ...(capturedEmail ? { contactEmail: capturedEmail, wantsFollowupEmail: true } : {}),
+      }).where(eq(discagemCallsTable.id, callId)).catch(() => {});
+
+      if (result.isOptOut && callRow.contactId) {
+        await db.update(marketingContactsTable)
+          .set({ status: "optout" })
+          .where(eq(marketingContactsTable.id, callRow.contactId))
+          .catch(() => {});
+      }
+    }
+
+    // ── Toca áudio mulaw via outbound + aguarda conclusão ou barge-in ─
+    async function playMulaw(buffer: Buffer, label: string): Promise<"done" | "bargedIn"> {
+      if (!streamSid || ws.readyState !== WebSocket.OPEN) return "done";
+      isTtsPlaying = true;
+      sendMulawOutbound(ws, streamSid, buffer);
+
+      // Duração aproximada + 400ms de buffer para Twilio esvaziar a fila
+      const durationMs = Math.ceil((buffer.length / 8000) * 1000) + 400;
+
+      return new Promise<"done" | "bargedIn">((resolve) => {
+        const timer = setTimeout(() => {
+          bargeInResolve = null;
+          isTtsPlaying = false;
+          resolve("done");
+        }, durationMs);
+
+        bargeInResolve = () => {
+          clearTimeout(timer);
+          bargeInResolve = null;
+          isTtsPlaying = false;
+          resolve("bargedIn");
+        };
+      });
+    }
+
+    // ── Processamento completo de um turno (user speech → IA → TTS) ─
+    async function processTurn(transcript: string): Promise<void> {
       if (isProcessing) return;
       isProcessing = true;
-      silenceTimer = null;
-      console.info(`[media-stream] Silêncio/vazio detectado callId=${callId} — injetando [SEM_VOZ]`);
 
-      const [call] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
-      if (!call) return;
-      const [campaign] = await db.select().from(discagemCampaignsTable).where(eq(discagemCampaignsTable.id, call.campaignId!));
-      if (!campaign) return;
+      console.info(`[media-stream] Turno callId=${callId}: "${transcript}"`);
 
-      // Dispara IA com input especial de silêncio
-      processSpeechTurn(callId, campaign as any, "[SEM_VOZ]");
+      // Dispara pipeline IA+TTS em background
+      processSpeechTurn(callId, campaignRow as any, transcript);
 
-      const base = cfg.publicHostname || process.env.PUBLIC_HOSTNAME || "";
-      const replyUrl = `${base}/api/discagem/voice/${callId}/reply?attempt=1`;
-      const sid = twilioCallSid || call.twilioCallSid;
-      if (sid && twilioAccountSid && twilioAuthToken) {
-        const fillerUrl = await getFillerUrl("thinking");
-        const twiml = fillerUrl
-          ? `<?xml version="1.0" encoding="UTF-8"?><Response><Play>${fillerUrl}</Play><Redirect method="POST">${replyUrl}</Redirect></Response>`
-          : `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect method="POST">${replyUrl}</Redirect></Response>`;
-        await redirectTwilioCall(sid, twilioAccountSid, twilioAuthToken, { twiml });
+      // Aguarda resultado (Promise armazenada em pendingResults)
+      const pending = pendingResults.get(callId);
+      if (!pending) {
+        console.warn(`[media-stream] pendingResults vazio callId=${callId} — ignorando turno`);
+        isProcessing = false;
+        return;
       }
 
-      deepgramWs?.close();
+      // Toca filler enquanto IA processa (sem bloquear o await abaixo)
+      const fillerProm = getFillerMulawBuffer("thinking").then(async (filler) => {
+        if (filler && streamSid && ws.readyState === WebSocket.OPEN && isTtsPlaying === false) {
+          await playMulaw(filler, "filler");
+        }
+      }).catch(() => {});
+
+      const result = await pending.promise;
+      pendingResults.delete(callId);
+
+      // Para o filler imediatamente (se ainda tocando)
+      clearOutbound(ws, streamSid);
+      isTtsPlaying = false;
+      if (bargeInResolve) { bargeInResolve(); }
+
+      // Aguarda resolução do fillerProm para evitar race
+      await fillerProm.catch(() => {});
+
+      // Salva transcript parcial a cada turno
+      if (result.history.length > 0) {
+        await db.update(discagemCallsTable).set({
+          transcript: JSON.stringify(result.history),
+        }).where(eq(discagemCallsTable.id, callId)).catch(() => {});
+      }
+
+      // Trata erro de crédito
+      if (result.err) {
+        const creditApi = (result.err as any)?.creditError as string | undefined;
+        if (creditApi && callRow.campaignId) {
+          await pauseCampaignForCredit(callRow.campaignId, creditApi, (result.err as Error).message);
+        }
+        await hangupViaRest();
+        deepgramWs?.close();
+        return;
+      }
+
+      // Toca a resposta da IA via outbound mulaw
+      if (result.audioUrl && ws.readyState === WebSocket.OPEN) {
+        const audioId = result.audioUrl.split("/").at(-1)!;
+        const mp3Path = path.join(TMP_AUDIO_DIR, `${audioId}.mp3`);
+        try {
+          const mulawBuf = await mp3FileToMulaw(mp3Path);
+
+          // Adiciona período de graça após TTS para evitar que eco dispare próximo turno
+          gracePeriod = true;
+          const outcome = await playMulaw(mulawBuf, "response");
+          // Grace period de 1.5s após áudio para absorver eco da linha telefônica
+          setTimeout(() => { gracePeriod = false; }, 1500);
+
+          if (outcome === "bargedIn") {
+            console.info(`[media-stream] Barge-in callId=${callId} — usuário interrompeu`);
+          }
+        } catch (err) {
+          console.error(`[media-stream] Erro ao converter/enviar TTS callId=${callId}:`, err);
+          gracePeriod = false;
+        }
+      }
+
+      // Encerra a call se IA decidiu
+      if (result.shouldEndCall) {
+        await saveCallEnd(result);
+        await hangupViaRest();
+        deepgramWs?.close();
+        return;
+      }
+
+      // Pronto para o próximo turno
+      isProcessing = false;
+      resetSilenceTimer();
     }
 
-    // Inicia o timer de silêncio — será (re)iniciado em cada turno de stream
+    // ── Timer de silêncio — só ativa fora do período de graça ─────
     function resetSilenceTimer(): void {
       if (silenceTimer) clearTimeout(silenceTimer);
-      // 20 segundos sem fala → age como silêncio
-      silenceTimer = setTimeout(() => handleSilenceOrEmpty().catch(() => {}), 20_000);
+      silenceTimer = setTimeout(() => {
+        if (!isProcessing && !isTtsPlaying && !gracePeriod) {
+          processTurn("[SEM_VOZ]").catch(() => {});
+        }
+      }, 20_000);
     }
 
+    // ── Evento de silêncio/vazio detectado pelo Deepgram ─────────
+    async function handleSilenceOrEmpty(): Promise<void> {
+      if (isProcessing || isTtsPlaying || gracePeriod) return;
+      await processTurn("[SEM_VOZ]");
+    }
+
+    // ── Handler de mensagens do Deepgram ──────────────────────────
     deepgramWs.on("open", () => {
       console.info(`[media-stream] Deepgram conectado callId=${callId}`);
-      resetSilenceTimer(); // começa a contar ao abrir a stream
+      // Período de graça de 3s após conectar para absorver eco do áudio de abertura
+      gracePeriod = true;
+      setTimeout(() => {
+        gracePeriod = false;
+        resetSilenceTimer();
+      }, 3000);
     });
 
     deepgramWs.on("message", async (data: Buffer) => {
-      if (isProcessing) return;
       try {
         const msg = JSON.parse(data.toString());
+        if (msg.type !== "Results") return;
 
-        // speech_final=true = Deepgram detectou fim de fala via endpointing
-        const isSpeechFinal = msg.type === "Results" && msg.speech_final === true;
+        const transcript: string = (msg.channel?.alternatives?.[0]?.transcript ?? "").trim();
+        const isSpeechFinal = msg.speech_final === true;
+        const isInterim = msg.is_final === false; // resultado parcial (interim)
+
+        // ── Barge-in: user falou enquanto agente tocava áudio ────
+        if (transcript && isTtsPlaying && (isInterim || isSpeechFinal)) {
+          console.info(`[media-stream] Barge-in detectado callId=${callId}: "${transcript}"`);
+          clearOutbound(ws, streamSid);
+          isTtsPlaying = false;
+          if (bargeInResolve) { bargeInResolve(); bargeInResolve = null; }
+        }
+
+        // Ignora interims sem barge-in (só speech_final processa o turno)
         if (!isSpeechFinal) return;
 
-        const transcript: string = (
-          msg.channel?.alternatives?.[0]?.transcript ?? ""
-        ).trim();
-
-        if (!transcript) {
-          // Deepgram disparou speech_final mas sem palavras (ruído/murmúrio/voz baixa)
-          emptyTranscriptCount++;
-          console.info(`[media-stream] Transcript vazio callId=${callId} (${emptyTranscriptCount}x) — aguardando mais fala`);
-          // Na 2ª vez consecutiva sem conteúdo, trata como silêncio e age
-          if (emptyTranscriptCount >= 2) {
-            await handleSilenceOrEmpty();
-          }
-          // Senão, reseta o timer para dar mais 20s de chance
-          resetSilenceTimer();
+        // Ignora eventos durante período de graça (eco do TTS)
+        if (gracePeriod) {
+          console.info(`[media-stream] Ignorado (grace period) callId=${callId}: "${transcript}"`);
           return;
         }
 
-        // Transcript válido — cancela timer de silêncio e reseta contadores
-        if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
-        emptyTranscriptCount = 0;
-        isProcessing = true;
-
-        console.info(`[media-stream] Transcript callId=${callId}: "${transcript}"`);
-
-        // Busca call e campanha
-        const [call] = await db
-          .select()
-          .from(discagemCallsTable)
-          .where(eq(discagemCallsTable.id, callId));
-        if (!call) return;
-
-        const [campaign] = await db
-          .select()
-          .from(discagemCampaignsTable)
-          .where(eq(discagemCampaignsTable.id, call.campaignId!));
-        if (!campaign) return;
-
-        // Dispara IA+TTS em background
-        processSpeechTurn(callId, campaign as any, transcript);
-
-        // Redireciona a call Twilio com filler inline para eliminar silêncio
-        // Twilio toca o filler (~0.8s) enquanto a IA processa em paralelo
-        const base = cfg.publicHostname || process.env.PUBLIC_HOSTNAME || "";
-        const replyUrl = `${base}/api/discagem/voice/${callId}/reply?attempt=1`;
-        const sid = twilioCallSid || call.twilioCallSid;
-
-        if (sid && twilioAccountSid && twilioAuthToken) {
-          const fillerUrl = await getFillerUrl(transcript.length > 40 ? "thinking" : "ack");
-          const twiml = fillerUrl
-            ? `<?xml version="1.0" encoding="UTF-8"?><Response><Play>${fillerUrl}</Play><Redirect method="POST">${replyUrl}</Redirect></Response>`
-            : `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect method="POST">${replyUrl}</Redirect></Response>`;
-          await redirectTwilioCall(sid, twilioAccountSid, twilioAuthToken, { twiml });
+        if (!transcript) {
+          emptyTranscriptCount++;
+          console.info(`[media-stream] Transcript vazio callId=${callId} (${emptyTranscriptCount}x)`);
+          if (emptyTranscriptCount >= 4) {
+            emptyTranscriptCount = 0;
+            await handleSilenceOrEmpty();
+          } else {
+            resetSilenceTimer();
+          }
+          return;
         }
 
-        // Deepgram vai fechar junto com a stream (o redirect encerra a stream)
-        deepgramWs?.close();
+        // Transcript válido — processa o turno
+        emptyTranscriptCount = 0;
+        if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+
+        processTurn(transcript).catch(err =>
+          console.error(`[media-stream] Erro no processTurn callId=${callId}:`, err),
+        );
       } catch (err) {
-        console.error(`[media-stream] Erro ao processar transcript callId=${callId}:`, err);
+        console.error(`[media-stream] Erro ao processar mensagem Deepgram callId=${callId}:`, err);
       }
     });
 
     deepgramWs.on("error", async (err) => {
       console.error(`[media-stream] Deepgram error callId=${callId}: ${err.message}`);
-      // Se a conexão falhou por HTTP 400/401/403, faz fallback para Gather
-      if (err.message.includes("400") || err.message.includes("401") || err.message.includes("403")) {
-        await fallbackToGather(err.message).catch(() => {});
-      }
     });
 
     deepgramWs.on("close", (code) => {
@@ -247,14 +370,16 @@ export function setupMediaStreamWebSocket(server: Server): void {
 
         switch (msg.event) {
           case "start":
+            streamSid = msg.streamSid ?? "";
             twilioCallSid = msg.start?.callSid ?? "";
             console.info(
-              `[media-stream] Stream iniciado callId=${callId} streamSid=${msg.streamSid} callSid=${twilioCallSid}`,
+              `[media-stream] Stream iniciado callId=${callId} streamSid=${streamSid} callSid=${twilioCallSid}`,
             );
             break;
 
           case "media":
-            // Forward do chunk de áudio mulaw para o Deepgram
+            // Apenas áudio inbound (user → Deepgram) — outbound não vai pro Deepgram
+            if (msg.media?.track === "outbound") break;
             if (deepgramWs?.readyState === WebSocket.OPEN) {
               const chunk = Buffer.from(msg.media.payload, "base64");
               deepgramWs.send(chunk);
@@ -268,12 +393,14 @@ export function setupMediaStreamWebSocket(server: Server): void {
             break;
         }
       } catch {
-        // Mensagem não-JSON ou parse error — ignora silenciosamente
+        // Mensagem não-JSON — ignora
       }
     });
 
     ws.on("close", () => {
       deepgramWs?.close();
+      streamModeCalls.delete(callId);
+      if (silenceTimer) clearTimeout(silenceTimer);
       console.info(`[media-stream] WebSocket fechado callId=${callId}`);
     });
 
@@ -283,5 +410,5 @@ export function setupMediaStreamWebSocket(server: Server): void {
     });
   });
 
-  console.info("[media-stream] WebSocket server configurado (Media Streams + Deepgram)");
+  console.info("[media-stream] WebSocket server configurado (Media Streams + Deepgram bidirecional)");
 }

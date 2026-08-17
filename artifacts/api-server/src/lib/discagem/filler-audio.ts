@@ -2,34 +2,29 @@
  * Gerenciador de áudios de preenchimento ("fillers").
  *
  * Pré-gera frases curtas e naturais em português com TTS ao primeiro uso.
- * São tocados imediatamente enquanto a IA e o TTS principal processam em paralelo,
- * eliminando o silêncio percebido pelo contato.
- *
- * Duração típica de cada filler: 0.5–1.2s
- * Tempo de processamento IA+TTS: 1.5–3s
- * → o contato ouve resposta imediata, sem perceber a latência real
+ * Em modo de streaming bidirecional, converte para mulaw 8kHz via cache.
  */
 
-import { writeFile, mkdir, readdir } from "node:fs/promises";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { synthesize, TMP_AUDIO_DIR } from "./tts";
+import { synthesize, mp3ToMulaw, TMP_AUDIO_DIR } from "./tts";
 import { audioUrl } from "./tts";
 
 const FILLER_DIR = path.join(TMP_AUDIO_DIR, "fillers");
 const FILLER_MANIFEST = path.join(FILLER_DIR, "manifest.json");
 
-// Frases de preenchimento — curtas, neutras, sem as palavras proibidas no prompt
-// NUNCA usar: "Claro", "Com certeza", "Perfeito", "Certo", "Ok", "Entendido", "Entendo"
+// Frases de preenchimento — curtas, sem palavras proibidas, sem sons de "amham"
+// PROIBIDO: "Aham", "Hmm", "Hm", qualquer som gutural — soam robotizados ao telefone
 export const FILLER_PHRASES = [
-  "Hmm...",
-  "Aham.",
-  "É...",
   "Pois é.",
   "Um momento.",
   "Deixa eu ver.",
-  "Hm, sim.",
-  "Aham.",
+  "Entendo.",
+  "Pode falar.",
+  "Claro, claro.",
+  "Sim, sim.",
+  "Tá bom.",
 ];
 
 interface FillerManifest {
@@ -39,13 +34,15 @@ interface FillerManifest {
 let fillerCache: FillerManifest | null = null;
 let initPromise: Promise<void> | null = null;
 
+// Cache mulaw em memória: phrase → Buffer de mulaw 8kHz
+const mulawCache = new Map<string, Buffer>();
+
 async function ensureFillerDir() {
   if (!existsSync(FILLER_DIR)) await mkdir(FILLER_DIR, { recursive: true });
 }
 
 /**
  * Pré-gera todos os fillers com TTS. Idempotente — só gera se não existir.
- * Chamado no primeiro uso (lazy) para não bloquear o startup.
  */
 export async function initFillerAudio(): Promise<void> {
   if (fillerCache) return;
@@ -54,20 +51,17 @@ export async function initFillerAudio(): Promise<void> {
   initPromise = (async () => {
     await ensureFillerDir();
 
-    // Tenta carregar manifest existente
     let manifest: FillerManifest = {};
     if (existsSync(FILLER_MANIFEST)) {
       try {
-        const raw = await import("node:fs/promises").then(fs => fs.readFile(FILLER_MANIFEST, "utf8"));
+        const raw = await readFile(FILLER_MANIFEST, "utf8");
         manifest = JSON.parse(raw);
       } catch {}
     }
 
-    // Gera os que ainda não existem
     let changed = false;
     for (const phrase of FILLER_PHRASES) {
       if (manifest[phrase]) {
-        // Verifica se o arquivo ainda existe
         const filePath = path.join(TMP_AUDIO_DIR, `${manifest[phrase]}.mp3`);
         if (existsSync(filePath)) continue;
       }
@@ -92,14 +86,8 @@ export async function initFillerAudio(): Promise<void> {
   return initPromise;
 }
 
-/**
- * Retorna a URL pública de um filler aleatório (ou do grupo desejado).
- * group: "thinking" = fillers que implicam "estou processando"
- *        "ack"      = fillers de confirmação rápida
- *        "any"      = qualquer um
- */
-const THINKING_FILLERS = ["Hmm...", "Um momento.", "Deixa eu ver.", "É..."];
-const ACK_FILLERS = ["Aham.", "Pois é.", "Hm, sim.", "É."];
+const THINKING_FILLERS = ["Um momento.", "Deixa eu ver.", "Pois é."];
+const ACK_FILLERS = ["Entendo.", "Pode falar.", "Sim, sim.", "Tá bom."];
 
 export async function getFillerUrl(group: "thinking" | "ack" | "any" = "any"): Promise<string | null> {
   await initFillerAudio();
@@ -109,7 +97,6 @@ export async function getFillerUrl(group: "thinking" | "ack" | "any" = "any"): P
     : group === "ack" ? ACK_FILLERS
     : FILLER_PHRASES;
 
-  // Embaralha e tenta até encontrar um com arquivo
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   for (const phrase of shuffled) {
     const id = fillerCache[phrase];
@@ -120,8 +107,44 @@ export async function getFillerUrl(group: "thinking" | "ack" | "any" = "any"): P
   return null;
 }
 
-/** Invalida o cache de fillers (ex: quando a voz TTS for trocada nas configurações) */
+/**
+ * Retorna buffer mulaw 8kHz de um filler — para streaming bidirecional via WebSocket.
+ * Cache em memória para evitar conversão repetida com ffmpeg.
+ */
+export async function getFillerMulawBuffer(group: "thinking" | "ack" | "any" = "thinking"): Promise<Buffer | null> {
+  await initFillerAudio();
+  if (!fillerCache) return null;
+
+  const pool = group === "thinking" ? THINKING_FILLERS
+    : group === "ack" ? ACK_FILLERS
+    : FILLER_PHRASES;
+
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  for (const phrase of shuffled) {
+    const id = fillerCache[phrase];
+    if (!id) continue;
+
+    // Cache hit
+    if (mulawCache.has(phrase)) return mulawCache.get(phrase)!;
+
+    const mp3Path = path.join(TMP_AUDIO_DIR, `${id}.mp3`);
+    if (!existsSync(mp3Path)) continue;
+
+    try {
+      const mp3Buf = await readFile(mp3Path);
+      const mulawBuf = await mp3ToMulaw(mp3Buf);
+      mulawCache.set(phrase, mulawBuf);
+      return mulawBuf;
+    } catch (err) {
+      console.warn(`[filler-audio] Erro ao converter mulaw para "${phrase}":`, err);
+    }
+  }
+  return null;
+}
+
+/** Invalida o cache de fillers (ex: quando a voz TTS for trocada) */
 export function invalidateFillerCache() {
   fillerCache = null;
   initPromise = null;
+  mulawCache.clear();
 }

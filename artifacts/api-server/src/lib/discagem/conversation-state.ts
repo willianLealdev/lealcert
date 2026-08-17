@@ -58,7 +58,7 @@ export function processSpeechTurn(
   history.push({ role: "user", text: speechText, ts: new Date().toISOString() });
 
   const agentName = (campaign.agentName ?? "Willian") as string;
-  const provider = (campaign.ttsProvider ?? "cartesia") as "cartesia" | "elevenlabs";
+  const provider = (campaign.ttsProvider ?? "elevenlabs") as "cartesia" | "elevenlabs";
 
   const promise: Promise<PendingPayload> = (async () => {
     const aiResp = await runAgentTurn(
