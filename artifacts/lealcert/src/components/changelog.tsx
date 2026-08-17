@@ -15,6 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "16/08/2026",
+    version: "1.46",
+    changes: [
+      { type: "melhoria", text: "Discagem IA: pitch completo em ordem lógica — após aceitar os 2 minutos, o agente apresenta todos os benefícios em sequência: margem → processo online → painel de controle → programa de cortesia → oferta de fechamento com urgência (cupom PARCEIRO + 24h)" },
+      { type: "melhoria", text: "Discagem IA: fechamento com urgência — preço revelado só DEPOIS de todos os benefícios, como oferta de fechamento; agente tenta fechar na hora orientando o cadastro passo a passo ao vivo; se disser 'vou pensar', faz uma última tentativa e tenta capturar o e-mail antes de encerrar" },
+    ],
+  },
+  {
+    date: "16/08/2026",
     version: "1.45",
     changes: [
       { type: "fix", text: "Discagem IA: eliminados os sons 'amham/hmm' — eram fillers de áudio tocados enquanto a IA processava; frases trocadas por respostas neutras sem sons guturais" },

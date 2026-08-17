@@ -21,3 +21,4 @@
 - [Loyalty cortesia no checkout público](loyalty-cortesia-checkout-fix.md) — usar req.session.userId (contador logado), NÃO o userId do CPF do formulário; cliente não tem cartela.
 - [Git workflow](git-workflow.md) — agente NUNCA faz git push; só commita. Usuário faz `git push github main` manualmente no shell do Replit.
 - [Campaign totalContacts bug](campaign-total-contacts-bug.md) — ao retomar campanha, totalContacts = alreadySentCount + remainingTotal (nunca só remaining); SQL manual de update deve filtrar por provedor/tipo.
+- [Discagem bidirecional](discagem-bidirectional.md) — stream track=both_tracks + outbound mulaw frames = barge-in real; grace period obrigatório pós-TTS para absorver eco; filler amham vem de "Aham."/"Hmm..." nas frases.
