@@ -296,6 +296,7 @@ export default function ComprarPage() {
 
   // Sessão ativa — pula o lookup se já autenticado
   const { data: meData, isLoading: meLoading } = useGetMe();
+  const isContador = meData?.userType === "contador";
 
   useEffect(() => {
     if (meLoading || !meData || step !== "lookup") return;
@@ -321,7 +322,7 @@ export default function ComprarPage() {
 
   /* ── certificado ─────────────────────────────────────────────────────── */
   const { data: cert, isLoading: certLoading, isError: certError } = useQuery<Certificate>({
-    queryKey: ["/api/public/checkout/cert", certId],
+    queryKey: ["/api/public/checkout/cert", certId, isContador ? "contador" : "cliente"],
     queryFn: async () => {
       const r = await fetch(`/api/public/checkout/cert/${certId}`, { credentials: "include" });
       if (!r.ok) throw new Error("não encontrado");
@@ -330,7 +331,7 @@ export default function ComprarPage() {
     enabled: !!certId,
   });
 
-  const certPrice = cert?.price ?? 0;
+  const certPrice = isContador && cert?.priceContador != null ? cert.priceContador : cert?.price ?? 0;
   const isCnpjCert = !!(
     cert?.product?.toLowerCase().includes("cnpj") ||
     cert?.product?.toLowerCase().includes("pj") ||
@@ -695,7 +696,6 @@ export default function ComprarPage() {
 
   /* cortesia */
   const [cortesiaCount, setCortesiaCount] = useState(0);
-  const isContador = meData?.userType === "contador";
 
   useEffect(() => {
     if (step !== "pagamento" || !isContador) return;

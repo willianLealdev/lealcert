@@ -29,6 +29,16 @@ function generateOrderNumber(): string {
   return `${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${rand}`;
 }
 
+function certificatePriceForUser(
+  certificate: { price: unknown; priceContador: unknown },
+  userType?: string | null,
+) {
+  const standardPrice = Number.parseFloat(String(certificate.price)) || 0;
+  if (userType !== "contador" || certificate.priceContador == null) return standardPrice;
+  const contadorPrice = Number.parseFloat(String(certificate.priceContador));
+  return Number.isFinite(contadorPrice) ? contadorPrice : standardPrice;
+}
+
 function validarCpf(cpf: string): boolean {
   const d = cpf.replace(/\D/g, "");
   if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
@@ -62,10 +72,13 @@ router.get("/public/checkout/cert/:id", async (req, res): Promise<void> => {
     .where(and(eq(certificatesTable.id, id), eq(certificatesTable.active, true)))
     .limit(1);
   if (!cert) { res.status(404).json({ error: "Certificado não encontrado" }); return; }
-  // Return price as number
+  const sessionUserId = req.session?.userId;
+  const [sessionUser] = sessionUserId
+    ? await db.select({ userType: usersTable.userType }).from(usersTable).where(eq(usersTable.id, sessionUserId)).limit(1)
+    : [];
   res.json({
     ...cert,
-    price: parseFloat(cert.price as unknown as string) || 0,
+    price: certificatePriceForUser(cert, sessionUser?.userType),
     priceContador: cert.priceContador != null ? parseFloat(cert.priceContador as unknown as string) : null,
   });
 });
@@ -467,7 +480,19 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     .limit(1);
   if (!cert) { res.status(400).json({ error: "Certificado não encontrado ou inativo." }); return; }
 
-  const basePrice = parseFloat(String(cert.price));
+  const existingUser = await db
+    .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, role: usersTable.role, userType: usersTable.userType })
+    .from(usersTable)
+    .where(eq(usersTable.cpfCnpj, docDigits))
+    .limit(1);
+
+  // O parceiro logado mantém o preço de contador mesmo quando emite para o CPF/CNPJ do cliente.
+  const sessionUserId = req.session?.userId;
+  const [sessionUser] = sessionUserId
+    ? await db.select({ userType: usersTable.userType }).from(usersTable).where(eq(usersTable.id, sessionUserId)).limit(1)
+    : [];
+  const priceUserType = sessionUser?.userType ?? existingUser[0]?.userType;
+  const basePrice = certificatePriceForUser(cert, priceUserType);
 
   // Validate/apply coupon (server-side only) — after user is known
   let discount = 0;
@@ -522,12 +547,6 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
   let userId: number;
   let isNewUser = false;
   let tempPassword: string | null = null;
-
-  const existingUser = await db
-    .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, role: usersTable.role, userType: usersTable.userType })
-    .from(usersTable)
-    .where(eq(usersTable.cpfCnpj, docDigits))
-    .limit(1);
 
   if (existingUser.length > 0) {
     userId = existingUser[0].id;

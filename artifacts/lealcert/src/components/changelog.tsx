@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.48",
+    changes: [
+      { type: "fix", text: "Checkout de contadores: o preço de parceiro agora é mantido da seleção do catálogo até o pagamento. O servidor também recalcula o valor pelo perfil da conta autenticada, inclusive quando o contador emite para um cliente." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.47",
     changes: [
       { type: "novo", text: "Agenda de reuniões: administradores e vendedores agora criam e gerenciam videoconferências com participantes ilimitados, convites por e-mail e links para entrar ou copiar." },
