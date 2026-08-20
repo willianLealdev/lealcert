@@ -4,7 +4,7 @@
 # ============================================================
 
 # ── Stage 1: instalar dependências + build ──────────────────
-FROM node:24-alpine AS builder
+FROM node:24-bookworm-slim AS builder
 
 RUN npm install -g pnpm@10 --silent
 
@@ -19,7 +19,6 @@ COPY lib/db/package.json                          ./lib/db/
 COPY lib/api-spec/package.json                    ./lib/api-spec/
 COPY lib/api-zod/package.json                     ./lib/api-zod/
 COPY lib/api-client-react/package.json            ./lib/api-client-react/
-COPY lib/integrations/package.json                ./lib/integrations/
 COPY lib/integrations-openai-ai-react/package.json  ./lib/integrations-openai-ai-react/
 COPY lib/integrations-openai-ai-server/package.json ./lib/integrations-openai-ai-server/
 COPY scripts/package.json                         ./scripts/
@@ -47,9 +46,11 @@ RUN pnpm --filter @workspace/lealcert run build
 
 
 # ── Stage 2: imagem de produção da API ─────────────────────
-FROM node:24-alpine AS api
+FROM node:24-bookworm-slim AS api
 
-RUN apk add --no-cache dumb-init && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends dumb-init && \
+    rm -rf /var/lib/apt/lists/* && \
     npm install -g pnpm@10 --silent
 
 WORKDIR /app

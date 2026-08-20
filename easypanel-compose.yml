@@ -16,15 +16,16 @@ services:
       retries: 10
 
   api:
-    image: willianlealdev/lealcert-api:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
     restart: unless-stopped
     stop_grace_period: 30s
-    user: root
+    working_dir: /app
     command: >
       sh -c "mkdir -p /app/uploads/cnh /app/uploads/cartao-cnpj /app/uploads/ficha-cadastral /app/uploads/chat-docs
-      && chown -R 1001:1001 /app/uploads
-      && su -s /bin/sh appuser -c 'node --enable-source-maps ./dist/index.mjs'"
+      && node --enable-source-maps ./artifacts/api-server/dist/index.mjs"
     environment:
       DATABASE_URL: postgresql://postgres:Leal2024Xpto@db:5432/lealcert
       SESSION_SECRET: 21fc81ee4bf33b3ec7e768f0ffcac4172b0d0dfd46962a890e7d1d56c8024245
@@ -43,8 +44,10 @@ services:
       - uploads:/app/uploads
 
   web:
-    image: willianlealdev/lealcert-web:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
     restart: unless-stopped
     stop_grace_period: 10s
     depends_on:

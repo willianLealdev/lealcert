@@ -79,6 +79,7 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,svg,webp,woff,woff2}", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"],
         globIgnores: ["**/favicon-source.png", "**/favicon-icon.png", "**/favicon-32.png", "**/logo-nobg.png", "**/logo-oficial.png", "**/logo-oficial-cropped.png", "**/logo-cropped.png", "**/logo-new.png", "**/gestaoar-doc.html"],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       devOptions: {
         enabled: true,

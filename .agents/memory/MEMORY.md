@@ -21,6 +21,7 @@
 - [Loyalty cortesia no checkout público](loyalty-cortesia-checkout-fix.md) — usar req.session.userId (contador logado), NÃO o userId do CPF do formulário; cliente não tem cartela.
 - [Git workflow](git-workflow.md) — agente NUNCA faz git push; só commita. Usuário faz `git push github main` manualmente no shell do Replit.
 - [EasyPanel Compose builds](easypanel-compose-builds.md) — o Compose precisa buildar os targets do Dockerfile; reiniciar imagens `latest` não publica um novo commit.
+- [Docker production build](docker-production-build.md) — use Node Debian no builder e eleve o limite do PWA; Alpine bloqueia o Rollup e impede a imagem de ser criada.
 - [Campaign totalContacts bug](campaign-total-contacts-bug.md) — ao retomar campanha, totalContacts = alreadySentCount + remainingTotal (nunca só remaining); SQL manual de update deve filtrar por provedor/tipo.
 - [Discagem bidirecional](discagem-bidirectional.md) — stream track=both_tracks + outbound mulaw frames = barge-in real; grace period obrigatório pós-TTS para absorver eco; filler amham vem de "Aham."/"Hmm..." nas frases.
 - [Preço de parceiro no checkout](checkout-partner-pricing.md) — o valor de contador pertence à conta autenticada, não ao titular do certificado, e deve ser recalculado no servidor.
