@@ -273,6 +273,7 @@ export type UserInputRole = typeof UserInputRole[keyof typeof UserInputRole];
 export const UserInputRole = {
   admin: 'admin',
   contador: 'contador',
+  vendedor: 'vendedor',
 } as const;
 
 export interface UserInput {
@@ -290,6 +291,7 @@ export type UserUpdateRole = typeof UserUpdateRole[keyof typeof UserUpdateRole];
 export const UserUpdateRole = {
   admin: 'admin',
   contador: 'contador',
+  vendedor: 'vendedor',
 } as const;
 
 export interface UserUpdate {
@@ -418,6 +420,7 @@ export interface Order {
   representanteAddressCity?: string | null;
   representanteAddressState?: string | null;
   mpPaymentId: string | null;
+  paymentMethod?: string | null;
   mpBoletoUrl?: string | null;
   mpBoletoBarcode?: string | null;
   garPedido?: string | null;
@@ -446,7 +449,6 @@ export interface Order {
   safewebAgendamentoId?: string | null;
   safewebAgendamentoDataHora?: string | null;
   safewebAgendamentoLocalNome?: string | null;
-  paymentMethod?: string | null;
   createdAt: string;
   updatedAt?: string;
 }
@@ -606,6 +608,87 @@ export interface SlotInput {
   active?: boolean;
 }
 
+export type MeetingParticipantInvitationStatus = typeof MeetingParticipantInvitationStatus[keyof typeof MeetingParticipantInvitationStatus];
+
+
+export const MeetingParticipantInvitationStatus = {
+  pending: 'pending',
+  sent: 'sent',
+  failed: 'failed',
+} as const;
+
+export interface MeetingParticipant {
+  id: number;
+  name: string;
+  email: string;
+  invitationStatus: MeetingParticipantInvitationStatus;
+  lastInvitedAt?: string | null;
+  createdAt: string;
+}
+
+export interface MeetingParticipantInput {
+  name: string;
+  email: string;
+}
+
+export type MeetingStatus = typeof MeetingStatus[keyof typeof MeetingStatus];
+
+
+export const MeetingStatus = {
+  scheduled: 'scheduled',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface Meeting {
+  id: number;
+  title: string;
+  description?: string | null;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: MeetingStatus;
+  roomSlug: string;
+  meetingUrl: string;
+  joinUrl: string;
+  organizerUserId: number;
+  organizerName: string;
+  cancelledAt?: string | null;
+  participants: MeetingParticipant[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MeetingInput {
+  /** @maxLength 160 */
+  title: string;
+  /** @maxLength 2000 */
+  description?: string | null;
+  scheduledAt: string;
+  /**
+     * @minimum 5
+     * @maximum 480
+     */
+  durationMinutes: number;
+  /** @maxItems 100 */
+  participants?: MeetingParticipantInput[];
+}
+
+export interface MeetingUpdate {
+  /** @maxLength 160 */
+  title?: string;
+  /** @maxLength 2000 */
+  description?: string | null;
+  scheduledAt?: string;
+  /**
+     * @minimum 5
+     * @maximum 480
+     */
+  durationMinutes?: number;
+  /** @maxItems 100 */
+  participants?: MeetingParticipantInput[];
+}
+
 export type TicketStatus = typeof TicketStatus[keyof typeof TicketStatus];
 
 
@@ -679,6 +762,9 @@ export interface BrandingInfo {
   logoUrl?: string | null;
   primaryColor: string;
   siteUrl?: string | null;
+  jitsiAppId?: string;
+  jitsiAppSecret?: string;
+  jitsiDomain?: string;
   contactPhone?: string | null;
   contactWhatsapp?: string | null;
   contactEmailSupport?: string | null;
@@ -763,6 +849,7 @@ export interface AppSettings {
   nfseServicoAliquota?: string | null;
   nfseDiscriminacao?: string | null;
   nfseIssRetido?: string | null;
+  paymentMethod?: string | null;
   updatedAt?: string;
 }
 
@@ -773,6 +860,9 @@ export interface AppSettingsUpdate {
   webhookSecret?: string;
   mailFrom?: string;
   siteUrl?: string;
+  jitsiAppId?: string;
+  jitsiAppSecret?: string;
+  jitsiDomain?: string;
   scheduleOpenDays?: string;
   scheduleOpenHour?: string;
   scheduleCloseHour?: string;
@@ -1981,6 +2071,21 @@ date?: string;
 export type ListSlotsParams = {
 date?: string;
 };
+
+export type ListMeetingsParams = {
+from?: string;
+to?: string;
+status?: ListMeetingsStatus;
+};
+
+export type ListMeetingsStatus = typeof ListMeetingsStatus[keyof typeof ListMeetingsStatus];
+
+
+export const ListMeetingsStatus = {
+  scheduled: 'scheduled',
+  in_progress: 'in_progress',
+  cancelled: 'cancelled',
+} as const;
 
 export type GetGarProdutosParams = {
 documento?: string;

@@ -22,3 +22,4 @@ export * from "./loyalty-slot-events";
 export * from "./vendedores";
 export * from "./discagem";
 export * from "./site-visits";
+export * from "./meetings";

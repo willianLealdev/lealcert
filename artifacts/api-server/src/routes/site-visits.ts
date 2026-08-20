@@ -58,7 +58,14 @@ async function geoLookup(ip: string) {
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) return null;
-    const d = await res.json();
+    const d = await res.json() as {
+      status?: string;
+      country?: string;
+      countryCode?: string;
+      regionName?: string;
+      city?: string;
+      isp?: string;
+    };
     if (d.status !== "success") return null;
     return { country: d.country, countryCode: d.countryCode, region: d.regionName, city: d.city, isp: d.isp };
   } catch {

@@ -80,5 +80,6 @@ export interface AppSettings {
   nfseServicoAliquota?: string | null;
   nfseDiscriminacao?: string | null;
   nfseIssRetido?: string | null;
+  paymentMethod?: string | null;
   updatedAt?: string;
 }

@@ -63,6 +63,10 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     discagemAiFallback: s.discagemAiFallback ?? '["deepseek","claude","openai"]',
     discagemTtsFallback: s.discagemTtsFallback ?? '["cartesia","elevenlabs"]',
     discagemPublicHostname: s.discagemPublicHostname ?? "",
+    // Jitsi — App Secret nunca é exposto ao navegador
+    jitsiAppId: s.jitsiAppId ?? "",
+    jitsiAppSecret: mask(s.jitsiAppSecret),
+    jitsiDomain: s.jitsiDomain ?? "meet.lealcert.com.br",
     // NFS-e
     nfseAmbiente: s.nfseAmbiente ?? "homologacao",
     nfseAutoEmit: s.nfseAutoEmit ?? "0",
@@ -151,6 +155,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     willianElevenlabsVoiceId, alineElevenlabsVoiceId,
     deepgramApiKey,
     discagemAiFallback, discagemTtsFallback, discagemPublicHostname,
+    jitsiAppId, jitsiAppSecret, jitsiDomain,
     nfseAmbiente, nfseAutoEmit,
     nfseTokenTest, nfseTokenProd,
     nfsePrestadorCnpj, nfsePrestadorIm,
@@ -241,6 +246,9 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   if (discagemAiFallback !== undefined) u.discagemAiFallback = discagemAiFallback;
   if (discagemTtsFallback !== undefined) u.discagemTtsFallback = discagemTtsFallback;
   if (discagemPublicHostname !== undefined) u.discagemPublicHostname = discagemPublicHostname;
+  if (jitsiAppId !== undefined) u.jitsiAppId = jitsiAppId;
+  if (jitsiDomain !== undefined) u.jitsiDomain = jitsiDomain;
+  set("jitsiAppSecret", jitsiAppSecret);
   if (mktUseResend !== undefined) u.mktUseResend = mktUseResend;
   // NFS-e
   if (nfseAmbiente !== undefined) u.nfseAmbiente = nfseAmbiente;

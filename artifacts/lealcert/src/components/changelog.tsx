@@ -14,6 +14,15 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "20/08/2026",
+    version: "1.47",
+    changes: [
+      { type: "novo", text: "Agenda de reuniões: administradores e vendedores agora criam e gerenciam videoconferências com participantes ilimitados, convites por e-mail e links para entrar ou copiar." },
+      { type: "novo", text: "Reuniões: permissões aplicadas no sistema — administradores veem e excluem todas as reuniões; vendedores cuidam somente das próprias." },
+      { type: "novo", text: "Configuração Jitsi adicionada ao painel administrativo para definir domínio, App ID e segredo de assinatura dos links seguros." },
+    ],
+  },
+  {
     date: "16/08/2026",
     version: "1.46",
     changes: [

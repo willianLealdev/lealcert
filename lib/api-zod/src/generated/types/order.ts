@@ -52,6 +52,7 @@ export interface Order {
   representanteAddressCity?: string | null;
   representanteAddressState?: string | null;
   mpPaymentId: string | null;
+  paymentMethod?: string | null;
   mpBoletoUrl?: string | null;
   mpBoletoBarcode?: string | null;
   garPedido?: string | null;
@@ -80,7 +81,6 @@ export interface Order {
   safewebAgendamentoId?: string | null;
   safewebAgendamentoDataHora?: string | null;
   safewebAgendamentoLocalNome?: string | null;
-  paymentMethod?: string | null;
   createdAt: string;
   updatedAt?: string;
 }

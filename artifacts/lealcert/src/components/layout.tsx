@@ -72,6 +72,7 @@ const agenteNav = [
 const vendedorNav = [
   { name: "Dashboard", href: "/vendedor", icon: LayoutDashboard },
   { name: "Meus Contadores", href: "/vendedor/contadores", icon: Users },
+  { name: "Reuniões", href: "/reunioes", icon: CalendarDays },
   { name: "Relatório de Vendas", href: "/vendedor/relatorio", icon: TrendingUp },
   { name: "Meus Ganhos", href: "/vendedor/ganhos", icon: DollarSign },
 ];
@@ -82,6 +83,7 @@ const adminNav = [
   { name: "Agentes", href: "/admin/agentes", icon: UserCog },
   { name: "Catálogo", href: "/admin/certificates", icon: FileBadge },
   { name: "Agenda", href: "/admin/slots", icon: CalendarDays },
+  { name: "Reuniões", href: "/reunioes", icon: CalendarDays },
   { name: "Renovações", href: "/admin/renovacoes", icon: RefreshCw },
   { name: "Descontos", href: "/admin/coupons", icon: Tag },
   { name: "Avaliações", href: "/admin/reviews", icon: MessageSquare },

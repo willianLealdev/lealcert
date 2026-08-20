@@ -22,6 +22,8 @@ tags:
     description: Orders
   - name: slots
     description: Scheduling slots
+  - name: meetings
+    description: Video meetings for administrators and sellers
   - name: support
     description: Support tickets
   - name: settings
@@ -1111,6 +1113,138 @@ paths:
       responses:
         "204":
           description: Deleted
+
+  /meetings:
+    get:
+      operationId: listMeetings
+      tags: [meetings]
+      summary: List meetings available to the signed-in administrator or seller
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: status
+          in: query
+          schema: { type: string, enum: [scheduled, in_progress, cancelled] }
+      responses:
+        "200":
+          description: Meetings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Meeting"
+    post:
+      operationId: createMeeting
+      tags: [meetings]
+      summary: Create a meeting and send participant invitations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingInput"
+      responses:
+        "201":
+          description: Created meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+
+  /meetings/{id}:
+    get:
+      operationId: getMeeting
+      tags: [meetings]
+      summary: Get one meeting
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+        "404":
+          description: Meeting not found
+    patch:
+      operationId: updateMeeting
+      tags: [meetings]
+      summary: Update a meeting and resend invitations when details change
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingUpdate"
+      responses:
+        "200":
+          description: Updated meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+    delete:
+      operationId: deleteMeeting
+      tags: [meetings]
+      summary: Permanently delete a meeting (administrator only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+
+  /meetings/{id}/cancel:
+    post:
+      operationId: cancelMeeting
+      tags: [meetings]
+      summary: Cancel a meeting
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Cancelled meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+
+  /meetings/{id}/start:
+    post:
+      operationId: startMeeting
+      tags: [meetings]
+      summary: Mark a meeting as in progress and return its secure join URL
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Started meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
 
   /support:
     get:
@@ -3618,7 +3752,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, contador, agente]
+          enum: [admin, contador, agente, vendedor]
         userType:
           type: string
           enum: [contador, cliente]
@@ -3763,7 +3897,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, contador]
+          enum: [admin, contador, vendedor]
         userType:
           type: string
           nullable: true
@@ -3834,7 +3968,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, contador]
+          enum: [admin, contador, vendedor]
         phone:
           type: string
 
@@ -3849,7 +3983,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, contador]
+          enum: [admin, contador, vendedor]
         isActive:
           type: boolean
         password:
@@ -4069,6 +4203,9 @@ components:
           type: string
           nullable: true
         mpPaymentId:
+          type: string
+          nullable: true
+        paymentMethod:
           type: string
           nullable: true
         mpBoletoUrl:
@@ -4385,6 +4522,83 @@ components:
         active:
           type: boolean
 
+    MeetingParticipant:
+      type: object
+      required: [id, name, email, invitationStatus, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        invitationStatus:
+          type: string
+          enum: [pending, sent, failed]
+        lastInvitedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    MeetingParticipantInput:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+
+    Meeting:
+      type: object
+      required: [id, title, scheduledAt, durationMinutes, status, roomSlug, meetingUrl, joinUrl, organizerUserId, organizerName, participants, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        scheduledAt: { type: string, format: date-time }
+        durationMinutes: { type: integer }
+        status:
+          type: string
+          enum: [scheduled, in_progress, completed, cancelled]
+        roomSlug: { type: string }
+        meetingUrl: { type: string, format: uri }
+        joinUrl: { type: string, format: uri }
+        organizerUserId: { type: integer }
+        organizerName: { type: string }
+        cancelledAt: { type: string, format: date-time, nullable: true }
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeetingParticipant"
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    MeetingInput:
+      type: object
+      required: [title, scheduledAt, durationMinutes]
+      properties:
+        title: { type: string, maxLength: 160 }
+        description: { type: string, nullable: true, maxLength: 2000 }
+        scheduledAt: { type: string, format: date-time }
+        durationMinutes: { type: integer, minimum: 5, maximum: 480 }
+        participants:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MeetingParticipantInput"
+
+    MeetingUpdate:
+      type: object
+      properties:
+        title: { type: string, maxLength: 160 }
+        description: { type: string, nullable: true, maxLength: 2000 }
+        scheduledAt: { type: string, format: date-time }
+        durationMinutes: { type: integer, minimum: 5, maximum: 480 }
+        participants:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MeetingParticipantInput"
+
     Ticket:
       type: object
       required: [id, userId, subject, status, createdAt]
@@ -4497,6 +4711,12 @@ components:
         siteUrl:
           type: string
           nullable: true
+        jitsiAppId:
+          type: string
+        jitsiAppSecret:
+          type: string
+        jitsiDomain:
+          type: string
         contactPhone:
           type: string
           nullable: true
@@ -4750,6 +4970,12 @@ components:
         mailFrom:
           type: string
         siteUrl:
+          type: string
+        jitsiAppId:
+          type: string
+        jitsiAppSecret:
+          type: string
+        jitsiDomain:
           type: string
         scheduleOpenDays:
           type: string

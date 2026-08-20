@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Eye, EyeOff, ShieldCheck, Globe, Link2, ToggleRight,
-  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff, Bot, Megaphone, Receipt, Volume2, Mic,
+  CheckCircle2, MessageCircle, CreditCard, Mail, Phone, Palette, Send, Bell, BellOff, Bot, Megaphone, Receipt, Volume2, Mic, Video,
 } from "lucide-react";
 import { useSendTestPush } from "@workspace/api-client-react";
 import { usePush } from "@/lib/use-push";
@@ -137,6 +137,9 @@ export default function AdminSettings() {
     discagemAiFallback: '["deepseek","claude","openai"]',
     discagemTtsFallback: '["cartesia","elevenlabs"]',
     discagemPublicHostname: "",
+    jitsiAppId: "",
+    jitsiAppSecret: "",
+    jitsiDomain: "meet.lealcert.com.br",
     resendApiKey: "",
     mktUseResend: "0",
     nfseAmbiente: "homologacao",
@@ -169,6 +172,7 @@ export default function AdminSettings() {
         deepseekApiKey?: string; deepseekModel?: string;
         claudeApiKey?: string; claudeModel?: string;
         zeroBounceApiKey?: string;
+         jitsiAppId?: string; jitsiAppSecret?: string; jitsiDomain?: string;
       };
       setForm({
         appName: s.appName ?? "",
@@ -244,6 +248,9 @@ export default function AdminSettings() {
         discagemAiFallback: (s as unknown as Record<string, string>).discagemAiFallback ?? '["deepseek","claude","openai"]',
         discagemTtsFallback: (s as unknown as Record<string, string>).discagemTtsFallback ?? '["cartesia","elevenlabs"]',
         discagemPublicHostname: (s as unknown as Record<string, string>).discagemPublicHostname ?? "",
+         jitsiAppId: s.jitsiAppId ?? "",
+         jitsiAppSecret: s.jitsiAppSecret ?? "",
+         jitsiDomain: s.jitsiDomain ?? "meet.lealcert.com.br",
         nfseAmbiente: (s as unknown as Record<string, string>).nfseAmbiente ?? "homologacao",
         nfseAutoEmit: (s as unknown as Record<string, string>).nfseAutoEmit ?? "0",
         nfseTokenTest: (s as unknown as Record<string, string>).nfseTokenTest ?? "",
@@ -352,6 +359,9 @@ export default function AdminSettings() {
           </TabsTrigger>
           <TabsTrigger value="discagem" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Phone className="h-4 w-4" /><span>Discagem</span>
+          </TabsTrigger>
+          <TabsTrigger value="jitsi" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Video className="h-4 w-4" /><span>Reuniões</span>
           </TabsTrigger>
           <TabsTrigger value="nfse" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Receipt className="h-4 w-4" /><span>NFS-e</span>
@@ -649,6 +659,44 @@ export default function AdminSettings() {
               </CardContent>
             </Card>
 
+            <SaveButton />
+          </form>
+        </TabsContent>
+
+        {/* ── JITSI / REUNIÕES ─────────────────────────────────────────────── */}
+        <TabsContent value="jitsi">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Video className="h-5 w-5 text-primary" />
+                  <CardTitle>Jitsi — Reuniões on-line</CardTitle>
+                </div>
+                <CardDescription>
+                  Configure o domínio de videoconferência. O App ID e o segredo habilitam links assinados, individuais e seguros nos convites.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Domínio Jitsi</Label>
+                  <Input value={form.jitsiDomain} onChange={e => set("jitsiDomain", e.target.value)} placeholder="meet.lealcert.com.br" />
+                  <p className="text-xs text-muted-foreground">Use somente o domínio, sem https://. O DNS, certificado HTTPS e servidor Jitsi devem estar configurados externamente.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>App ID</Label>
+                  <Input value={form.jitsiAppId} onChange={e => set("jitsiAppId", e.target.value)} placeholder="lealcert" autoComplete="off" />
+                </div>
+                <div className="space-y-2">
+                  <Label>App Secret</Label>
+                  <MaskedInput value={form.jitsiAppSecret} onChange={v => set("jitsiAppSecret", v)} placeholder="Segredo de assinatura JWT" autoComplete="new-password" />
+                  <p className="text-xs text-muted-foreground">O segredo fica armazenado de forma protegida e nunca é enviado ao navegador.</p>
+                </div>
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900 space-y-1">
+                  <p className="font-semibold">Links de reunião</p>
+                  <p>Com as três informações preenchidas, cada organizador e participante recebe um link Jitsi assinado. Sem App ID e segredo, a agenda ainda gera links diretos para o domínio informado.</p>
+                </div>
+              </CardContent>
+            </Card>
             <SaveButton />
           </form>
         </TabsContent>

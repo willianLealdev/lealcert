@@ -203,7 +203,7 @@ export const VerifyEmailResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'agente']),
+  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -249,7 +249,7 @@ export const LoginResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'agente']),
+  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -307,7 +307,7 @@ export const GetMeResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'agente']),
+  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -351,7 +351,7 @@ export const UpdateProfileResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'agente']),
+  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -380,7 +380,7 @@ export const ListUsersResponseItem = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador']),
+  "role": zod.enum(['admin', 'contador', 'vendedor']),
   "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -412,7 +412,7 @@ export const CreateUserBody = zod.object({
   "email": zod.string().optional(),
   "cpfCnpj": zod.string(),
   "password": zod.string(),
-  "role": zod.enum(['admin', 'contador']),
+  "role": zod.enum(['admin', 'contador', 'vendedor']),
   "phone": zod.string().optional()
 })
 
@@ -429,7 +429,7 @@ export const GetUserResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador']),
+  "role": zod.enum(['admin', 'contador', 'vendedor']),
   "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -463,7 +463,7 @@ export const UpdateUserBody = zod.object({
   "name": zod.string().optional(),
   "email": zod.string().optional(),
   "phone": zod.string().optional(),
-  "role": zod.enum(['admin', 'contador']).optional(),
+  "role": zod.enum(['admin', 'contador', 'vendedor']).optional(),
   "isActive": zod.boolean().optional(),
   "password": zod.string().optional()
 })
@@ -473,7 +473,7 @@ export const UpdateUserResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador']),
+  "role": zod.enum(['admin', 'contador', 'vendedor']),
   "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -688,6 +688,7 @@ export const ListOrdersResponseItem = zod.object({
   "representanteAddressCity": zod.string().nullish(),
   "representanteAddressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullable(),
+  "paymentMethod": zod.string().nullish(),
   "mpBoletoUrl": zod.string().nullish(),
   "mpBoletoBarcode": zod.string().nullish(),
   "garPedido": zod.string().nullish(),
@@ -867,6 +868,7 @@ export const GetOrderResponse = zod.object({
   "representanteAddressCity": zod.string().nullish(),
   "representanteAddressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullable(),
+  "paymentMethod": zod.string().nullish(),
   "mpBoletoUrl": zod.string().nullish(),
   "mpBoletoBarcode": zod.string().nullish(),
   "garPedido": zod.string().nullish(),
@@ -957,6 +959,7 @@ export const UpdateOrderResponse = zod.object({
   "representanteAddressCity": zod.string().nullish(),
   "representanteAddressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullable(),
+  "paymentMethod": zod.string().nullish(),
   "mpBoletoUrl": zod.string().nullish(),
   "mpBoletoBarcode": zod.string().nullish(),
   "garPedido": zod.string().nullish(),
@@ -1194,6 +1197,230 @@ export const GenerateSlotsResponse = zod.object({
  */
 export const DeleteSlotParams = zod.object({
   "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary List meetings available to the signed-in administrator or seller
+ */
+export const ListMeetingsQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "status": zod.enum(['scheduled', 'in_progress', 'cancelled']).optional()
+})
+
+export const ListMeetingsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "scheduledAt": zod.coerce.date(),
+  "durationMinutes": zod.number(),
+  "status": zod.enum(['scheduled', 'in_progress', 'completed', 'cancelled']),
+  "roomSlug": zod.string(),
+  "meetingUrl": zod.string().url(),
+  "joinUrl": zod.string().url(),
+  "organizerUserId": zod.number(),
+  "organizerName": zod.string(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "participants": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "invitationStatus": zod.enum(['pending', 'sent', 'failed']),
+  "lastInvitedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMeetingsResponse = zod.array(ListMeetingsResponseItem)
+
+
+/**
+ * @summary Create a meeting and send participant invitations
+ */
+export const createMeetingBodyTitleMax = 160;
+
+export const createMeetingBodyDescriptionMax = 2000;
+
+export const createMeetingBodyDurationMinutesMin = 5;
+export const createMeetingBodyDurationMinutesMax = 480;
+
+export const createMeetingBodyParticipantsMax = 100;
+
+
+
+export const CreateMeetingBody = zod.object({
+  "title": zod.string().max(createMeetingBodyTitleMax),
+  "description": zod.string().max(createMeetingBodyDescriptionMax).nullish(),
+  "scheduledAt": zod.coerce.date(),
+  "durationMinutes": zod.number().min(createMeetingBodyDurationMinutesMin).max(createMeetingBodyDurationMinutesMax),
+  "participants": zod.array(zod.object({
+  "name": zod.string(),
+  "email": zod.string().email()
+})).max(createMeetingBodyParticipantsMax).optional()
+})
+
+
+/**
+ * @summary Get one meeting
+ */
+export const GetMeetingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetMeetingResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "scheduledAt": zod.coerce.date(),
+  "durationMinutes": zod.number(),
+  "status": zod.enum(['scheduled', 'in_progress', 'completed', 'cancelled']),
+  "roomSlug": zod.string(),
+  "meetingUrl": zod.string().url(),
+  "joinUrl": zod.string().url(),
+  "organizerUserId": zod.number(),
+  "organizerName": zod.string(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "participants": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "invitationStatus": zod.enum(['pending', 'sent', 'failed']),
+  "lastInvitedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a meeting and resend invitations when details change
+ */
+export const UpdateMeetingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const updateMeetingBodyTitleMax = 160;
+
+export const updateMeetingBodyDescriptionMax = 2000;
+
+export const updateMeetingBodyDurationMinutesMin = 5;
+export const updateMeetingBodyDurationMinutesMax = 480;
+
+export const updateMeetingBodyParticipantsMax = 100;
+
+
+
+export const UpdateMeetingBody = zod.object({
+  "title": zod.string().max(updateMeetingBodyTitleMax).optional(),
+  "description": zod.string().max(updateMeetingBodyDescriptionMax).nullish(),
+  "scheduledAt": zod.coerce.date().optional(),
+  "durationMinutes": zod.number().min(updateMeetingBodyDurationMinutesMin).max(updateMeetingBodyDurationMinutesMax).optional(),
+  "participants": zod.array(zod.object({
+  "name": zod.string(),
+  "email": zod.string().email()
+})).max(updateMeetingBodyParticipantsMax).optional()
+})
+
+export const UpdateMeetingResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "scheduledAt": zod.coerce.date(),
+  "durationMinutes": zod.number(),
+  "status": zod.enum(['scheduled', 'in_progress', 'completed', 'cancelled']),
+  "roomSlug": zod.string(),
+  "meetingUrl": zod.string().url(),
+  "joinUrl": zod.string().url(),
+  "organizerUserId": zod.number(),
+  "organizerName": zod.string(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "participants": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "invitationStatus": zod.enum(['pending', 'sent', 'failed']),
+  "lastInvitedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Permanently delete a meeting (administrator only)
+ */
+export const DeleteMeetingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Cancel a meeting
+ */
+export const CancelMeetingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CancelMeetingResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "scheduledAt": zod.coerce.date(),
+  "durationMinutes": zod.number(),
+  "status": zod.enum(['scheduled', 'in_progress', 'completed', 'cancelled']),
+  "roomSlug": zod.string(),
+  "meetingUrl": zod.string().url(),
+  "joinUrl": zod.string().url(),
+  "organizerUserId": zod.number(),
+  "organizerName": zod.string(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "participants": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "invitationStatus": zod.enum(['pending', 'sent', 'failed']),
+  "lastInvitedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Mark a meeting as in progress and return its secure join URL
+ */
+export const StartMeetingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const StartMeetingResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "scheduledAt": zod.coerce.date(),
+  "durationMinutes": zod.number(),
+  "status": zod.enum(['scheduled', 'in_progress', 'completed', 'cancelled']),
+  "roomSlug": zod.string(),
+  "meetingUrl": zod.string().url(),
+  "joinUrl": zod.string().url(),
+  "organizerUserId": zod.number(),
+  "organizerName": zod.string(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "participants": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "invitationStatus": zod.enum(['pending', 'sent', 'failed']),
+  "lastInvitedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 
 
@@ -2007,7 +2234,7 @@ export const VerifyIpResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador']),
+  "role": zod.enum(['admin', 'contador', 'vendedor']),
   "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -2221,6 +2448,9 @@ export const GetBrandingResponse = zod.object({
   "logoUrl": zod.string().nullish(),
   "primaryColor": zod.string(),
   "siteUrl": zod.string().nullish(),
+  "jitsiAppId": zod.string().optional(),
+  "jitsiAppSecret": zod.string().optional(),
+  "jitsiDomain": zod.string().optional(),
   "contactPhone": zod.string().nullish(),
   "contactWhatsapp": zod.string().nullish(),
   "contactEmailSupport": zod.string().nullish(),
@@ -2320,6 +2550,7 @@ export const GetSettingsResponse = zod.object({
   "nfseServicoAliquota": zod.string().nullish(),
   "nfseDiscriminacao": zod.string().nullish(),
   "nfseIssRetido": zod.string().nullish(),
+  "paymentMethod": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 
@@ -2334,6 +2565,9 @@ export const UpdateSettingsBody = zod.object({
   "webhookSecret": zod.string().optional(),
   "mailFrom": zod.string().optional(),
   "siteUrl": zod.string().optional(),
+  "jitsiAppId": zod.string().optional(),
+  "jitsiAppSecret": zod.string().optional(),
+  "jitsiDomain": zod.string().optional(),
   "scheduleOpenDays": zod.string().optional(),
   "scheduleOpenHour": zod.string().optional(),
   "scheduleCloseHour": zod.string().optional(),
@@ -2476,6 +2710,7 @@ export const UpdateSettingsResponse = zod.object({
   "nfseServicoAliquota": zod.string().nullish(),
   "nfseDiscriminacao": zod.string().nullish(),
   "nfseIssRetido": zod.string().nullish(),
+  "paymentMethod": zod.string().nullish(),
   "updatedAt": zod.string().optional()
 })
 
@@ -2541,6 +2776,7 @@ export const GetRecentOrdersResponseItem = zod.object({
   "representanteAddressCity": zod.string().nullish(),
   "representanteAddressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullable(),
+  "paymentMethod": zod.string().nullish(),
   "mpBoletoUrl": zod.string().nullish(),
   "mpBoletoBarcode": zod.string().nullish(),
   "garPedido": zod.string().nullish(),

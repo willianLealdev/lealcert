@@ -104,6 +104,10 @@ export const settingsTable = pgTable("settings", {
   discagemTtsFallback: text("discagem_tts_fallback").default('["cartesia","elevenlabs"]'),
   // URL pública (usada pelo Twilio para chamar os webhooks)
   discagemPublicHostname: text("discagem_public_hostname"),
+  // Jitsi — Reuniões com clientes e contadores
+  jitsiAppId: text("jitsi_app_id"),
+  jitsiAppSecret: text("jitsi_app_secret"),
+  jitsiDomain: text("jitsi_domain").default("meet.lealcert.com.br"),
   // NFS-e (Nota Fiscal de Serviço Eletrônica) — BrasilNFe
   nfseAmbiente: text("nfse_ambiente").default("homologacao"),          // homologacao | producao
   nfseAutoEmit: text("nfse_auto_emit").default("0"),                   // 0 = manual | 1 = automático

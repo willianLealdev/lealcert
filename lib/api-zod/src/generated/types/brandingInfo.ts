@@ -11,6 +11,9 @@ export interface BrandingInfo {
   logoUrl?: string | null;
   primaryColor: string;
   siteUrl?: string | null;
+  jitsiAppId?: string;
+  jitsiAppSecret?: string;
+  jitsiDomain?: string;
   contactPhone?: string | null;
   contactWhatsapp?: string | null;
   contactEmailSupport?: string | null;

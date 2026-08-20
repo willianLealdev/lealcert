@@ -707,3 +707,56 @@ export async function sendNovoContadorViaAfiliadoEmail(to: string, vendedorName:
   });
   logger.info({ to, contadorName }, "Novo contador via afiliado email sent");
 }
+
+/** Envia o convite individual de uma reunião. Retorna false quando o SMTP ainda não foi configurado. */
+export async function sendMeetingInvitationEmail(opts: {
+  to: string;
+  participantName: string;
+  meetingTitle: string;
+  description?: string | null;
+  scheduledAt: Date;
+  durationMinutes: number;
+  meetingUrl: string;
+  isUpdate?: boolean;
+}): Promise<boolean> {
+  const cfg = await getEmailConfig();
+  const dateLabel = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    dateStyle: "full",
+    timeStyle: "short",
+  }).format(opts.scheduledAt);
+  const subject = `${opts.isUpdate ? "Atualização" : "Convite"}: ${opts.meetingTitle} — ${cfg.appName}`;
+  const html = emailWrapper(`
+    <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+      <h2 style="color:#0f172a;margin:0 0 12px;font-size:20px;">Olá, ${esc(opts.participantName)}!</h2>
+      <p style="color:#475569;margin:0 0 18px;">${opts.isUpdate ? "Os detalhes da sua reunião foram atualizados." : "Você foi convidado(a) para uma reunião on-line."}</p>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:20px;">
+        <p style="color:#1e3a8a;font-size:17px;font-weight:700;margin:0 0 12px;">${esc(opts.meetingTitle)}</p>
+        <p style="color:#334155;margin:6px 0;"><strong>Data e horário:</strong> ${esc(dateLabel)}</p>
+        <p style="color:#334155;margin:6px 0;"><strong>Duração prevista:</strong> ${esc(opts.durationMinutes)} minutos</p>
+        ${opts.description ? `<p style="color:#475569;margin:14px 0 0;">${esc(opts.description)}</p>` : ""}
+      </div>
+      <div style="text-align:center;">
+        <a href="${esc(opts.meetingUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+          Entrar na reunião
+        </a>
+      </div>
+      <p style="color:#64748b;font-size:12px;line-height:1.5;margin:20px 0 0;text-align:center;">Guarde este convite. O link é pessoal e permite o acesso à reunião.</p>
+    </div>
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Olá, ${opts.participantName}!\n\n${opts.isUpdate ? "Os detalhes da sua reunião foram atualizados." : "Você foi convidado(a) para uma reunião on-line."}\n\n${opts.meetingTitle}\nData e horário: ${dateLabel}\nDuração prevista: ${opts.durationMinutes} minutos${opts.description ? `\n\n${opts.description}` : ""}\n\nEntrar na reunião: ${opts.meetingUrl}`;
+
+  const transporter = await createTransporter(cfg);
+  if (!transporter) {
+    logger.info({ to: opts.to, meetingTitle: opts.meetingTitle }, "📧 [DEV] Meeting invitation (SMTP not configured)");
+    return false;
+  }
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to: opts.to, subject, html, text,
+    envelope: { from: extractEmail(cfg.from), to: opts.to },
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
+  logger.info({ to: opts.to, meetingTitle: opts.meetingTitle }, "Meeting invitation email sent");
+  return true;
+}

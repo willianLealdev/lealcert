@@ -76,6 +76,7 @@ import VendedorDashboard from "@/pages/vendedor/dashboard";
 import VendedorContadores from "@/pages/vendedor/contadores";
 import VendedorRelatorio from "@/pages/vendedor/relatorio";
 import VendedorGanhos from "@/pages/vendedor/ganhos";
+import Meetings from "@/pages/meetings";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import ComprarPage from "@/pages/comprar";
 import UnsubscribePage from "@/pages/unsubscribe";
@@ -175,6 +176,7 @@ function Router() {
       <Route path="/admin/nfse" component={() => <ProtectedRoute component={AdminNfse} adminOnly />} />
       <Route path="/admin/fidelidade" component={() => <ProtectedRoute component={AdminFidelidade} adminOnly />} />
       <Route path="/fidelidade" component={() => <ProtectedRoute component={FidelidadePage} />} />
+       <Route path="/reunioes" component={() => <ProtectedRoute component={Meetings} vendedorOnly />} />
       {/* Admin vendedores */}
       <Route path="/admin/vendedores" component={() => <ProtectedRoute component={AdminVendedores} adminOnly />} />
       {/* Discagem IA */}

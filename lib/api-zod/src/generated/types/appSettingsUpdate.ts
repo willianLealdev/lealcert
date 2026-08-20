@@ -13,6 +13,9 @@ export interface AppSettingsUpdate {
   webhookSecret?: string;
   mailFrom?: string;
   siteUrl?: string;
+  jitsiAppId?: string;
+  jitsiAppSecret?: string;
+  jitsiDomain?: string;
   scheduleOpenDays?: string;
   scheduleOpenHour?: string;
   scheduleCloseHour?: string;

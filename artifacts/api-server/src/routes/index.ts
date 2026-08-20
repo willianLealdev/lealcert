@@ -32,6 +32,7 @@ import vendedoresAdminRouter from "./vendedores-admin";
 import vendedorRouter from "./vendedor";
 import discagemRouter from "./discagem";
 import siteVisitsRouter from "./site-visits";
+import meetingsRouter from "./meetings";
 
 const router: IRouter = Router();
 
@@ -68,5 +69,6 @@ router.use(vendedoresAdminRouter);
 router.use(vendedorRouter);
 router.use(discagemRouter);
 router.use(siteVisitsRouter);
+router.use(meetingsRouter);
 
 export default router;
