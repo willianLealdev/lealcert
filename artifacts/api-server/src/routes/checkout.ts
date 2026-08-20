@@ -9,6 +9,7 @@ import { db, ordersTable, usersTable, certificatesTable, settingsTable, couponsT
 import { logger } from "../lib/logger";
 import {
   swBiometriaPSBioGlobal,
+  swHasPsbio,
   swConsultaCPF,
   swConsultaCNPJ,
   type SafewebSettings,
@@ -265,8 +266,8 @@ router.post("/public/checkout/bio", async (req, res): Promise<void> => {
       cnpjAr: s.safewebCnpjAr ?? undefined,
     };
 
-    const psbioResult = await swBiometriaPSBioGlobal(sw, cpfDigits);
-    const hasPsbio = psbioResult.encontrado === true;
+    const psbioResult = await swBiometriaPSBioGlobal(sw, cpfDigits, dataNascimento);
+    const hasPsbio = swHasPsbio(psbioResult);
 
     let customerName: string | null = null;
     try {

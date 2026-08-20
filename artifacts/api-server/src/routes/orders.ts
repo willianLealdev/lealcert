@@ -4,7 +4,7 @@ import { db, ordersTable, usersTable, certificatesTable, settingsTable } from "@
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { notifyOrderStatus, notifyScheduling, sendWaText } from "../lib/notify";
 import { logger } from "../lib/logger";
-import { swConsultaCPF, swConsultaCNPJ, swBiometriaPSBioGlobal, swHopeSolicitation, type SafewebSettings } from "../lib/safeweb";
+import { swConsultaCPF, swConsultaCNPJ, swBiometriaPSBioGlobal, swHasPsbio, swHopeSolicitation, type SafewebSettings } from "../lib/safeweb";
 import { garPsBio } from "../lib/gestaoar";
 
 const router = Router();
@@ -135,8 +135,8 @@ router.post("/orders/consulta-previa", requireAuth, async (req, res): Promise<vo
       res.status(400).json({ error: "CPF obrigatório para consulta PSBio." });
       return;
     }
-    const psbioResult = await swBiometriaPSBioGlobal(sw, cpfParaPsbio);
-    const hasPsbio = psbioResult.encontrado === true;
+    const psbioResult = await swBiometriaPSBioGlobal(sw, cpfParaPsbio, dataNascimento);
+    const hasPsbio = swHasPsbio(psbioResult);
 
     // Consulta prévia (best-effort — para obter nome do titular)
     let customerName: string | undefined;

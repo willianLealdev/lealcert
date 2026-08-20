@@ -23,3 +23,4 @@
 - [Campaign totalContacts bug](campaign-total-contacts-bug.md) — ao retomar campanha, totalContacts = alreadySentCount + remainingTotal (nunca só remaining); SQL manual de update deve filtrar por provedor/tipo.
 - [Discagem bidirecional](discagem-bidirectional.md) — stream track=both_tracks + outbound mulaw frames = barge-in real; grace period obrigatório pós-TTS para absorver eco; filler amham vem de "Aham."/"Hmm..." nas frases.
 - [Preço de parceiro no checkout](checkout-partner-pricing.md) — o valor de contador pertence à conta autenticada, não ao titular do certificado, e deve ser recalculado no servidor.
+- [Resposta PSBio Safeweb](safeweb-psbio-response.md) — a Safeweb retorna confirmação de biometria em formatos variados; não trate apenas `encontrado: true` como positivo.

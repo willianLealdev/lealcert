@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.50",
+    changes: [
+      { type: "fix", text: "Validação de biometria PSBio: pedidos e checkout agora enviam a data de nascimento à consulta e reconhecem corretamente os formatos válidos retornados pela Safeweb." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.49",
     changes: [
       { type: "fix", text: "Preço de contador no pedido autenticado: o servidor agora consulta o tipo da conta a cada criação de pedido e mantém o valor de parceiro até o pagamento, mesmo quando o certificado é emitido para um cliente." },

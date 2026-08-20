@@ -412,6 +412,20 @@ export interface SwPSBioResult {
   Mensagem?: string;
   [key: string]: unknown
 }
+export function swHasPsbio(result: SwPSBioResult): boolean {
+  const isTruthy = (value: unknown) =>
+    value === true || value === "true" || value === 1 || value === "sim" || value === "S" || value === "s";
+
+  return isTruthy(result.encontrado)
+    || isTruthy(result.Encontrado)
+    || isTruthy(result.resultado)
+    || isTruthy(result.Resultado)
+    || isTruthy(result.biometria)
+    || isTruthy(result.Biometria)
+    || result.status === "encontrado" || result.status === "ENCONTRADO" || result.status === "Encontrado"
+    || result.Status === "encontrado" || result.Status === "ENCONTRADO" || result.Status === "Encontrado"
+    || result.statusCode === 200;
+}
 export async function swBiometriaPSBioLocal(settings: SafewebSettings, cpf: string, dataNascimento?: string): Promise<SwPSBioResult> {
   const body: Record<string, string> = { cpf };
   if (dataNascimento) body.dataNascimento = dataNascimento;
