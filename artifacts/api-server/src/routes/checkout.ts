@@ -491,8 +491,9 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
   const [sessionUser] = sessionUserId
     ? await db.select({ userType: usersTable.userType }).from(usersTable).where(eq(usersTable.id, sessionUserId)).limit(1)
     : [];
-  const priceUserType = sessionUser?.userType ?? existingUser[0]?.userType;
-  const basePrice = certificatePriceForUser(cert, priceUserType);
+  // O preço pertence exclusivamente à conta autenticada. O titular informado
+  // no formulário nunca concede preço de parceiro sem uma sessão de contador.
+  const basePrice = certificatePriceForUser(cert, sessionUser?.userType);
 
   // Validate/apply coupon (server-side only) — after user is known
   let discount = 0;
