@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.51",
+    changes: [
+      { type: "fix", text: "Implantação EasyPanel: o Compose agora constrói a API e o site a partir do commit atual, evitando reiniciar imagens antigas e garantindo que as rotas da API sejam publicadas junto com o frontend." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.50",
     changes: [
       { type: "fix", text: "Validação de biometria PSBio: pedidos e checkout agora enviam a data de nascimento à consulta e reconhecem corretamente os formatos válidos retornados pela Safeweb." },

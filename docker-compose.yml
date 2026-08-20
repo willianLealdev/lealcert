@@ -12,7 +12,10 @@ services:
       - postgres_data:/var/lib/postgresql/data
   # ── API (Express + Drizzle) ─────────────────────────────────────────────────
   api:
-    image: ${DOCKER_HUB_USER}/lealcert-api:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
     restart: unless-stopped
     environment:
       DATABASE_URL:   postgresql://${DB_USER:-lealcert}:${DB_PASSWORD}@db:5432/lealcert
@@ -33,7 +36,10 @@ services:
 
   # ── Frontend (Nginx + React build) ─────────────────────────────────────────
   web:
-    image: ${DOCKER_HUB_USER}/lealcert-web:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
     restart: unless-stopped
     ports:
       - "80:80"
