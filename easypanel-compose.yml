@@ -23,6 +23,7 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
     working_dir: /app
+    user: "1001:1001"
     command: >
       sh -c "mkdir -p /app/uploads/cnh /app/uploads/cartao-cnpj /app/uploads/ficha-cadastral /app/uploads/chat-docs
       && node --enable-source-maps ./artifacts/api-server/dist/index.mjs"

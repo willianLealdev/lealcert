@@ -62,15 +62,22 @@ COPY --from=builder /app/lib/ ./lib/
 COPY --from=builder /app/scripts/ ./scripts/
 COPY --from=builder /app/artifacts/api-server/package.json ./artifacts/api-server/
 COPY --from=builder /app/artifacts/api-server/dist/         ./artifacts/api-server/dist/
+COPY --from=builder /app/artifacts/api-server/migrations/   ./artifacts/api-server/migrations/
 
 # Instalar somente dependências de produção
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+
+RUN groupadd --system --gid 1001 appuser && \
+    useradd --system --uid 1001 --gid 1001 --home-dir /app --shell /usr/sbin/nologin appuser && \
+    mkdir -p /app/uploads/cnh /app/uploads/cartao-cnpj /app/uploads/ficha-cadastral /app/uploads/chat-docs && \
+    chown -R 1001:1001 /app/uploads
 
 ENV NODE_ENV=production
 ENV PORT=8080
 
 EXPOSE 8080
 WORKDIR /app/artifacts/api-server
+USER 1001:1001
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "--enable-source-maps", "./dist/index.mjs"]

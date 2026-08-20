@@ -29,6 +29,41 @@
       "when": 1783355600000,
       "tag": "0005_recipient_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783355700000,
+      "tag": "0002_crc_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783355800000,
+      "tag": "0003_address_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783355900000,
+      "tag": "0004_outros_path",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783356000000,
+      "tag": "0006_discagem_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783356100000,
+      "tag": "0007_meetings",
+      "breakpoints": true
     }
   ]
 }
