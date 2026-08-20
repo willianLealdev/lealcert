@@ -7,4 +7,4 @@ Use o perfil comercial (`userType`) da conta autenticada para definir o preço d
 
 **Why:** O titular do certificado pode ser um cliente final, enquanto o comprador autenticado é o contador. Calcular pelo titular troca silenciosamente o preço de parceiro pelo preço de site.
 
-**How to apply:** Exiba o preço de parceiro após a sessão ser reconhecida e sempre recalcule o total no backend a partir da sessão; valores enviados pelo navegador nunca devem decidir o preço.
+**How to apply:** Exiba o preço de parceiro após a sessão ser reconhecida e sempre recalcule o total no backend, em qualquer rota de criação de pedido, a partir da sessão; valores enviados pelo navegador nunca devem decidir o preço.

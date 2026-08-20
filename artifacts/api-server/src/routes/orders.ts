@@ -9,6 +9,17 @@ import { garPsBio } from "../lib/gestaoar";
 
 const router = Router();
 
+function certificatePriceForUser(
+  certificate: { price: unknown; priceContador: unknown },
+  userType?: string | null,
+): number {
+  const standardPrice = Number.parseFloat(String(certificate.price)) || 0;
+  if (userType !== "contador" || certificate.priceContador == null) return standardPrice;
+
+  const contadorPrice = Number.parseFloat(String(certificate.priceContador));
+  return Number.isFinite(contadorPrice) ? contadorPrice : standardPrice;
+}
+
 function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, certName?: string | null) {
   return {
     id: o.id,
@@ -302,7 +313,12 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: "Modelo de certificado não encontrado." });
     return;
   }
-  const basePrice = parseFloat(cert.price);
+  const [buyer] = await db
+    .select({ userType: usersTable.userType })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  const basePrice = certificatePriceForUser(cert, buyer?.userType);
   const total = basePrice + (extendedWarranty ? 15.0 : 0.0);
 
   // generate unique order number
