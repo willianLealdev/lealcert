@@ -2652,7 +2652,7 @@ export default function ComprarPage() {
               </div>
             </div>
             <p className="text-center text-gray-600 text-[10px] mt-3">
-              PIX: qualquer valor &nbsp;·&nbsp; Boleto: a partir de R$ 80,00 &nbsp;·&nbsp; Cartão: a partir de R$ 150,00
+              PIX: qualquer valor &nbsp;·&nbsp; Boleto: a partir de R$ 90,00 &nbsp;·&nbsp; Cartão: a partir de R$ 150,00
             </p>
           </div>
 

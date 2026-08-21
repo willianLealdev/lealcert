@@ -531,8 +531,8 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Cartão de crédito disponível apenas para valores acima de R$ 150,00." });
     return;
   }
-  if (paymentMethod === "boleto" && total < 80) {
-    res.status(400).json({ error: "Boleto disponível apenas para valores acima de R$ 80,00." });
+  if (paymentMethod === "boleto" && total < 90) {
+    res.status(400).json({ error: "Boleto disponível apenas para valores a partir de R$ 90,00." });
     return;
   }
   if (!["pix", "boleto", "cartao", "cortesia"].includes(paymentMethod)) {
