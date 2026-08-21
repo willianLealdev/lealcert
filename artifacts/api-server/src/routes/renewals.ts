@@ -1,19 +1,69 @@
 import { Router } from "express";
 import { eq, lt, and, desc } from "drizzle-orm";
-import { db, certificateRenewalsTable, settingsTable } from "@workspace/db";
+import { db, certificateRenewalsTable, ordersTable, settingsTable, usersTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { sendRenewalAlertEmail } from "../lib/email";
 
 const router = Router();
 
-// ── GET /renewals — listar todos os registros de renovação ────────────────────
-router.get("/renewals", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
+async function renewalOwnerId(req: Express.Request): Promise<number | null> {
+  const sessionUserId = req.session.userId;
+  const sessionRole = req.session.role;
+
+  if (!sessionUserId) return -1;
+  if (sessionRole === "admin" || req.session.userType === "admin") return null;
+  if (sessionRole !== "contador" && sessionRole !== "operador") return -1;
+
+  const [user] = await db
+    .select({
+      id: usersTable.id,
+      role: usersTable.role,
+      userType: usersTable.userType,
+      contadorId: usersTable.contadorId,
+      isActive: usersTable.isActive,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, sessionUserId))
+    .limit(1);
+
+  if (!user || !user.isActive) return -1;
+  if (user.role === "contador" && user.userType === "contador") return user.id;
+  if (user.role !== "operador" || !user.contadorId) return -1;
+
+  const [contador] = await db
+    .select({ id: usersTable.id, role: usersTable.role, userType: usersTable.userType, isActive: usersTable.isActive })
+    .from(usersTable)
+    .where(eq(usersTable.id, user.contadorId))
+    .limit(1);
+
+  return contador?.isActive && contador.role === "contador" && contador.userType === "contador"
+    ? contador.id
+    : -1;
+}
+
+// ── GET /renewals — listar renovação do administrador ou do escritório logado ─
+router.get("/renewals", requireAuth, async (req, res): Promise<void> => {
   try {
-    const renewals = await db
-      .select()
-      .from(certificateRenewalsTable)
-      .orderBy(desc(certificateRenewalsTable.expiresAt));
+    const ownerId = await renewalOwnerId(req);
+    if (ownerId === -1) {
+      res.status(403).json({ error: "Acesso negado." });
+      return;
+    }
+
+    const renewals = ownerId === null
+      ? await db
+        .select()
+        .from(certificateRenewalsTable)
+        .orderBy(desc(certificateRenewalsTable.expiresAt))
+      : (await db
+        .select({ renewal: certificateRenewalsTable })
+        .from(certificateRenewalsTable)
+        .innerJoin(ordersTable, eq(certificateRenewalsTable.orderId, ordersTable.id))
+        .where(eq(ordersTable.userId, ownerId))
+        .orderBy(desc(certificateRenewalsTable.expiresAt)))
+        .map(({ renewal }) => renewal);
+
     res.json(renewals);
   } catch (err) {
     logger.error({ err }, "renewals: erro ao listar");

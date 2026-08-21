@@ -62,6 +62,7 @@ const navigation = [
 
 const benefitsNav = [
   { name: "Fidelidade", href: "/fidelidade", icon: Star },
+  { name: "Renovações", href: "/renovacoes", icon: RefreshCw },
 ];
 
 const agenteNav = [

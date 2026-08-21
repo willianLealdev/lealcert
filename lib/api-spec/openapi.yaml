@@ -1778,7 +1778,7 @@ paths:
     get:
       operationId: listRenewals
       tags: [renewals]
-      summary: Listar todos os certificados emitidos com controle de renovação
+      summary: Listar renovações do administrador ou do escritório autenticado
       responses:
         "200":
           description: Lista de renovações

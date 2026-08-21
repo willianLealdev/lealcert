@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, AlertCircle, CalendarDays, Mail, Bell, CheckCircle2, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+import { useAuth } from "@/lib/auth";
 
 function formatDate(d: string | Date | null | undefined) {
   if (!d) return "—";
@@ -30,7 +31,9 @@ function urgencyBadge(days: number | null): { label: string; variant: "default" 
 
 export default function AdminRenovacoes() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [busca, setBusca] = useState("");
+  const isAdmin = user?.role === "admin";
 
   const { data, isLoading, isError, refetch, isFetching } = useListRenewals();
 
@@ -62,6 +65,7 @@ export default function AdminRenovacoes() {
   const filteredData = (data ?? []).filter(item => {
     if (!busca) return true;
     const q = busca.toLowerCase();
+    if (!isAdmin) return item.customerName.toLowerCase().includes(q);
     return (
       item.customerName.toLowerCase().includes(q) ||
       item.customerCpfCnpj.includes(q) ||
@@ -86,20 +90,26 @@ export default function AdminRenovacoes() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Renovações</h1>
-          <p className="text-muted-foreground">Controle de vencimento dos certificados emitidos pelo sistema.</p>
+          <p className="text-muted-foreground">
+            {isAdmin
+              ? "Controle de vencimento dos certificados emitidos pelo sistema."
+              : "Acompanhe os vencimentos dos certificados emitidos pelo seu escritório."}
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => checkAlerts.mutate()}
-            disabled={checkAlerts.isPending || isFetching}
-          >
-            {checkAlerts.isPending
-              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              : <Bell className="h-4 w-4 mr-2" />}
-            Verificar Alertas
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => checkAlerts.mutate()}
+              disabled={checkAlerts.isPending || isFetching}
+            >
+              {checkAlerts.isPending
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <Bell className="h-4 w-4 mr-2" />}
+              Verificar Alertas
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
             Atualizar
@@ -133,7 +143,7 @@ export default function AdminRenovacoes() {
 
       {/* Busca */}
       <Input
-        placeholder="Buscar por nome, CPF/CNPJ, certificado ou protocolo..."
+        placeholder={isAdmin ? "Buscar por nome, CPF/CNPJ, certificado ou protocolo..." : "Buscar cliente por nome..."}
         value={busca}
         onChange={e => setBusca(e.target.value)}
         className="max-w-md"
@@ -190,52 +200,58 @@ export default function AdminRenovacoes() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono">{item.customerCpfCnpj}</p>
-                      <p className="text-sm text-foreground">{item.certificateName}</p>
+                      {isAdmin && (
+                        <>
+                          <p className="text-xs text-muted-foreground font-mono">{item.customerCpfCnpj}</p>
+                          <p className="text-sm text-foreground">{item.certificateName}</p>
+                        </>
+                      )}
                     </div>
                     <div className="text-right shrink-0 space-y-1">
                       <p className="text-xs text-muted-foreground">Vencimento</p>
                       <p className="font-semibold">{formatDate(item.expiresAt)}</p>
-                      <p className="text-xs text-muted-foreground">Emissão: {formatDate(item.emittedAt)}</p>
+                      {isAdmin && <p className="text-xs text-muted-foreground">Emissão: {formatDate(item.emittedAt)}</p>}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t text-xs text-muted-foreground">
-                    {item.garProtocolo && (
+                  {isAdmin && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t text-xs text-muted-foreground">
+                      {item.garProtocolo && (
+                        <div>
+                          <p className="font-medium text-foreground mb-0.5">Protocolo</p>
+                          <p className="font-mono">{item.garProtocolo}</p>
+                        </div>
+                      )}
+                      {item.garPedido && (
+                        <div>
+                          <p className="font-medium text-foreground mb-0.5">Pedido GAR</p>
+                          <p className="font-mono">{item.garPedido}</p>
+                        </div>
+                      )}
                       <div>
-                        <p className="font-medium text-foreground mb-0.5">Protocolo</p>
-                        <p className="font-mono">{item.garProtocolo}</p>
+                        <p className="font-medium text-foreground mb-0.5">Validade</p>
+                        <p>{item.validityMonths} meses</p>
                       </div>
-                    )}
-                    {item.garPedido && (
                       <div>
-                        <p className="font-medium text-foreground mb-0.5">Pedido GAR</p>
-                        <p className="font-mono">{item.garPedido}</p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-medium text-foreground mb-0.5">Validade</p>
-                      <p>{item.validityMonths} meses</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground mb-0.5">Alertas enviados</p>
-                      <div className="flex gap-1 flex-wrap mt-0.5">
-                        <span className={`px-1.5 py-0.5 rounded text-xs ${item.alertSent30d ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>30d</span>
-                        <span className={`px-1.5 py-0.5 rounded text-xs ${item.alertSent7d ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>7d</span>
-                        <span className={`px-1.5 py-0.5 rounded text-xs ${item.alertSent1d ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>1d</span>
+                        <p className="font-medium text-foreground mb-0.5">Alertas enviados</p>
+                        <div className="flex gap-1 flex-wrap mt-0.5">
+                          <span className={`px-1.5 py-0.5 rounded text-xs ${item.alertSent30d ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>30d</span>
+                          <span className={`px-1.5 py-0.5 rounded text-xs ${item.alertSent7d ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>7d</span>
+                          <span className={`px-1.5 py-0.5 rounded text-xs ${item.alertSent1d ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>1d</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
-                    {item.orderId && (
+                    {isAdmin && item.orderId && (
                       <Link href={`/orders/${item.orderId}`}>
                         <Button variant="outline" size="sm">
                           Ver Pedido
                         </Button>
                       </Link>
                     )}
-                    {item.customerEmail && (
+                    {isAdmin && item.customerEmail && (
                       <Button
                         variant="outline"
                         size="sm"

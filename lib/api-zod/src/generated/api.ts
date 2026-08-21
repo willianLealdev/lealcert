@@ -1976,7 +1976,7 @@ export const GetOrderEventsResponse = zod.array(GetOrderEventsResponseItem)
 
 
 /**
- * @summary Listar todos os certificados emitidos com controle de renovação
+ * @summary Listar renovações do administrador ou do escritório autenticado
  */
 export const ListRenewalsResponseItem = zod.object({
   "id": zod.number(),

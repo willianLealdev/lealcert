@@ -6759,7 +6759,7 @@ export const getListRenewalsUrl = () => {
 }
 
 /**
- * @summary Listar todos os certificados emitidos com controle de renovação
+ * @summary Listar renovações do administrador ou do escritório autenticado
  */
 export const listRenewals = async ( options?: RequestInit): Promise<CertificateRenewal[]> => {
 
@@ -6806,7 +6806,7 @@ export type ListRenewalsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Listar todos os certificados emitidos com controle de renovação
+ * @summary Listar renovações do administrador ou do escritório autenticado
  */
 
 export function useListRenewals<TData = Awaited<ReturnType<typeof listRenewals>>, TError = ErrorType<unknown>>(

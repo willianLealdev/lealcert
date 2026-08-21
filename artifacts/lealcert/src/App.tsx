@@ -88,7 +88,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = false, vendedorOnly = false, contadorOnly = false, resetKey = 0 }: { component: React.ComponentType; adminOnly?: boolean; agenteOnly?: boolean; vendedorOnly?: boolean; contadorOnly?: boolean; resetKey?: number }) {
+function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = false, vendedorOnly = false, contadorOnly = false, renewalsOnly = false, resetKey = 0 }: { component: React.ComponentType; adminOnly?: boolean; agenteOnly?: boolean; vendedorOnly?: boolean; contadorOnly?: boolean; renewalsOnly?: boolean; resetKey?: number }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -109,6 +109,7 @@ function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = 
   if (agenteOnly && user.role !== "agente") return <NotFound />;
   if (vendedorOnly && user.role !== "vendedor" && user.role !== "admin") return <NotFound />;
   if (contadorOnly && user.role !== "contador") return <NotFound />;
+  if (renewalsOnly && user.role !== "admin" && user.role !== "contador" && user.role !== "operador") return <NotFound />;
 
   // Força conclusão do perfil antes de acessar qualquer outra área
   if (user.mustChangePassword) {
@@ -171,6 +172,7 @@ function Router() {
       <Route path="/admin/marketing" component={() => <ProtectedRoute component={AdminMarketing} adminOnly />} />
       <Route path="/admin/whatsapp" component={() => <ProtectedRoute component={AdminWhatsApp} adminOnly />} />
       <Route path="/admin/renovacoes" component={() => <ProtectedRoute component={AdminRenovacoes} adminOnly />} />
+       <Route path="/renovacoes" component={() => <ProtectedRoute component={AdminRenovacoes} renewalsOnly />} />
       <Route path="/admin/coupons" component={() => <ProtectedRoute component={AdminCoupons} adminOnly />} />
       <Route path="/admin/ip-security" component={() => <ProtectedRoute component={AdminIpSecurity} adminOnly />} />
       <Route path="/admin/agentes" component={() => <ProtectedRoute component={AdminAgentes} adminOnly />} />

@@ -15,6 +15,15 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.58",
+    changes: [
+      { type: "novo", text: "Renovações agora estão disponíveis para contadores e seus operadores, mostrando apenas os certificados pertencentes ao escritório vinculado." },
+      { type: "segurança", text: "A consulta de renovações passou a isolar os dados por contador também no servidor; operadores usam automaticamente o vínculo da conta responsável." },
+      { type: "melhoria", text: "Contadores e operadores veem cliente, vencimento e alertas sem acesso ao envio manual de e-mail ou aos detalhes administrativos do certificado." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.57",
     changes: [
       { type: "melhoria", text: "Tela de usuários organizada por abas de perfil, com busca instantânea por nome e contagem de cadastros em cada grupo." },
