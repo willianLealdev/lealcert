@@ -34,6 +34,15 @@ export interface CertificateRenewal {
   createdAt?: string;
 }
 
+export interface OfficeCertificateRenewal {
+  id: number;
+  customerName: string;
+  expiresAt: string;
+  alertSent30d: boolean;
+  alertSent7d: boolean;
+  alertSent1d: boolean;
+}
+
 export type CheckAlertsResultResultsItem = {
   id?: number;
   customer?: string;

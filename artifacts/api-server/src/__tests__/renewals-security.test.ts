@@ -103,7 +103,16 @@ describe("Renewal office access", () => {
   it("returns only rows scoped to the authenticated contador's commercial account", async () => {
     results.push(
       [{ id: 20, role: "contador", userType: "contador", isActive: true }],
-      [{ renewal: { id: 101, customerName: "Cliente do escritório" } }],
+      [{
+        renewal: {
+          id: 101,
+          customerName: "Cliente do escritório",
+          expiresAt: "2027-01-10T00:00:00.000Z",
+          alertSent30d: false,
+          alertSent7d: true,
+          alertSent1d: false,
+        },
+      }],
     );
     const { db } = await import("@workspace/db");
     const { default: renewalsRouter } = await import("../routes/renewals");
@@ -113,7 +122,21 @@ describe("Renewal office access", () => {
     const response = await request(app).get("/api/renewals");
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual([{ id: 101, customerName: "Cliente do escritório" }]);
+    expect(response.body).toEqual([{
+      id: 101,
+      customerName: "Cliente do escritório",
+      expiresAt: "2027-01-10T00:00:00.000Z",
+      alertSent30d: false,
+      alertSent7d: true,
+      alertSent1d: false,
+    }]);
+    expect(response.body[0]).not.toHaveProperty("customerCpfCnpj");
+    expect(response.body[0]).not.toHaveProperty("customerEmail");
+    expect(response.body[0]).not.toHaveProperty("certificateName");
+    expect(response.body[0]).not.toHaveProperty("garPedido");
+    expect(response.body[0]).not.toHaveProperty("garProtocolo");
+    expect(response.body[0]).not.toHaveProperty("orderId");
+    expect(response.body[0]).not.toHaveProperty("emittedAt");
     expect(db.select).toHaveBeenCalledTimes(2);
     expect((db.select as ReturnType<typeof vi.fn>).mock.calls[1][0]).toHaveProperty("renewal");
   });
@@ -122,7 +145,16 @@ describe("Renewal office access", () => {
     results.push(
       [{ id: 32, role: "operador", userType: "contador", contadorId: 20, isActive: true }],
       [{ id: 20, role: "contador", userType: "contador", isActive: true }],
-      [{ renewal: { id: 102, customerName: "Cliente do contador vinculado" } }],
+      [{
+        renewal: {
+          id: 102,
+          customerName: "Cliente do contador vinculado",
+          expiresAt: "2027-01-10T00:00:00.000Z",
+          alertSent30d: false,
+          alertSent7d: false,
+          alertSent1d: false,
+        },
+      }],
     );
     const { default: renewalsRouter } = await import("../routes/renewals");
     const app = appWithSession({ userId: 32, role: "operador", userType: "contador" });
@@ -131,7 +163,16 @@ describe("Renewal office access", () => {
     const response = await request(app).get("/api/renewals");
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual([{ id: 102, customerName: "Cliente do contador vinculado" }]);
+    expect(response.body).toEqual([{
+      id: 102,
+      customerName: "Cliente do contador vinculado",
+      expiresAt: "2027-01-10T00:00:00.000Z",
+      alertSent30d: false,
+      alertSent7d: false,
+      alertSent1d: false,
+    }]);
+    expect(response.body[0]).not.toHaveProperty("customerCpfCnpj");
+    expect(response.body[0]).not.toHaveProperty("certificateName");
   });
 
   it("does not let contador or operator trigger renewal emails", async () => {

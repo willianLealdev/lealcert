@@ -29,6 +29,21 @@ function urgencyBadge(days: number | null): { label: string; variant: "default" 
   return { label: `${days}d`, variant: "secondary" };
 }
 
+type AdminRenewalDetails = {
+  customerCpfCnpj: string;
+  customerEmail?: string | null;
+  certificateName: string;
+  garPedido?: string | null;
+  garProtocolo?: string | null;
+  validityMonths: number;
+  emittedAt: string | Date;
+  orderId?: number | null;
+};
+
+function hasAdminRenewalDetails(item: object): item is AdminRenewalDetails {
+  return "customerCpfCnpj" in item && "certificateName" in item && "emittedAt" in item;
+}
+
 export default function AdminRenovacoes() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -65,7 +80,7 @@ export default function AdminRenovacoes() {
   const filteredData = (data ?? []).filter(item => {
     if (!busca) return true;
     const q = busca.toLowerCase();
-    if (!isAdmin) return item.customerName.toLowerCase().includes(q);
+    if (!isAdmin || !hasAdminRenewalDetails(item)) return item.customerName.toLowerCase().includes(q);
     return (
       item.customerName.toLowerCase().includes(q) ||
       item.customerCpfCnpj.includes(q) ||
@@ -181,6 +196,7 @@ export default function AdminRenovacoes() {
             const days = daysUntil(item.expiresAt);
             const urgency = urgencyBadge(days);
             const alertsSent = [item.alertSent30d, item.alertSent7d, item.alertSent1d].filter(Boolean).length;
+            const adminDetails = isAdmin && hasAdminRenewalDetails(item);
 
             return (
               <Card key={item.id} className={days !== null && days < 0 ? "border-destructive/40 bg-destructive/5" : days !== null && days <= 7 ? "border-amber-400/60 bg-amber-50/40" : ""}>
@@ -200,7 +216,7 @@ export default function AdminRenovacoes() {
                           </Badge>
                         )}
                       </div>
-                      {isAdmin && (
+                      {adminDetails && (
                         <>
                           <p className="text-xs text-muted-foreground font-mono">{item.customerCpfCnpj}</p>
                           <p className="text-sm text-foreground">{item.certificateName}</p>
@@ -210,11 +226,11 @@ export default function AdminRenovacoes() {
                     <div className="text-right shrink-0 space-y-1">
                       <p className="text-xs text-muted-foreground">Vencimento</p>
                       <p className="font-semibold">{formatDate(item.expiresAt)}</p>
-                      {isAdmin && <p className="text-xs text-muted-foreground">Emissão: {formatDate(item.emittedAt)}</p>}
+                      {adminDetails && <p className="text-xs text-muted-foreground">Emissão: {formatDate(item.emittedAt)}</p>}
                     </div>
                   </div>
 
-                  {isAdmin && (
+                  {adminDetails && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t text-xs text-muted-foreground">
                       {item.garProtocolo && (
                         <div>
@@ -244,14 +260,14 @@ export default function AdminRenovacoes() {
                   )}
 
                   <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
-                    {isAdmin && item.orderId && (
+                    {adminDetails && item.orderId && (
                       <Link href={`/orders/${item.orderId}`}>
                         <Button variant="outline" size="sm">
                           Ver Pedido
                         </Button>
                       </Link>
                     )}
-                    {isAdmin && item.customerEmail && (
+                    {adminDetails && item.customerEmail && (
                       <Button
                         variant="outline"
                         size="sm"

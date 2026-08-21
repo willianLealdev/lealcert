@@ -1787,7 +1787,9 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/CertificateRenewal"
+                  oneOf:
+                    - $ref: "#/components/schemas/CertificateRenewal"
+                    - $ref: "#/components/schemas/OfficeCertificateRenewal"
 
   /renewals/check-alerts:
     post:
@@ -3660,6 +3662,24 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    OfficeCertificateRenewal:
+      type: object
+      required: [id, customerName, expiresAt, alertSent30d, alertSent7d, alertSent1d]
+      properties:
+        id:
+          type: integer
+        customerName:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        alertSent30d:
+          type: boolean
+        alertSent7d:
+          type: boolean
+        alertSent1d:
+          type: boolean
 
     CheckAlertsResult:
       type: object

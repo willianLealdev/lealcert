@@ -7,6 +7,15 @@ import { sendRenewalAlertEmail } from "../lib/email";
 
 const router = Router();
 
+const officeRenewalFields = {
+  id: certificateRenewalsTable.id,
+  customerName: certificateRenewalsTable.customerName,
+  expiresAt: certificateRenewalsTable.expiresAt,
+  alertSent30d: certificateRenewalsTable.alertSent30d,
+  alertSent7d: certificateRenewalsTable.alertSent7d,
+  alertSent1d: certificateRenewalsTable.alertSent1d,
+};
+
 async function renewalOwnerId(req: Express.Request): Promise<number | null> {
   const sessionUserId = req.session.userId;
   const sessionRole = req.session.role;
@@ -57,7 +66,7 @@ router.get("/renewals", requireAuth, async (req, res): Promise<void> => {
         .from(certificateRenewalsTable)
         .orderBy(desc(certificateRenewalsTable.expiresAt))
       : (await db
-        .select({ renewal: certificateRenewalsTable })
+        .select({ renewal: officeRenewalFields })
         .from(certificateRenewalsTable)
         .innerJoin(ordersTable, eq(certificateRenewalsTable.orderId, ordersTable.id))
         .where(eq(ordersTable.userId, ownerId))

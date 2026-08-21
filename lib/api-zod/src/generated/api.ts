@@ -1978,7 +1978,7 @@ export const GetOrderEventsResponse = zod.array(GetOrderEventsResponseItem)
 /**
  * @summary Listar renovações do administrador ou do escritório autenticado
  */
-export const ListRenewalsResponseItem = zod.object({
+export const ListRenewalsResponseItem = zod.union([zod.object({
   "id": zod.number(),
   "orderId": zod.number(),
   "customerName": zod.string(),
@@ -1994,7 +1994,14 @@ export const ListRenewalsResponseItem = zod.object({
   "alertSent7d": zod.boolean().optional(),
   "alertSent1d": zod.boolean().optional(),
   "createdAt": zod.coerce.date().optional()
-})
+}),zod.object({
+  "id": zod.number(),
+  "customerName": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "alertSent30d": zod.boolean(),
+  "alertSent7d": zod.boolean(),
+  "alertSent1d": zod.boolean()
+})])
 export const ListRenewalsResponse = zod.array(ListRenewalsResponseItem)
 
 

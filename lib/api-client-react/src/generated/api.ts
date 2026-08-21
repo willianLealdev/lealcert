@@ -149,6 +149,7 @@ import type {
   MessageResponse,
   NfseCancelBody,
   NfseInvoice,
+  OfficeCertificateRenewal,
   OpenaiConversation,
   Operator,
   OperatorInput,
@@ -6761,9 +6762,9 @@ export const getListRenewalsUrl = () => {
 /**
  * @summary Listar renovações do administrador ou do escritório autenticado
  */
-export const listRenewals = async ( options?: RequestInit): Promise<CertificateRenewal[]> => {
+export const listRenewals = async ( options?: RequestInit): Promise<(CertificateRenewal | OfficeCertificateRenewal)[]> => {
 
-  return customFetch<CertificateRenewal[]>(getListRenewalsUrl(),
+  return customFetch<(CertificateRenewal | OfficeCertificateRenewal)[]>(getListRenewalsUrl(),
   {
     ...options,
     method: 'GET'

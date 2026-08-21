@@ -165,6 +165,7 @@ export * from './meStatsCards';
 export * from './nfseCancelBody';
 export * from './nfseInvoice';
 export * from './nfseInvoiceRawResponse';
+export * from './officeCertificateRenewal';
 export * from './openaiConversation';
 export * from './openaiConversationInput';
 export * from './openaiConversationWithMessages';
