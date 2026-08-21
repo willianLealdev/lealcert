@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type Row = Record<string, unknown>;
 const results: Row[][] = [];
 const writes: Array<{ kind: "commission" | "usage" | "order"; values: unknown }> = [];
+const conflictTargets: unknown[] = [];
+let failNextCommissionInsert = false;
 
 function chain(result: Row[] = []) {
   const value: Record<string, unknown> & PromiseLike<Row[]> = {
@@ -15,7 +17,14 @@ function chain(result: Row[] = []) {
       writes.push({ kind: "commission", values: input });
       return value;
     },
-    onConflictDoNothing: () => Promise.resolve(),
+    onConflictDoNothing: (target?: unknown) => {
+      conflictTargets.push(target);
+      if (failNextCommissionInsert) {
+        failNextCommissionInsert = false;
+        return Promise.reject(new Error("falha temporária no banco"));
+      }
+      return Promise.resolve();
+    },
     set: (input: unknown) => {
       writes.push({ kind: "order", values: input });
       return value;
@@ -55,6 +64,8 @@ describe("referral credit rules", () => {
   beforeEach(() => {
     results.length = 0;
     writes.length = 0;
+    conflictTargets.length = 0;
+    failNextCommissionInsert = false;
     vi.clearAllMocks();
   });
 
@@ -88,6 +99,68 @@ describe("referral credit rules", () => {
       kind: "commission",
       values: { referrerUserId: 9, referredUserId: 10, orderId: 31, amount: "2" },
     });
+  });
+
+  it("uses the order unique key so a replay cannot duplicate a completed-order credit", async () => {
+    results.push(
+      [{
+        order: { id: 31, status: "completed", userId: 10 },
+        referredByUserId: 9,
+        referredUserType: "contador",
+        referredRole: "contador",
+      }],
+      [{
+        order: { id: 31, status: "completed", userId: 10 },
+        referredByUserId: 9,
+        referredUserType: "contador",
+        referredRole: "contador",
+      }],
+    );
+    const { creditReferralForCompletedOrder } = await import("../lib/referrals");
+
+    await creditReferralForCompletedOrder(31);
+    await creditReferralForCompletedOrder(31);
+
+    expect(db.insert).toHaveBeenCalledTimes(2);
+    expect(writes.filter((entry) => entry.kind === "commission")).toEqual([
+      { kind: "commission", values: { referrerUserId: 9, referredUserId: 10, orderId: 31, amount: "2" } },
+      { kind: "commission", values: { referrerUserId: 9, referredUserId: 10, orderId: 31, amount: "2" } },
+    ]);
+    expect(conflictTargets).toEqual([
+      { target: "commissions.order_id" },
+      { target: "commissions.order_id" },
+    ]);
+  });
+
+  it("reconciles a completed indicated order after the initial credit attempt fails", async () => {
+    results.push([{
+      order: { id: 31, status: "completed", userId: 10 },
+      referredByUserId: 9,
+      referredUserType: "contador",
+      referredRole: "contador",
+    }]);
+    failNextCommissionInsert = true;
+    const { creditReferralForCompletedOrder, reconcileReferralCredits } = await import("../lib/referrals");
+
+    await expect(creditReferralForCompletedOrder(31)).rejects.toThrow("falha temporária no banco");
+
+    results.push(
+      [{ orderId: 31 }],
+      [{
+        order: { id: 31, status: "completed", userId: 10 },
+        referredByUserId: 9,
+        referredUserType: "contador",
+        referredRole: "contador",
+      }],
+    );
+
+    await reconcileReferralCredits();
+
+    expect(db.insert).toHaveBeenCalledTimes(2);
+    expect(writes.filter((entry) => entry.kind === "commission")).toEqual([
+      { kind: "commission", values: { referrerUserId: 9, referredUserId: 10, orderId: 31, amount: "2" } },
+      { kind: "commission", values: { referrerUserId: 9, referredUserId: 10, orderId: 31, amount: "2" } },
+    ]);
   });
 
   it("rejects credit redemption when the order belongs to another office", async () => {

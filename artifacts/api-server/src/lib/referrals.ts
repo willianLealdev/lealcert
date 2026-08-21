@@ -91,7 +91,7 @@ export async function creditReferralForCompletedOrder(orderId: number): Promise<
     referredUserId: row.order.userId,
     orderId: row.order.id,
     amount: String(REFERRAL_CREDIT_PER_CERTIFICATE),
-  }).onConflictDoNothing();
+  }).onConflictDoNothing({ target: referralCreditCommissionsTable.orderId });
 
   logger.info({ orderId, referrerUserId: row.referredByUserId, referredUserId: row.order.userId }, "Indicação: crédito processado para pedido concluído");
 }

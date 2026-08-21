@@ -30,6 +30,7 @@ function serializeSettings(s: typeof settingsTable.$inferSelect) {
     garHashTabela: s.garHashTabela ?? "",       // UUID de config — não é segredo
     safewebPassword: mask(s.safewebPassword),
     safewebPasswordHomologacao: mask(s.safewebPasswordHomologacao),
+    safewebWebhookSecret: mask(s.safewebWebhookSecret),
     evolutionApiKey: mask(s.evolutionApiKey),
     evolutionMktUrl: s.evolutionMktUrl ?? null,
     evolutionMktApiKey: mask((s as unknown as Record<string, string>).evolutionMktApiKey),
@@ -132,7 +133,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
     scheduleOpenDays, scheduleOpenHour, scheduleCloseHour, scheduleStepMin, scheduleClosedDates,
     garApiKey, garDocumento, garHashVendedor, garHashParceiro, garHashTabela, garFormaPagamento, garPreferirVideoconferencia,
     safewebUrl, safewebUrlHomologacao, safewebAmbiente, safewebUsername, safewebPassword,
-    safewebUsernameHomologacao, safewebPasswordHomologacao,
+    safewebUsernameHomologacao, safewebPasswordHomologacao, safewebWebhookSecret,
     safewebCnpjAr, safewebCodigoParceiro, activeProvider,
     evolutionUrl, evolutionApiKey, evolutionInstance,
     evolutionMktUrl, evolutionMktApiKey, evolutionMktInstance,
@@ -220,6 +221,7 @@ router.patch("/settings", requireAdmin, async (req, res): Promise<void> => {
   set("garHashTabela", garHashTabela);
   set("safewebPassword", safewebPassword);
   set("safewebPasswordHomologacao", safewebPasswordHomologacao);
+  set("safewebWebhookSecret", safewebWebhookSecret);
   set("evolutionApiKey", evolutionApiKey);
   set("evolutionMktApiKey", evolutionMktApiKey);
   set("smtpPassDb", smtpPassDb);

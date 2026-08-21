@@ -918,6 +918,7 @@ export interface AppSettings {
   safewebPassword?: string | null;
   safewebUsernameHomologacao?: string | null;
   safewebPasswordHomologacao?: string | null;
+  safewebWebhookSecret?: string | null;
   safewebCnpjAr?: string | null;
   safewebCodigoParceiro?: string | null;
   activeProvider?: string;
@@ -998,6 +999,7 @@ export interface AppSettingsUpdate {
   safewebPassword?: string;
   safewebUsernameHomologacao?: string;
   safewebPasswordHomologacao?: string;
+  safewebWebhookSecret?: string;
   safewebCnpjAr?: string;
   safewebCodigoParceiro?: string;
   activeProvider?: string;

@@ -5149,6 +5149,9 @@ components:
         safewebPasswordHomologacao:
           type: string
           nullable: true
+        safewebWebhookSecret:
+          type: string
+          nullable: true
         safewebCnpjAr:
           type: string
           nullable: true
@@ -5353,6 +5356,8 @@ components:
         safewebUsernameHomologacao:
           type: string
         safewebPasswordHomologacao:
+          type: string
+        safewebWebhookSecret:
           type: string
         safewebCnpjAr:
           type: string

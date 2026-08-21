@@ -33,6 +33,7 @@ export interface AppSettings {
   safewebPassword?: string | null;
   safewebUsernameHomologacao?: string | null;
   safewebPasswordHomologacao?: string | null;
+  safewebWebhookSecret?: string | null;
   safewebCnpjAr?: string | null;
   safewebCodigoParceiro?: string | null;
   activeProvider?: string;

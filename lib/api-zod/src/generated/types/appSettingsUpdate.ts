@@ -35,6 +35,7 @@ export interface AppSettingsUpdate {
   safewebPassword?: string;
   safewebUsernameHomologacao?: string;
   safewebPasswordHomologacao?: string;
+  safewebWebhookSecret?: string;
   safewebCnpjAr?: string;
   safewebCodigoParceiro?: string;
   activeProvider?: string;

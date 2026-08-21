@@ -92,6 +92,7 @@ export default function AdminSettings() {
     safewebPassword: "",
     safewebUsernameHomologacao: "",
     safewebPasswordHomologacao: "",
+    safewebWebhookSecret: "",
     safewebCnpjAr: "",
     safewebCodigoParceiro: "",
     activeProvider: "gestaoar",
@@ -162,7 +163,7 @@ export default function AdminSettings() {
         contactEmailSupport?: string; contactAddress?: string;
         safewebUrlHomologacao?: string; safewebAmbiente?: string;
         safewebCodigoParceiro?: string;
-        safewebUsernameHomologacao?: string; safewebPasswordHomologacao?: string;
+        safewebUsernameHomologacao?: string; safewebPasswordHomologacao?: string; safewebWebhookSecret?: string;
         evolutionUrl?: string; evolutionApiKey?: string; evolutionInstance?: string;
         smtpHostDb?: string; smtpPortDb?: string; smtpUserDb?: string; smtpPassDb?: string;
         mktSmtpHostDb?: string; mktSmtpPortDb?: string; mktSmtpUserDb?: string; mktSmtpPassDb?: string; mktMailFrom?: string;
@@ -201,6 +202,7 @@ export default function AdminSettings() {
         safewebPassword: s.safewebPassword ?? "",
         safewebUsernameHomologacao: s.safewebUsernameHomologacao ?? "",
         safewebPasswordHomologacao: s.safewebPasswordHomologacao ?? "",
+        safewebWebhookSecret: s.safewebWebhookSecret ?? "",
         safewebCnpjAr: s.safewebCnpjAr ?? "",
         safewebCodigoParceiro: s.safewebCodigoParceiro ?? "",
         activeProvider: s.activeProvider ?? "gestaoar",
@@ -1229,6 +1231,11 @@ export default function AdminSettings() {
                     <Input value={form.safewebCodigoParceiro} onChange={e => set("safewebCodigoParceiro", e.target.value)} placeholder="Se fornecido pela Safeweb" />
                     <p className="text-xs text-muted-foreground">Incluso nas solicitações apenas se preenchido. Deixe em branco se não tiver sido fornecido.</p>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Segredo do Webhook Safeweb</Label>
+                    <MaskedInput value={form.safewebWebhookSecret} onChange={v => set("safewebWebhookSecret", v)} placeholder="Crie uma chave longa e exclusiva" />
+                    <p className="text-xs text-muted-foreground">Protege a conclusão de certificados. As URLs de solicitação geradas automaticamente já incluem esta chave.</p>
+                  </div>
                   <Button type="button" variant="outline" size="sm"
                     disabled={
                       testingAuth ||
@@ -1271,6 +1278,9 @@ export default function AdminSettings() {
                   <p className="text-xs text-muted-foreground">
                     Configure o webhook no painel do MercadoPago para:{" "}
                     <code className="bg-muted px-1 rounded text-xs">{form.siteUrl || "[siteUrl]"}/api/mp/webhook</code>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Usado somente para validar as notificações assinadas do Mercado Pago.
                   </p>
                 </div>
               </CardContent>

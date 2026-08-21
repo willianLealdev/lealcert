@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { timingSafeEqual } from "crypto";
 import { db, settingsTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
@@ -400,7 +401,7 @@ router.post("/safeweb/biometria/psbio-global", requireAuth, async (req, res): Pr
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // NOTIFICA EVENTOS (webhooks recebidos da Safeweb)
-// Configure no painel Safeweb a URL: https://seu-dominio.com/api/safeweb/eventos/:tipo
+// Configure no painel Safeweb a URL: https://seu-dominio.com/api/safeweb/eventos/:tipo?secret=[Webhook Secret]
 // Tipos: emissao, solicitacao, validacao, verificacao, cancelamento, revogacao,
 //        pagamento, confirmacao-cadastro, solicitacao-periodo-uso,
 //        certificado-periodo-uso, validacao-autonoma, cancelamento-solicitacao
@@ -418,9 +419,37 @@ const SW_EVENT_STATUS_MAP: Record<string, string> = {
   revogacao: "revogado",
 };
 
+function secretsMatch(expected: string, provided: string): boolean {
+  const expectedBuffer = Buffer.from(expected);
+  const providedBuffer = Buffer.from(provided);
+  return expectedBuffer.length === providedBuffer.length
+    && timingSafeEqual(expectedBuffer, providedBuffer);
+}
+
+async function requireSafewebWebhookSecret(req: Parameters<Parameters<typeof router.post>[1]>[0], res: Res): Promise<boolean> {
+  const [settings] = await db.select({ safewebWebhookSecret: settingsTable.safewebWebhookSecret }).from(settingsTable).limit(1);
+  const configuredSecret = settings?.safewebWebhookSecret;
+  const querySecret = typeof req.query.secret === "string" ? req.query.secret : undefined;
+  const headerSecret = typeof req.headers["x-webhook-secret"] === "string" ? req.headers["x-webhook-secret"] : undefined;
+  const providedSecret = querySecret ?? headerSecret;
+
+  if (!configuredSecret || !providedSecret || !secretsMatch(configuredSecret, providedSecret)) {
+    logger.warn({ ip: req.ip }, "Safeweb webhook rejeitado por segredo ausente ou inválido");
+    res.status(401).json({ error: "Webhook Safeweb não autorizado." });
+    return false;
+  }
+  return true;
+}
+
 router.post("/safeweb/eventos/:tipo", async (req, res): Promise<void> => {
-  const tipo = (req.params.tipo ?? "").toLowerCase();
+  if (!await requireSafewebWebhookSecret(req, res)) return;
   const payload = req.body ?? {};
+  // A URL configurada em UrlSolicitacao é /eventos/webhook. Como esta rota
+  // parametrizada também a recebe, o tipo real precisa vir do payload.
+  const pathTipo = (req.params.tipo ?? "").toLowerCase();
+  const tipo = pathTipo === "webhook"
+    ? String(payload.Tipo ?? payload.tipo ?? payload.Evento ?? payload.evento ?? pathTipo).toLowerCase()
+    : pathTipo;
   logger.info({ tipo, payload }, "Safeweb evento recebido");
 
   // Responde imediatamente para a Safeweb não reenviar
@@ -494,7 +523,7 @@ router.post("/safeweb/eventos/:tipo", async (req, res): Promise<void> => {
           const { incrementLoyaltySlot } = await import("../lib/loyalty");
           incrementLoyaltySlot(order.userId, order.id).catch((err: unknown) => logger.error({ err }, "Loyalty: erro ao incrementar slot (Safeweb)"));
         }
-        const { creditReferralForCompletedOrder } = await import("./referrals");
+        const { creditReferralForCompletedOrder } = await import("../lib/referrals");
         await creditReferralForCompletedOrder(order.id);
       }
     } catch (err) {
@@ -506,6 +535,7 @@ router.post("/safeweb/eventos/:tipo", async (req, res): Promise<void> => {
 // Rota específica para o webhook configurado em UrlSolicitacao no sw-auto.ts
 // URL: /api/safeweb/eventos/webhook  (tipo = "webhook", ignoramos o tipo e lemos o payload)
 router.post("/safeweb/eventos/webhook", async (req, res): Promise<void> => {
+  if (!await requireSafewebWebhookSecret(req, res)) return;
   const payload = req.body ?? {};
   const tipo = String(payload.Tipo ?? payload.tipo ?? payload.Evento ?? payload.evento ?? "webhook").toLowerCase();
   logger.info({ tipo, payload }, "Safeweb webhook recebido");
@@ -546,7 +576,7 @@ router.post("/safeweb/eventos/webhook", async (req, res): Promise<void> => {
       await database.update(ot).set(updates as unknown as Parameters<typeof database.update<typeof ot>>[0]).where(eq(ot.id, row.order.id));
       await logEvent(row.order.id, "gar_status_updated", `Webhook Safeweb [${tipo}]: ${safewebStatusLabel}`, { tipo, payload });
       if (newStatus === "completed") {
-        const { creditReferralForCompletedOrder } = await import("./referrals");
+        const { creditReferralForCompletedOrder } = await import("../lib/referrals");
         await creditReferralForCompletedOrder(row.order.id);
       }
     } catch (err) {

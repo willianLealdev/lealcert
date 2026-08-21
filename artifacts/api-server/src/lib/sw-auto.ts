@@ -27,7 +27,7 @@ function normalizeSwUrl(raw: string): string {
   try { return new URL(raw).origin; } catch { return raw.replace(/\/Service\/.+$/, "").replace(/\/$/, ""); }
 }
 
-async function getSwSettings(): Promise<(SafewebSettings & { siteUrl?: string }) | null> {
+async function getSwSettings(): Promise<(SafewebSettings & { siteUrl?: string; webhookSecret?: string }) | null> {
   const [s] = await db.select().from(settingsTable).limit(1);
   const isHomol = s?.safewebAmbiente === "homologacao";
   const username = isHomol ? (s?.safewebUsernameHomologacao ?? s?.safewebUsername) : s?.safewebUsername;
@@ -42,6 +42,7 @@ async function getSwSettings(): Promise<(SafewebSettings & { siteUrl?: string })
     cnpjAr: s?.safewebCnpjAr ?? undefined,
     codigoParceiro: s?.safewebCodigoParceiro ?? undefined,
     siteUrl: s?.siteUrl ?? undefined,
+    webhookSecret: s?.safewebWebhookSecret ?? undefined,
   };
 }
 
@@ -124,8 +125,8 @@ export async function swAutoComprar(orderId: number): Promise<void> {
   };
 
   // UrlSolicitacao — notificações de eventos Safeweb
-  const urlSolicitacao = sw.siteUrl
-    ? `${sw.siteUrl.replace(/\/$/, "")}/api/safeweb/eventos/webhook`
+  const urlSolicitacao = sw.siteUrl && sw.webhookSecret
+    ? `${sw.siteUrl.replace(/\/$/, "")}/api/safeweb/eventos/webhook?secret=${encodeURIComponent(sw.webhookSecret)}`
     : undefined;
 
   // ── Base fields enviados em todos os tipos ─────────────────────────────────

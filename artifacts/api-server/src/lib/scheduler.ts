@@ -155,7 +155,7 @@ async function syncSafewebStatuses() {
 //         atualiza o pedido (inclusive detecta "Emitido" → completed).
 let garProtocolSyncRunning = false;
 
-async function syncGarProtocols() {
+export async function syncGarProtocols() {
   if (garProtocolSyncRunning) return;
   garProtocolSyncRunning = true;
   try {

@@ -1,4 +1,5 @@
 - [Safeweb integration](safeweb-integration.md) — provider toggle (gestaoar|safeweb) in settings drives mp-webhook.ts dispatch; Safeweb auto-buy in sw-auto.ts mirrors gar-auto.ts pattern.
+- [Safeweb webhook routing](safeweb-webhook-routing.md) — Safeweb callbacks need one protected completion path: derive event type from payload and authenticate before changing an order.
 - [Safeweb agenda paths](safeweb-agenda-paths.md) — agenda endpoints live on a DIFFERENT HOST than the main API; `getAgendaBaseUrl()` derives it; POST agendar uses `bearer [token]` header.
 - [OrderRow fields](orderrow-fields.md) — orderRow() in orders.ts must explicitly list every field returned to frontend; GAR + Safeweb fields were missing and had to be added.
 - [OpenAPI Order schema](openapi-order-schema.md) — GAR fields (garPedido etc.) were absent from Order schema; any new provider fields must be added both to orderRow() and to openapi.yaml Order schema.

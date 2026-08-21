@@ -14,6 +14,14 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "21/08/2026",
+    version: "1.61",
+    changes: [
+      { type: "fix", text: "Webhooks Safeweb de emissão agora processam corretamente as duas URLs suportadas e mantêm o crédito de indicação idempotente." },
+      { type: "segurança", text: "Webhooks Safeweb agora exigem um segredo configurado antes de concluir certificados ou liberar créditos." },
+    ],
+  },
+  {
     date: "20/08/2026",
     version: "1.60",
     changes: [
