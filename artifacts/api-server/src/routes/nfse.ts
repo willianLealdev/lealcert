@@ -201,6 +201,9 @@ export async function emitNfseForOrder(
   const [orderRow] = await db
     .select().from(ordersTable).where(eq(ordersTable.id, orderId)).limit(1);
   if (!orderRow) throw new Error("Pedido não encontrado.");
+  if (orderRow.status !== "completed") {
+    throw new Error("Pedido não concluído. A nota será emitida assim que o certificado estiver como concluído.");
+  }
 
   const existing = await db
     .select().from(nfseInvoicesTable)

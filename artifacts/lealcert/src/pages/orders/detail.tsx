@@ -127,7 +127,7 @@ const EVENT_LABELS: Record<string, string> = {
   sync_performed:       "Sincronização",
 };
 
-function NfseSection({ orderId, isAdmin }: { orderId: number; isAdmin: boolean }) {
+function NfseSection({ orderId, orderStatus, isAdmin }: { orderId: number; orderStatus: string; isAdmin: boolean }) {
   const { toast } = useToast();
   const { data: invoices = [], isLoading, refetch } = useListNfseByOrder(orderId, {
     query: { queryKey: ["nfse-order", orderId], refetchInterval: 15000 },
@@ -157,6 +157,19 @@ function NfseSection({ orderId, isAdmin }: { orderId: number; isAdmin: boolean }
     cancelled: "Cancelada",
   };
   const hasPendingNfse = invoices.some(inv => inv.status === "emitting");
+  const canEmitNfse = orderStatus === "completed";
+
+  const handleEmitNfse = () => {
+    if (!canEmitNfse) {
+      toast({
+        title: "Pedido não concluído",
+        description: "A nota será emitida assim que o certificado estiver como concluído.",
+        variant: "destructive",
+      });
+      return;
+    }
+    emitMutation.mutate({ orderId });
+  };
 
   if (!isAdmin && invoices.length === 0) return null;
 
@@ -172,7 +185,7 @@ function NfseSection({ orderId, isAdmin }: { orderId: number; isAdmin: boolean }
             size="sm"
             variant="outline"
             disabled={emitMutation.isPending}
-            onClick={() => emitMutation.mutate({ orderId })}
+            onClick={handleEmitNfse}
           >
             {emitMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Receipt className="h-4 w-4 mr-2" />}
             Emitir NFS-e
@@ -235,7 +248,7 @@ function NfseSection({ orderId, isAdmin }: { orderId: number; isAdmin: boolean }
                 size="sm"
                 variant="ghost"
                 disabled={emitMutation.isPending}
-                onClick={() => emitMutation.mutate({ orderId })}
+                onClick={handleEmitNfse}
                 className="text-xs"
               >
                 {emitMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Receipt className="h-3 w-3 mr-1" />}
@@ -2813,7 +2826,7 @@ export default function OrderDetail() {
             </Card>
           )}
 
-          <NfseSection orderId={Number(id)} isAdmin={isAdmin} />
+          <NfseSection orderId={Number(id)} orderStatus={order.status} isAdmin={isAdmin} />
 
           <OrderTimeline orderId={Number(id)} onEventsChange={() => { void refetch(); }} />
         </div>

@@ -684,8 +684,8 @@ router.patch("/orders/:id", requireAdmin, async (req, res): Promise<void> => {
       status: order.status,
     }).catch((err: unknown) => logger.error({ err }, "Erro ao notificar status do pedido"));
 
-    // Auto-emit NFS-e when order status changes to "emitido"
-    if (status === "emitido") {
+    // Auto-emit NFS-e only after the certificate order is fully completed.
+    if (status === "completed") {
       import("./nfse").then(({ emitNfseForOrder }) => {
         db.select({ autoEmit: settingsTable.nfseAutoEmit })
           .from(settingsTable).limit(1)

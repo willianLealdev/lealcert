@@ -15,6 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.56",
+    changes: [
+      { type: "segurança", text: "NFS-e agora só pode ser emitida após o pedido estar concluído. Antes disso, o botão explica que a nota será liberada quando o certificado for finalizado." },
+      { type: "fix", text: "A emissão automática de NFS-e foi movida para a conclusão do pedido, evitando notas antes da entrega do certificado." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.55",
     changes: [
       { type: "fix", text: "Emissão de NFS-e: integração atualizada para o contrato oficial da BrasilNFe, com tratamento de resposta vazia e mensagens reais de erro." },
