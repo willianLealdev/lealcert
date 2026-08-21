@@ -7,6 +7,44 @@ import { logger } from "../lib/logger";
 const router = Router();
 
 const BRASILNFE_BASE = "https://api.brasilnfe.com.br";
+const BRASILNFE_EMIT_PATH = "/services/Fiscal/EnviarNotaFiscalServico";
+const BRASILNFE_STATUS_PATH = "/services/Fiscal/BuscarNotaFiscalServico";
+
+type BrasilNfeResponse = Record<string, unknown>;
+type NfseEmissionStatus = "emitting" | "emitted" | "failed";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getString(response: BrasilNfeResponse, ...keys: string[]): string | null {
+  for (const key of keys) {
+    const value = response[key];
+    if (typeof value === "string" && value.trim()) return value;
+    if (typeof value === "number") return String(value);
+  }
+  return null;
+}
+
+function getLoteStatus(response: BrasilNfeResponse): number | null {
+  const value = response.StatusLote;
+  const status = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(status) ? status : null;
+}
+
+function getProviderError(response: BrasilNfeResponse): string | null {
+  return getString(response, "Error", "error", "Mensagem", "message", "Message");
+}
+
+function getNfseFiles(response: BrasilNfeResponse) {
+  const notas = Array.isArray(response.Notas) ? response.Notas : [];
+  const nota = notas.find(isRecord) ?? {};
+  return {
+    numeroNfse: getString(nota, "NumeroNFSe", "NumeroNfse") ?? getString(response, "NumeroNFSe", "NumeroNfse"),
+    pdfBase64: getString(nota, "Base64File") ?? getString(response, "Base64File"),
+    xmlBase64: getString(nota, "Base64Xml") ?? getString(response, "Base64Xml", "Base64XmlLote"),
+  };
+}
 
 async function getSettings() {
   const rows = await db.select().from(settingsTable).limit(1);
@@ -22,7 +60,7 @@ async function brasilNfeRequest(
   method: "GET" | "POST" | "DELETE",
   token: string,
   body?: unknown,
-) {
+): Promise<BrasilNfeResponse> {
   const res = await fetch(`${BRASILNFE_BASE}${path}`, {
     method,
     headers: {
@@ -31,9 +69,33 @@ async function brasilNfeRequest(
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const json = await res.json() as Record<string, unknown>;
+  const rawBody = await res.text();
+  const responseBody = rawBody.trim();
+
+  if (!responseBody) {
+    throw new Error(
+      res.ok
+        ? `BrasilNFe retornou uma resposta vazia (HTTP ${res.status}).`
+        : `BrasilNFe HTTP ${res.status}: resposta vazia.`,
+    );
+  }
+
+  let json: BrasilNfeResponse;
+  try {
+    const parsed: unknown = JSON.parse(responseBody);
+    if (!isRecord(parsed)) throw new Error("Formato de resposta inválido");
+    json = parsed;
+  } catch {
+    const detail = responseBody.replace(/\s+/g, " ").slice(0, 500);
+    throw new Error(
+      res.ok
+        ? `BrasilNFe retornou uma resposta inválida (HTTP ${res.status}): ${detail}`
+        : `BrasilNFe HTTP ${res.status}: ${detail}`,
+    );
+  }
+
   if (!res.ok) {
-    throw new Error(json?.message as string ?? json?.error as string ?? `BrasilNFe HTTP ${res.status}`);
+    throw new Error(getProviderError(json) ?? `BrasilNFe HTTP ${res.status}`);
   }
   return json;
 }
@@ -47,7 +109,87 @@ async function getNextRpsNumber(): Promise<number> {
   return (last?.rps ?? 0) + 1;
 }
 
-export async function emitNfseForOrder(orderId: number): Promise<void> {
+async function applyBrasilNfeResponse(
+  invoiceId: number,
+  response: BrasilNfeResponse,
+): Promise<{ status: NfseEmissionStatus; error?: string }> {
+  const statusLote = getLoteStatus(response);
+  const providerError = getProviderError(response);
+
+  if (statusLote === 3 || statusLote === 4) {
+    const error = providerError ?? "A BrasilNFe rejeitou o lote de NFS-e.";
+    await db.update(nfseInvoicesTable).set({
+      status: "failed",
+      errorMsg: error,
+      rawResponse: response,
+    }).where(eq(nfseInvoicesTable.id, invoiceId));
+    return { status: "failed", error };
+  }
+
+  if (statusLote === 2) {
+    await db.update(nfseInvoicesTable).set({
+      status: "emitting",
+      errorMsg: null,
+      rawResponse: response,
+    }).where(eq(nfseInvoicesTable.id, invoiceId));
+    return { status: "emitting" };
+  }
+
+  const { numeroNfse, pdfBase64, xmlBase64 } = getNfseFiles(response);
+  if (!numeroNfse) {
+    const error = statusLote === 1
+      ? "A BrasilNFe informou lote processado, mas não retornou o número da NFS-e."
+      : providerError ?? "A BrasilNFe retornou uma resposta sem o status ou número da NFS-e.";
+    await db.update(nfseInvoicesTable).set({
+      status: "failed",
+      errorMsg: error,
+      rawResponse: response,
+    }).where(eq(nfseInvoicesTable.id, invoiceId));
+    return { status: "failed", error };
+  }
+
+  await db.update(nfseInvoicesTable).set({
+    status: "emitted",
+    numeroNfse,
+    pdfBase64,
+    xmlBase64,
+    errorMsg: null,
+    rawResponse: response,
+  }).where(eq(nfseInvoicesTable.id, invoiceId));
+  return { status: "emitted" };
+}
+
+async function syncPendingNfseInvoice(invoice: {
+  id: number;
+  status: string;
+  rpsNumber: number | null;
+  rawResponse: unknown;
+}) {
+  if (invoice.status !== "emitting" || !isRecord(invoice.rawResponse)) return;
+
+  const codLote = getString(invoice.rawResponse, "CodLote", "codLote");
+  if (!codLote) return;
+
+  const s = await getSettings();
+  if (!s) return;
+  const token = getActiveToken(s);
+  if (!token) return;
+
+  try {
+    const response = await brasilNfeRequest(BRASILNFE_STATUS_PATH, "POST", token, {
+      codLote,
+      Rps: invoice.rpsNumber ? [String(invoice.rpsNumber)] : [],
+    });
+    const outcome = await applyBrasilNfeResponse(invoice.id, response);
+    logger.info({ invoiceId: invoice.id, codLote, status: outcome.status }, "Status da NFS-e sincronizado");
+  } catch (err) {
+    logger.warn({ err, invoiceId: invoice.id, codLote }, "Não foi possível sincronizar NFS-e pendente");
+  }
+}
+
+export async function emitNfseForOrder(
+  orderId: number,
+): Promise<{ invoiceId: number; status: Exclude<NfseEmissionStatus, "failed"> }> {
   const s = await getSettings();
   if (!s) throw new Error("Configurações não encontradas.");
 
@@ -87,52 +229,34 @@ export async function emitNfseForOrder(orderId: number): Promise<void> {
     const dataEmissao = new Date().toISOString().split("T")[0];
 
     const payload = {
-      Prestador: {
-        Cnpj: s.nfsePrestadorCnpj.replace(/\D/g, ""),
-        InscricaoMunicipal: s.nfsePrestadorIm,
-      },
-      Tomador: {
-        CpfCnpj: tomadorCpfCnpj,
-        RazaoSocial: orderRow.customerName ?? "Cliente",
-        Email: orderRow.customerEmail ?? "",
-        Endereco: {
-          Logradouro: orderRow.addressStreet ?? "",
-          Numero: orderRow.addressNumber ?? "S/N",
-          Bairro: orderRow.addressNeighborhood ?? "",
-          CodigoMunicipio: 0,
-          Uf: orderRow.addressState ?? "AC",
-          Cep: (orderRow.addressZipcode ?? "").replace(/\D/g, ""),
+      TipoAmbiente: ambiente === "producao" ? 1 : 2,
+      Lote: rpsNumber,
+      nFSInfo: [{
+        NumeroRps: rpsNumber,
+        DataCompetencia: dataEmissao,
+        Tomador: {
+          CpfCnpj: tomadorCpfCnpj,
+          RazaoSocial: orderRow.customerName ?? "Cliente",
+          Email: orderRow.customerEmail ?? "",
         },
-      },
-      Servico: {
-        Discriminacao: orderRow.certNameSnapshot ?? s.nfseDiscriminacao ?? "Emissão de Certificado Digital",
-        CodigoServico: s.nfseServicoCodigo ?? "1.09",
-        ValorServico: valorServico,
-        Aliquota: aliquota,
-        IssRetido: s.nfseIssRetido === "1",
-      },
-      NumeroRPS: rpsNumber,
-      Serie: "RPS",
-      DataEmissao: dataEmissao,
+        Servico: {
+          Descricao: orderRow.certNameSnapshot ?? s.nfseDiscriminacao ?? "Emissão de Certificado Digital",
+          CodServico: s.nfseServicoCodigo ?? "1.09",
+          Valores: {
+            ValorServico: valorServico,
+            Aliquota: aliquota,
+            IssRetido: s.nfseIssRetido === "1",
+          },
+        },
+      }],
     };
 
-    const response = await brasilNfeRequest("/v1/nfse", "POST", token, payload);
+    const response = await brasilNfeRequest(BRASILNFE_EMIT_PATH, "POST", token, payload);
+    const outcome = await applyBrasilNfeResponse(invoice.id, response);
+    if (outcome.status === "failed") throw new Error(outcome.error);
 
-    const notas = response.Notas as Array<Record<string, unknown>> | undefined;
-    const nota = notas?.[0] ?? {};
-    const numeroNfse = nota.NumeroNFSe as string ?? response.NumeroNFSe as string ?? null;
-    const pdfBase64 = nota.Base64File as string ?? response.Base64File as string ?? null;
-    const xmlBase64 = nota.Base64Xml as string ?? response.Base64Xml as string ?? response.Base64XmlLote as string ?? null;
-
-    await db.update(nfseInvoicesTable).set({
-      status: "emitted",
-      numeroNfse,
-      pdfBase64,
-      xmlBase64,
-      rawResponse: response as Record<string, unknown>,
-    }).where(eq(nfseInvoicesTable.id, invoice.id));
-
-    logger.info({ orderId, rpsNumber, numeroNfse, ambiente }, "NFS-e emitida com sucesso");
+    logger.info({ orderId, rpsNumber, ambiente, status: outcome.status }, "NFS-e enviada à BrasilNFe");
+    return { invoiceId: invoice.id, status: outcome.status };
   } catch (err) {
     const errorMsg = (err as Error).message;
     await db.update(nfseInvoicesTable).set({
@@ -148,13 +272,13 @@ router.post("/nfse/emit/:orderId", requireAdmin, async (req, res): Promise<void>
   const orderId = parseInt(String(req.params["orderId"]), 10);
   if (isNaN(orderId)) { res.status(400).json({ error: "ID inválido." }); return; }
   try {
-    await emitNfseForOrder(orderId);
+    const result = await emitNfseForOrder(orderId);
     const [invoice] = await db
       .select()
       .from(nfseInvoicesTable)
-      .where(and(eq(nfseInvoicesTable.orderId, orderId), eq(nfseInvoicesTable.status, "emitted")))
+      .where(eq(nfseInvoicesTable.id, result.invoiceId))
       .limit(1);
-    res.json({ ok: true, invoice });
+    res.json({ ok: true, invoice, processing: result.status === "emitting" });
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }
@@ -255,7 +379,14 @@ router.delete("/nfse/:id", requireAdmin, async (req, res): Promise<void> => {
 
 router.get("/nfse/order/:orderId", requireAuth, async (req, res): Promise<void> => {
   const orderId = parseInt(String(req.params["orderId"]), 10);
-  const invoices = await db
+  let invoices = await db
+    .select()
+    .from(nfseInvoicesTable)
+    .where(eq(nfseInvoicesTable.orderId, orderId))
+    .orderBy(desc(nfseInvoicesTable.createdAt));
+
+  await Promise.all(invoices.map(syncPendingNfseInvoice));
+  invoices = await db
     .select()
     .from(nfseInvoicesTable)
     .where(eq(nfseInvoicesTable.orderId, orderId))

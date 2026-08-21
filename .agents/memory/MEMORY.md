@@ -27,3 +27,4 @@
 - [Preço de parceiro no checkout](checkout-partner-pricing.md) — o valor de contador pertence à conta autenticada, não ao titular do certificado, e deve ser recalculado no servidor.
 - [Resposta PSBio Safeweb](safeweb-psbio-response.md) — a Safeweb retorna confirmação de biometria em formatos variados; não trate apenas `encontrado: true` como positivo.
 - [Operator commercial identity](operator-commercial-identity.md) — operator orders belong commercially to the linked accountant while retaining the operator as the audit attendant.
+- [BrasilNFe NFS-e integration](brasilnfe-nfse.md) — use API 2.0 fiscal endpoints and poll pending lots; never parse provider responses directly with `res.json()`.

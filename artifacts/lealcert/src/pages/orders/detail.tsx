@@ -135,8 +135,12 @@ function NfseSection({ orderId, isAdmin }: { orderId: number; isAdmin: boolean }
 
   const emitMutation = useEmitNfse({
     mutation: {
-      onSuccess: () => {
-        toast({ title: "✅ NFS-e emitida com sucesso!" });
+      onSuccess: (result) => {
+        const processing = result.invoice?.status === "emitting";
+        toast({
+          title: processing ? "NFS-e enviada para processamento" : "✅ NFS-e emitida com sucesso!",
+          description: processing ? "A prefeitura ainda está processando a nota. Esta tela será atualizada automaticamente." : undefined,
+        });
         void refetch();
       },
       onError: (e: unknown) => {
@@ -152,6 +156,7 @@ function NfseSection({ orderId, isAdmin }: { orderId: number; isAdmin: boolean }
     rejected: "Rejeitada",
     cancelled: "Cancelada",
   };
+  const hasPendingNfse = invoices.some(inv => inv.status === "emitting");
 
   if (!isAdmin && invoices.length === 0) return null;
 
@@ -225,7 +230,7 @@ function NfseSection({ orderId, isAdmin }: { orderId: number; isAdmin: boolean }
                 </p>
               </div>
             ))}
-            {isAdmin && (
+            {isAdmin && !hasPendingNfse && (
               <Button
                 size="sm"
                 variant="ghost"

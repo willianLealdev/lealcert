@@ -15,6 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.55",
+    changes: [
+      { type: "fix", text: "Emissão de NFS-e: integração atualizada para o contrato oficial da BrasilNFe, com tratamento de resposta vazia e mensagens reais de erro." },
+      { type: "melhoria", text: "Notas que dependem da autorização assíncrona da prefeitura agora permanecem como processando e são atualizadas automaticamente." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.54",
     changes: [
       { type: "novo", text: "Operadores de contador: cadastro ilimitado com CPF e e-mail, senha provisória enviada automaticamente e troca obrigatória no primeiro acesso." },
