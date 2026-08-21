@@ -21,6 +21,30 @@ function certificatePriceForUser(
   return Number.isFinite(contadorPrice) ? contadorPrice : standardPrice;
 }
 
+async function linkedContadorId(operatorId: number): Promise<number | null> {
+  const [operator] = await db
+    .select({
+      role: usersTable.role,
+      contadorId: usersTable.contadorId,
+      isActive: usersTable.isActive,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, operatorId))
+    .limit(1);
+
+  if (!operator || !operator.isActive || operator.role !== "operador" || !operator.contadorId) {
+    return null;
+  }
+
+  const [contador] = await db
+    .select({ id: usersTable.id, role: usersTable.role, isActive: usersTable.isActive })
+    .from(usersTable)
+    .where(eq(usersTable.id, operator.contadorId))
+    .limit(1);
+
+  return contador?.isActive && contador.role === "contador" ? contador.id : null;
+}
+
 function orderRow(
   o: typeof ordersTable.$inferSelect,
   userName?: string | null,
@@ -280,7 +304,12 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
 
   let filtered = rows;
   if (role === "operador") {
-    filtered = filtered.filter(r => r.order.operatorId === userId);
+    const contadorId = await linkedContadorId(userId);
+    if (!contadorId) {
+      res.status(403).json({ error: "Operador sem contador responsável ativo." });
+      return;
+    }
+    filtered = filtered.filter(r => r.order.userId === contadorId);
   } else if (role !== "admin") {
     filtered = filtered.filter(r => r.order.userId === userId);
   }
@@ -452,12 +481,20 @@ router.get("/orders/pre-fill", requireAuth, async (req, res): Promise<void> => {
   }
 
   const currentUserId = req.session.userId as number;
+  const isOperator = req.session.role === "operador";
+  const orderOwnerId = isOperator ? await linkedContadorId(currentUserId) : currentUserId;
+  if (!orderOwnerId) {
+    res.status(403).json({ error: "Operador sem contador responsável ativo." });
+    return;
+  }
   const rows = await db
     .select({ order: ordersTable })
     .from(ordersTable)
     .where(and(
       eq(ordersTable.representanteCpf, cpf),
-      or(eq(ordersTable.userId, currentUserId), eq(ordersTable.operatorId, currentUserId)),
+      isOperator
+        ? eq(ordersTable.userId, orderOwnerId)
+        : or(eq(ordersTable.userId, currentUserId), eq(ordersTable.operatorId, currentUserId)),
     ))
     .orderBy(desc(ordersTable.createdAt));
 
@@ -538,7 +575,8 @@ router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: "Pedido não encontrado." });
     return;
   }
-  if (role !== "admin" && row.order.userId !== userId && row.order.operatorId !== userId) {
+  const contadorId = role === "operador" ? await linkedContadorId(userId) : null;
+  if (role !== "admin" && row.order.userId !== userId && row.order.operatorId !== userId && row.order.userId !== contadorId) {
     res.status(403).json({ error: "Acesso negado." });
     return;
   }

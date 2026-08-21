@@ -543,8 +543,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {!collapsed && (
                 <div className="min-w-0">
                   <p className="font-medium text-sidebar-foreground truncate text-xs">{user?.name}</p>
-                  <p className="text-xs text-sidebar-foreground/50 capitalize">
-                    {user?.role === "admin" ? "Administrador" : user?.role === "agente" ? "Agente de Registro" : user?.role === "vendedor" ? "Vendedor" : user?.role === "operador" ? "Operador" : user?.userType === "cliente" ? "Cliente" : "Contador"}
+                  <p
+                    className="text-xs text-sidebar-foreground/50 truncate"
+                    title={user?.role === "operador" ? `Operador / ${user.contadorName ?? "Contador vinculado"}` : undefined}
+                  >
+                    {user?.role === "admin"
+                      ? "Administrador"
+                      : user?.role === "agente"
+                        ? "Agente de Registro"
+                        : user?.role === "vendedor"
+                          ? "Vendedor"
+                          : user?.role === "operador"
+                            ? `Operador / ${user.contadorName ?? "Contador vinculado"}`
+                            : user?.userType === "cliente"
+                              ? "Cliente"
+                              : "Contador"}
                   </p>
                 </div>
               )}

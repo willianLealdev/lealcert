@@ -998,7 +998,20 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Sessão inválida." });
     return;
   }
-  res.json(userResponse(user));
+  let contadorName: string | null = null;
+  if (user.role === "operador" && user.contadorId) {
+    const [contador] = await db
+      .select({
+        name: usersTable.name,
+        companyName: usersTable.companyName,
+        companyFantasyName: usersTable.companyFantasyName,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, user.contadorId))
+      .limit(1);
+    contadorName = contador?.companyFantasyName ?? contador?.companyName ?? contador?.name ?? null;
+  }
+  res.json({ ...userResponse(user), contadorName });
 });
 
 router.patch("/auth/profile", async (req, res): Promise<void> => {

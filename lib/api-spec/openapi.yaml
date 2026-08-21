@@ -3889,6 +3889,9 @@ components:
         addressState:
           type: string
           nullable: true
+        contadorName:
+          type: string
+          nullable: true
         createdAt:
           type: string
 

@@ -191,6 +191,7 @@ export interface AuthUser {
   neighborhood?: string | null;
   city?: string | null;
   addressState?: string | null;
+  contadorName?: string | null;
   createdAt?: string;
 }
 

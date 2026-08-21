@@ -220,6 +220,7 @@ export const VerifyEmailResponse = zod.object({
   "neighborhood": zod.string().nullish(),
   "city": zod.string().nullish(),
   "addressState": zod.string().nullish(),
+  "contadorName": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -266,6 +267,7 @@ export const LoginResponse = zod.object({
   "neighborhood": zod.string().nullish(),
   "city": zod.string().nullish(),
   "addressState": zod.string().nullish(),
+  "contadorName": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -325,6 +327,7 @@ export const GetMeResponse = zod.object({
   "neighborhood": zod.string().nullish(),
   "city": zod.string().nullish(),
   "addressState": zod.string().nullish(),
+  "contadorName": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -369,6 +372,7 @@ export const UpdateProfileResponse = zod.object({
   "neighborhood": zod.string().nullish(),
   "city": zod.string().nullish(),
   "addressState": zod.string().nullish(),
+  "contadorName": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
