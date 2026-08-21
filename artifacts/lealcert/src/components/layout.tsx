@@ -46,6 +46,7 @@ import {
   Star,
   Handshake,
   TrendingUp,
+  Share2,
   DollarSign,
   Bot,
   Monitor,
@@ -62,6 +63,7 @@ const navigation = [
 
 const benefitsNav = [
   { name: "Fidelidade", href: "/fidelidade", icon: Star },
+  { name: "Indicações", href: "/indicacoes", icon: Share2 },
   { name: "Renovações", href: "/renovacoes", icon: RefreshCw },
 ];
 
@@ -94,6 +96,7 @@ const adminNav = [
   { name: "Relatórios GAR", href: "/admin/relatorios-gar", icon: BarChart2 },
   { name: "Notas Fiscais", href: "/admin/nfse", icon: Receipt },
   { name: "Fidelidade", href: "/admin/fidelidade", icon: Star },
+  { name: "Indicações", href: "/admin/indicacoes", icon: Share2 },
   { name: "Visitas ao Site", href: "/admin/site-visits", icon: Monitor },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];

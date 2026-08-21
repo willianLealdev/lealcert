@@ -762,6 +762,63 @@ paths:
               schema:
                 $ref: "#/components/schemas/Order"
 
+  /referrals/me:
+    get:
+      operationId: getReferralDashboard
+      tags: [referrals]
+      summary: Get the authenticated accountant office referral dashboard
+      responses:
+        "200":
+          description: Referral dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralDashboard"
+        "403":
+          description: Accountant access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /referrals/pay-with-credits:
+    post:
+      operationId: redeemReferralCredits
+      tags: [referrals]
+      summary: Redeem R$90 of referral credits for an existing order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReferralRedemptionInput"
+      responses:
+        "200":
+          description: Credits redeemed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralRedemptionResult"
+        "400":
+          description: Invalid redemption
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/referrals:
+    get:
+      operationId: getAdminReferralReport
+      tags: [referrals]
+      summary: Get all referral registrations, credits and rankings (admin only)
+      responses:
+        "200":
+          description: Full referral administration report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralAdminReport"
+
   /operators:
     get:
       operationId: listOperators
@@ -3763,6 +3820,9 @@ components:
           type: string
         addressState:
           type: string
+        referralCode:
+          type: string
+          description: Referral code received through the indicacao URL parameter
 
     CrcValidationResult:
       type: object
@@ -4374,6 +4434,9 @@ components:
         paymentMethod:
           type: string
           nullable: true
+        referralCreditUsed:
+          type: number
+          description: Referral credits consumed without changing the product total
         mpBoletoUrl:
           type: string
           nullable: true
@@ -4564,6 +4627,116 @@ components:
           type: string
         nfState:
           type: string
+
+    ReferralRedemptionInput:
+      type: object
+      required: [orderId]
+      properties:
+        orderId:
+          type: integer
+
+    ReferralRedemptionResult:
+      type: object
+      required: [ok, orderId]
+      properties:
+        ok:
+          type: boolean
+        orderId:
+          type: integer
+
+    ReferralDashboard:
+      type: object
+      required: [referralCode, creditPerCertificate, redemptionValue, balance, totalEarned, totalUsed, referred, sales, usedCredits]
+      properties:
+        officeName:
+          type: string
+          nullable: true
+        referralCode:
+          type: string
+        creditPerCertificate:
+          type: number
+        redemptionValue:
+          type: number
+        balance:
+          type: number
+        totalEarned:
+          type: number
+        totalUsed:
+          type: number
+        referred:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReferralPerson"
+        sales:
+          $ref: "#/components/schemas/ReferralSales"
+        usedCredits:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReferralCreditUsage"
+
+    ReferralPerson:
+      type: object
+      required: [name, createdAt]
+      properties:
+        name:
+          type: string
+        createdAt:
+          type: string
+
+    ReferralSalesBucket:
+      type: object
+      required: [total, completed, paid, pending]
+      properties:
+        total: { type: integer }
+        completed: { type: integer }
+        paid: { type: integer }
+        pending: { type: integer }
+
+    ReferralSales:
+      type: object
+      required: [allTime, today, creditsToday]
+      properties:
+        allTime:
+          type: object
+          properties:
+            cpf: { $ref: "#/components/schemas/ReferralSalesBucket" }
+            cnpj: { $ref: "#/components/schemas/ReferralSalesBucket" }
+        today:
+          type: object
+          properties:
+            cpf: { $ref: "#/components/schemas/ReferralSalesBucket" }
+            cnpj: { $ref: "#/components/schemas/ReferralSalesBucket" }
+        creditsToday:
+          type: number
+
+    ReferralCreditUsage:
+      type: object
+      required: [id, amount, usedAt, orderId, orderNumber, productValue]
+      properties:
+        id: { type: integer }
+        amount: { type: number }
+        usedAt: { type: string }
+        orderId: { type: integer }
+        orderNumber: { type: string }
+        certificateName: { type: string, nullable: true }
+        productValue: { type: number }
+
+    ReferralAdminReport:
+      type: object
+      required: [ranking, referrals, commissions, usages]
+      properties:
+        ranking:
+          type: array
+          items: { type: object }
+        referrals:
+          type: array
+          items: { type: object }
+        commissions:
+          type: array
+          items: { type: object }
+        usages:
+          type: array
+          items: { type: object }
 
     OrderUpdate:
       type: object

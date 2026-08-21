@@ -564,14 +564,14 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Boleto disponível apenas para valores a partir de R$ 90,00." });
     return;
   }
-  if (!["pix", "boleto", "cartao", "cortesia"].includes(paymentMethod)) {
+  if (!["pix", "boleto", "cartao", "cortesia", "credito_indicacao"].includes(paymentMethod)) {
     res.status(400).json({ error: "Método de pagamento inválido." });
     return;
   }
 
   const [settings] = await db.select().from(settingsTable).limit(1);
   const mpToken = settings?.mpAccessToken || "";
-  if (paymentMethod !== "cortesia" && !mpToken) { res.status(500).json({ error: "Sistema de pagamento não configurado. Contacte o suporte." }); return; }
+  if (!["cortesia", "credito_indicacao"].includes(paymentMethod) && !mpToken) { res.status(500).json({ error: "Sistema de pagamento não configurado. Contacte o suporte." }); return; }
   const siteUrl = settings?.siteUrl || "https://lealcert.com.br";
 
   // Find or create user account
@@ -759,6 +759,39 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     }
     logger.info({ contadorUserId, operatorId, orderId: order.id, cartelaId }, "checkout: cortesia aplicada");
     res.json({ orderId: order.id, orderNumber: order.orderNumber, isNewUser });
+    return;
+  }
+
+  // ── Créditos de indicação: baixa R$90 da conta comercial do escritório ───
+  if (paymentMethod === "credito_indicacao") {
+    const { referralAccount, redeemReferralCredits, REFERRAL_CREDIT_REDEMPTION_VALUE } = await import("../lib/referrals");
+    const account = sessionUserId ? await referralAccount(sessionUserId) : null;
+    if (!account || account.ownerId !== orderUserId) {
+      await db.delete(ordersTable).where(eq(ordersTable.id, order.id));
+      res.status(sessionUserId ? 403 : 401).json({ error: "Faça login como contador ou operador para usar créditos de indicação." });
+      return;
+    }
+    try {
+      await redeemReferralCredits(account.ownerId, order.id);
+      await logEv(order.id, "payment_confirmed", `Pagamento confirmado com R$ ${REFERRAL_CREDIT_REDEMPTION_VALUE.toFixed(2).replace(".", ",")} em créditos de indicação`, {
+        paymentMethod: "credito_indicacao",
+        creditUsed: REFERRAL_CREDIT_REDEMPTION_VALUE,
+        ownerUserId: account.ownerId,
+      });
+      const activeProvider = settings?.activeProvider ?? "gestaoar";
+      if (activeProvider === "safeweb") {
+        const { swAutoComprar } = await import("../lib/sw-auto");
+        swAutoComprar(order.id).catch((err: unknown) => logger.error({ err, orderId: order.id }, "checkout indicação: erro sw-auto"));
+      } else {
+        const { garAutoComprar } = await import("../lib/gar-auto");
+        garAutoComprar(order.id).catch((err: unknown) => logger.error({ err, orderId: order.id }, "checkout indicação: erro gar-auto"));
+      }
+      logger.info({ ownerUserId: account.ownerId, operatorId, orderId: order.id }, "checkout: crédito de indicação aplicado");
+      res.json({ orderId: order.id, orderNumber: order.orderNumber, isNewUser });
+    } catch (err) {
+      await db.delete(ordersTable).where(eq(ordersTable.id, order.id));
+      res.status(400).json({ error: err instanceof Error ? err.message : "Não foi possível usar os créditos de indicação." });
+    }
     return;
   }
 

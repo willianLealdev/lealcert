@@ -166,6 +166,10 @@ import type {
   PushTestBody,
   PushUnsubscribeBody,
   PushVapidPublicKey,
+  ReferralAdminReport,
+  ReferralDashboard,
+  ReferralRedemptionInput,
+  ReferralRedemptionResult,
   RefreshIpGeo200,
   RegisterInput,
   RemoveIpFromWhitelist200,
@@ -2720,6 +2724,231 @@ export const useCreateOrder = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateOrderMutationOptions(options));
     }
+
+export const getGetReferralDashboardUrl = () => {
+
+
+
+
+  return `/api/referrals/me`
+}
+
+/**
+ * @summary Get the authenticated accountant office referral dashboard
+ */
+export const getReferralDashboard = async ( options?: RequestInit): Promise<ReferralDashboard> => {
+
+  return customFetch<ReferralDashboard>(getGetReferralDashboardUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReferralDashboardQueryKey = () => {
+    return [
+    `/api/referrals/me`
+    ] as const;
+    }
+
+
+export const getGetReferralDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getReferralDashboard>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReferralDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReferralDashboardQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReferralDashboard>>> = ({ signal }) => getReferralDashboard({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReferralDashboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReferralDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getReferralDashboard>>>
+export type GetReferralDashboardQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the authenticated accountant office referral dashboard
+ */
+
+export function useGetReferralDashboard<TData = Awaited<ReturnType<typeof getReferralDashboard>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReferralDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReferralDashboardQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getRedeemReferralCreditsUrl = () => {
+
+
+
+
+  return `/api/referrals/pay-with-credits`
+}
+
+/**
+ * @summary Redeem R$90 of referral credits for an existing order
+ */
+export const redeemReferralCredits = async (referralRedemptionInput: ReferralRedemptionInput, options?: RequestInit): Promise<ReferralRedemptionResult> => {
+
+  return customFetch<ReferralRedemptionResult>(getRedeemReferralCreditsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      referralRedemptionInput,)
+  }
+);}
+
+
+
+
+export const getRedeemReferralCreditsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof redeemReferralCredits>>, TError,{data: BodyType<ReferralRedemptionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof redeemReferralCredits>>, TError,{data: BodyType<ReferralRedemptionInput>}, TContext> => {
+
+const mutationKey = ['redeemReferralCredits'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof redeemReferralCredits>>, {data: BodyType<ReferralRedemptionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  redeemReferralCredits(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RedeemReferralCreditsMutationResult = NonNullable<Awaited<ReturnType<typeof redeemReferralCredits>>>
+    export type RedeemReferralCreditsMutationBody = BodyType<ReferralRedemptionInput>
+    export type RedeemReferralCreditsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Redeem R$90 of referral credits for an existing order
+ */
+export const useRedeemReferralCredits = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof redeemReferralCredits>>, TError,{data: BodyType<ReferralRedemptionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof redeemReferralCredits>>,
+        TError,
+        {data: BodyType<ReferralRedemptionInput>},
+        TContext
+      > => {
+      return useMutation(getRedeemReferralCreditsMutationOptions(options));
+    }
+
+export const getGetAdminReferralReportUrl = () => {
+
+
+
+
+  return `/api/admin/referrals`
+}
+
+/**
+ * @summary Get all referral registrations, credits and rankings (admin only)
+ */
+export const getAdminReferralReport = async ( options?: RequestInit): Promise<ReferralAdminReport> => {
+
+  return customFetch<ReferralAdminReport>(getGetAdminReferralReportUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminReferralReportQueryKey = () => {
+    return [
+    `/api/admin/referrals`
+    ] as const;
+    }
+
+
+export const getGetAdminReferralReportQueryOptions = <TData = Awaited<ReturnType<typeof getAdminReferralReport>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminReferralReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminReferralReportQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminReferralReport>>> = ({ signal }) => getAdminReferralReport({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminReferralReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminReferralReportQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminReferralReport>>>
+export type GetAdminReferralReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all referral registrations, credits and rankings (admin only)
+ */
+
+export function useGetAdminReferralReport<TData = Awaited<ReturnType<typeof getAdminReferralReport>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminReferralReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminReferralReportQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getListOperatorsUrl = () => {
 

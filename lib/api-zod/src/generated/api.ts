@@ -186,7 +186,8 @@ export const RegisterBody = zod.object({
   "complement": zod.string().optional(),
   "neighborhood": zod.string().optional(),
   "city": zod.string().optional(),
-  "addressState": zod.string().optional()
+  "addressState": zod.string().optional(),
+  "referralCode": zod.string().optional().describe('Referral code received through the indicacao URL parameter')
 })
 
 
@@ -702,6 +703,7 @@ export const ListOrdersResponseItem = zod.object({
   "representanteAddressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullable(),
   "paymentMethod": zod.string().nullish(),
+  "referralCreditUsed": zod.number().optional().describe('Referral credits consumed without changing the product total'),
   "mpBoletoUrl": zod.string().nullish(),
   "mpBoletoBarcode": zod.string().nullish(),
   "garPedido": zod.string().nullish(),
@@ -787,6 +789,96 @@ export const CreateOrderBody = zod.object({
   "nfNeighborhood": zod.string().optional(),
   "nfCity": zod.string().optional(),
   "nfState": zod.string().optional()
+})
+
+
+/**
+ * @summary Get the authenticated accountant office referral dashboard
+ */
+export const GetReferralDashboardResponse = zod.object({
+  "officeName": zod.string().nullish(),
+  "referralCode": zod.string(),
+  "creditPerCertificate": zod.number(),
+  "redemptionValue": zod.number(),
+  "balance": zod.number(),
+  "totalEarned": zod.number(),
+  "totalUsed": zod.number(),
+  "referred": zod.array(zod.object({
+  "name": zod.string(),
+  "createdAt": zod.string()
+})),
+  "sales": zod.object({
+  "allTime": zod.object({
+  "cpf": zod.object({
+  "total": zod.number(),
+  "completed": zod.number(),
+  "paid": zod.number(),
+  "pending": zod.number()
+}).optional(),
+  "cnpj": zod.object({
+  "total": zod.number(),
+  "completed": zod.number(),
+  "paid": zod.number(),
+  "pending": zod.number()
+}).optional()
+}),
+  "today": zod.object({
+  "cpf": zod.object({
+  "total": zod.number(),
+  "completed": zod.number(),
+  "paid": zod.number(),
+  "pending": zod.number()
+}).optional(),
+  "cnpj": zod.object({
+  "total": zod.number(),
+  "completed": zod.number(),
+  "paid": zod.number(),
+  "pending": zod.number()
+}).optional()
+}),
+  "creditsToday": zod.number()
+}),
+  "usedCredits": zod.array(zod.object({
+  "id": zod.number(),
+  "amount": zod.number(),
+  "usedAt": zod.string(),
+  "orderId": zod.number(),
+  "orderNumber": zod.string(),
+  "certificateName": zod.string().nullish(),
+  "productValue": zod.number()
+}))
+})
+
+
+/**
+ * @summary Redeem R$90 of referral credits for an existing order
+ */
+export const RedeemReferralCreditsBody = zod.object({
+  "orderId": zod.number()
+})
+
+export const RedeemReferralCreditsResponse = zod.object({
+  "ok": zod.boolean(),
+  "orderId": zod.number()
+})
+
+
+/**
+ * @summary Get all referral registrations, credits and rankings (admin only)
+ */
+export const GetAdminReferralReportResponse = zod.object({
+  "ranking": zod.array(zod.object({
+
+}).passthrough()),
+  "referrals": zod.array(zod.object({
+
+}).passthrough()),
+  "commissions": zod.array(zod.object({
+
+}).passthrough()),
+  "usages": zod.array(zod.object({
+
+}).passthrough())
 })
 
 
@@ -951,6 +1043,7 @@ export const GetOrderResponse = zod.object({
   "representanteAddressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullable(),
   "paymentMethod": zod.string().nullish(),
+  "referralCreditUsed": zod.number().optional().describe('Referral credits consumed without changing the product total'),
   "mpBoletoUrl": zod.string().nullish(),
   "mpBoletoBarcode": zod.string().nullish(),
   "garPedido": zod.string().nullish(),
@@ -1044,6 +1137,7 @@ export const UpdateOrderResponse = zod.object({
   "representanteAddressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullable(),
   "paymentMethod": zod.string().nullish(),
+  "referralCreditUsed": zod.number().optional().describe('Referral credits consumed without changing the product total'),
   "mpBoletoUrl": zod.string().nullish(),
   "mpBoletoBarcode": zod.string().nullish(),
   "garPedido": zod.string().nullish(),
@@ -2872,6 +2966,7 @@ export const GetRecentOrdersResponseItem = zod.object({
   "representanteAddressState": zod.string().nullish(),
   "mpPaymentId": zod.string().nullable(),
   "paymentMethod": zod.string().nullish(),
+  "referralCreditUsed": zod.number().optional().describe('Referral credits consumed without changing the product total'),
   "mpBoletoUrl": zod.string().nullish(),
   "mpBoletoBarcode": zod.string().nullish(),
   "garPedido": zod.string().nullish(),

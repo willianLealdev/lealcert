@@ -55,6 +55,8 @@ export interface Order {
   representanteAddressState?: string | null;
   mpPaymentId: string | null;
   paymentMethod?: string | null;
+  /** Referral credits consumed without changing the product total */
+  referralCreditUsed?: number;
   mpBoletoUrl?: string | null;
   mpBoletoBarcode?: string | null;
   garPedido?: string | null;

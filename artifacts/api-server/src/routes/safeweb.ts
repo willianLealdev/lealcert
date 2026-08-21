@@ -408,8 +408,8 @@ router.post("/safeweb/biometria/psbio-global", requireAuth, async (req, res): Pr
 
 // Mapa tipo do evento Safeweb → status interno do pedido
 const SW_EVENT_STATUS_MAP: Record<string, string> = {
-  emissao: "emitido",
-  "certificado-periodo-uso": "emitido",
+  emissao: "completed",
+  "certificado-periodo-uso": "completed",
   validacao: "aguardando_validacao",
   "validacao-autonoma": "aguardando_validacao",
   verificacao: "aguardando_validacao",
@@ -477,8 +477,8 @@ router.post("/safeweb/eventos/:tipo", async (req, res): Promise<void> => {
       await database.update(ot).set(updates as unknown as Parameters<typeof database.update<typeof ot>>[0]).where(eq(ot.id, order.id));
       await logEvent(order.id, "gar_status_updated", `Evento Safeweb [${tipo}]: ${safewebStatusLabel}`, { tipo, payload });
 
-      // Notifica o cliente quando o certificado for emitido
-      if (newStatus === "emitido") {
+      // Emissão é a conclusão interna do pedido — só então gera benefícios.
+      if (newStatus === "completed") {
         notifyOrderStatus({
           to: order.customerEmail,
           phone: order.customerPhone,
@@ -494,6 +494,8 @@ router.post("/safeweb/eventos/:tipo", async (req, res): Promise<void> => {
           const { incrementLoyaltySlot } = await import("../lib/loyalty");
           incrementLoyaltySlot(order.userId, order.id).catch((err: unknown) => logger.error({ err }, "Loyalty: erro ao incrementar slot (Safeweb)"));
         }
+        const { creditReferralForCompletedOrder } = await import("./referrals");
+        await creditReferralForCompletedOrder(order.id);
       }
     } catch (err) {
       logger.error({ err, tipo }, "Safeweb evento: erro ao processar");
@@ -543,6 +545,10 @@ router.post("/safeweb/eventos/webhook", async (req, res): Promise<void> => {
 
       await database.update(ot).set(updates as unknown as Parameters<typeof database.update<typeof ot>>[0]).where(eq(ot.id, row.order.id));
       await logEvent(row.order.id, "gar_status_updated", `Webhook Safeweb [${tipo}]: ${safewebStatusLabel}`, { tipo, payload });
+      if (newStatus === "completed") {
+        const { creditReferralForCompletedOrder } = await import("./referrals");
+        await creditReferralForCompletedOrder(row.order.id);
+      }
     } catch (err) {
       logger.error({ err }, "Safeweb webhook: erro ao processar");
     }

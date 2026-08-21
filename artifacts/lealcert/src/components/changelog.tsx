@@ -15,6 +15,15 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.60",
+    changes: [
+      { type: "novo", text: "Indicações para contadores e operadores: link exclusivo, saldo em créditos, vendas agregadas por CPF/CNPJ, lista de indicados e histórico de uso em certificados." },
+      { type: "novo", text: "Administração de indicações: ranking por saldo e visão auditável de cadastros indicados, vendas concluídas, créditos concedidos e certificados pagos com crédito." },
+      { type: "segurança", text: "Créditos de indicação só são concedidos após certificado concluído; o resgate de R$ 90,00 é validado no servidor e protegido contra uso duplicado." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.59",
     changes: [
       { type: "melhoria", text: "Tela de usuários: busca posicionada acima dos filtros e abas de perfil redesenhadas como uma barra de botões mais clara e confortável de usar." },

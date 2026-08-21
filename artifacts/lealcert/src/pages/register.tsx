@@ -84,6 +84,7 @@ export default function Register() {
   const urlPersonType = urlParams.get("personType") as "fisica" | "juridica" | null;
   const urlUserType = urlParams.get("userType") as "contador" | "cliente" | null;
   const urlCpfCnpj = urlParams.get("cpfCnpj") ?? "";
+  const referralCode = urlParams.get("indicacao") ?? undefined;
 
   const [userType, setUserType] = useState<"contador" | "cliente" | "">(urlUserType ?? "");
   const [personType, setPersonType] = useState<"fisica" | "juridica" | "">(urlPersonType ?? "");
@@ -345,6 +346,7 @@ export default function Register() {
         city: form.city || undefined,
         addressState: form.addressState || undefined,
         affiliateCode,
+        referralCode,
       } as Parameters<typeof registerMutation.mutate>[0]["data"] & { affiliateCode?: string },
     });
   }

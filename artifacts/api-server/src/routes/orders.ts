@@ -141,6 +141,7 @@ function orderRow(
     safewebAgendamentoDataHora: o.safewebAgendamentoDataHora,
     safewebAgendamentoLocalNome: o.safewebAgendamentoLocalNome,
     paymentMethod: o.paymentMethod ?? null,
+    referralCreditUsed: parseFloat(o.referralCreditUsed ?? "0"),
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
   };
@@ -686,6 +687,10 @@ router.patch("/orders/:id", requireAdmin, async (req, res): Promise<void> => {
 
     // Auto-emit NFS-e only after the certificate order is fully completed.
     if (status === "completed") {
+      const { creditReferralForCompletedOrder } = await import("./referrals");
+      creditReferralForCompletedOrder(id).catch((err: unknown) =>
+        logger.error({ err, orderId: id }, "Indicação: erro ao conceder crédito por conclusão manual")
+      );
       import("./nfse").then(({ emitNfseForOrder }) => {
         db.select({ autoEmit: settingsTable.nfseAutoEmit })
           .from(settingsTable).limit(1)

@@ -34,6 +34,7 @@ import discagemRouter from "./discagem";
 import siteVisitsRouter from "./site-visits";
 import meetingsRouter from "./meetings";
 import operatorsRouter from "./operators";
+import referralsRouter from "./referrals";
 
 const router: IRouter = Router();
 
@@ -72,5 +73,6 @@ router.use(discagemRouter);
 router.use(siteVisitsRouter);
 router.use(meetingsRouter);
 router.use(operatorsRouter);
+router.use(referralsRouter);
 
 export default router;

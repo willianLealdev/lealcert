@@ -448,6 +448,10 @@ router.post("/gestaoar/sync-order/:orderId", requireAuth, async (req, res): Prom
         const { incrementLoyaltySlot } = await import("../lib/loyalty");
         incrementLoyaltySlot(order.userId, orderId).catch((err: unknown) => logger.error({ err }, "Loyalty: erro ao incrementar slot (GAR sync manual)"));
       }
+      const { creditReferralForCompletedOrder } = await import("./referrals");
+      creditReferralForCompletedOrder(orderId).catch((err: unknown) =>
+        logger.error({ err, orderId }, "Indicação: erro ao conceder crédito após conclusão GAR")
+      );
 
       logger.info({ orderId, garStatus: newGarStatus }, "Certificado emitido — pedido concluído e renovação registrada");
     } else {

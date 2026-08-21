@@ -78,7 +78,7 @@ const UF_LIST = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG
 /* ── tipos ─────────────────────────────────────────────────────────────── */
 type Step = "lookup" | "bio" | "dados" | "nf" | "lealplus" | "pagamento" | "processando" | "docs" | "agenda";
 type CnpjRfbState = null | "loading" | { ok: true; razaoSocial: string } | { ok: false; mensagem: string };
-type PayMethod = "pix" | "boleto" | "cartao" | "cortesia";
+type PayMethod = "pix" | "boleto" | "cartao" | "cortesia" | "credito_indicacao";
 
 interface Certificate {
   id: number; name: string; product?: string | null; model?: string | null;
@@ -696,6 +696,7 @@ export default function ComprarPage() {
 
   /* cortesia */
   const [cortesiaCount, setCortesiaCount] = useState(0);
+  const [referralCreditBalance, setReferralCreditBalance] = useState(0);
 
   useEffect(() => {
     if (step !== "pagamento" || !isContador) return;
@@ -703,10 +704,14 @@ export default function ComprarPage() {
       .then(r => r.ok ? r.json() : { count: 0 })
       .then((d: { count?: number }) => setCortesiaCount(d.count ?? 0))
       .catch(() => setCortesiaCount(0));
+    fetch("/api/referrals/me", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { balance: 0 })
+      .then((d: { balance?: number }) => setReferralCreditBalance(d.balance ?? 0))
+      .catch(() => setReferralCreditBalance(0));
   }, [step, isContador]);
 
-  const submitCortesia = async () => {
-    setPay(p => ({ ...p, loading: true, error: null, method: "cortesia" }));
+  const submitBenefit = async (method: "cortesia" | "credito_indicacao") => {
+    setPay(p => ({ ...p, loading: true, error: null, method }));
 
     const holderNome = isCnpjCert ? dados.repNome : dados.nome;
     const repDocEmissor = dados.repDocTipo !== "0" && dados.repDocOrgan && dados.repDocUf
@@ -758,7 +763,7 @@ export default function ComprarPage() {
       nfNeighborhood: nf.sameAsHolder ? dados.repAddressNeighborhood || undefined : nf.nfNeighborhood || undefined,
       nfCity: nf.sameAsHolder ? dados.repAddressCity || undefined : nf.nfCity || undefined,
       nfState: nf.sameAsHolder ? dados.repAddressState || undefined : nf.nfState || undefined,
-      paymentMethod: "cortesia",
+      paymentMethod: method,
       termsAccepted: true,
       extendedWarranty: dados.extendedWarranty,
       existingUserId: existingUserId ?? undefined,
@@ -772,11 +777,11 @@ export default function ComprarPage() {
       });
       const data = await r.json();
       if (!r.ok) {
-        setPay(p => ({ ...p, loading: false, error: data.error || "Erro ao processar cortesia." }));
+        setPay(p => ({ ...p, loading: false, error: data.error || "Erro ao processar pagamento." }));
         return;
       }
       setPay({
-        method: "cortesia",
+        method,
         orderId: data.orderId,
         orderNumber: data.orderNumber,
         pixQr: null, pixCode: null, boletoUrl: null, boletoBarcode: null,
@@ -2065,6 +2070,22 @@ export default function ComprarPage() {
                             )}
                           </div>
                         )}
+                        {isContador && referralCreditBalance >= 90 && finalPrice === 90 && (
+                          <div className={`rounded-xl border-2 overflow-hidden transition-colors ${selectedMethod === "credito_indicacao" ? "border-emerald-500" : "border-emerald-300 hover:border-emerald-400"}`}>
+                            <button type="button" className="w-full flex items-center gap-4 px-5 py-4 text-left" onClick={() => setSelectedMethod("credito_indicacao")}>
+                              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedMethod === "credito_indicacao" ? "border-emerald-500 bg-emerald-500" : "border-emerald-400"}`}>
+                                {selectedMethod === "credito_indicacao" && <div className="h-2 w-2 rounded-full bg-white" />}
+                              </div>
+                              <div className="h-9 w-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0"><CreditCard className="h-5 w-5 text-emerald-600" /></div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap"><p className="font-bold text-emerald-800">Créditos de Indicação</p><span className="inline-flex text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">Saldo: {formatBRL(referralCreditBalance)}</span></div>
+                                <p className="text-xs text-emerald-700">Use R$ 90,00 em créditos neste certificado</p>
+                              </div>
+                              <div className="text-right shrink-0"><p className="font-bold text-emerald-600 text-lg">R$ 0,00</p></div>
+                            </button>
+                            {selectedMethod === "credito_indicacao" && <div className="px-5 pb-4 bg-emerald-50 border-t border-emerald-100 text-sm text-emerald-800"><p>Ao confirmar, R$ 90,00 do saldo de indicação serão usados neste certificado.</p><p className="text-xs mt-1">O valor do certificado deve ser exatamente R$ 90,00.</p></div>}
+                          </div>
+                        )}
 
                         {/* PIX */}
                         {allowedMethods.includes("pix") && (
@@ -2182,11 +2203,11 @@ export default function ComprarPage() {
                       <Button variant="outline" onClick={() => setStep("lealplus")} className="w-1/3" disabled={pay.loading}><ArrowLeft className="h-4 w-4 mr-1" />Voltar</Button>
                       <Button
                         className={`flex-1 h-12 text-base ${selectedMethod === "cortesia" ? "bg-amber-500 hover:bg-amber-600 text-amber-950" : "bg-emerald-600 hover:bg-emerald-700"}`}
-                        onClick={selectedMethod === "cortesia" ? submitCortesia : submitOrder}
+                        onClick={selectedMethod === "cortesia" || selectedMethod === "credito_indicacao" ? () => submitBenefit(selectedMethod) : submitOrder}
                         disabled={pay.loading || !selectedMethod}
                       >
                         {pay.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-                        {pay.loading ? "Processando..." : selectedMethod === "cortesia" ? "Usar Cortesia" : "Finalizar compra"}
+                        {pay.loading ? "Processando..." : selectedMethod === "cortesia" ? "Usar Cortesia" : selectedMethod === "credito_indicacao" ? "Usar Créditos de Indicação" : "Finalizar compra"}
                       </Button>
                     </div>
                   </div>

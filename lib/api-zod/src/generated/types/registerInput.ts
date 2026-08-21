@@ -31,4 +31,6 @@ export interface RegisterInput {
   neighborhood?: string;
   city?: string;
   addressState?: string;
+  /** Referral code received through the indicacao URL parameter */
+  referralCode?: string;
 }

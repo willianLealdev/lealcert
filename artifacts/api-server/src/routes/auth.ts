@@ -324,6 +324,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     responsibleCpf, responsibleName,
     zipCode, street, addressNumber, complement, neighborhood, city, addressState,
     affiliateCode,
+    referralCode,
   } = req.body ?? {};
   if (!name || !email || !cpfCnpj || !password) {
     res.status(400).json({ error: "Nome, e-mail, CPF/CNPJ e senha são obrigatórios." });
@@ -335,6 +336,22 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   }
   const resolvedUserType = userType === "contador" ? "contador" : "cliente";
   const resolvedPersonType = personType === "juridica" ? "juridica" : "fisica";
+  let referredByUserId: number | null = null;
+  // Indicação é exclusiva entre contas de contador. O código é validado no backend
+  // para impedir vínculo por um código forjado no navegador.
+  if (referralCode && resolvedUserType === "contador") {
+    const [referrer] = await db.select({
+      id: usersTable.id,
+      role: usersTable.role,
+      userType: usersTable.userType,
+      isActive: usersTable.isActive,
+    }).from(usersTable)
+      .where(eq(usersTable.referralCode, String(referralCode).trim().toUpperCase()))
+      .limit(1);
+    if (referrer?.isActive && referrer.role === "contador" && referrer.userType === "contador") {
+      referredByUserId = referrer.id;
+    }
+  }
 
   // ── Validação CRC: obrigatória para contador (PF e PJ) ───────────────────
   let crcNorm: string | null = null;
@@ -457,6 +474,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     addressState: addressState?.trim() || null,
     registrationIp: clientIp,
     trustedIps: [clientIp],
+    referredByUserId,
   }).returning({ id: usersTable.id });
   // Vincula ao vendedor se veio via link de afiliado
   if (newUser && affiliateCode) {

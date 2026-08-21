@@ -104,6 +104,8 @@ export interface RegisterInput {
   neighborhood?: string;
   city?: string;
   addressState?: string;
+  /** Referral code received through the indicacao URL parameter */
+  referralCode?: string;
 }
 
 export interface CrcValidationResult {
@@ -458,6 +460,8 @@ export interface Order {
   representanteAddressState?: string | null;
   mpPaymentId: string | null;
   paymentMethod?: string | null;
+  /** Referral credits consumed without changing the product total */
+  referralCreditUsed?: number;
   mpBoletoUrl?: string | null;
   mpBoletoBarcode?: string | null;
   garPedido?: string | null;
@@ -558,6 +562,81 @@ export interface OrderInput {
   nfNeighborhood?: string;
   nfCity?: string;
   nfState?: string;
+}
+
+export interface ReferralRedemptionInput {
+  orderId: number;
+}
+
+export interface ReferralRedemptionResult {
+  ok: boolean;
+  orderId: number;
+}
+
+export interface ReferralPerson {
+  name: string;
+  createdAt: string;
+}
+
+export interface ReferralSalesBucket {
+  total: number;
+  completed: number;
+  paid: number;
+  pending: number;
+}
+
+export type ReferralSalesAllTime = {
+  cpf?: ReferralSalesBucket;
+  cnpj?: ReferralSalesBucket;
+};
+
+export type ReferralSalesToday = {
+  cpf?: ReferralSalesBucket;
+  cnpj?: ReferralSalesBucket;
+};
+
+export interface ReferralSales {
+  allTime: ReferralSalesAllTime;
+  today: ReferralSalesToday;
+  creditsToday: number;
+}
+
+export interface ReferralCreditUsage {
+  id: number;
+  amount: number;
+  usedAt: string;
+  orderId: number;
+  orderNumber: string;
+  certificateName?: string | null;
+  productValue: number;
+}
+
+export interface ReferralDashboard {
+  officeName?: string | null;
+  referralCode: string;
+  creditPerCertificate: number;
+  redemptionValue: number;
+  balance: number;
+  totalEarned: number;
+  totalUsed: number;
+  referred: ReferralPerson[];
+  sales: ReferralSales;
+  usedCredits: ReferralCreditUsage[];
+}
+
+export type ReferralAdminReportRankingItem = { [key: string]: unknown };
+
+export type ReferralAdminReportReferralsItem = { [key: string]: unknown };
+
+export type ReferralAdminReportCommissionsItem = { [key: string]: unknown };
+
+export type ReferralAdminReportUsagesItem = { [key: string]: unknown };
+
+export interface ReferralAdminReport {
+  ranking: ReferralAdminReportRankingItem[];
+  referrals: ReferralAdminReportReferralsItem[];
+  commissions: ReferralAdminReportCommissionsItem[];
+  usages: ReferralAdminReportUsagesItem[];
 }
 
 export type OrderUpdateStatus = typeof OrderUpdateStatus[keyof typeof OrderUpdateStatus];

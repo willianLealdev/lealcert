@@ -47,6 +47,10 @@ export const usersTable = pgTable("users", {
   vendedorId: integer("vendedor_id"),
   /** Conta de contador responsável por este operador (null para demais perfis) */
   contadorId: integer("contador_id").references((): AnyPgColumn => usersTable.id, { onDelete: "cascade" }),
+  /** Código público, único e permanente para indicação de novos contadores. */
+  referralCode: text("referral_code").unique(),
+  /** Contador que indicou esta conta. Nunca pode ser alterado após o cadastro. */
+  referredByUserId: integer("referred_by_user_id").references((): AnyPgColumn => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

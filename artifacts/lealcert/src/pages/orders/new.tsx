@@ -352,11 +352,12 @@ export default function NewOrder() {
   const [couponError, setCouponError] = useState<string | null>(null);
 
   // ── Payment method ──
-  type PayMethod = "pix" | "boleto" | "cartao" | "cortesia";
+  type PayMethod = "pix" | "boleto" | "cartao" | "cortesia" | "credito_indicacao";
   const [selectedMethod, setSelectedMethod] = useState<PayMethod>("pix");
 
   // ── Cortesia (fidelidade) ──
   const [cortesiaCount, setCortesiaCount] = useState(0);
+  const [referralCreditBalance, setReferralCreditBalance] = useState(0);
   const isContador = user?.userType === "contador";
   useEffect(() => {
     if (step !== 4 || !isContador) return;
@@ -364,6 +365,10 @@ export default function NewOrder() {
       .then(r => r.ok ? r.json() : { count: 0 })
       .then((d: { count?: number }) => setCortesiaCount(d.count ?? 0))
       .catch(() => setCortesiaCount(0));
+    fetch("/api/referrals/me", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { balance: 0 })
+      .then((d: { balance?: number }) => setReferralCreditBalance(d.balance ?? 0))
+      .catch(() => setReferralCreditBalance(0));
   }, [step, isContador]);
   const [cardNumber, setCardNumber] = useState("");
   const [cardName, setCardName] = useState("");
@@ -789,7 +794,7 @@ export default function NewOrder() {
   // ── Submit cortesia ──
   // Cria o pedido com todos os dados do formulário (igual ao submit normal),
   // depois chama pay-with-cortesia para usar a cortesia como pagamento.
-  async function handleCortesiaSubmit() {
+  async function handleBenefitSubmit(method: "cortesia" | "credito_indicacao") {
     const hasPsbioValue = gateHasPsbioRef.current;
     const nfDigits = nfForm.nfCpfCnpj.replace(/\D/g, "");
     try {
@@ -850,20 +855,25 @@ export default function NewOrder() {
       });
 
       // Passo 2: usa cortesia como pagamento
-      const r = await fetch("/api/loyalty/pay-with-cortesia", {
+      const r = await fetch(method === "cortesia" ? "/api/loyalty/pay-with-cortesia" : "/api/referrals/pay-with-credits", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId: orderData.id }),
       });
       const data = await r.json();
       if (!r.ok) {
-        toast({ title: "Erro na cortesia", description: data.error || "Erro ao processar cortesia.", variant: "destructive" });
+        toast({ title: method === "cortesia" ? "Erro na cortesia" : "Erro nos créditos", description: data.error || "Erro ao processar pagamento.", variant: "destructive" });
         // Pedido foi criado — redireciona mesmo assim para o usuário resolver
         setLocation(`/orders/${orderData.id}`);
         return;
       }
 
-      toast({ title: "Cortesia utilizada! 🎉", description: `Pedido ${orderData.orderNumber} criado sem custo.` });
+      toast({
+        title: method === "cortesia" ? "Cortesia utilizada! 🎉" : "Créditos utilizados! 🎉",
+        description: method === "cortesia"
+          ? `Pedido ${orderData.orderNumber} criado sem custo.`
+          : `R$ 90,00 em créditos foram aplicados no pedido ${orderData.orderNumber}.`,
+      });
       try { localStorage.removeItem("lealcert_order_local"); } catch { /* ignore */ }
       setLocation(`/orders/${orderData.id}?processing=1`);
     } catch (err: unknown) {
@@ -2077,6 +2087,27 @@ export default function NewOrder() {
                   </div>
                 </button>
               )}
+              {isContador && referralCreditBalance >= 90 && subtotal === 90 && (
+                <button type="button" onClick={() => setSelectedMethod("credito_indicacao")}
+                  className={`w-full flex items-center gap-4 border-2 rounded-xl p-4 transition-all text-left ${selectedMethod === "credito_indicacao" ? "bg-emerald-50 border-emerald-500 ring-1 ring-emerald-400" : "border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50/50"}`}>
+                  <div className="h-11 w-11 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                    <span className="text-2xl">💳</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-emerald-800">Usar Créditos de Indicação</p>
+                      <span className="inline-flex text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                        Saldo: R$ {referralCreditBalance.toFixed(2).replace(".", ",")}
+                      </span>
+                    </div>
+                    <p className="text-sm text-emerald-700">Utilize R$ 90,00 em créditos para este certificado</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-emerald-600 text-lg">R$ 0,00</p>
+                    {selectedMethod === "credito_indicacao" && <CheckCircle className="h-5 w-5 text-emerald-500 ml-auto mt-1" />}
+                  </div>
+                </button>
+              )}
 
               {/* PIX — sempre disponível */}
               <button type="button" onClick={() => setSelectedMethod("pix")}
@@ -2172,8 +2203,8 @@ export default function NewOrder() {
 
           {/* Confirmar */}
           <Button
-            className={`w-full h-12 text-base ${selectedMethod === "cortesia" ? "bg-amber-500 hover:bg-amber-600 text-amber-950" : ""}`}
-            onClick={selectedMethod === "cortesia" ? handleCortesiaSubmit : handleSubmit}
+            className={`w-full h-12 text-base ${selectedMethod === "cortesia" ? "bg-amber-500 hover:bg-amber-600 text-amber-950" : selectedMethod === "credito_indicacao" ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+            onClick={selectedMethod === "cortesia" || selectedMethod === "credito_indicacao" ? () => handleBenefitSubmit(selectedMethod) : handleSubmit}
             disabled={createOrder.isPending || createPaymentMut.isPending}
           >
             {createOrder.isPending
@@ -2182,6 +2213,8 @@ export default function NewOrder() {
                 ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processando pagamento...</>
                 : selectedMethod === "cortesia"
                   ? <>⭐ Usar Cortesia — R$ 0,00</>
+                  : selectedMethod === "credito_indicacao"
+                    ? <>💳 Usar R$ 90,00 em Créditos</>
                   : <>Confirmar e Ir para Pagamento <ArrowRight className="h-4 w-4 ml-2" /></>}
           </Button>
           <p className="text-xs text-center text-muted-foreground -mt-2">

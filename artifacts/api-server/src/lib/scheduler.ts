@@ -277,6 +277,8 @@ async function syncGarProtocols() {
 
             await logEvent(order.id, "certificate_emitted", `Certificado emitido (sync automático) — status GAR: ${newGarStatus}`, { garStatus: newGarStatus, protocolo: newProtocolo });
             await logEvent(order.id, "order_completed", "Pedido concluído automaticamente — certificado emitido detectado pelo scheduler");
+            const { creditReferralForCompletedOrder } = await import("./referrals");
+            await creditReferralForCompletedOrder(order.id);
 
             notifyOrderStatus({
               to: order.customerEmail,
@@ -531,6 +533,15 @@ export function startScheduler() {
   setInterval(syncGarProtocols, 5 * 60_000);
   setTimeout(() => syncGarProtocols().catch(err => logger.error({ err }, "GAR protocol sync: erro inicial")), 5_000);
   logger.info("GAR protocol sync started (5min interval)");
+
+  // Reconcilia de forma idempotente créditos de indicação que tenham falhado
+  // no instante da conclusão do certificado.
+  const reconcileReferralCredits = () => import("./referrals")
+    .then(({ reconcileReferralCredits }) => reconcileReferralCredits())
+    .catch(err => logger.error({ err }, "Indicação: erro ao reconciliar créditos pendentes"));
+  setInterval(reconcileReferralCredits, 5 * 60_000);
+  setTimeout(reconcileReferralCredits, 20_000);
+  logger.info("Referral credit reconciliation started (5min interval)");
 
   // Sincronização automática de pagamentos MercadoPago — a cada 2 minutos
   setInterval(syncMercadoPagoPayments, 2 * 60_000);

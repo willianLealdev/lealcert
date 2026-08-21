@@ -116,6 +116,8 @@ export const ordersTable = pgTable("orders", {
   safewebAgendamentoLocalNome: text("safeweb_agendamento_local_nome"),
   // Método de pagamento utilizado (pix | boleto | cartao | cortesia)
   paymentMethod: text("payment_method"),
+  /** Créditos de indicação consumidos neste pedido (mantém total do produto para auditoria). */
+  referralCreditUsed: numeric("referral_credit_used", { precision: 10, scale: 2 }).notNull().default("0.00"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
