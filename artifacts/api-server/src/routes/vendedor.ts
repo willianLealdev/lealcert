@@ -8,7 +8,7 @@
  * GET  /api/vendedor/ganhos
  */
 import { Router } from "express";
-import { eq, and, count, desc, sql, gte, lte } from "drizzle-orm";
+import { eq, and, count, desc, sql, gte, lte, or, isNull, ne } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, usersTable, vendedoresTable, vendedorPagamentosTable, ordersTable, loyaltySlotEventsTable } from "@workspace/db";
 import { requireVendedor } from "../middlewares/auth";
@@ -59,6 +59,10 @@ router.get("/vendedor/dashboard", requireVendedor, async (req, res): Promise<voi
     .from(usersTable)
     .where(eq(usersTable.vendedorId, userId));
   const contadorIds = contadoresRows.map(r => r.id);
+  const commissionableEvent = and(
+    sql`${loyaltySlotEventsTable.userId} = ANY(${sql.raw(`ARRAY[${contadorIds.join(",")}]::int[]`)})`,
+    or(isNull(ordersTable.paymentMethod), ne(ordersTable.paymentMethod, "credito_indicacao")),
+  );
 
   // Vendas hoje / mês / ano — contagem de orders completed
   const now = new Date();
@@ -69,11 +73,12 @@ router.get("/vendedor/dashboard", requireVendedor, async (req, res): Promise<voi
   let vendasHoje = 0, vendasMes = 0, vendasAno = 0, totalCerts = 0;
 
   if (contadorIds.length > 0) {
-    // total de certs emitidos = loyalty_slot_events (já filtra cortesia)
+    // Resgates de crédito de indicação não são vendas comissionáveis.
     const allEvents = await db
       .select({ userId: loyaltySlotEventsTable.userId, createdAt: loyaltySlotEventsTable.createdAt })
       .from(loyaltySlotEventsTable)
-      .where(sql`${loyaltySlotEventsTable.userId} = ANY(${sql.raw(`ARRAY[${contadorIds.join(",")}]::int[]`)})`);
+      .innerJoin(ordersTable, eq(loyaltySlotEventsTable.orderId, ordersTable.id))
+      .where(commissionableEvent);
 
     totalCerts = allEvents.length;
     vendasHoje  = allEvents.filter(e => new Date(e.createdAt) >= startOfDay).length;
@@ -97,7 +102,8 @@ router.get("/vendedor/dashboard", requireVendedor, async (req, res): Promise<voi
         certsEmitidos: count(),
       })
       .from(loyaltySlotEventsTable)
-      .where(sql`${loyaltySlotEventsTable.userId} = ANY(${sql.raw(`ARRAY[${contadorIds.join(",")}]::int[]`)})`)
+      .innerJoin(ordersTable, eq(loyaltySlotEventsTable.orderId, ordersTable.id))
+      .where(commissionableEvent)
       .groupBy(loyaltySlotEventsTable.userId)
       .orderBy(desc(count()))
       .limit(10);
@@ -249,6 +255,7 @@ router.get("/vendedor/relatorio", requireVendedor, async (req, res): Promise<voi
   const conditions = [
     sql`${ordersTable.userId} = ANY(${sql.raw(`ARRAY[${contadorIds.join(",")}]::int[]`)})`,
     sql`${ordersTable.status} = 'completed'`,
+    or(isNull(ordersTable.paymentMethod), ne(ordersTable.paymentMethod, "credito_indicacao")),
   ];
   if (from) conditions.push(gte(ordersTable.createdAt, new Date(String(from))));
   if (to)   conditions.push(lte(ordersTable.createdAt, new Date(String(to))));
@@ -329,7 +336,11 @@ router.get("/vendedor/ganhos", requireVendedor, async (req, res): Promise<void> 
       total: count(),
     })
     .from(loyaltySlotEventsTable)
-    .where(sql`${loyaltySlotEventsTable.userId} = ANY(${sql.raw(`ARRAY[${contadorIds.join(",")}]::int[]`)})`)
+    .innerJoin(ordersTable, eq(loyaltySlotEventsTable.orderId, ordersTable.id))
+    .where(and(
+      sql`${loyaltySlotEventsTable.userId} = ANY(${sql.raw(`ARRAY[${contadorIds.join(",")}]::int[]`)})`,
+      or(isNull(ordersTable.paymentMethod), ne(ordersTable.paymentMethod, "credito_indicacao")),
+    ))
     .groupBy(sql`to_char(${loyaltySlotEventsTable.createdAt}, 'YYYY-MM')`)
     .orderBy(sql`to_char(${loyaltySlotEventsTable.createdAt}, 'YYYY-MM')`);
 

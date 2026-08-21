@@ -71,6 +71,7 @@ router.get("/dashboard/stats", requireAuth, async (req, res): Promise<void> => {
     status: ordersTable.status,
     total: ordersTable.total,
     userId: ordersTable.userId,
+    paymentMethod: ordersTable.paymentMethod,
     createdAt: ordersTable.createdAt,
   }).from(ordersTable);
 
@@ -82,7 +83,7 @@ router.get("/dashboard/stats", requireAuth, async (req, res): Promise<void> => {
   const paidOrders = userOrders.filter(o => o.status === "paid").length;
   const completedOrders = userOrders.filter(o => o.status === "completed").length;
   const totalRevenue = userOrders
-    .filter(o => PAID_STATUSES.includes(o.status as never))
+    .filter(o => PAID_STATUSES.includes(o.status as never) && o.paymentMethod !== "credito_indicacao")
     .reduce((acc, o) => acc + parseFloat(o.total), 0);
   const todayOrders = userOrders.filter(o => new Date(o.createdAt) >= today).length;
   let totalUsers = 0;
@@ -166,6 +167,7 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
     userId: ordersTable.userId,
     status: ordersTable.status,
     total: ordersTable.total,
+    paymentMethod: ordersTable.paymentMethod,
     createdAt: ordersTable.createdAt,
     certificateId: ordersTable.certificateId,
     addressState: ordersTable.addressState,
@@ -209,14 +211,17 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
   };
 
   // ── Revenue ──────────────────────────────────────────────────────
-  const paidAll = allOrders.filter(o => isPaid(o.status));
+  // Crédito de indicação é um resgate de saldo, não uma entrada financeira.
+  const isFinancialSale = (order: typeof allOrders[number]) =>
+    isPaid(order.status) && order.paymentMethod !== "credito_indicacao";
+  const paidAll = allOrders.filter(isFinancialSale);
   const sumRevenue = (arr: typeof paidAll) => arr.reduce((s, o) => s + parseFloat(o.total), 0);
 
   const revenue = {
     today: sumRevenue(paidAll.filter(o => { const d = new Date(o.createdAt); return d >= todayStart && d <= todayEnd; })),
     month: sumRevenue(paidAll.filter(o => new Date(o.createdAt) >= monthStart)),
     all: sumRevenue(paidAll),
-    period: sumRevenue(periodOrders.filter(o => isPaid(o.status))),
+    period: sumRevenue(periodOrders.filter(isFinancialSale)),
   };
 
   // ── Users per day ─────────────────────────────────────────────────
@@ -237,7 +242,7 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
   const orders_per_day = Array.from(ordersByDay.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([d, c]) => ({ d, c }));
 
   // ── Models breakdown (paid/protocol in period) ────────────────────
-  const paidPeriodOrders = periodOrders.filter(o => isPaid(o.status));
+  const paidPeriodOrders = periodOrders.filter(isFinancialSale);
   const modelCount = new Map<string, number>();
   for (const o of paidPeriodOrders) {
     const name = (o.certificateId != null ? certMap.get(o.certificateId) : undefined) ?? "Desconhecido";

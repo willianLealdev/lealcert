@@ -30,3 +30,4 @@
 - [Operator commercial identity](operator-commercial-identity.md) — operator orders belong commercially to the linked accountant while retaining the operator as the audit attendant.
 - [Renewal office access](renewal-office-access.md) — renewal visibility is scoped in SQL to the accountant owner; operators inherit only their linked office.
 - [BrasilNFe NFS-e integration](brasilnfe-nfse.md) — use API 2.0 fiscal endpoints and poll pending lots; never parse provider responses directly with `res.json()`.
+- [Referral credit accounting](referral-credit-accounting.md) — credit-funded certificates are redemptions, not cash revenue or seller commission.

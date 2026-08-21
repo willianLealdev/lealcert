@@ -11,7 +11,7 @@
  * DELETE /api/admin/vendedores/:id/pagamentos/:pagId
  */
 import { Router } from "express";
-import { eq, and, sql, count, sum, desc } from "drizzle-orm";
+import { eq, and, sql, count, sum, desc, or, isNull, ne } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { db, usersTable, vendedoresTable, vendedorPagamentosTable, ordersTable, loyaltySlotEventsTable } from "@workspace/db";
@@ -48,7 +48,11 @@ async function calcSaldoBruto(vendedorId: number, vendedorUserId: number, valorP
   const [{ total }] = await db
     .select({ total: count() })
     .from(loyaltySlotEventsTable)
-    .where(sql`${loyaltySlotEventsTable.userId} = ANY(${sql.raw(`ARRAY[${contadorIds.join(",")}]::int[]`)})`);
+    .innerJoin(ordersTable, eq(loyaltySlotEventsTable.orderId, ordersTable.id))
+    .where(and(
+      sql`${loyaltySlotEventsTable.userId} = ANY(${sql.raw(`ARRAY[${contadorIds.join(",")}]::int[]`)})`,
+      or(isNull(ordersTable.paymentMethod), ne(ordersTable.paymentMethod, "credito_indicacao")),
+    ));
 
   const totalCerts = Number(total);
   const vPorCert = parseFloat(valorPorCert);

@@ -14,6 +14,7 @@ import {
   db,
   loyaltyCartelasTable,
   loyaltySlotEventsTable,
+  ordersTable,
   usersTable,
 } from "@workspace/db";
 import { logger } from "./logger";
@@ -38,7 +39,15 @@ export async function incrementLoyaltySlot(
 
     if (!user || user.userType !== "contador") return;
 
-    // 2) Idempotência: tentar registrar o evento; pular se já registrado
+    // 2) Resgates de indicação não são uma nova venda e não geram fidelidade.
+    const [order] = await db
+      .select({ paymentMethod: ordersTable.paymentMethod })
+      .from(ordersTable)
+      .where(and(eq(ordersTable.id, orderId), eq(ordersTable.userId, userId)))
+      .limit(1);
+    if (!order || order.paymentMethod === "credito_indicacao") return;
+
+    // 3) Idempotência: tentar registrar o evento; pular se já registrado
     try {
       await db.insert(loyaltySlotEventsTable).values({ orderId, userId });
     } catch {
@@ -47,7 +56,7 @@ export async function incrementLoyaltySlot(
       return;
     }
 
-    // 3) Buscar ou criar cartela ativa
+    // 4) Buscar ou criar cartela ativa
     const [active] = await db
       .select()
       .from(loyaltyCartelasTable)

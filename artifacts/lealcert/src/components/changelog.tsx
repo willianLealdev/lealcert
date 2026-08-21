@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "21/08/2026",
+    version: "1.62",
+    changes: [
+      { type: "fix", text: "Pedidos pagos com créditos de indicação agora mostram o resgate no resumo e não entram em faturamento ou ganhos de vendedor." },
+    ],
+  },
+  {
+    date: "21/08/2026",
     version: "1.61",
     changes: [
       { type: "fix", text: "Webhooks Safeweb de emissão agora processam corretamente as duas URLs suportadas e mantêm o crédito de indicação idempotente." },
