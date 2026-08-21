@@ -7,4 +7,4 @@ An operator is never the commercial account owner. Purchases initiated by an ope
 
 **Why:** The accountant owns the commercial price and must retain the order history; independently retaining the operator provides accurate service attribution without letting a browser select the commercial identity.
 
-**How to apply:** Any authenticated purchase path must resolve the server-side relationship from the operator account, reject inactive or orphaned links, use the accountant as the order owner, and record the operator as the attendant. Lists and detail views for an active operator must scope to that accountant owner so the whole office sees its shared order history.
+**How to apply:** Any authenticated purchase path must resolve the server-side relationship from the operator account, reject inactive or orphaned links, use the accountant as the order owner, and record the operator as the attendant. Lists, detail views, payment actions, and the operator dashboard must scope to that accountant owner so the whole office shares the same order history and commercial indicators.

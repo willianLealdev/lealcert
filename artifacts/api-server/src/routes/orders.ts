@@ -45,6 +45,20 @@ async function linkedContadorId(operatorId: number): Promise<number | null> {
   return contador?.isActive && contador.role === "contador" ? contador.id : null;
 }
 
+async function canAccessOrder(
+  userId: number | undefined,
+  role: string | undefined,
+  userType: string | undefined,
+  order: { userId: number | null; operatorId: number | null },
+): Promise<boolean> {
+  if (role === "admin" || userType === "admin") return true;
+  if (!userId) return false;
+  if (order.userId === userId || order.operatorId === userId) return true;
+
+  const contadorId = role === "operador" ? await linkedContadorId(userId) : null;
+  return contadorId !== null && order.userId === contadorId;
+}
+
 function orderRow(
   o: typeof ordersTable.$inferSelect,
   userName?: string | null,
@@ -575,8 +589,7 @@ router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: "Pedido não encontrado." });
     return;
   }
-  const contadorId = role === "operador" ? await linkedContadorId(userId) : null;
-  if (role !== "admin" && row.order.userId !== userId && row.order.operatorId !== userId && row.order.userId !== contadorId) {
+  if (!await canAccessOrder(userId, role, req.session.userType, row.order)) {
     res.status(403).json({ error: "Acesso negado." });
     return;
   }
@@ -699,8 +712,7 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
     .where(eq(ordersTable.id, id))
     .limit(1);
   if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== row.order.userId && req.session.userId !== row.order.operatorId) {
+  if (!await canAccessOrder(req.session.userId, req.session.role, req.session.userType, row.order)) {
     res.status(403).json({ error: "Acesso negado." }); return;
   }
 
@@ -882,8 +894,7 @@ router.post("/orders/:id/sync-payment", requireAuth, async (req, res): Promise<v
   const order = row.order;
 
   // Só o admin ou o dono do pedido pode sincronizar
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) {
+  if (!await canAccessOrder(req.session.userId, req.session.role, req.session.userType, order)) {
     res.status(403).json({ ok: false, error: "Acesso negado" }); return;
   }
 

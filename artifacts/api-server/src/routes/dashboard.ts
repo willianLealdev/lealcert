@@ -40,6 +40,26 @@ function fmtBRDate(d: Date | string | null): string {
   return dt.toLocaleDateString("pt-BR") + " " + dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+async function dashboardOwnerId(userId: number, role: string): Promise<number | null> {
+  if (role !== "operador") return userId;
+
+  const [operator] = await db
+    .select({ role: usersTable.role, contadorId: usersTable.contadorId, isActive: usersTable.isActive })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (!operator?.isActive || operator.role !== "operador" || !operator.contadorId) return null;
+
+  const [contador] = await db
+    .select({ id: usersTable.id, role: usersTable.role, isActive: usersTable.isActive })
+    .from(usersTable)
+    .where(eq(usersTable.id, operator.contadorId))
+    .limit(1);
+
+  return contador?.isActive && contador.role === "contador" ? contador.id : null;
+}
+
 // ─── Legacy endpoints (kept for backward compat) ─────────────────────────────
 
 router.get("/dashboard/stats", requireAuth, async (req, res): Promise<void> => {
@@ -326,6 +346,8 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
 router.get("/dashboard/me-stats", requireAuth, async (req, res): Promise<void> => {
   const session = req.session;
   const userId = session.userId as number;
+  const ownerId = await dashboardOwnerId(userId, session.role as string);
+  if (!ownerId) { res.status(403).json({ error: "Conta de contador vinculada não encontrada." }); return; }
 
   const range = (req.query.range as string) || "30d";
   const { start, end } = getRangeBounds(range, req.query.from as string, req.query.to as string);
@@ -339,7 +361,7 @@ router.get("/dashboard/me-stats", requireAuth, async (req, res): Promise<void> =
     createdAt: ordersTable.createdAt,
     certificateId: ordersTable.certificateId,
     scheduledAt: ordersTable.scheduledAt,
-  }).from(ordersTable).where(eq(ordersTable.userId, userId));
+  }).from(ordersTable).where(eq(ordersTable.userId, ownerId));
 
   const allCerts = await db.select({ id: certificatesTable.id, name: certificatesTable.name }).from(certificatesTable);
   const certMap = new Map(allCerts.map(c => [c.id, c.name]));
