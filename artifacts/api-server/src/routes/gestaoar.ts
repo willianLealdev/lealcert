@@ -323,7 +323,21 @@ router.get("/orders/:id/events", requireAuth, async (req, res): Promise<void> =>
 
   const [row] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
-  if (role !== "admin" && row.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+  let canViewEvents = role === "admin" || row.userId === userId || row.operatorId === userId;
+  if (!canViewEvents && role === "operador") {
+    const [operator] = await db
+      .select({ role: usersTable.role, contadorId: usersTable.contadorId, isActive: usersTable.isActive })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+    canViewEvents = Boolean(
+      operator?.isActive
+      && operator.role === "operador"
+      && operator.contadorId
+      && row.userId === operator.contadorId,
+    );
+  }
+  if (!canViewEvents) { res.status(403).json({ error: "Acesso negado." }); return; }
 
   const rows = await db
     .select()

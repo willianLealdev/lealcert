@@ -20,7 +20,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "novo", text: "Operadores de contador: cadastro ilimitado com CPF e e-mail, senha provisória enviada automaticamente e troca obrigatória no primeiro acesso." },
       { type: "novo", text: "Gestão de operadores: contador pode bloquear, excluir ou resetar a senha; a recuperação de senha também confirma CPF/CNPJ e e-mail cadastrado." },
       { type: "melhoria", text: "Compras feitas por operador usam sempre o preço do contador responsável e o detalhe administrativo do pedido identifica o operador atendente." },
-      { type: "melhoria", text: "Todos os operadores vinculados ao mesmo contador agora visualizam os pedidos do escritório, inclusive os realizados por outros operadores ou diretamente pelo contador." },
+      { type: "melhoria", text: "Todos os operadores vinculados ao mesmo contador agora visualizam os pedidos e histórico do escritório, inclusive os realizados por outros operadores ou diretamente pelo contador." },
       { type: "melhoria", text: "O rodapé do operador agora identifica o contador ou escritório responsável pelo vínculo." },
     ],
   },
