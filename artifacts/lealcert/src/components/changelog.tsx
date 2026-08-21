@@ -15,6 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.57",
+    changes: [
+      { type: "melhoria", text: "Tela de usuários organizada por abas de perfil, com busca instantânea por nome e contagem de cadastros em cada grupo." },
+      { type: "melhoria", text: "Administradores, contadores, clientes, operadores e vendedores agora podem ser consultados separadamente, sem misturar a lista." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.56",
     changes: [
       { type: "segurança", text: "NFS-e agora só pode ser emitida após o pedido estar concluído. Antes disso, o botão explica que a nota será liberada quando o certificado for finalizado." },

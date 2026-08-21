@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useListUsers, useCreateUser, useUpdateUser, useDeleteUser, type User } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Loader2, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Eye, Search } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
 type UserRow = User & { vendedorId?: number | null; vendedorNome?: string | null; contadorId?: number | null; contadorNome?: string | null };
@@ -19,12 +20,28 @@ type UserRow = User & { vendedorId?: number | null; vendedorNome?: string | null
 type UserForm = { name: string; email: string; cpfCnpj: string; phone: string; tipo: string; password: string; isActive: boolean };
 const EMPTY: UserForm = { name: "", email: "", cpfCnpj: "", phone: "", tipo: "cliente", password: "", isActive: true };
 
+type UserTab = "todos" | "admin" | "contador" | "cliente" | "operador" | "vendedor";
+
+const USER_TABS: { value: UserTab; label: string }[] = [
+  { value: "todos", label: "Todos" },
+  { value: "admin", label: "Administradores" },
+  { value: "contador", label: "Contadores" },
+  { value: "cliente", label: "Clientes" },
+  { value: "operador", label: "Operadores" },
+  { value: "vendedor", label: "Vendedores" },
+];
+
 function tipoFromUser(u: { role: string; userType?: string | null }): string {
   if (u.role === "admin") return "admin";
   if (u.role === "vendedor") return "vendedor";
   if (u.role === "operador") return "operador";
   return u.userType === "contador" ? "contador" : "cliente";
 }
+
+function normalizeSearch(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+}
+
 function roleFromTipo(tipo: string): "admin" | "contador" { return tipo === "admin" ? "admin" : "contador"; }
 function userTypeFromTipo(tipo: string): string { return tipo === "contador" ? "contador" : "cliente"; }
 
@@ -182,6 +199,8 @@ export default function AdminUsers() {
   const [form, setForm] = useState<UserForm>(EMPTY);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [viewUser, setViewUser] = useState<UserRow | null>(null);
+  const [activeTab, setActiveTab] = useState<UserTab>("todos");
+  const [search, setSearch] = useState("");
 
   const createUser = useCreateUser({ mutation: { onSuccess: () => { toast({ title: "Usuário criado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
   const updateUser = useUpdateUser({ mutation: { onSuccess: () => { toast({ title: "Usuário atualizado!" }); setOpen(false); refetch(); }, onError: e => toast({ title: "Erro", description: getApiError(e), variant: "destructive" }) } });
@@ -207,13 +226,26 @@ export default function AdminUsers() {
   }
 
   const isPending = createUser.isPending || updateUser.isPending;
+  const usersByType = useMemo(() => {
+    const rows = (users ?? []) as UserRow[];
+    return USER_TABS.reduce<Record<UserTab, UserRow[]>>((groups, tab) => {
+      groups[tab.value] = tab.value === "todos"
+        ? rows
+        : rows.filter(user => tipoFromUser(user) === tab.value);
+      return groups;
+    }, {} as Record<UserTab, UserRow[]>);
+  }, [users]);
+  const availableTabs = USER_TABS.filter(tab => tab.value === "todos" || usersByType[tab.value].length > 0);
+  const normalizedSearch = normalizeSearch(search);
+  const visibleUsers = usersByType[activeTab].filter(user => !normalizedSearch || normalizeSearch(user.name).includes(normalizedSearch));
+  const activeTabLabel = USER_TABS.find(tab => tab.value === activeTab)?.label ?? "Usuários";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Usuários</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">Gerencie os contadores, clientes e administradores.</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Gerencie cada perfil de usuário de forma organizada.</p>
         </div>
         <Button className="shrink-0" onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
@@ -227,45 +259,91 @@ export default function AdminUsers() {
           {isLoading ? (
             <div className="text-center py-10 text-muted-foreground">Carregando...</div>
           ) : (
-            <div className="rounded-md border overflow-hidden overflow-x-auto">
-              <table className="w-full text-sm min-w-[600px]">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">CPF/CNPJ</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">E-mail</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Tipo</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Cadastro</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {users?.filter(u => u.role !== "vendedor").map(u => (
-                    <tr key={u.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-3 font-medium">{u.name}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground hidden md:table-cell">{u.cpfCnpj}</td>
-                      <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{u.email ?? "—"}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={u.role === "admin" ? "default" : "secondary"}>
-                          {tipoFromUser(u) === "admin" ? "Admin" : tipoFromUser(u) === "vendedor" ? "Vendedor" : tipoFromUser(u) === "operador" ? "Operador" : tipoFromUser(u) === "contador" ? "Contador" : "Cliente"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={u.isActive ? "default" : "destructive"}>{u.isActive ? "Ativo" : "Inativo"}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{formatDate(u.createdAt)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button variant="ghost" size="icon" title="Ver dados completos" onClick={() => setViewUser(u)}><Eye className="h-4 w-4" /></Button>
-                          {u.role !== "operador" && <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>}
-                          {u.role !== "operador" && <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Remover" onClick={() => setDeleteId(u.id)}><Trash2 className="h-4 w-4" /></Button>}
-                        </div>
-                      </td>
+            <div className="space-y-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <Tabs value={activeTab} onValueChange={value => setActiveTab(value as UserTab)} className="min-w-0">
+                  <TabsList className="h-auto w-full max-w-full justify-start gap-1 overflow-x-auto p-1 lg:w-auto">
+                    {availableTabs.map(tab => (
+                      <TabsTrigger key={tab.value} value={tab.value} className="shrink-0 gap-1.5 px-3">
+                        {tab.label}
+                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] leading-none data-[state=active]:bg-primary/10">
+                          {usersByType[tab.value].length}
+                        </span>
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+
+                <div className="relative w-full lg:max-w-sm">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={event => setSearch(event.target.value)}
+                    placeholder={`Buscar em ${activeTabLabel.toLocaleLowerCase("pt-BR")} por nome...`}
+                    className="pl-9"
+                    aria-label="Buscar usuário por nome"
+                  />
+                </div>
+              </div>
+
+              {activeTab === "vendedor" && (
+                <p className="text-sm text-muted-foreground">
+                  Os dados dos vendedores podem ser consultados aqui. O cadastro e a gestão comercial continuam na tela de Vendedores.
+                </p>
+              )}
+
+              <p className="text-sm text-muted-foreground">
+                {visibleUsers.length === 1 ? "1 usuário encontrado" : `${visibleUsers.length} usuários encontrados`}
+              </p>
+
+              <div className="rounded-md border overflow-hidden overflow-x-auto">
+                <table className="w-full text-sm min-w-[600px]">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">CPF/CNPJ</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">E-mail</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Tipo</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Cadastro</th>
+                      <th className="px-4 py-3" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {visibleUsers.length > 0 ? visibleUsers.map(u => (
+                      <tr key={u.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                        <td className="px-4 py-3 font-medium">{u.name}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground hidden md:table-cell">{u.cpfCnpj}</td>
+                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{u.email ?? "—"}</td>
+                        <td className="px-4 py-3">
+                          <Badge variant={u.role === "admin" ? "default" : "secondary"}>
+                            {tipoFromUser(u) === "admin" ? "Admin" : tipoFromUser(u) === "vendedor" ? "Vendedor" : tipoFromUser(u) === "operador" ? "Operador" : tipoFromUser(u) === "contador" ? "Contador" : "Cliente"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={u.isActive ? "default" : "destructive"}>{u.isActive ? "Ativo" : "Inativo"}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{formatDate(u.createdAt)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1 justify-end">
+                            <Button variant="ghost" size="icon" title="Ver dados completos" onClick={() => setViewUser(u)}><Eye className="h-4 w-4" /></Button>
+                            {u.role !== "operador" && u.role !== "vendedor" && <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>}
+                            {u.role !== "operador" && u.role !== "vendedor" && <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Remover" onClick={() => setDeleteId(u.id)}><Trash2 className="h-4 w-4" /></Button>}
+                          </div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                          {search.trim()
+                            ? `Nenhum usuário em ${activeTabLabel.toLocaleLowerCase("pt-BR")} corresponde a “${search.trim()}”.`
+                            : `Nenhum usuário cadastrado em ${activeTabLabel.toLocaleLowerCase("pt-BR")}.`}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </CardContent>
