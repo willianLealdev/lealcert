@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 type SalesBucket = { total: number; completed: number; paid: number; pending: number };
 type IndicationsData = {
@@ -79,64 +80,73 @@ export default function IndicacoesPage() {
       </div>
 
       <Card className="border-blue-200 bg-blue-50/40">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2 text-blue-950">
-            <Info className="h-5 w-5 text-blue-600" />
-            Termos da Indicação
-          </CardTitle>
-          <p className="text-sm text-blue-900/70">
-            Leia como o programa funciona antes de compartilhar seu link.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm text-slate-700">
-          <div className="grid md:grid-cols-2 gap-x-8 gap-y-4">
-            <div>
-              <p className="font-semibold text-slate-900">1. Quem pode participar</p>
-              <p className="mt-1 leading-relaxed">
-                O programa é destinado a contas de contador. Operadores vinculados a um escritório usam o link e o saldo do contador responsável.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">2. Como a indicação é registrada</p>
-              <p className="mt-1 leading-relaxed">
-                O contador indicado precisa se cadastrar pelo seu link, que contém o parâmetro <strong>indicacao</strong>. Esse parâmetro é separado do código de vendedor e fica vinculado ao cadastro.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">3. Quando você recebe crédito</p>
-              <p className="mt-1 leading-relaxed">
-                Você recebe <strong>{money(data.creditPerCertificate)}</strong> por certificado do contador indicado somente quando o pedido for concluído. Cadastro, pagamento ou protocolo ainda em andamento não geram crédito. Compras de clientes finais também não pontuam.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">4. Saldo e resgate</p>
-              <p className="mt-1 leading-relaxed">
-                Os créditos ficam acumulados no seu saldo. O uso é liberado a partir de <strong>{money(data.redemptionValue)}</strong> e cada resgate é fixo nesse valor. Se você tiver saldo acima disso, o excedente permanece disponível.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">5. Como usar no checkout</p>
-              <p className="mt-1 leading-relaxed">
-                O crédito pode pagar um certificado cujo valor total seja exatamente <strong>{money(data.redemptionValue)}</strong>. Não é possível fazer resgate parcial, transformar o saldo em dinheiro ou usar o crédito em um pedido de outro valor.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">6. Registro financeiro</p>
-              <p className="mt-1 leading-relaxed">
-                O valor original do certificado continua visível no pedido para auditoria, enquanto o uso do crédito fica registrado separadamente. Um pedido pago com créditos não é entrada de dinheiro, faturamento, ganho de vendedor ou comissão.
-              </p>
-            </div>
-          </div>
-          <div className="border-t border-blue-200 pt-3 space-y-2">
-            <p className="font-semibold text-slate-900">7. Relatórios e segurança</p>
-            <p className="leading-relaxed">
-              Os relatórios mostram totais agregados por CPF/CNPJ e não expõem as compras individuais dos contadores indicados. Cada pedido concluído pode gerar apenas um crédito e cada pedido pode consumir créditos apenas uma vez; as validações são feitas pelo sistema.
-            </p>
-            <p className="text-xs text-blue-900/70">
-              Os valores e condições vigentes são os exibidos nesta tela e podem ser atualizados pela LealCert.
-            </p>
-          </div>
-        </CardContent>
+        <Accordion type="single" collapsible>
+          <AccordionItem value="terms" className="border-0">
+            <AccordionTrigger className="px-5 py-4 hover:no-underline">
+              <div className="text-left">
+                <div className="text-base flex items-center gap-2 text-blue-950">
+                  <Info className="h-5 w-5 text-blue-600" />
+                  <span className="font-semibold">Termos da Indicação</span>
+                </div>
+                <p className="text-sm text-blue-900/70 mt-1 font-normal">
+                  Clique para ver como o programa funciona.
+                </p>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-5 pb-5 pt-1 space-y-4 text-sm text-slate-700">
+              <div className="grid md:grid-cols-2 gap-x-8 gap-y-4">
+                <div>
+                  <p className="font-semibold text-slate-900">1. Quem é o contador indicador</p>
+                  <p className="mt-1 leading-relaxed">
+                    O <strong>contador indicador</strong> é o dono deste link e é quem recebe os créditos. Operadores vinculados a um escritório usam o link e o saldo do contador responsável.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">2. Como a indicação é registrada</p>
+                  <p className="mt-1 leading-relaxed">
+                    O <strong>contador indicado</strong> precisa se cadastrar pelo seu link, que contém o parâmetro <strong>indicacao</strong>. Esse parâmetro é separado do código de vendedor e fica vinculado permanentemente ao cadastro.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">3. Crédito sobre todas as compras</p>
+                  <p className="mt-1 leading-relaxed">
+                    O contador indicador recebe <strong>{money(data.creditPerCertificate)}</strong> por <strong>cada compra de certificado concluída</strong> pelo contador indicado que se cadastrou através do seu link. Isso vale para todas as compras desse contador, inclusive as realizadas por seus operadores vinculados, sem limite de quantidade.
+                  </p>
+                  <p className="mt-1 leading-relaxed">
+                    O crédito só é lançado quando o pedido chega a concluído. Cadastro, pagamento ou protocolo ainda em andamento não geram crédito, e compras de clientes finais não pontuam.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">4. Saldo e resgate</p>
+                  <p className="mt-1 leading-relaxed">
+                    Os créditos ficam acumulados no saldo do contador indicador. O uso é liberado a partir de <strong>{money(data.redemptionValue)}</strong> e cada resgate é fixo nesse valor. Se o saldo for maior, o excedente permanece disponível.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">5. Como usar no checkout</p>
+                  <p className="mt-1 leading-relaxed">
+                    O crédito pode pagar um certificado cujo valor total seja exatamente <strong>{money(data.redemptionValue)}</strong>. Não é possível fazer resgate parcial, transformar o saldo em dinheiro ou usar o crédito em um pedido de outro valor.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">6. Registro financeiro</p>
+                  <p className="mt-1 leading-relaxed">
+                    O valor original do certificado continua visível no pedido para auditoria, enquanto o uso do crédito fica registrado separadamente. Um pedido pago com créditos não é entrada de dinheiro, faturamento, ganho de vendedor ou comissão.
+                  </p>
+                </div>
+              </div>
+              <div className="border-t border-blue-200 pt-3 space-y-2">
+                <p className="font-semibold text-slate-900">7. Relatórios e segurança</p>
+                <p className="leading-relaxed">
+                  Os relatórios mostram totais agregados por CPF/CNPJ e não expõem as compras individuais dos contadores indicados. Cada pedido concluído pode gerar apenas um crédito e cada pedido pode consumir créditos apenas uma vez; as validações são feitas pelo sistema.
+                </p>
+                <p className="text-xs text-blue-900/70">
+                  Os valores e condições vigentes são os exibidos nesta tela e podem ser atualizados pela LealCert.
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </Card>
 
       <Card className="overflow-hidden border-emerald-200">
