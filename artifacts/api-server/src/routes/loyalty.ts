@@ -7,28 +7,53 @@ import { getAvailableCortesias, useCorteisa } from "../lib/loyalty";
 
 const router = Router();
 
-// ── GET /api/loyalty/me — cartelas do contador autenticado ────────────────────
-router.get("/loyalty/me", requireAuth, async (req, res): Promise<void> => {
-  const userId = req.session.userId as number;
-
+async function loyaltyAccount(
+  userId: number,
+): Promise<{ ownerId: number; operatorId: number | null } | null> {
   const [user] = await db
-    .select({ userType: usersTable.userType })
+    .select({
+      id: usersTable.id,
+      role: usersTable.role,
+      userType: usersTable.userType,
+      contadorId: usersTable.contadorId,
+      isActive: usersTable.isActive,
+    })
     .from(usersTable)
     .where(eq(usersTable.id, userId))
     .limit(1);
 
-  if (!user || user.userType !== "contador") {
-    res.status(403).json({ error: "Recurso exclusivo para contadores." });
+  if (!user?.isActive) return null;
+  if (user.role === "contador" && user.userType === "contador") {
+    return { ownerId: user.id, operatorId: null };
+  }
+  if (user.role !== "operador" || user.userType !== "contador" || !user.contadorId) return null;
+
+  const [contador] = await db
+    .select({ id: usersTable.id, role: usersTable.role, userType: usersTable.userType, isActive: usersTable.isActive })
+    .from(usersTable)
+    .where(eq(usersTable.id, user.contadorId))
+    .limit(1);
+
+  if (!contador?.isActive || contador.role !== "contador" || contador.userType !== "contador") return null;
+  return { ownerId: contador.id, operatorId: user.id };
+}
+
+// ── GET /api/loyalty/me — cartelas do contador autenticado ────────────────────
+router.get("/loyalty/me", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.session.userId as number;
+  const account = await loyaltyAccount(userId);
+  if (!account) {
+    res.status(403).json({ error: "Recurso exclusivo para contadores e seus operadores." });
     return;
   }
 
   const cartelas = await db
     .select()
     .from(loyaltyCartelasTable)
-    .where(eq(loyaltyCartelasTable.userId, userId))
+    .where(eq(loyaltyCartelasTable.userId, account.ownerId))
     .orderBy(asc(loyaltyCartelasTable.createdAt));
 
-  const availableCortesias = await getAvailableCortesias(userId);
+  const availableCortesias = await getAvailableCortesias(account.ownerId);
 
   res.json({ cartelas, availableCortesias });
 });
@@ -36,7 +61,12 @@ router.get("/loyalty/me", requireAuth, async (req, res): Promise<void> => {
 // ── GET /api/loyalty/cortesia-available — verifica cortesia disponível ────────
 router.get("/loyalty/cortesia-available", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId as number;
-  const available = await getAvailableCortesias(userId);
+  const account = await loyaltyAccount(userId);
+  if (!account) {
+    res.status(403).json({ error: "Recurso exclusivo para contadores e seus operadores." });
+    return;
+  }
+  const available = await getAvailableCortesias(account.ownerId);
   res.json({ available, count: available });
 });
 
@@ -44,20 +74,21 @@ router.get("/loyalty/cortesia-available", requireAuth, async (req, res): Promise
 // Double-check backend: valida userType + cartela completed antes de processar
 router.post("/loyalty/checkout-cortesia", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId as number;
+  const account = await loyaltyAccount(userId);
 
   const [user] = await db
     .select({ userType: usersTable.userType, name: usersTable.name, email: usersTable.email, cpfCnpj: usersTable.cpfCnpj, phone: usersTable.phone })
     .from(usersTable)
-    .where(eq(usersTable.id, userId))
+    .where(eq(usersTable.id, account?.ownerId ?? -1))
     .limit(1);
 
-  if (!user || user.userType !== "contador") {
-    res.status(403).json({ error: "Recurso exclusivo para contadores." });
+  if (!account || !user || user.userType !== "contador") {
+    res.status(403).json({ error: "Recurso exclusivo para contadores e seus operadores." });
     return;
   }
 
   // Double-check: tem cartela completed?
-  const available = await getAvailableCortesias(userId);
+  const available = await getAvailableCortesias(account.ownerId);
   if (available < 1) {
     res.status(400).json({ error: "Nenhuma cortesia disponível. Complete 10 certificados para desbloquear." });
     return;
@@ -91,7 +122,8 @@ router.post("/loyalty/checkout-cortesia", requireAuth, async (req, res): Promise
       .insert(ordersTable)
       .values({
         orderNumber,
-        userId,
+        userId: account.ownerId,
+        operatorId: account.operatorId,
         certificateId: cert.id,
         status: "paid" as const,
         total: "0",
@@ -106,7 +138,7 @@ router.post("/loyalty/checkout-cortesia", requireAuth, async (req, res): Promise
       .returning();
 
     // Usar a cortesia (marcar cartela como "used")
-    const cartelaId = await useCorteisa(userId, order.id);
+    const cartelaId = await useCorteisa(account.ownerId, order.id);
     if (!cartelaId) {
       // Falha na cortesia — reverter
       await db.delete(ordersTable).where(eq(ordersTable.id, order.id));
@@ -114,7 +146,7 @@ router.post("/loyalty/checkout-cortesia", requireAuth, async (req, res): Promise
       return;
     }
 
-    logger.info({ userId, orderId: order.id, cartelaId }, "Loyalty: pedido cortesia criado");
+    logger.info({ userId: account.ownerId, operatorId: account.operatorId, orderId: order.id, cartelaId }, "Loyalty: pedido cortesia criado");
 
     // Disparar no provedor ativo
     const activeProvider = settings?.activeProvider ?? "gestaoar";
@@ -138,19 +170,13 @@ router.post("/loyalty/checkout-cortesia", requireAuth, async (req, res): Promise
 // Este endpoint apenas troca o pagamento por cortesia.
 router.post("/loyalty/pay-with-cortesia", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId as number;
-
-  const [user] = await db
-    .select({ userType: usersTable.userType })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .limit(1);
-
-  if (!user || user.userType !== "contador") {
-    res.status(403).json({ error: "Recurso exclusivo para contadores." });
+  const account = await loyaltyAccount(userId);
+  if (!account) {
+    res.status(403).json({ error: "Recurso exclusivo para contadores e seus operadores." });
     return;
   }
 
-  const available = await getAvailableCortesias(userId);
+  const available = await getAvailableCortesias(account.ownerId);
   if (available < 1) {
     res.status(400).json({ error: "Nenhuma cortesia disponível." });
     return;
@@ -165,7 +191,7 @@ router.post("/loyalty/pay-with-cortesia", requireAuth, async (req, res): Promise
   const [order] = await db
     .select()
     .from(ordersTable)
-    .where(and(eq(ordersTable.id, Number(orderId)), eq(ordersTable.userId, userId)))
+    .where(and(eq(ordersTable.id, Number(orderId)), eq(ordersTable.userId, account.ownerId)))
     .limit(1);
 
   if (!order) {
@@ -179,7 +205,7 @@ router.post("/loyalty/pay-with-cortesia", requireAuth, async (req, res): Promise
   }
 
   // Usar cortesia e atualizar pedido para "paid"
-  const cartelaId = await useCorteisa(userId, order.id);
+  const cartelaId = await useCorteisa(account.ownerId, order.id);
   if (!cartelaId) {
     res.status(400).json({ error: "Falha ao usar cortesia. Tente novamente." });
     return;
@@ -187,7 +213,12 @@ router.post("/loyalty/pay-with-cortesia", requireAuth, async (req, res): Promise
 
   await db
     .update(ordersTable)
-    .set({ status: "paid", paymentMethod: "cortesia", total: "0" })
+    .set({
+      status: "paid",
+      paymentMethod: "cortesia",
+      total: "0",
+      operatorId: account.operatorId ?? order.operatorId,
+    })
     .where(eq(ordersTable.id, order.id));
 
   const [settings] = await db.select().from(settingsTable).limit(1);
@@ -200,7 +231,7 @@ router.post("/loyalty/pay-with-cortesia", requireAuth, async (req, res): Promise
     garAutoComprar(order.id).catch((err: unknown) => logger.error({ err }, "Loyalty pay-with-cortesia: erro gar-auto"));
   }
 
-  logger.info({ userId, orderId: order.id, cartelaId }, "Loyalty: cortesia aplicada em pedido existente");
+  logger.info({ userId: account.ownerId, operatorId: account.operatorId, orderId: order.id, cartelaId }, "Loyalty: cortesia aplicada em pedido existente");
   res.json({ ok: true, orderId: order.id, orderNumber: order.orderNumber });
 });
 

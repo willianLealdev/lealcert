@@ -133,7 +133,7 @@ describe("checkout partner price ownership", () => {
     expect(insertedTotal()).toBe(90);
   });
 
-  it("uses standard pricing when an authenticated client buys for a contador document", async () => {
+  it("refuses cortesia when an authenticated client buys for a contador document", async () => {
     queueCheckout("cliente");
     const { default: checkoutRouter } = await import("../routes/checkout");
     const app = appForSession(11);
@@ -141,7 +141,7 @@ describe("checkout partner price ownership", () => {
 
     const response = await request(app).post("/api/public/checkout/submit").send(checkoutPayload);
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
     expect(insertedTotal()).toBe(199.9);
   });
 

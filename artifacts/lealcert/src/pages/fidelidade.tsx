@@ -184,6 +184,7 @@ export default function FidelidadePage() {
   const allVisible        = [...completedCartelas, ...activeCartelas, ...usedCartelas];
 
   const totalSlots = data.cartelas.reduce((s, c) => s + (c.status === "used" ? 10 : c.slots), 0);
+  const isOperator = user?.role === "operador";
 
   return (
     <div className="min-h-screen bg-[#0f172a]">
@@ -193,7 +194,7 @@ export default function FidelidadePage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Fidelidade</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Seu programa de certificados grátis
+            {isOperator ? "Programa de certificados grátis do seu escritório" : "Seu programa de certificados grátis"}
           </p>
         </div>
 

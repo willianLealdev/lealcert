@@ -60,9 +60,7 @@ const navigation = [
   { name: "Suporte", href: "/support", icon: LifeBuoy },
 ];
 
-// Itens exclusivos para contadores
-const contadorNav = [
-  { name: "Operadores", href: "/operadores", icon: Users },
+const benefitsNav = [
   { name: "Fidelidade", href: "/fidelidade", icon: Star },
 ];
 
@@ -420,8 +418,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             />
           ))}
 
-          {/* Contador: seção fidelidade */}
-          {user?.role === "contador" && (
+          {/* Fidelidade da conta comercial: contador e seus operadores */}
+          {(user?.role === "contador" || user?.role === "operador") && (
             <>
               {!collapsed ? (
                 <p className="px-3 pt-4 pb-1.5 text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/40">
@@ -430,7 +428,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ) : (
                 <div className="my-2 border-t border-sidebar-border/30" />
               )}
-              {contadorNav.map((item) => (
+              {benefitsNav.map((item) => (
                 <NavItem
                   key={item.name}
                   href={item.href}
@@ -441,6 +439,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   onClick={close}
                 />
               ))}
+              {user?.role === "contador" && (
+                <NavItem
+                  href="/operadores"
+                  icon={Users}
+                  name="Operadores"
+                  active={location === "/operadores"}
+                  collapsed={collapsed}
+                  onClick={close}
+                />
+              )}
             </>
           )}
 

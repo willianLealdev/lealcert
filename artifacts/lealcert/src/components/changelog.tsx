@@ -22,6 +22,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "melhoria", text: "Compras feitas por operador usam sempre o preço do contador responsável e o detalhe administrativo do pedido identifica o operador atendente." },
       { type: "melhoria", text: "Todos os operadores vinculados ao mesmo contador agora visualizam os pedidos e histórico do escritório, inclusive os realizados por outros operadores ou diretamente pelo contador." },
       { type: "fix", text: "Operadores agora podem gerar e verificar pagamentos dos pedidos do escritório; o dashboard mostra os mesmos indicadores do contador vinculado." },
+      { type: "melhoria", text: "Operadores agora acessam a fidelidade do escritório e podem usar a cortesia do contador ao completar 10 certificados emitidos." },
       { type: "melhoria", text: "O rodapé do operador agora identifica o contador ou escritório responsável pelo vínculo." },
     ],
   },

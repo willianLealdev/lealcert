@@ -720,12 +720,16 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
 
   // ── Cortesia: pula MercadoPago, usa fidelidade ───────────────────────────
   if (paymentMethod === "cortesia") {
-    // A cortesia pertence ao CONTADOR logado, não ao titular do certificado.
-    // Se não houver sessão autenticada, cortesia não está disponível.
-    const contadorUserId = req.session?.userId;
+    // A cortesia pertence à conta comercial do contador, nunca ao titular do certificado.
+    // Para operador, accountOwner já foi resolvido para o contador responsável.
+    const contadorUserId = sessionUser?.role === "operador"
+      ? accountOwner?.id ?? null
+      : sessionUser?.userType === "contador"
+      ? sessionUserId ?? null
+      : null;
     if (!contadorUserId) {
       await db.delete(ordersTable).where(eq(ordersTable.id, order.id));
-      res.status(401).json({ error: "Faça login para usar a cortesia." });
+      res.status(sessionUserId ? 403 : 401).json({ error: "Faça login como contador ou operador para usar a cortesia." });
       return;
     }
     const { getAvailableCortesias, useCorteisa } = await import("../lib/loyalty");
@@ -753,7 +757,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       const { garAutoComprar } = await import("../lib/gar-auto");
       garAutoComprar(order.id).catch((err: unknown) => logger.error({ err }, "checkout cortesia: erro gar-auto"));
     }
-    logger.info({ contadorUserId, orderId: order.id, cartelaId }, "checkout: cortesia aplicada");
+    logger.info({ contadorUserId, operatorId, orderId: order.id, cartelaId }, "checkout: cortesia aplicada");
     res.json({ orderId: order.id, orderNumber: order.orderNumber, isNewUser });
     return;
   }
