@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.52",
+    changes: [
+      { type: "fix", text: "Login em produção: restaurado o encaminhamento HTTPS entre o site e a API, garantindo que o cookie de sessão seja salvo após autenticar." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.51",
     changes: [
       { type: "fix", text: "Implantação EasyPanel: o Compose agora constrói a API e o site a partir do commit atual, evitando reiniciar imagens antigas e garantindo que as rotas da API sejam publicadas junto com o frontend." },
