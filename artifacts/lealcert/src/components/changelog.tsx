@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "21/08/2026",
+    version: "1.63",
+    changes: [
+      { type: "melhoria", text: "Tela de Indicações agora exibe os termos completos do programa: cadastro pelo link, regras de crédito, saldo mínimo, resgate de R$ 90,00, privacidade e contabilização." },
+    ],
+  },
+  {
+    date: "21/08/2026",
     version: "1.62",
     changes: [
       { type: "fix", text: "Pedidos pagos com créditos de indicação agora mostram o resgate no resumo e não entram em faturamento ou ganhos de vendedor." },
