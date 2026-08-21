@@ -1719,7 +1719,7 @@ export default function OrderDetail() {
   const isAdmin = user?.role === "admin";
   const isPayable = order.status === "pending_payment" || order.status === "created";
   const orderTotal = parseFloat(String(order.total ?? 0));
-  const allowedPayMethods: PayMethod[] = orderTotal >= 150 ? ["pix", "boleto", "cartao"] : orderTotal >= 80 ? ["pix", "boleto"] : ["pix"];
+  const allowedPayMethods: PayMethod[] = orderTotal >= 150 ? ["pix", "boleto", "cartao"] : orderTotal >= 90 ? ["pix", "boleto"] : ["pix"];
 
   // GAR fields (now properly typed in the schema)
   const orderExt = order as typeof order & {

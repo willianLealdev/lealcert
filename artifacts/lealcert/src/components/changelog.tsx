@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.53",
+    changes: [
+      { type: "fix", text: "Boleto no checkout: descrição e regra de disponibilidade alinhadas para pedidos a partir de R$ 90,00." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.52",
     changes: [
       { type: "fix", text: "Login em produção: restaurado o encaminhamento HTTPS entre o site e a API, garantindo que o cookie de sessão seja salvo após autenticar." },

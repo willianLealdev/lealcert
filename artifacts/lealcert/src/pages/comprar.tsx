@@ -818,7 +818,7 @@ export default function ComprarPage() {
   };
 
   const finalPrice = Math.max(0, certPrice + (dados.extendedWarranty ? LEALPLUS_PRICE : 0) - couponDiscount);
-  const allowedMethods: PayMethod[] = finalPrice >= 150 ? ["pix", "boleto", "cartao"] : finalPrice >= 80 ? ["pix", "boleto"] : ["pix"];
+  const allowedMethods: PayMethod[] = finalPrice >= 150 ? ["pix", "boleto", "cartao"] : finalPrice >= 90 ? ["pix", "boleto"] : ["pix"];
 
   const [pay, setPay] = useState<PayState>({
     method: null, orderId: null, orderNumber: null,
@@ -2110,7 +2110,7 @@ export default function ComprarPage() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <p className="font-semibold">Pagamento com Boleto</p>
                                   <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200">
-                                    <Info className="h-2.5 w-2.5" /> a partir de R$ 125,00
+                                    <Info className="h-2.5 w-2.5" /> a partir de R$ 90,00
                                   </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground">Prazo de até 3 dias úteis</p>
