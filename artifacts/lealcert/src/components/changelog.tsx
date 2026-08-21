@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.59",
+    changes: [
+      { type: "melhoria", text: "Tela de usuários: busca posicionada acima dos filtros e abas de perfil redesenhadas como uma barra de botões mais clara e confortável de usar." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.58",
     changes: [
       { type: "novo", text: "Renovações agora estão disponíveis para contadores e seus operadores, mostrando apenas os certificados pertencentes ao escritório vinculado." },

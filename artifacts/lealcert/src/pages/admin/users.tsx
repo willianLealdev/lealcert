@@ -260,29 +260,38 @@ export default function AdminUsers() {
             <div className="text-center py-10 text-muted-foreground">Carregando...</div>
           ) : (
             <div className="space-y-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <Tabs value={activeTab} onValueChange={value => setActiveTab(value as UserTab)} className="min-w-0">
-                  <TabsList className="h-auto w-full max-w-full justify-start gap-1 overflow-x-auto p-1 lg:w-auto">
-                    {availableTabs.map(tab => (
-                      <TabsTrigger key={tab.value} value={tab.value} className="shrink-0 gap-1.5 px-3">
-                        {tab.label}
-                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] leading-none data-[state=active]:bg-primary/10">
-                          {usersByType[tab.value].length}
-                        </span>
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-
-                <div className="relative w-full lg:max-w-sm">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <div className="space-y-2.5">
+                <div className="relative w-full">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={search}
                     onChange={event => setSearch(event.target.value)}
                     placeholder={`Buscar em ${activeTabLabel.toLocaleLowerCase("pt-BR")} por nome...`}
-                    className="pl-9"
+                    className="h-11 rounded-xl border-muted-foreground/20 bg-background pl-10 text-sm shadow-sm transition-shadow focus-visible:ring-2"
                     aria-label="Buscar usuário por nome"
                   />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="hidden shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:block">
+                    Filtrar por perfil
+                  </span>
+                  <Tabs value={activeTab} onValueChange={value => setActiveTab(value as UserTab)} className="min-w-0 flex-1">
+                    <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border border-border/70 bg-muted/45 p-1.5 shadow-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {availableTabs.map(tab => (
+                        <TabsTrigger
+                          key={tab.value}
+                          value={tab.value}
+                          className="h-9 shrink-0 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground transition-all hover:bg-background/70 hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:text-sm"
+                        >
+                          {tab.label}
+                          <span className="rounded-full bg-background/70 px-1.5 py-0.5 text-[11px] font-medium leading-none text-muted-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                            {usersByType[tab.value].length}
+                          </span>
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
                 </div>
               </div>
 
