@@ -2799,11 +2799,11 @@ export default function OrderDetail() {
             </Card>
           )}
 
-          {isAdmin && order.userName && (
+          {isAdmin && (order.operatorName || order.userName) && (
             <Card>
               <CardHeader><CardTitle>Atendente</CardTitle></CardHeader>
               <CardContent>
-                <InfoRow label="Responsável" value={order.userName} />
+                <InfoRow label="Responsável" value={order.operatorName ?? order.userName} />
               </CardContent>
             </Card>
           )}

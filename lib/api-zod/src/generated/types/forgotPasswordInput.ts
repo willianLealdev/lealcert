@@ -8,4 +8,5 @@
 
 export interface ForgotPasswordInput {
   cpfCnpj: string;
+  email: string;
 }

@@ -53,6 +53,7 @@ import Support from "@/pages/support/index";
 import NewTicket from "@/pages/support/new";
 import TicketDetail from "@/pages/support/detail";
 import Profile from "@/pages/profile";
+import Operators from "@/pages/operators";
 import AdminUsers from "@/pages/admin/users";
 import AdminCertificates from "@/pages/admin/certificates";
 import AdminSlots from "@/pages/admin/slots";
@@ -87,7 +88,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = false, vendedorOnly = false, resetKey = 0 }: { component: React.ComponentType; adminOnly?: boolean; agenteOnly?: boolean; vendedorOnly?: boolean; resetKey?: number }) {
+function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = false, vendedorOnly = false, contadorOnly = false, resetKey = 0 }: { component: React.ComponentType; adminOnly?: boolean; agenteOnly?: boolean; vendedorOnly?: boolean; contadorOnly?: boolean; resetKey?: number }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -107,6 +108,7 @@ function ProtectedRoute({ component: Component, adminOnly = false, agenteOnly = 
   if (adminOnly && user.role !== "admin") return <NotFound />;
   if (agenteOnly && user.role !== "agente") return <NotFound />;
   if (vendedorOnly && user.role !== "vendedor" && user.role !== "admin") return <NotFound />;
+  if (contadorOnly && user.role !== "contador") return <NotFound />;
 
   // Força conclusão do perfil antes de acessar qualquer outra área
   if (user.mustChangePassword) {
@@ -160,6 +162,7 @@ function Router() {
       <Route path="/support/new" component={() => <ProtectedRoute component={NewTicket} />} />
       <Route path="/support/:id" component={() => <ProtectedRoute component={TicketDetail} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
+      <Route path="/operadores" component={() => <ProtectedRoute component={Operators} contadorOnly />} />
       {/* Protected admin routes */}
       <Route path="/admin/users" component={() => <ProtectedRoute component={AdminUsers} adminOnly />} />
       <Route path="/admin/certificates" component={() => <ProtectedRoute component={AdminCertificates} adminOnly />} />

@@ -844,9 +844,9 @@ router.post("/auth/resend-ip-verification", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/forgot-password", async (req, res): Promise<void> => {
-  const { cpfCnpj } = req.body ?? {};
-  if (!cpfCnpj) {
-    res.status(400).json({ error: "CPF/CNPJ é obrigatório." });
+  const { cpfCnpj, email } = req.body ?? {};
+  if (!cpfCnpj || !email) {
+    res.status(400).json({ error: "CPF/CNPJ e e-mail são obrigatórios." });
     return;
   }
   const digits = cpfCnpj.replace(/\D/g, "");
@@ -866,7 +866,8 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     .where(eq(usersTable.cpfCnpj, digits))
     .limit(1);
 
-  if (!user || !user.email) {
+  const normalizedEmail = String(email).trim().toLowerCase();
+  if (!user || !user.email || user.email.toLowerCase() !== normalizedEmail) {
     await ensureDelay();
     res.json({ message: "Se o CPF/CNPJ estiver cadastrado, você receberá um e-mail com a senha temporária." });
     return;

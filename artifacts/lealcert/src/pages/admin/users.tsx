@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, Eye } from "lucide-react";
 import { getApiError } from "@/lib/api-error";
 
-type UserRow = User & { vendedorId?: number | null; vendedorNome?: string | null };
+type UserRow = User & { vendedorId?: number | null; vendedorNome?: string | null; contadorId?: number | null; contadorNome?: string | null };
 
 // tipo = "cliente" | "contador" | "admin" — campo unificado para exibição
 type UserForm = { name: string; email: string; cpfCnpj: string; phone: string; tipo: string; password: string; isActive: boolean };
@@ -22,6 +22,7 @@ const EMPTY: UserForm = { name: "", email: "", cpfCnpj: "", phone: "", tipo: "cl
 function tipoFromUser(u: { role: string; userType?: string | null }): string {
   if (u.role === "admin") return "admin";
   if (u.role === "vendedor") return "vendedor";
+  if (u.role === "operador") return "operador";
   return u.userType === "contador" ? "contador" : "cliente";
 }
 function roleFromTipo(tipo: string): "admin" | "contador" { return tipo === "admin" ? "admin" : "contador"; }
@@ -45,7 +46,7 @@ function Field({ label, value }: { label: string; value: string | null | undefin
 
 function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => void }) {
   const tipo = tipoFromUser(user);
-  const tipoLabel = tipo === "admin" ? "Administrador" : tipo === "vendedor" ? "Vendedor" : tipo === "contador" ? "Contador" : "Cliente";
+  const tipoLabel = tipo === "admin" ? "Administrador" : tipo === "vendedor" ? "Vendedor" : tipo === "operador" ? "Operador" : tipo === "contador" ? "Contador" : "Cliente";
 
   const hasAddress = user.zipCode || user.street || user.city;
   const hasPJ = user.companyCnpj || user.companyName;
@@ -148,8 +149,19 @@ function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => voi
               </div>
             </>
           )}
+          {user.contadorNome && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Vínculo de Operador</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Contador responsável" value={user.contadorNome} />
+                </div>
+              </div>
+            </>
+          )}
 
-          {!hasAddress && !hasPJ && !hasResponsible && !user.crcNumber && !user.vendedorNome && (
+          {!hasAddress && !hasPJ && !hasResponsible && !user.crcNumber && !user.vendedorNome && !user.contadorNome && (
             <p className="text-sm text-muted-foreground text-center py-2">Nenhum dado adicional de cadastro registrado.</p>
           )}
         </div>
@@ -236,7 +248,7 @@ export default function AdminUsers() {
                       <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{u.email ?? "—"}</td>
                       <td className="px-4 py-3">
                         <Badge variant={u.role === "admin" ? "default" : "secondary"}>
-                          {tipoFromUser(u) === "admin" ? "Admin" : tipoFromUser(u) === "vendedor" ? "Vendedor" : tipoFromUser(u) === "contador" ? "Contador" : "Cliente"}
+                          {tipoFromUser(u) === "admin" ? "Admin" : tipoFromUser(u) === "vendedor" ? "Vendedor" : tipoFromUser(u) === "operador" ? "Operador" : tipoFromUser(u) === "contador" ? "Contador" : "Cliente"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
@@ -246,8 +258,8 @@ export default function AdminUsers() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 justify-end">
                           <Button variant="ghost" size="icon" title="Ver dados completos" onClick={() => setViewUser(u)}><Eye className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Remover" onClick={() => setDeleteId(u.id)}><Trash2 className="h-4 w-4" /></Button>
+                          {u.role !== "operador" && <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>}
+                          {u.role !== "operador" && <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Remover" onClick={() => setDeleteId(u.id)}><Trash2 className="h-4 w-4" /></Button>}
                         </div>
                       </td>
                     </tr>

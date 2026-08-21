@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { eq, desc, ilike, or, sql } from "drizzle-orm";
+import { eq, desc, ilike, or, sql, and } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db, ordersTable, usersTable, certificatesTable, settingsTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { notifyOrderStatus, notifyScheduling, sendWaText } from "../lib/notify";
@@ -20,12 +21,19 @@ function certificatePriceForUser(
   return Number.isFinite(contadorPrice) ? contadorPrice : standardPrice;
 }
 
-function orderRow(o: typeof ordersTable.$inferSelect, userName?: string | null, certName?: string | null) {
+function orderRow(
+  o: typeof ordersTable.$inferSelect,
+  userName?: string | null,
+  certName?: string | null,
+  operatorName?: string | null,
+) {
   return {
     id: o.id,
     orderNumber: o.orderNumber,
     userId: o.userId,
     userName: userName ?? null,
+    operatorId: o.operatorId ?? null,
+    operatorName: operatorName ?? null,
     certificateId: o.certificateId,
     certificateName: certName ?? o.certNameSnapshot ?? null,
     status: o.status,
@@ -256,19 +264,24 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
   const role = session.role as string;
   const { status, search } = req.query as Record<string, string>;
 
+  const operatorUser = alias(usersTable, "operator_user");
   const rows = await db
     .select({
       order: ordersTable,
       userName: usersTable.name,
       certName: certificatesTable.name,
+      operatorName: operatorUser.name,
     })
     .from(ordersTable)
     .leftJoin(usersTable, eq(ordersTable.userId, usersTable.id))
+    .leftJoin(operatorUser, eq(ordersTable.operatorId, operatorUser.id))
     .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
     .orderBy(desc(ordersTable.createdAt));
 
   let filtered = rows;
-  if (role !== "admin") {
+  if (role === "operador") {
+    filtered = filtered.filter(r => r.order.operatorId === userId);
+  } else if (role !== "admin") {
     filtered = filtered.filter(r => r.order.userId === userId);
   }
   if (status) {
@@ -283,7 +296,7 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
     );
   }
 
-  res.json(filtered.map(r => orderRow(r.order, r.userName, r.certName)));
+  res.json(filtered.map(r => orderRow(r.order, r.userName, r.certName, r.operatorName)));
 });
 
 router.post("/orders", requireAuth, async (req, res): Promise<void> => {
@@ -314,11 +327,34 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const [buyer] = await db
-    .select({ userType: usersTable.userType })
+    .select({ id: usersTable.id, name: usersTable.name, role: usersTable.role, userType: usersTable.userType, contadorId: usersTable.contadorId, isActive: usersTable.isActive })
     .from(usersTable)
     .where(eq(usersTable.id, userId))
     .limit(1);
-  const basePrice = certificatePriceForUser(cert, buyer?.userType);
+  if (!buyer || !buyer.isActive) {
+    res.status(401).json({ error: "Conta não encontrada ou desativada." });
+    return;
+  }
+  let accountOwner = buyer;
+  let operatorId: number | null = null;
+  if (buyer.role === "operador") {
+    if (!buyer.contadorId) {
+      res.status(403).json({ error: "Este operador não possui um contador responsável." });
+      return;
+    }
+    const [contador] = await db
+      .select({ id: usersTable.id, name: usersTable.name, role: usersTable.role, userType: usersTable.userType, contadorId: usersTable.contadorId, isActive: usersTable.isActive })
+      .from(usersTable)
+      .where(eq(usersTable.id, buyer.contadorId))
+      .limit(1);
+    if (!contador || !contador.isActive || contador.role !== "contador" || contador.userType !== "contador") {
+      res.status(403).json({ error: "A conta do contador responsável não está disponível." });
+      return;
+    }
+    accountOwner = contador;
+    operatorId = buyer.id;
+  }
+  const basePrice = certificatePriceForUser(cert, accountOwner.userType);
   const total = basePrice + (extendedWarranty ? 15.0 : 0.0);
 
   // generate unique order number
@@ -332,7 +368,8 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
 
   const [order] = await db.insert(ordersTable).values({
     orderNumber,
-    userId,
+    userId: accountOwner.id,
+    operatorId,
     certificateId,
     status: "pending_payment",
     total: String(total),
@@ -404,7 +441,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     }).catch((err: unknown) => logger.error({ err }, "Erro ao notificar criação de pedido"));
   }
 
-  res.status(201).json(orderRow(order, null, cert.name));
+  res.status(201).json(orderRow(order, accountOwner.name, cert.name, operatorId ? buyer.name : null));
 });
 
 router.get("/orders/pre-fill", requireAuth, async (req, res): Promise<void> => {
@@ -414,10 +451,14 @@ router.get("/orders/pre-fill", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const currentUserId = req.session.userId as number;
   const rows = await db
     .select({ order: ordersTable })
     .from(ordersTable)
-    .where(eq(ordersTable.representanteCpf, cpf))
+    .where(and(
+      eq(ordersTable.representanteCpf, cpf),
+      or(eq(ordersTable.userId, currentUserId), eq(ordersTable.operatorId, currentUserId)),
+    ))
     .orderBy(desc(ordersTable.createdAt));
 
   if (rows.length === 0) {
@@ -483,10 +524,12 @@ router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
   const userId = session.userId as number;
   const role = session.role as string;
 
+  const operatorUser = alias(usersTable, "operator_user_detail");
   const [row] = await db
-    .select({ order: ordersTable, userName: usersTable.name, certName: certificatesTable.name })
+    .select({ order: ordersTable, userName: usersTable.name, certName: certificatesTable.name, operatorName: operatorUser.name })
     .from(ordersTable)
     .leftJoin(usersTable, eq(ordersTable.userId, usersTable.id))
+    .leftJoin(operatorUser, eq(ordersTable.operatorId, operatorUser.id))
     .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
     .where(eq(ordersTable.id, id))
     .limit(1);
@@ -495,11 +538,11 @@ router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: "Pedido não encontrado." });
     return;
   }
-  if (role !== "admin" && row.order.userId !== userId) {
+  if (role !== "admin" && row.order.userId !== userId && row.order.operatorId !== userId) {
     res.status(403).json({ error: "Acesso negado." });
     return;
   }
-  res.json(orderRow(row.order, row.userName, row.certName));
+  res.json(orderRow(row.order, row.userName, row.certName, row.operatorName));
 });
 
 // ── DELETE /orders/:id — exclui pedido aguardando pagamento ──────────────────
@@ -510,7 +553,7 @@ router.delete("/orders/:id", requireAuth, async (req, res): Promise<void> => {
   const role   = req.session.role as string;
 
   const [order] = await db
-    .select({ id: ordersTable.id, status: ordersTable.status, userId: ordersTable.userId, orderNumber: ordersTable.orderNumber })
+    .select({ id: ordersTable.id, status: ordersTable.status, userId: ordersTable.userId, operatorId: ordersTable.operatorId, orderNumber: ordersTable.orderNumber })
     .from(ordersTable)
     .where(eq(ordersTable.id, id))
     .limit(1);
@@ -519,7 +562,7 @@ router.delete("/orders/:id", requireAuth, async (req, res): Promise<void> => {
 
   // Usuário comum: só pode excluir o próprio pedido em pending_payment
   if (role !== "admin") {
-    if (order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+    if (order.userId !== userId && order.operatorId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
     if (order.status !== "pending_payment") {
       res.status(400).json({ error: "Apenas pedidos aguardando pagamento podem ser excluídos." });
       return;
@@ -618,6 +661,10 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
     .where(eq(ordersTable.id, id))
     .limit(1);
   if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  if (!isAdmin && req.session.userId !== row.order.userId && req.session.userId !== row.order.operatorId) {
+    res.status(403).json({ error: "Acesso negado." }); return;
+  }
 
   const [settings] = await db.select().from(settingsTable).limit(1);
   const mpToken = settings?.mpAccessToken || "";
@@ -798,7 +845,7 @@ router.post("/orders/:id/sync-payment", requireAuth, async (req, res): Promise<v
 
   // Só o admin ou o dono do pedido pode sincronizar
   const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId) {
+  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) {
     res.status(403).json({ ok: false, error: "Acesso negado" }); return;
   }
 
@@ -956,7 +1003,7 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
   const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   if (!order.garProtocolo) {
     res.status(400).json({ error: "Protocolo GAR não emitido. Aguarde o processamento do pagamento." });
@@ -1054,7 +1101,7 @@ router.get("/orders/:id/gar-disponibilidade", requireAuth, async (req, res): Pro
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
   const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const hashLocal = String(req.query.hashLocal ?? "");
   const dataInicial = String(req.query.dataInicial ?? "");
@@ -1088,7 +1135,7 @@ router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
   const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const hashVenda = order.garHashVenda;
   if (!hashVenda) { res.status(400).json({ error: "HashVenda GAR indisponível neste pedido" }); return; }
@@ -1151,12 +1198,12 @@ router.post("/orders/:id/confirm-docs", async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
 
-  const [order] = await db.select({ id: ordersTable.id, userId: ordersTable.userId }).from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
+  const [order] = await db.select({ id: ordersTable.id, userId: ordersTable.userId, operatorId: ordersTable.operatorId }).from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
   // Permite o próprio cliente ou admin confirmar
   const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  const isOwner = req.session.userId && order.userId === req.session.userId;
+  const isOwner = req.session.userId && (order.userId === req.session.userId || order.operatorId === req.session.userId);
   if (!isAdmin && !isOwner) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   await db.update(ordersTable).set({ garDocsConfirmed: true }).where(eq(ordersTable.id, id));
@@ -1170,6 +1217,10 @@ router.post("/orders/:id/hope-solicitation", requireAuth, async (req, res): Prom
 
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
+  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
+  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) {
+    res.status(403).json({ error: "Acesso negado" }); return;
+  }
   if (!order.garProtocolo) { res.status(400).json({ error: "Pedido não possui protocolo GAR" }); return; }
 
   const [s] = await db.select().from(settingsTable).limit(1);
@@ -1386,7 +1437,7 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
   const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   if (!order.safewebSolicitacaoId) {
     res.status(400).json({ error: "Pedido ainda não registrado na Safeweb. Aguarde o processamento do pagamento." });
@@ -1504,7 +1555,7 @@ router.get("/orders/:id/safeweb-config", requireAuth, async (req, res): Promise<
   const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
-  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const [s] = await db.select().from(settingsTable).limit(1);
   const isHomol = s?.safewebAmbiente === "homologacao";
@@ -1538,7 +1589,7 @@ router.get("/orders/:id/safeweb-locais", requireAuth, async (req, res): Promise<
   const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
-  if (!isAdmin && req.session.userId !== order.userId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const [s] = await db.select().from(settingsTable).limit(1);
   const isHomol = s?.safewebAmbiente === "homologacao";
@@ -1610,7 +1661,7 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
   if (!row) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
   const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== row.order.userId) {
+  if (!isAdmin && req.session.userId !== row.order.userId && req.session.userId !== row.order.operatorId) {
     res.status(403).json({ error: "Acesso negado" }); return;
   }
 

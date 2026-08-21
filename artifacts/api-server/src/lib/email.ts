@@ -375,6 +375,53 @@ export async function sendTempPasswordEmail(to: string, name: string, tempPasswo
   logger.info({ to }, "Temp password email sent");
 }
 
+/**
+ * Credenciais de operador são enviadas somente pelo contador responsável ou
+ * por uma recuperação solicitada pelo próprio operador. A senha nunca é
+ * registrada em logs nem devolvida pela API.
+ */
+export async function sendOperatorCredentialsEmail(opts: {
+  to: string;
+  name: string;
+  contadorName: string;
+  tempPassword: string;
+  isReset?: boolean;
+}): Promise<void> {
+  const cfg = await getEmailConfig();
+  const action = opts.isReset ? "Uma nova senha provisória foi gerada" : "Seu acesso de operador foi criado";
+  const subject = `${opts.isReset ? "Nova senha provisória" : "Acesso de operador"} — ${cfg.appName}`;
+  const html = emailWrapper(`
+    <div style="background:#fff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+      <h2 style="color:#0f172a;margin:0 0 8px;">Olá, ${esc(opts.name)}!</h2>
+      <p style="color:#475569;margin:0 0 18px;">${esc(action)} para você atuar como <strong>operador</strong> da conta de <strong>${esc(opts.contadorName)}</strong>.</p>
+      <div style="background:#0f172a;border-radius:10px;padding:20px;text-align:center;margin-bottom:20px;">
+        <p style="margin:0 0 8px;color:#cbd5e1;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;">Senha provisória</p>
+        <p style="margin:0;color:#fff;font-size:24px;font-family:monospace;font-weight:700;letter-spacing:0.08em;">${esc(opts.tempPassword)}</p>
+      </div>
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:14px;color:#92400e;font-size:13px;line-height:1.5;">
+        <strong>Importante:</strong> no primeiro acesso, você deverá criar uma senha pessoal e permanente. Suas compras usarão as condições comerciais da conta do contador responsável.
+      </div>
+      <div style="text-align:center;margin-top:22px;">
+        <a href="${esc(cfg.siteUrl)}/entrar" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:15px;">Acessar plataforma</a>
+      </div>
+    </div>
+  `, cfg.appName, cfg.logoUrl);
+  const text = `Olá, ${opts.name}!\n\n${action} para você atuar como operador da conta de ${opts.contadorName}.\n\nSenha provisória: ${opts.tempPassword}\n\nNo primeiro acesso, altere a senha. As suas compras usarão o preço do contador responsável.\n\nAcesse: ${cfg.siteUrl}/entrar`;
+
+  const transporter = await createTransporter(cfg);
+  if (!transporter) {
+    logger.info({ to: opts.to }, "📧 [DEV] Operator credentials email (SMTP not configured)");
+    return;
+  }
+  const attachment = logoAttachment(cfg.logoUrl);
+  await transporter.sendMail({
+    from: cfg.from, to: opts.to, subject, html, text,
+    envelope: { from: extractEmail(cfg.from), to: opts.to },
+    ...(attachment ? { attachments: [attachment] } : {}),
+  });
+  logger.info({ to: opts.to }, "Operator credentials email sent");
+}
+
 export async function sendIpVerificationEmail(to: string, name: string, code: string): Promise<void> {
   const cfg = await getEmailConfig();
   const subject = `Acesso de novo endereço — confirme sua identidade | ${cfg.appName}`;

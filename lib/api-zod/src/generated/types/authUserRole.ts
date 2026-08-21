@@ -14,4 +14,5 @@ export const AuthUserRole = {
   contador: 'contador',
   agente: 'agente',
   vendedor: 'vendedor',
+  operador: 'operador',
 } as const;

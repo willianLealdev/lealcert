@@ -9,6 +9,7 @@ const router = Router();
 
 router.get("/users", requireAdmin, async (req, res): Promise<void> => {
   const vendedorUser = alias(usersTable, "vendedor_user");
+  const contadorUser = alias(usersTable, "contador_user");
   const users = await db.select({
     id: usersTable.id,
     name: usersTable.name,
@@ -36,8 +37,11 @@ router.get("/users", requireAdmin, async (req, res): Promise<void> => {
     addressState: usersTable.addressState,
     vendedorId: usersTable.vendedorId,
     vendedorNome: vendedorUser.name,
+    contadorId: usersTable.contadorId,
+    contadorNome: contadorUser.name,
   }).from(usersTable)
     .leftJoin(vendedorUser, eq(vendedorUser.id, usersTable.vendedorId))
+    .leftJoin(contadorUser, eq(contadorUser.id, usersTable.contadorId))
     .orderBy(usersTable.createdAt);
   res.json(users);
 });
@@ -106,6 +110,15 @@ router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
 router.patch("/users/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   const { name, email, phone, role, userType, isActive, password } = req.body ?? {};
+  const [currentUser] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!currentUser) {
+    res.status(404).json({ error: "Usuário não encontrado." });
+    return;
+  }
+  if (currentUser.role === "operador" && (role !== undefined || userType !== undefined)) {
+    res.status(400).json({ error: "O perfil de operador só pode ser gerenciado pelo contador responsável." });
+    return;
+  }
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
   if (email !== undefined) updates.email = email;

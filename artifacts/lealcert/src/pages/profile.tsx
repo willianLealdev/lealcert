@@ -281,7 +281,7 @@ export default function Profile() {
                 <div>
                   <p className="font-semibold">{user?.name}</p>
                   <p className="text-sm text-muted-foreground capitalize">
-                    {user?.role === "admin" ? "Administrador" : user?.userType === "contador" ? "Contador" : "Cliente"}
+                    {user?.role === "admin" ? "Administrador" : user?.role === "operador" ? "Operador" : user?.role === "agente" ? "Agente de Registro" : user?.role === "vendedor" ? "Vendedor" : user?.userType === "contador" ? "Contador" : "Cliente"}
                   </p>
                   {user?.personType && (
                     <p className="text-xs text-muted-foreground">

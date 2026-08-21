@@ -23,6 +23,8 @@ export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
+  /** Operador que efetuou a compra em nome da conta do contador. */
+  operatorId: integer("operator_id").references(() => usersTable.id, { onDelete: "set null" }),
   certificateId: integer("certificate_id").references(() => certificatesTable.id, { onDelete: "set null" }),
   status: orderStatusEnum("status").notNull().default("created"),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),

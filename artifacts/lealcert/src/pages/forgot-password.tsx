@@ -27,6 +27,7 @@ function maskCpfCnpj(v: string) {
 export default function ForgotPassword() {
   const { toast } = useToast();
   const [cpfCnpj, setCpfCnpj] = useState("");
+  const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
 
   const forgotMutation = useForgotPassword({
@@ -43,7 +44,7 @@ export default function ForgotPassword() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    forgotMutation.mutate({ data: { cpfCnpj: cpfCnpj.replace(/\D/g, "") } });
+    forgotMutation.mutate({ data: { cpfCnpj: cpfCnpj.replace(/\D/g, ""), email: email.trim().toLowerCase() } });
   }
 
   return (
@@ -92,7 +93,7 @@ export default function ForgotPassword() {
                 </div>
                 <h1 className="text-2xl font-bold text-white">Recuperar senha</h1>
                 <p className="text-blue-200/60 text-sm mt-2">
-                  Informe seu CPF ou CNPJ e enviaremos uma senha temporária para o e-mail cadastrado.
+                Confirme seu CPF ou CNPJ e e-mail cadastrado. Enviaremos uma senha temporária para o e-mail informado.
                 </p>
               </div>
 
@@ -104,6 +105,18 @@ export default function ForgotPassword() {
                     onChange={e => setCpfCnpj(maskCpfCnpj(e.target.value))}
                     required
                     placeholder="000.000.000-00"
+                    className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
+                    style={{ background: "rgba(255,255,255,0.07)" }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-blue-100/80 text-sm font-medium">E-mail cadastrado *</Label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    placeholder="voce@exemplo.com"
                     className="border-white/15 text-white placeholder:text-white/30 focus-visible:border-blue-400 h-11"
                     style={{ background: "rgba(255,255,255,0.07)" }}
                   />

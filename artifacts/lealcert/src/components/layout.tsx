@@ -62,6 +62,7 @@ const navigation = [
 
 // Itens exclusivos para contadores
 const contadorNav = [
+  { name: "Operadores", href: "/operadores", icon: Users },
   { name: "Fidelidade", href: "/fidelidade", icon: Star },
 ];
 
@@ -420,7 +421,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ))}
 
           {/* Contador: seção fidelidade */}
-          {user?.role !== "agente" && user?.role !== "admin" && (user as { userType?: string })?.userType === "contador" && (
+          {user?.role === "contador" && (
             <>
               {!collapsed ? (
                 <p className="px-3 pt-4 pb-1.5 text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/40">
@@ -543,7 +544,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="min-w-0">
                   <p className="font-medium text-sidebar-foreground truncate text-xs">{user?.name}</p>
                   <p className="text-xs text-sidebar-foreground/50 capitalize">
-                    {user?.role === "admin" ? "Administrador" : user?.role === "agente" ? "Agente de Registro" : user?.role === "vendedor" ? "Vendedor" : user?.userType === "cliente" ? "Cliente" : "Contador"}
+                    {user?.role === "admin" ? "Administrador" : user?.role === "agente" ? "Agente de Registro" : user?.role === "vendedor" ? "Vendedor" : user?.role === "operador" ? "Operador" : user?.userType === "cliente" ? "Cliente" : "Contador"}
                   </p>
                 </div>
               )}

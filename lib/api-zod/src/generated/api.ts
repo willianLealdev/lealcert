@@ -203,7 +203,7 @@ export const VerifyEmailResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor']),
+  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor', 'operador']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -249,7 +249,7 @@ export const LoginResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor']),
+  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor', 'operador']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -274,7 +274,8 @@ export const LoginResponse = zod.object({
  * @summary Request password reset (sends temporary password via email)
  */
 export const ForgotPasswordBody = zod.object({
-  "cpfCnpj": zod.string()
+  "cpfCnpj": zod.string(),
+  "email": zod.string().email()
 })
 
 export const ForgotPasswordResponse = zod.object({
@@ -307,7 +308,7 @@ export const GetMeResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor']),
+  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor', 'operador']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -351,7 +352,7 @@ export const UpdateProfileResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor']),
+  "role": zod.enum(['admin', 'contador', 'agente', 'vendedor', 'operador']),
   "userType": zod.enum(['contador', 'cliente']).optional(),
   "personType": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -380,7 +381,7 @@ export const ListUsersResponseItem = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'vendedor']),
+  "role": zod.enum(['admin', 'contador', 'vendedor', 'operador']),
   "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -399,7 +400,9 @@ export const ListUsersResponseItem = zod.object({
   "complement": zod.string().nullish(),
   "neighborhood": zod.string().nullish(),
   "city": zod.string().nullish(),
-  "addressState": zod.string().nullish()
+  "addressState": zod.string().nullish(),
+  "contadorId": zod.number().nullish(),
+  "contadorNome": zod.string().nullish()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
@@ -429,7 +432,7 @@ export const GetUserResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'vendedor']),
+  "role": zod.enum(['admin', 'contador', 'vendedor', 'operador']),
   "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -448,7 +451,9 @@ export const GetUserResponse = zod.object({
   "complement": zod.string().nullish(),
   "neighborhood": zod.string().nullish(),
   "city": zod.string().nullish(),
-  "addressState": zod.string().nullish()
+  "addressState": zod.string().nullish(),
+  "contadorId": zod.number().nullish(),
+  "contadorNome": zod.string().nullish()
 })
 
 
@@ -473,7 +478,7 @@ export const UpdateUserResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'vendedor']),
+  "role": zod.enum(['admin', 'contador', 'vendedor', 'operador']),
   "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -492,7 +497,9 @@ export const UpdateUserResponse = zod.object({
   "complement": zod.string().nullish(),
   "neighborhood": zod.string().nullish(),
   "city": zod.string().nullish(),
-  "addressState": zod.string().nullish()
+  "addressState": zod.string().nullish(),
+  "contadorId": zod.number().nullish(),
+  "contadorNome": zod.string().nullish()
 })
 
 
@@ -649,6 +656,8 @@ export const ListOrdersResponseItem = zod.object({
   "orderNumber": zod.string(),
   "userId": zod.number(),
   "userName": zod.string().nullish(),
+  "operatorId": zod.number().nullish(),
+  "operatorName": zod.string().nullish(),
   "certificateId": zod.number(),
   "certificateName": zod.string().nullish(),
   "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
@@ -778,6 +787,73 @@ export const CreateOrderBody = zod.object({
 
 
 /**
+ * @summary List operators belonging to the authenticated accountant
+ */
+export const ListOperatorsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "cpfCnpj": zod.string(),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+})
+export const ListOperatorsResponse = zod.array(ListOperatorsResponseItem)
+
+
+/**
+ * @summary Create an operator and email temporary credentials
+ */
+export const CreateOperatorBody = zod.object({
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "cpfCnpj": zod.string()
+})
+
+
+/**
+ * @summary Block or unblock an operator
+ */
+export const UpdateOperatorParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateOperatorBody = zod.object({
+  "isActive": zod.boolean()
+})
+
+export const UpdateOperatorResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "cpfCnpj": zod.string(),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete an operator owned by the authenticated accountant
+ */
+export const DeleteOperatorParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Send a new temporary password to an operator
+ */
+export const ResetOperatorPasswordParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ResetOperatorPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Consulta dados de CNPJ via Receita Federal (BrasilAPI)
  */
 export const CnpjLookupQueryParams = zod.object({
@@ -829,6 +905,8 @@ export const GetOrderResponse = zod.object({
   "orderNumber": zod.string(),
   "userId": zod.number(),
   "userName": zod.string().nullish(),
+  "operatorId": zod.number().nullish(),
+  "operatorName": zod.string().nullish(),
   "certificateId": zod.number(),
   "certificateName": zod.string().nullish(),
   "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
@@ -920,6 +998,8 @@ export const UpdateOrderResponse = zod.object({
   "orderNumber": zod.string(),
   "userId": zod.number(),
   "userName": zod.string().nullish(),
+  "operatorId": zod.number().nullish(),
+  "operatorName": zod.string().nullish(),
   "certificateId": zod.number(),
   "certificateName": zod.string().nullish(),
   "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
@@ -2234,7 +2314,7 @@ export const VerifyIpResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().nullish(),
   "cpfCnpj": zod.string(),
-  "role": zod.enum(['admin', 'contador', 'vendedor']),
+  "role": zod.enum(['admin', 'contador', 'vendedor', 'operador']),
   "userType": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -2253,7 +2333,9 @@ export const VerifyIpResponse = zod.object({
   "complement": zod.string().nullish(),
   "neighborhood": zod.string().nullish(),
   "city": zod.string().nullish(),
-  "addressState": zod.string().nullish()
+  "addressState": zod.string().nullish(),
+  "contadorId": zod.number().nullish(),
+  "contadorNome": zod.string().nullish()
 })
 
 
@@ -2737,6 +2819,8 @@ export const GetRecentOrdersResponseItem = zod.object({
   "orderNumber": zod.string(),
   "userId": zod.number(),
   "userName": zod.string().nullish(),
+  "operatorId": zod.number().nullish(),
+  "operatorName": zod.string().nullish(),
   "certificateId": zod.number(),
   "certificateName": zod.string().nullish(),
   "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),

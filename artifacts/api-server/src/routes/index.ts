@@ -33,6 +33,7 @@ import vendedorRouter from "./vendedor";
 import discagemRouter from "./discagem";
 import siteVisitsRouter from "./site-visits";
 import meetingsRouter from "./meetings";
+import operatorsRouter from "./operators";
 
 const router: IRouter = Router();
 
@@ -70,5 +71,6 @@ router.use(vendedorRouter);
 router.use(discagemRouter);
 router.use(siteVisitsRouter);
 router.use(meetingsRouter);
+router.use(operatorsRouter);
 
 export default router;

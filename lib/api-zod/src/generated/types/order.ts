@@ -13,6 +13,8 @@ export interface Order {
   orderNumber: string;
   userId: number;
   userName?: string | null;
+  operatorId?: number | null;
+  operatorName?: string | null;
   certificateId: number;
   certificateName?: string | null;
   status: OrderStatus;

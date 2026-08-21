@@ -762,6 +762,95 @@ paths:
               schema:
                 $ref: "#/components/schemas/Order"
 
+  /operators:
+    get:
+      operationId: listOperators
+      tags: [operators]
+      summary: List operators belonging to the authenticated accountant
+      responses:
+        "200":
+          description: Operators
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Operator"
+    post:
+      operationId: createOperator
+      tags: [operators]
+      summary: Create an operator and email temporary credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperatorInput"
+      responses:
+        "201":
+          description: Operator created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operator"
+
+  /operators/{id}:
+    patch:
+      operationId: updateOperator
+      tags: [operators]
+      summary: Block or unblock an operator
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperatorUpdate"
+      responses:
+        "200":
+          description: Operator updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operator"
+    delete:
+      operationId: deleteOperator
+      tags: [operators]
+      summary: Delete an operator owned by the authenticated accountant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Operator deleted
+
+  /operators/{id}/reset-password:
+    post:
+      operationId: resetOperatorPassword
+      tags: [operators]
+      summary: Send a new temporary password to an operator
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Temporary password sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   /cnpj-lookup:
     get:
       operationId: cnpjLookup
@@ -3752,7 +3841,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, contador, agente, vendedor]
+          enum: [admin, contador, agente, vendedor, operador]
         userType:
           type: string
           enum: [contador, cliente]
@@ -3805,10 +3894,13 @@ components:
 
     ForgotPasswordInput:
       type: object
-      required: [cpfCnpj]
+      required: [cpfCnpj, email]
       properties:
         cpfCnpj:
           type: string
+        email:
+          type: string
+          format: email
 
     ChangePasswordInput:
       type: object
@@ -3897,7 +3989,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, contador, vendedor]
+          enum: [admin, contador, vendedor, operador]
         userType:
           type: string
           nullable: true
@@ -3953,6 +4045,51 @@ components:
         addressState:
           type: string
           nullable: true
+        contadorId:
+          type: integer
+          nullable: true
+        contadorNome:
+          type: string
+          nullable: true
+
+    Operator:
+      type: object
+      required: [id, name, cpfCnpj, isActive, mustChangePassword, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        cpfCnpj:
+          type: string
+        isActive:
+          type: boolean
+        mustChangePassword:
+          type: boolean
+        createdAt:
+          type: string
+
+    OperatorInput:
+      type: object
+      required: [name, email, cpfCnpj]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        cpfCnpj:
+          type: string
+
+    OperatorUpdate:
+      type: object
+      required: [isActive]
+      properties:
+        isActive:
+          type: boolean
 
     UserInput:
       type: object
@@ -4091,6 +4228,12 @@ components:
         userId:
           type: integer
         userName:
+          type: string
+          nullable: true
+        operatorId:
+          type: integer
+          nullable: true
+        operatorName:
           type: string
           nullable: true
         certificateId:

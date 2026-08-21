@@ -32,4 +32,6 @@ export interface User {
   neighborhood?: string | null;
   city?: string | null;
   addressState?: string | null;
+  contadorId?: number | null;
+  contadorNome?: string | null;
 }

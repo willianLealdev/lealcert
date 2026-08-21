@@ -15,6 +15,15 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "20/08/2026",
+    version: "1.54",
+    changes: [
+      { type: "novo", text: "Operadores de contador: cadastro ilimitado com CPF e e-mail, senha provisória enviada automaticamente e troca obrigatória no primeiro acesso." },
+      { type: "novo", text: "Gestão de operadores: contador pode bloquear, excluir ou resetar a senha; a recuperação de senha também confirma CPF/CNPJ e e-mail cadastrado." },
+      { type: "melhoria", text: "Compras feitas por operador usam sempre o preço do contador responsável e o detalhe administrativo do pedido identifica o operador atendente." },
+    ],
+  },
+  {
+    date: "20/08/2026",
     version: "1.53",
     changes: [
       { type: "fix", text: "Boleto no checkout: descrição e regra de disponibilidade alinhadas para pedidos a partir de R$ 90,00." },

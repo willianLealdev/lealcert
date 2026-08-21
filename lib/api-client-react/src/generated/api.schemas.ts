@@ -158,6 +158,7 @@ export const AuthUserRole = {
   contador: 'contador',
   agente: 'agente',
   vendedor: 'vendedor',
+  operador: 'operador',
 } as const;
 
 export type AuthUserUserType = typeof AuthUserUserType[keyof typeof AuthUserUserType];
@@ -195,6 +196,7 @@ export interface AuthUser {
 
 export interface ForgotPasswordInput {
   cpfCnpj: string;
+  email: string;
 }
 
 export interface ChangePasswordInput {
@@ -238,6 +240,7 @@ export const UserRole = {
   admin: 'admin',
   contador: 'contador',
   vendedor: 'vendedor',
+  operador: 'operador',
 } as const;
 
 export interface User {
@@ -265,6 +268,28 @@ export interface User {
   neighborhood?: string | null;
   city?: string | null;
   addressState?: string | null;
+  contadorId?: number | null;
+  contadorNome?: string | null;
+}
+
+export interface Operator {
+  id: number;
+  name: string;
+  email?: string | null;
+  cpfCnpj: string;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+}
+
+export interface OperatorInput {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+}
+
+export interface OperatorUpdate {
+  isActive: boolean;
 }
 
 export type UserInputRole = typeof UserInputRole[keyof typeof UserInputRole];
@@ -381,6 +406,8 @@ export interface Order {
   orderNumber: string;
   userId: number;
   userName?: string | null;
+  operatorId?: number | null;
+  operatorName?: string | null;
   certificateId: number;
   certificateName?: string | null;
   status: OrderStatus;

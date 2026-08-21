@@ -488,13 +488,42 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     .limit(1);
 
   // O parceiro logado mantém o preço de contador mesmo quando emite para o CPF/CNPJ do cliente.
+  // Para operador, a conta comercial é sempre o contador responsável. Este ramo não altera
+  // o checkout anônimo: só é executado quando já existe uma sessão de operador.
   const sessionUserId = req.session?.userId;
   const [sessionUser] = sessionUserId
-    ? await db.select({ userType: usersTable.userType }).from(usersTable).where(eq(usersTable.id, sessionUserId)).limit(1)
+    ? await db.select({
+      id: usersTable.id,
+      role: usersTable.role,
+      userType: usersTable.userType,
+      contadorId: usersTable.contadorId,
+      isActive: usersTable.isActive,
+    }).from(usersTable).where(eq(usersTable.id, sessionUserId)).limit(1)
     : [];
+  let accountOwner = sessionUser ?? null;
+  let operatorId: number | null = null;
+  if (sessionUser?.role === "operador") {
+    if (!sessionUser.isActive || !sessionUser.contadorId) {
+      res.status(403).json({ error: "Operador sem contador responsável ativo." });
+      return;
+    }
+    const [contador] = await db.select({
+      id: usersTable.id,
+      role: usersTable.role,
+      userType: usersTable.userType,
+      contadorId: usersTable.contadorId,
+      isActive: usersTable.isActive,
+    }).from(usersTable).where(eq(usersTable.id, sessionUser.contadorId)).limit(1);
+    if (!contador || !contador.isActive || contador.role !== "contador" || contador.userType !== "contador") {
+      res.status(403).json({ error: "O contador responsável pelo operador não está disponível." });
+      return;
+    }
+    accountOwner = contador;
+    operatorId = sessionUser.id;
+  }
   // O preço pertence exclusivamente à conta autenticada. O titular informado
   // no formulário nunca concede preço de parceiro sem uma sessão de contador.
-  const basePrice = certificatePriceForUser(cert, sessionUser?.userType);
+  const basePrice = certificatePriceForUser(cert, accountOwner?.userType);
 
   // Validate/apply coupon (server-side only) — after user is known
   let discount = 0;
@@ -557,7 +586,8 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     if (usedCouponId && existingUser[0].role !== "admin") {
       const [appliedCoupon] = await db.select().from(couponsTable).where(eq(couponsTable.id, usedCouponId)).limit(1);
       if (appliedCoupon && appliedCoupon.target !== "all") {
-        const isContador = existingUser[0].role === "contador" && existingUser[0].userType !== "cliente";
+        const couponOwner = accountOwner ?? existingUser[0];
+        const isContador = couponOwner.role === "contador" && couponOwner.userType === "contador";
         if (appliedCoupon.target === "cliente" && isContador) {
           res.status(403).json({ error: "Este cupom é exclusivo para clientes." }); return;
         }
@@ -569,7 +599,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
           const [{ count: used }] = await db
             .select({ count: count() })
             .from(ordersTable)
-            .where(and(eq(ordersTable.userId, userId), eq(ordersTable.couponId, usedCouponId)));
+            .where(and(eq(ordersTable.userId, accountOwner?.id ?? userId), eq(ordersTable.couponId, usedCouponId)));
           if (Number(used) >= appliedCoupon.perUserLimit) {
             res.status(400).json({
               error: `Você já utilizou este cupom o máximo de ${appliedCoupon.perUserLimit} vez${appliedCoupon.perUserLimit > 1 ? "es" : ""}.`
@@ -609,12 +639,14 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     if (!existing) break;
   } while (true);
 
-  // Se há sessão ativa, o pedido pertence ao usuário logado — sempre.
-  const orderUserId = req.session?.userId ?? userId;
+  // Em sessão de operador, a compra pertence ao contador e registra o atendente.
+  // Nos demais casos, o comportamento do checkout público permanece inalterado.
+  const orderUserId = accountOwner?.id ?? userId;
 
   const [order] = await db.insert(ordersTable).values({
     orderNumber,
     userId: orderUserId,
+    operatorId,
     certificateId: Number(certificateId),
     status: "pending_payment",
     total: String(total),
