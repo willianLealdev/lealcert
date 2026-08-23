@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "23/08/2026",
+    version: "1.69",
+    changes: [
+      { type: "novo", text: "Relatório Financeiro: nova seção 'Lucratividade por Provedor' mostra receita, custo de certificados, taxas e lucro líquido separados entre GAR e Safeweb." },
+    ],
+  },
+  {
+    date: "23/08/2026",
     version: "1.68",
     changes: [
       { type: "novo", text: "Relatório Financeiro admin: balanço completo com receita bruta, custo de certificados por faixa progressiva, taxas de pagamento por método (PIX/boleto/cartão) e custos adicionais rateados por período." },

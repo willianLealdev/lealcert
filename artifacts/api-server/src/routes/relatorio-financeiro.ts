@@ -25,6 +25,8 @@ router.get("/api/admin/relatorio/resumo", requireAdmin, async (req, res) => {
         id: ordersTable.id,
         total: ordersTable.total,
         paymentMethod: ordersTable.paymentMethod,
+        garPedido: ordersTable.garPedido,
+        safewebSolicitacaoId: ordersTable.safewebSolicitacaoId,
       })
       .from(ordersTable)
       .where(
@@ -93,6 +95,40 @@ router.get("/api/admin/relatorio/resumo", requireAdmin, async (req, res) => {
 
     const netProfit = grossRevenue - certCost - totalPaymentFees - totalExtraCosts;
 
+    // Breakdown por provedor
+    type ProviderSummary = { count: number; revenue: number; fees: number };
+    const byProviderRaw: Record<string, ProviderSummary> = {
+      gar: { count: 0, revenue: 0, fees: 0 },
+      safeweb: { count: 0, revenue: 0, fees: 0 },
+      other: { count: 0, revenue: 0, fees: 0 },
+    };
+
+    for (const order of orders) {
+      const providerKey = order.garPedido ? "gar" : order.safewebSolicitacaoId ? "safeweb" : "other";
+      const rev = parseFloat(String(order.total ?? "0"));
+      byProviderRaw[providerKey].count++;
+      byProviderRaw[providerKey].revenue += rev;
+      // taxas já calculadas — reutiliza o feeMap
+      const fee = feeMap[order.paymentMethod ?? ""];
+      if (fee) {
+        const orderFee =
+          parseFloat(String(fee.fixedFee ?? "0")) +
+          (parseFloat(String(fee.percentFee ?? "0")) / 100) * rev;
+        byProviderRaw[providerKey].fees += orderFee;
+      }
+    }
+
+    // Custo de certificados proporcional por provedor (mesmo preço/faixa, alocado pelo volume)
+    const pricePerCert = tier ? parseFloat(String(tier.pricePerCert)) : 0;
+    const byProvider = Object.entries(byProviderRaw).map(([provider, s]) => ({
+      provider,
+      count: s.count,
+      revenue: s.revenue,
+      paymentFees: s.fees,
+      certCost: s.count * pricePerCert,
+      netProfit: s.revenue - s.fees - s.count * pricePerCert,
+    }));
+
     res.json({
       period: { from, to, days: daysDiff },
       totalOrders,
@@ -112,6 +148,7 @@ router.get("/api/admin/relatorio/resumo", requireAdmin, async (req, res) => {
         fees: s.fees,
         net: s.revenue - s.fees,
       })),
+      byProvider,
     });
   } catch (err) {
     console.error("[relatorio/resumo]", err);

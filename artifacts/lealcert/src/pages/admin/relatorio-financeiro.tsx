@@ -80,6 +80,7 @@ interface ReportData {
   extraCostsDetail: { id: number; name: string; amount: number; period: string; periodCost: number }[];
   netProfit: number;
   byPaymentMethod: { method: string; count: number; revenue: number; fees: number; net: number }[];
+  byProvider: { provider: string; count: number; revenue: number; paymentFees: number; certCost: number; netProfit: number }[];
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -537,6 +538,57 @@ export default function AdminRelatorioFinanceiro() {
                     </CardContent>
                   </Card>
                 </div>
+              )}
+
+              {/* Breakdown por provedor */}
+              {report && report.byProvider && report.byProvider.some((p) => p.count > 0) && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-primary" />
+                      Lucratividade por Provedor
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Custo de certificados calculado individualmente por provedor (mesmo preço da faixa × quantidade). Custos adicionais não estão incluídos neste recorte.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Provedor</TableHead>
+                          <TableHead className="text-right">Qtd</TableHead>
+                          <TableHead className="text-right">Receita</TableHead>
+                          <TableHead className="text-right">Custo Certs</TableHead>
+                          <TableHead className="text-right">Taxas Pgto</TableHead>
+                          <TableHead className="text-right">Lucro Líquido</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.byProvider.filter((p) => p.count > 0).map((row) => {
+                          const providerName: Record<string, string> = { gar: "GAR (Gestão AR)", safeweb: "Safeweb", other: "Sem provedor" };
+                          const providerColor: Record<string, string> = { gar: "bg-blue-100 text-blue-700", safeweb: "bg-purple-100 text-purple-700", other: "bg-gray-100 text-gray-600" };
+                          return (
+                            <TableRow key={row.provider}>
+                              <TableCell>
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${providerColor[row.provider] ?? "bg-muted text-muted-foreground"}`}>
+                                  {providerName[row.provider] ?? row.provider}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right">{row.count}</TableCell>
+                              <TableCell className="text-right">{brl(row.revenue)}</TableCell>
+                              <TableCell className="text-right text-amber-700">−{brl(row.certCost)}</TableCell>
+                              <TableCell className="text-right text-amber-700">−{brl(row.paymentFees)}</TableCell>
+                              <TableCell className={`text-right font-bold ${row.netProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                                {brl(row.netProfit)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
               )}
             </>
           )}
