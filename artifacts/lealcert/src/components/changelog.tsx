@@ -22,6 +22,13 @@ const CHANGELOG: ChangelogEntry[] = [
   },
   {
     date: "23/08/2026",
+    version: "1.70",
+    changes: [
+      { type: "correcao", text: "Menu lateral: seção 'Benefícios' removida da visão de operadores — agora exibida somente para contadores." },
+    ],
+  },
+  {
+    date: "23/08/2026",
     version: "1.69",
     changes: [
       { type: "novo", text: "Relatório Financeiro: nova seção 'Lucratividade por Provedor' mostra receita, custo de certificados, taxas e lucro líquido separados entre GAR e Safeweb." },
