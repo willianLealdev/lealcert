@@ -775,7 +775,7 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
       }
       const txData = data.point_of_interaction?.transaction_data;
       if (!txData?.qr_code) { res.status(400).json({ error: "MercadoPago não retornou o QR Code PIX." }); return; }
-      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") }).where(eq(ordersTable.id, id));
+      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? ""), paymentMethod: "pix" }).where(eq(ordersTable.id, id));
       await logPayEv(id, "payment_initiated", `Pagamento PIX gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
       res.json({ paymentId: String(data.id ?? ""), method: "pix", pixQrCode: txData.qr_code, pixQrCodeBase64: txData.qr_code_base64 ?? "" });
 
@@ -804,7 +804,7 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
       const boletoUrl = data.transaction_details?.external_resource_url ?? null;
       const boletoBarcode = data.barcode?.content ?? null;
       req.log.info({ mpId: data.id, mpStatus: data.status, boletoUrl, boletoBarcode }, "MP boleto response");
-      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? ""), mpBoletoUrl: boletoUrl, mpBoletoBarcode: boletoBarcode }).where(eq(ordersTable.id, id));
+      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? ""), mpBoletoUrl: boletoUrl, mpBoletoBarcode: boletoBarcode, paymentMethod: "boleto" }).where(eq(ordersTable.id, id));
       await logPayEv(id, "payment_initiated", `Boleto gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id, boletoUrl, boletoBarcode });
       res.json({ paymentId: String(data.id ?? ""), method: "boleto", boletoUrl, boletoBarcode });
 
@@ -859,7 +859,7 @@ router.post("/orders/:id/payment", requireAuth, async (req, res): Promise<void> 
         const { mapMpError } = await import("../lib/mp-utils");
         res.status(400).json({ error: mapMpError(data.message ?? data.error) }); return;
       }
-      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? "") }).where(eq(ordersTable.id, id));
+      await db.update(ordersTable).set({ mpPreferenceId: String(data.id ?? ""), mpPaymentId: String(data.id ?? ""), paymentMethod: "cartao" }).where(eq(ordersTable.id, id));
       await logPayEv(id, "payment_initiated", `Pagamento por cartão gerado — R$ ${total.toFixed(2).replace(".", ",")}`, { mpPaymentId: data.id });
 
       const approved = data.status === "approved";

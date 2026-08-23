@@ -58,7 +58,7 @@ router.get("/admin/relatorio/resumo", requireAdmin, async (req, res) => {
     let totalPaymentFees = 0;
 
     for (const order of orders) {
-      const method = order.paymentMethod ?? "sem_metodo";
+      const method = order.paymentMethod?.trim() || "sem_metodo";
       if (!byMethod[method]) byMethod[method] = { count: 0, revenue: 0, fees: 0 };
       const rev = parseFloat(String(order.total ?? "0"));
       byMethod[method].count++;
@@ -298,7 +298,7 @@ router.get("/admin/relatorio/exportar-csv", requireAdmin, async (req, res) => {
     let totalPaymentFees = 0;
 
     for (const order of orders) {
-      const method = order.paymentMethod ?? "sem_metodo";
+      const method = order.paymentMethod?.trim() || "sem_metodo";
       if (!byMethod[method]) byMethod[method] = { count: 0, revenue: 0, fees: 0 };
       const rev = parseFloat(String(order.total ?? "0"));
       byMethod[method].count++;
