@@ -423,8 +423,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             />
           ))}
 
-          {/* Fidelidade da conta comercial: contador e operadores */}
-          {(user?.role === "contador" || user?.role === "operador") && (
+          {/* Fidelidade da conta comercial: contador real e operadores */}
+          {((user?.role === "contador" && user?.userType === "contador") || user?.role === "operador") && (
             <>
               {!collapsed ? (
                 <p className="px-3 pt-4 pb-1.5 text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/40">
@@ -444,7 +444,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   onClick={close}
                 />
               ))}
-              {user?.role === "contador" && (
+              {user?.role === "contador" && user?.userType === "contador" && (
                 <NavItem
                   href="/operadores"
                   icon={Users}
