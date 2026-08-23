@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "23/08/2026",
+    version: "1.73",
+    changes: [
+      { type: "fix", text: "Pedidos via painel do contador: método de pagamento (PIX, Boleto, Cartão) agora é gravado no pedido ao iniciar o pagamento — sem isso o Relatório Financeiro mostrava 'Sem método' e não aplicava as taxas configuradas." },
+    ],
+  },
+  {
+    date: "23/08/2026",
     version: "1.72",
     changes: [
       { type: "fix", text: "Checkout pelo contador: sistema não cria mais usuário automático para o titular do certificado — os dados do cliente ficam apenas no pedido. Cadastro próprio segue pela página de registro." },
