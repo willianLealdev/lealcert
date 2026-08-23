@@ -608,8 +608,13 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
         }
       }
     }
+  } else if (accountOwner) {
+    // Pedido iniciado por contador/operador: não cria conta para o titular.
+    // O pedido pertence ao contador (accountOwner), os dados do cliente ficam
+    // apenas em customerName/customerCpfCnpj/customerEmail no próprio pedido.
+    userId = accountOwner.id;
   } else {
-    // Create new user with temp password
+    // Create new user with temp password (checkout público/anônimo)
     isNewUser = true;
     tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 10);
