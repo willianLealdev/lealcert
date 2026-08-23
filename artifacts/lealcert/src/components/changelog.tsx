@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "23/08/2026",
+    version: "1.70",
+    changes: [
+      { type: "novo", text: "Exportar CSV no Relatório Financeiro: botão 'Exportar CSV' na aba Relatório gera planilha com vendas por método de pagamento, custo de certificados, custos adicionais rateados e lucro líquido. Arquivo nomeado relatorio-financeiro-MM-YYYY.csv com BOM UTF-8 (compatível com Excel)." },
+    ],
+  },
+  {
+    date: "23/08/2026",
     version: "1.69",
     changes: [
       { type: "novo", text: "Relatório Financeiro: nova seção 'Lucratividade por Provedor' mostra receita, custo de certificados, taxas e lucro líquido separados entre GAR e Safeweb." },

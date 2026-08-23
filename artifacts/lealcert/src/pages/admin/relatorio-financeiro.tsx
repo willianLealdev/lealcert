@@ -42,6 +42,7 @@ import {
   RefreshCw,
   CheckCircle,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -183,6 +184,35 @@ export default function AdminRelatorioFinanceiro() {
 
   // Payment fees inline editing
   const [feeSaving, setFeeSaving] = useState<Record<string, boolean>>({});
+
+  // CSV export
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // ── CSV Export ─────────────────────────────────────────────────────────────
+
+  async function handleExportCsv() {
+    setExportLoading(true);
+    try {
+      const res = await fetch(`/api/admin/relatorio/exportar-csv?from=${from}&to=${to}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Falha ao gerar CSV");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const [year, month] = from.split("-");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `relatorio-financeiro-${month}-${year}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "Erro ao exportar CSV", variant: "destructive" });
+    } finally {
+      setExportLoading(false);
+    }
+  }
 
   // ── Fetch helpers ──────────────────────────────────────────────────────────
 
@@ -388,6 +418,10 @@ export default function AdminRelatorioFinanceiro() {
                   <Button size="sm" onClick={fetchReport} disabled={reportLoading}>
                     {reportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                     <span className="ml-1">Atualizar</span>
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleExportCsv} disabled={exportLoading || !report}>
+                    {exportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    <span className="ml-1">Exportar CSV</span>
                   </Button>
                 </div>
               </div>

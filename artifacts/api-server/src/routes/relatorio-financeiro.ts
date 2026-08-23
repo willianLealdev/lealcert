@@ -261,4 +261,147 @@ router.delete("/api/admin/relatorio/extra-costs/:id", requireAdmin, async (req, 
   res.json({ ok: true });
 });
 
+// ─── Exportar CSV ────────────────────────────────────────────────────────────
+
+router.get("/api/admin/relatorio/exportar-csv", requireAdmin, async (req, res) => {
+  try {
+    const { from, to } = req.query as { from?: string; to?: string };
+    if (!from || !to) {
+      res.status(400).json({ error: "Parâmetros from e to são obrigatórios (YYYY-MM-DD)." });
+      return;
+    }
+
+    const fromDate = new Date(from + "T00:00:00.000Z");
+    const toDate = new Date(to + "T23:59:59.999Z");
+    const daysDiff = Math.max(1, Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+    const orders = await db
+      .select({
+        id: ordersTable.id,
+        total: ordersTable.total,
+        paymentMethod: ordersTable.paymentMethod,
+      })
+      .from(ordersTable)
+      .where(
+        and(
+          sql`${ordersTable.status} NOT IN ('created', 'pending_payment', 'cancelled')`,
+          gte(ordersTable.createdAt, fromDate),
+          lte(ordersTable.createdAt, toDate)
+        )
+      );
+
+    const totalOrders = orders.length;
+    const grossRevenue = orders.reduce((acc, o) => acc + parseFloat(String(o.total ?? "0")), 0);
+
+    const tiers = await db.select().from(reportCertTiersTable).orderBy(asc(reportCertTiersTable.minQty));
+    const tier = tiers.find(
+      (t) => totalOrders >= t.minQty && (t.maxQty === null || totalOrders <= t.maxQty)
+    ) ?? null;
+    const certCost = tier ? totalOrders * parseFloat(String(tier.pricePerCert)) : 0;
+
+    const feesConfig = await db.select().from(reportPaymentFeesTable);
+    const feeMap = Object.fromEntries(feesConfig.map((f) => [f.method, f]));
+
+    type MethodSummary = { count: number; revenue: number; fees: number };
+    const byMethod: Record<string, MethodSummary> = {};
+    let totalPaymentFees = 0;
+
+    for (const order of orders) {
+      const method = order.paymentMethod ?? "sem_metodo";
+      if (!byMethod[method]) byMethod[method] = { count: 0, revenue: 0, fees: 0 };
+      const rev = parseFloat(String(order.total ?? "0"));
+      byMethod[method].count++;
+      byMethod[method].revenue += rev;
+      const fee = feeMap[method];
+      if (fee) {
+        const orderFee =
+          parseFloat(String(fee.fixedFee ?? "0")) +
+          (parseFloat(String(fee.percentFee ?? "0")) / 100) * rev;
+        byMethod[method].fees += orderFee;
+        totalPaymentFees += orderFee;
+      }
+    }
+
+    const extraCosts = await db
+      .select()
+      .from(reportExtraCostsTable)
+      .where(eq(reportExtraCostsTable.active, true));
+
+    let totalExtraCosts = 0;
+    const extraCostsDetail: { id: number; name: string; amount: number; period: string; periodCost: number }[] = [];
+    for (const cost of extraCosts) {
+      const amount = parseFloat(String(cost.amount ?? "0"));
+      let periodCost = 0;
+      if (cost.period === "daily") periodCost = amount * daysDiff;
+      else if (cost.period === "monthly") periodCost = amount * (daysDiff / 30.44);
+      else if (cost.period === "annual") periodCost = amount * (daysDiff / 365);
+      totalExtraCosts += periodCost;
+      extraCostsDetail.push({ id: cost.id, name: cost.name, amount, period: cost.period, periodCost });
+    }
+
+    const netProfit = grossRevenue - certCost - totalPaymentFees - totalExtraCosts;
+
+    const methodLabels: Record<string, string> = {
+      pix: "PIX",
+      boleto: "Boleto",
+      cartao: "Cartão",
+      cortesia: "Cortesia",
+      sem_metodo: "Sem método",
+    };
+    const periodLabels: Record<string, string> = {
+      daily: "Diário",
+      monthly: "Mensal",
+      annual: "Anual",
+    };
+    const fmt = (n: number) => n.toFixed(2).replace(".", ",");
+
+    const rows: string[] = [];
+    rows.push(`Relatório Financeiro LealCert`);
+    rows.push(`Período;${from} a ${to};${daysDiff} dias`);
+    rows.push(``);
+
+    rows.push(`VENDAS POR MÉTODO DE PAGAMENTO`);
+    rows.push(`Método;Quantidade;Receita Bruta (R$);Taxas (R$);Líquido (R$)`);
+    for (const [method, s] of Object.entries(byMethod)) {
+      rows.push(
+        `${methodLabels[method] ?? method};${s.count};${fmt(s.revenue)};${fmt(s.fees)};${fmt(s.revenue - s.fees)}`
+      );
+    }
+    rows.push(`Total;${totalOrders};${fmt(grossRevenue)};${fmt(totalPaymentFees)};${fmt(grossRevenue - totalPaymentFees)}`);
+    rows.push(``);
+
+    rows.push(`CUSTOS`);
+    rows.push(`Descrição;Valor (R$)`);
+    const tierLabel = tier
+      ? `${tier.minQty}${tier.maxQty != null ? `–${tier.maxQty}` : "+"} certs × R$ ${fmt(parseFloat(String(tier.pricePerCert)))}`
+      : "Sem faixa";
+    rows.push(`Custo de Certificados (${totalOrders} × faixa ${tierLabel});${fmt(certCost)}`);
+    for (const ec of extraCostsDetail) {
+      rows.push(`${ec.name} (${periodLabels[ec.period] ?? ec.period});${fmt(ec.periodCost)}`);
+    }
+    rows.push(`Total Custos;${fmt(certCost + totalPaymentFees + totalExtraCosts)}`);
+    rows.push(``);
+
+    rows.push(`RESULTADO`);
+    rows.push(`Item;Valor (R$)`);
+    rows.push(`Receita Bruta;${fmt(grossRevenue)}`);
+    rows.push(`(-) Custo de Certificados;${fmt(certCost)}`);
+    rows.push(`(-) Taxas de Pagamento;${fmt(totalPaymentFees)}`);
+    rows.push(`(-) Custos Adicionais;${fmt(totalExtraCosts)}`);
+    rows.push(`Lucro Líquido;${fmt(netProfit)}`);
+
+    const csv = rows.join("\r\n");
+    const [csvYear, csvMonth] = from.split("-");
+    const filename = `relatorio-financeiro-${csvMonth}-${csvYear}.csv`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    // BOM for Excel to recognize UTF-8
+    res.send("\uFEFF" + csv);
+  } catch (err) {
+    console.error("[relatorio/exportar-csv]", err);
+    res.status(500).json({ error: "Erro ao exportar relatório." });
+  }
+});
+
 export default router;
