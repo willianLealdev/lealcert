@@ -644,14 +644,6 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
           <p className="text-xs text-green-700">
             Um e-mail de confirmação foi enviado com os detalhes do atendimento.
           </p>
-          {garHopeUploadUrl && (
-            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground gap-1.5 -mt-1 mb-1" asChild>
-              <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer">
-                <FileText className="h-3.5 w-3.5" />
-                Reenviar documentos
-              </a>
-            </Button>
-          )}
           {!orderCompleted && <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm" className="border-green-400 text-green-800 hover:bg-green-100" onClick={handleOpenModal}>
               <Calendar className="h-4 w-4 mr-2" />
@@ -732,11 +724,9 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
             Escolher data e horário
           </Button>
           {garHopeUploadUrl && (
-            <Button variant="outline" size="default" className="border-blue-400 text-blue-800 hover:bg-blue-100 gap-2" asChild>
-              <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer">
-                <FileText className="h-4 w-4" />
-                Reenviar documentos
-              </a>
+            <Button variant="outline" size="default" className="border-blue-400 text-blue-800 hover:bg-blue-100 gap-2" onClick={() => setDocsModalOpen(true)}>
+              <FileText className="h-4 w-4" />
+              Reenviar documentos
             </Button>
           )}
         </div>
@@ -1776,6 +1766,7 @@ export default function OrderDetail() {
   if (!order) return <div className="text-center py-20 text-muted-foreground">Pedido não encontrado.</div>;
 
   const isAdmin = user?.role === "admin";
+  const [hopeReenvioOpen, setHopeReenvioOpen] = useState(false);
   const isPayable = order.status === "pending_payment" || order.status === "created";
   const orderTotal = parseFloat(String(order.total ?? 0));
   const allowedPayMethods: PayMethod[] = orderTotal >= 150 ? ["pix", "boleto", "cartao"] : orderTotal >= 90 ? ["pix", "boleto"] : ["pix"];
@@ -2342,11 +2333,9 @@ export default function OrderDetail() {
             <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-md">
               <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span className="text-xs text-muted-foreground flex-1">Documentos Hope</span>
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" asChild>
-                <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-3 w-3" />
-                  Reenviar documentos
-                </a>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={() => setHopeReenvioOpen(true)}>
+                <ExternalLink className="h-3 w-3" />
+                Reenviar documentos
               </Button>
               <Button
                 size="sm"
@@ -2359,6 +2348,24 @@ export default function OrderDetail() {
                 {hopeGenerate.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
               </Button>
             </div>
+          )}
+
+          {/* Modal de reenvio de documentos Hope (admin) */}
+          {garHopeUploadUrl && (
+            <Dialog open={hopeReenvioOpen} onOpenChange={setHopeReenvioOpen}>
+              <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0 gap-0">
+                <DialogHeader className="px-4 py-3 border-b shrink-0 flex flex-row items-center justify-between">
+                  <DialogTitle className="text-base">Portal de Envio de Documentos</DialogTitle>
+                  <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Abrir em nova aba
+                  </a>
+                </DialogHeader>
+                <div className="flex-1 min-h-0">
+                  <iframe src={garHopeUploadUrl} className="w-full h-full border-0" title="Portal de Envio de Documentos" allow="camera; microphone" />
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
 
           {/* Card de agendamento GAR */}
