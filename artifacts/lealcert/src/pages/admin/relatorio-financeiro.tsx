@@ -386,7 +386,7 @@ export default function AdminRelatorioFinanceiro() {
       </div>
 
       <Tabs defaultValue="relatorio">
-        <TabsList className="mb-2">
+        <TabsList className="mb-2 h-auto flex-wrap gap-0.5 p-1">
           <TabsTrigger value="relatorio">📊 Relatório</TabsTrigger>
           <TabsTrigger value="config">⚙️ Configurações</TabsTrigger>
         </TabsList>
@@ -398,7 +398,7 @@ export default function AdminRelatorioFinanceiro() {
           <Card>
             <CardContent className="pt-4 pb-3">
               <div className="flex flex-wrap gap-2 items-end">
-                <div className="flex gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
                   {[
                     { label: "Este mês", preset: "thisMonth" as const },
                     { label: "Mês passado", preset: "lastMonth" as const },
@@ -410,7 +410,7 @@ export default function AdminRelatorioFinanceiro() {
                     </Button>
                   ))}
                 </div>
-                <div className="flex items-end gap-2 ml-auto">
+                <div className="flex flex-wrap items-end gap-2 sm:ml-auto">
                   <div>
                     <Label className="text-xs text-muted-foreground">De</Label>
                     <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8 w-36 text-sm" />
@@ -504,7 +504,7 @@ export default function AdminRelatorioFinanceiro() {
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base">Vendas por Método de Pagamento</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -590,7 +590,7 @@ export default function AdminRelatorioFinanceiro() {
                       Custo de certificados calculado individualmente por provedor (mesmo preço da faixa × quantidade). Custos adicionais não estão incluídos neste recorte.
                     </p>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -653,7 +653,7 @@ export default function AdminRelatorioFinanceiro() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-x-auto">
               {certTiers.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">Nenhuma faixa configurada.</p>
               ) : (
@@ -706,7 +706,7 @@ export default function AdminRelatorioFinanceiro() {
                 {["pix", "boleto", "cartao", "cortesia"].map((method) => {
                   const fee = paymentFees.find((f) => f.method === method) ?? { method, fixedFee: "0", percentFee: "0", id: 0 };
                   return (
-                    <div key={method} className="grid grid-cols-[120px_1fr_1fr_auto] gap-3 items-end">
+                    <div key={method} className="grid grid-cols-1 sm:grid-cols-[120px_1fr_1fr_auto] gap-3 items-end">
                       <div>
                         <Label className="text-xs text-muted-foreground">Método</Label>
                         <div className="h-9 flex items-center">
@@ -767,7 +767,7 @@ export default function AdminRelatorioFinanceiro() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-x-auto">
               {extraCosts.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">Nenhum custo adicional cadastrado.</p>
               ) : (

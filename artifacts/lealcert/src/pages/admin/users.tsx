@@ -80,7 +80,7 @@ function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => voi
           {/* Identificação */}
           <div>
             <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Identificação</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Nome" value={user.name} />
               <Field label="CPF/CNPJ" value={user.cpfCnpj} />
               <Field label="E-mail" value={user.email} />
@@ -98,7 +98,7 @@ function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => voi
               <Separator />
               <div>
                 <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Registro Profissional</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="CRC" value={user.crcNumber} />
                   <Field label="CRC Verificado" value={user.crcVerified} />
                 </div>
@@ -112,7 +112,7 @@ function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => voi
               <Separator />
               <div>
                 <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Empresa</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="CNPJ da Empresa" value={user.companyCnpj} />
                   <Field label="Razão Social" value={user.companyName} />
                   <Field label="Nome Fantasia" value={user.companyFantasyName} />
@@ -127,7 +127,7 @@ function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => voi
               <Separator />
               <div>
                 <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Responsável Técnico</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="CPF do Responsável" value={user.responsibleCpf} />
                   <Field label="Nome do Responsável" value={user.responsibleName} />
                 </div>
@@ -141,7 +141,7 @@ function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => voi
               <Separator />
               <div>
                 <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Endereço</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="CEP" value={user.zipCode} />
                   <Field label="Logradouro" value={user.street} />
                   <Field label="Número" value={user.addressNumber} />
@@ -160,7 +160,7 @@ function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => voi
               <Separator />
               <div>
                 <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Indicação</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Vendedor" value={user.vendedorNome} />
                 </div>
               </div>
@@ -171,7 +171,7 @@ function UserDetailsModal({ user, onClose }: { user: UserRow; onClose: () => voi
               <Separator />
               <div>
                 <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Vínculo de Operador</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Contador responsável" value={user.contadorNome} />
                 </div>
               </div>

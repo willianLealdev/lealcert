@@ -557,7 +557,7 @@ export default function AdminSettings() {
                     <Input value={form.cartesiaVoiceId} onChange={e => set("cartesiaVoiceId", e.target.value)} placeholder="a0e99841-438c-4a64-b679-ae501e7d6091" />
                     <p className="text-xs text-muted-foreground">Usado apenas se o agente não tiver ID próprio. Encontre em <a href="https://play.cartesia.ai/voices" target="_blank" rel="noopener noreferrer" className="underline">play.cartesia.ai/voices</a></p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label className="text-xs">Voice ID — Willian (Cartesia)</Label>
                       <Input value={(form as any).willianCartesiaVoiceId} onChange={e => set("willianCartesiaVoiceId", e.target.value)} placeholder="a0e99841-438c-4a64-b679-ae501e7d6091" />
@@ -583,7 +583,7 @@ export default function AdminSettings() {
                     <Input value={form.elevenlabsVoiceId} onChange={e => set("elevenlabsVoiceId", e.target.value)} placeholder="21m00Tcm4TlvDq8ikWAM" />
                     <p className="text-xs text-muted-foreground">Padrão: Rachel (multilíngue). <a href="https://elevenlabs.io/voice-library" target="_blank" rel="noopener noreferrer" className="underline">Biblioteca de vozes</a></p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label className="text-xs">Voice ID — Willian (ElevenLabs)</Label>
                       <Input value={(form as any).willianElevenlabsVoiceId} onChange={e => set("willianElevenlabsVoiceId", e.target.value)} placeholder="TxGEqnHWrfWFTfGW9XjX" />
@@ -1093,7 +1093,7 @@ export default function AdminSettings() {
                 <CardDescription>Selecione qual sistema será usado para emissão e gestão de certificados digitais. Apenas um pode estar ativo por vez.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <button type="button" onClick={() => setActiveProvider("gestaoar")}
                     className={`flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all ${isGarActive ? "border-primary bg-primary/10 shadow-sm" : "border-muted bg-background hover:border-muted-foreground/40"}`}>
                     <Link2 className={`h-7 w-7 ${isGarActive ? "text-primary" : "text-muted-foreground"}`} />

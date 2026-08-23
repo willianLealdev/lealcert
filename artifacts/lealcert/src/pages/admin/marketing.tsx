@@ -539,7 +539,7 @@ function CampanhasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
               )}
 
               {c.status === "sent" && (
-                <div className="grid grid-cols-5 gap-3 mt-4 pt-4 border-t">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mt-4 pt-4 border-t">
                   {[
                     { label: "Enviados", value: c.totalSent, icon: Send, color: "text-muted-foreground", onClick: undefined },
                     { label: "Abertos", value: c.totalOpened, icon: MailOpen, color: "text-blue-500", onClick: undefined },
@@ -721,7 +721,7 @@ function CampaignSendsModal({ campaignId, campaignName, onClose }: {
         <div className="text-xs text-muted-foreground">{filtered.length} resultado(s)</div>
 
         {/* table */}
-        <div className="flex-1 overflow-y-auto border rounded-xl">
+        <div className="flex-1 overflow-auto border rounded-xl">
           {isLoading ? (
             <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
               <RefreshCw className="h-4 w-4 animate-spin" /> Carregando…
@@ -1203,7 +1203,7 @@ function SendCampaignDialog({
                   </span>
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">De (posição inicial)</Label>
                   <Input
@@ -1325,7 +1325,7 @@ function SendCampaignDialog({
               Configuração aplicada a <strong>todos os provedores</strong> (Gmail, Outlook, Yahoo, UOL/BOL e domínio próprio).
               Deixe em branco para usar os limites de segurança padrão por provedor.
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">E-mails por lote</Label>
                 <Input
@@ -1373,7 +1373,7 @@ function SendCampaignDialog({
             </p>
             {useBusinessHours && (
               <div className="space-y-3 pt-1">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Hora início (BRT)</Label>
                     <Input type="number" min="0" max="23" value={sendStartHour} onChange={e => setSendStartHour(e.target.value)} placeholder="8" />
@@ -1385,7 +1385,7 @@ function SendCampaignDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Dias da semana</Label>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1">
                     {[
                       { day: 1, label: "Seg" }, { day: 2, label: "Ter" }, { day: 3, label: "Qua" },
                       { day: 4, label: "Qui" }, { day: 5, label: "Sex" }, { day: 6, label: "Sáb" }, { day: 0, label: "Dom" },
@@ -1551,7 +1551,7 @@ function CampaignFormDialog({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Nome da Campanha *</Label>
               <Input value={form.name} onChange={e => set("name", e.target.value)} required placeholder="Ex: Promoção Julho" />
@@ -1978,7 +1978,8 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
 
       {/* Contacts table */}
       <div className="bg-card border rounded-xl overflow-hidden">
-        <div className={`grid ${isCliente ? "grid-cols-[auto_2fr_2fr_1fr_1fr_auto]" : "grid-cols-[auto_2fr_2fr_1.5fr_1fr_1fr_auto]"} text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30 items-center`}>
+        <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className={`grid ${isCliente ? "grid-cols-[auto_2fr_2fr_1fr_1fr_auto]" : "grid-cols-[auto_2fr_2fr_1.5fr_1fr_1fr_auto]"} text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30 items-center min-w-[520px]`}>
           <span className="flex items-center pr-3">
             <input
               type="checkbox"
@@ -2013,7 +2014,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
           contacts.map(c => (
             <div
               key={c.id}
-              className={`grid ${isCliente ? "grid-cols-[auto_2fr_2fr_1fr_1fr_auto]" : "grid-cols-[auto_2fr_2fr_1.5fr_1fr_1fr_auto]"} px-4 py-3 border-b last:border-0 items-center transition-colors ${selectedIds.has(c.id) ? "bg-primary/5" : "hover:bg-muted/20"}`}
+              className={`grid ${isCliente ? "grid-cols-[auto_2fr_2fr_1fr_1fr_auto]" : "grid-cols-[auto_2fr_2fr_1.5fr_1fr_1fr_auto]"} px-4 py-3 border-b last:border-0 items-center transition-colors min-w-[520px] ${selectedIds.has(c.id) ? "bg-primary/5" : "hover:bg-muted/20"}`}
             >
               <span className="flex items-center pr-3">
                 <input
@@ -2054,6 +2055,7 @@ function ContatosTab({ type, invalidate, toast }: { type: "cliente" | "contador"
             </div>
           ))
         )}
+        </div>
       </div>
 
       {/* Pagination */}
@@ -2290,8 +2292,9 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
         </div>
       ) : (
         <div className="bg-card border rounded-xl overflow-hidden">
+          <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {/* Table header */}
-          <div className="grid grid-cols-[2fr_2fr_1fr_2fr_1fr_auto] text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30">
+          <div className="grid grid-cols-[2fr_2fr_1fr_2fr_1fr_auto] text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 border-b bg-muted/30 min-w-[600px]">
             <span>Nome</span>
             <span>E-mail</span>
             <span>Tipo</span>
@@ -2303,7 +2306,7 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
           {bounces.map((b, i) => (
             <div
               key={b.id}
-              className={`grid grid-cols-[2fr_2fr_1fr_2fr_1fr_auto] px-4 py-3 items-start gap-3 text-sm ${
+              className={`grid grid-cols-[2fr_2fr_1fr_2fr_1fr_auto] px-4 py-3 items-start gap-3 text-sm min-w-[600px] ${
                 i < bounces.length - 1 ? "border-b" : ""
               } hover:bg-muted/20 transition-colors`}
             >
@@ -2375,6 +2378,7 @@ function BouncesTab({ invalidate, toast }: { invalidate: () => void; toast: Retu
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
 
@@ -2452,7 +2456,7 @@ function RespostasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
           <p className="text-xs mt-1">Configure o webhook de inbound na aba Visão Geral.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-[360px_1fr] gap-4 h-[600px]">
+        <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-4 min-h-[400px] lg:h-[600px]">
           {/* List */}
           <div className="border rounded-xl overflow-y-auto bg-card">
             {replies.map(r => (

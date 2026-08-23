@@ -214,7 +214,7 @@ export default function AdminIpSecurity() {
       </div>
 
       <Tabs defaultValue="blocks">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap gap-0.5 p-1">
           <TabsTrigger value="blocks">
             IPs Bloqueados/Banidos
             {blocks.length > 0 && <span className="ml-1.5 bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded-full">{blocks.length}</span>}

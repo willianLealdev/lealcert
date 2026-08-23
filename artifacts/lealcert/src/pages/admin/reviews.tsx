@@ -115,7 +115,7 @@ export default function AdminReviews() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b">
+      <div className="flex gap-2 border-b overflow-x-auto pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map(t => (
           <button
             key={t.key}

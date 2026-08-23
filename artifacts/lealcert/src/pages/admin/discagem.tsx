@@ -716,7 +716,7 @@ export default function AdminDiscagem() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-semibold text-primary uppercase tracking-wider">Registros de Ligações</p>
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap gap-1">
                       {["all","queued","answered","no_answer","voicemail","failed","optout"].map(s => (
                         <button key={s}
                           className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${callFilter === s ? "bg-primary text-white border-primary" : "bg-background border-border hover:border-primary"}`}
@@ -728,7 +728,8 @@ export default function AdminDiscagem() {
                   </div>
 
                   <div className="rounded-lg border overflow-hidden">
-                    <table className="w-full text-sm">
+                    <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <table className="w-full text-sm min-w-[640px]">
                       <thead className="bg-muted/50">
                         <tr>
                           <th className="text-left p-2 pl-3 font-medium text-muted-foreground">Contato</th>
@@ -782,6 +783,7 @@ export default function AdminDiscagem() {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -848,7 +850,8 @@ export default function AdminDiscagem() {
 
           {/* Tabela */}
           <div className="rounded-lg border overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <table className="w-full text-sm min-w-[560px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left p-2 pl-3 font-medium text-muted-foreground">Contato</th>
@@ -899,6 +902,7 @@ export default function AdminDiscagem() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {reportRows.length > 0 && (
@@ -965,7 +969,7 @@ export default function AdminDiscagem() {
             {/* Seletor de agente */}
             <div className="space-y-1.5">
               <Label>Agente (persona de voz)</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(["Willian", "Aline"] as const).map(name => (
                   <button
                     key={name}
@@ -984,7 +988,7 @@ export default function AdminDiscagem() {
               <p className="text-xs text-muted-foreground">A voz TTS será ajustada automaticamente para o agente. Você pode sobrescrever pelo Voice ID abaixo.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Modelo de IA</Label>
                 <Select value={form.aiModel} onValueChange={v => setForm(f => ({ ...f, aiModel: v }))}>
@@ -1029,7 +1033,7 @@ export default function AdminDiscagem() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Manhã: início (hora)</Label>
                 <Input type="number" min={0} max={23} value={form.windowMorningStart}
@@ -1055,7 +1059,7 @@ export default function AdminDiscagem() {
             <Separator />
             <p className="text-xs font-semibold text-primary uppercase tracking-wider">Limites</p>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Ligações simultâneas</Label>
                 <Input type="number" min={1} max={10} value={form.maxConcurrentCalls}
@@ -1153,7 +1157,7 @@ export default function AdminDiscagem() {
               )}
 
               {/* Info */}
-              <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                 <div><p className="text-xs text-muted-foreground">Duração</p><p className="font-medium">{formatDuration(viewCall.durationSeconds)}</p></div>
                 <div><p className="text-xs text-muted-foreground">Início</p><p className="font-medium">{formatDate(viewCall.startedAt)}</p></div>
                 <div><p className="text-xs text-muted-foreground">IA usada</p><p className="font-medium">{viewCall.aiModelUsed ?? "—"}</p></div>
