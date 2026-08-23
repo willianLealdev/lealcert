@@ -94,6 +94,7 @@ const adminNav = [
   { name: "Discagem IA", href: "/admin/discagem", icon: Bot },
   { name: "Segurança de IP", href: "/admin/ip-security", icon: ShieldCheck },
   { name: "Relatórios GAR", href: "/admin/relatorios-gar", icon: BarChart2 },
+  { name: "Relatório Financeiro", href: "/admin/relatorio-financeiro", icon: DollarSign },
   { name: "Notas Fiscais", href: "/admin/nfse", icon: Receipt },
   { name: "Fidelidade", href: "/admin/fidelidade", icon: Star },
   { name: "Indicações", href: "/admin/indicacoes", icon: Share2 },
