@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "23/08/2026",
+    version: "1.75",
+    changes: [
+      { type: "fix", text: "Relatório diário de vendas por e-mail: passava a contar apenas pedidos com status 'paid', ignorando pedidos já em protocolo, aguardando validação, emitidos ou concluídos. Agora todos os status pagos são incluídos." },
+    ],
+  },
+  {
+    date: "23/08/2026",
     version: "1.74",
     changes: [
       { type: "fix", text: "Dashboard admin: contagem de Contadores e Clientes agora usa a mesma lógica do painel de usuários — operadores e vendedores não são mais incluídos na contagem de clientes." },
