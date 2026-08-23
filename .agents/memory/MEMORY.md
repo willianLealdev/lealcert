@@ -1,4 +1,5 @@
 - [Regra de autorização](no-unauthorized-changes.md) — NUNCA alterar/remover sem pedido explícito; só acrescentar o que for solicitado.
+- [Fast certificate flow](fast-certificate-flow.md) — isGarFast desativa agendamento GAR; usa garHopeUploadUrl como link de emissão; alerta obrigatório no checkout bio step.
 - [Safeweb integration](safeweb-integration.md) — provider toggle (gestaoar|safeweb) in settings drives mp-webhook.ts dispatch; Safeweb auto-buy in sw-auto.ts mirrors gar-auto.ts pattern.
 - [Safeweb webhook routing](safeweb-webhook-routing.md) — Safeweb callbacks need one protected completion path: derive event type from payload and authenticate before changing an order.
 - [Safeweb agenda paths](safeweb-agenda-paths.md) — agenda endpoints live on a DIFFERENT HOST than the main API; `getAgendaBaseUrl()` derives it; POST agendar uses `bearer [token]` header.
