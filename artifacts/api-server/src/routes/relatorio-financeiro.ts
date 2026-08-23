@@ -7,7 +7,7 @@ const router = Router();
 
 // ─── Relatório / Resumo ──────────────────────────────────────────────────────
 
-router.get("/api/admin/relatorio/resumo", requireAdmin, async (req, res) => {
+router.get("/admin/relatorio/resumo", requireAdmin, async (req, res) => {
   try {
     const { from, to } = req.query as { from?: string; to?: string };
     if (!from || !to) {
@@ -158,12 +158,12 @@ router.get("/api/admin/relatorio/resumo", requireAdmin, async (req, res) => {
 
 // ─── Tabela de Faixas de Certificado ────────────────────────────────────────
 
-router.get("/api/admin/relatorio/cert-tiers", requireAdmin, async (_req, res) => {
+router.get("/admin/relatorio/cert-tiers", requireAdmin, async (_req, res) => {
   const rows = await db.select().from(reportCertTiersTable).orderBy(asc(reportCertTiersTable.minQty));
   res.json(rows);
 });
 
-router.post("/api/admin/relatorio/cert-tiers", requireAdmin, async (req, res) => {
+router.post("/admin/relatorio/cert-tiers", requireAdmin, async (req, res) => {
   const { minQty, maxQty, pricePerCert } = req.body;
   if (minQty == null || pricePerCert == null) {
     res.status(400).json({ error: "minQty e pricePerCert são obrigatórios." });
@@ -176,7 +176,7 @@ router.post("/api/admin/relatorio/cert-tiers", requireAdmin, async (req, res) =>
   res.json(row);
 });
 
-router.put("/api/admin/relatorio/cert-tiers/:id", requireAdmin, async (req, res) => {
+router.put("/admin/relatorio/cert-tiers/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const { minQty, maxQty, pricePerCert } = req.body;
   const [row] = await db
@@ -188,7 +188,7 @@ router.put("/api/admin/relatorio/cert-tiers/:id", requireAdmin, async (req, res)
   res.json(row);
 });
 
-router.delete("/api/admin/relatorio/cert-tiers/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/relatorio/cert-tiers/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   await db.delete(reportCertTiersTable).where(eq(reportCertTiersTable.id, id));
   res.json({ ok: true });
@@ -196,13 +196,13 @@ router.delete("/api/admin/relatorio/cert-tiers/:id", requireAdmin, async (req, r
 
 // ─── Taxas de Pagamento ──────────────────────────────────────────────────────
 
-router.get("/api/admin/relatorio/payment-fees", requireAdmin, async (_req, res) => {
+router.get("/admin/relatorio/payment-fees", requireAdmin, async (_req, res) => {
   const rows = await db.select().from(reportPaymentFeesTable);
   res.json(rows);
 });
 
 // Upsert por método
-router.put("/api/admin/relatorio/payment-fees/:method", requireAdmin, async (req, res) => {
+router.put("/admin/relatorio/payment-fees/:method", requireAdmin, async (req, res) => {
   const method = String(req.params.method);
   const { fixedFee, percentFee } = req.body;
 
@@ -225,12 +225,12 @@ router.put("/api/admin/relatorio/payment-fees/:method", requireAdmin, async (req
 
 // ─── Custos Adicionais ───────────────────────────────────────────────────────
 
-router.get("/api/admin/relatorio/extra-costs", requireAdmin, async (_req, res) => {
+router.get("/admin/relatorio/extra-costs", requireAdmin, async (_req, res) => {
   const rows = await db.select().from(reportExtraCostsTable).orderBy(asc(reportExtraCostsTable.createdAt));
   res.json(rows);
 });
 
-router.post("/api/admin/relatorio/extra-costs", requireAdmin, async (req, res) => {
+router.post("/admin/relatorio/extra-costs", requireAdmin, async (req, res) => {
   const { name, amount, period, active } = req.body;
   if (!name || amount == null || !period) {
     res.status(400).json({ error: "name, amount e period são obrigatórios." });
@@ -243,7 +243,7 @@ router.post("/api/admin/relatorio/extra-costs", requireAdmin, async (req, res) =
   res.json(row);
 });
 
-router.put("/api/admin/relatorio/extra-costs/:id", requireAdmin, async (req, res) => {
+router.put("/admin/relatorio/extra-costs/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const { name, amount, period, active } = req.body;
   const [row] = await db
@@ -255,7 +255,7 @@ router.put("/api/admin/relatorio/extra-costs/:id", requireAdmin, async (req, res
   res.json(row);
 });
 
-router.delete("/api/admin/relatorio/extra-costs/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/relatorio/extra-costs/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   await db.delete(reportExtraCostsTable).where(eq(reportExtraCostsTable.id, id));
   res.json({ ok: true });
@@ -263,7 +263,7 @@ router.delete("/api/admin/relatorio/extra-costs/:id", requireAdmin, async (req, 
 
 // ─── Exportar CSV ────────────────────────────────────────────────────────────
 
-router.get("/api/admin/relatorio/exportar-csv", requireAdmin, async (req, res) => {
+router.get("/admin/relatorio/exportar-csv", requireAdmin, async (req, res) => {
   try {
     const { from, to } = req.query as { from?: string; to?: string };
     if (!from || !to) {
