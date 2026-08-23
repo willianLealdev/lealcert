@@ -339,6 +339,14 @@ function OrderTimeline({ orderId, onEventsChange }: { orderId: number; onEventsC
   );
 }
 
+// ── AR name helper ─────────────────────────────────────────────────────────────
+function shortArName(nome: string): string {
+  const parts = nome.split(" - ");
+  const base = (parts.length > 1 ? parts[parts.length - 1] : parts[0]).trim();
+  const firstWord = base.split(/\s+/)[0] ?? base;
+  return `AR ${firstWord.charAt(0).toUpperCase()}${firstWord.slice(1).toLowerCase()}`;
+}
+
 // ── Componente de Agendamento ─────────────────────────────────────────────────
 function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgendamentoLocalNome, garAgendamentoLink, garHopeUploadUrl, garDocsConfirmedDb, orderCompleted, onSuccess }: {
   orderId: number;
@@ -437,6 +445,20 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
 
   const isVideo = (nome: string) => /video/i.test(nome) || /videoconfer/i.test(nome);
 
+  // Auto-select first local when locais load after modal opens
+  useEffect(() => {
+    if (!open || localSelecionado || loadingLocais || !locais || locais.length === 0) return;
+    const p = locais[0];
+    setLocalSelecionado({
+      HashLocal: p.HashLocal,
+      NomeLocalAgendamento: p.NomeLocalAgendamento,
+      NomeCidadeLocalAgendamento: p.NomeCidadeLocalAgendamento,
+      UF: p.UF ?? "",
+      Endereco: p.Endereco,
+      isVideo: /video/i.test(p.NomeLocalAgendamento) || /videoconfer/i.test(p.NomeLocalAgendamento),
+    });
+  }, [open, localSelecionado, loadingLocais, locais]);
+
   const locaisFiltrados = useMemo(() => {
     if (!locais) return [];
     return locais.filter(l => {
@@ -453,12 +475,25 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
   }, [locais]);
 
   function handleOpenModal() {
-    setStep("locais");
-    setLocalSelecionado(null);
-    setDataSelecionada("");
-    setHorarioSelecionado(null);
     setUfFiltro("");
     setMunicipioFiltro("");
+    setDataSelecionada("");
+    setHorarioSelecionado(null);
+    const primeiro = locais?.[0];
+    if (primeiro) {
+      setLocalSelecionado({
+        HashLocal: primeiro.HashLocal,
+        NomeLocalAgendamento: primeiro.NomeLocalAgendamento,
+        NomeCidadeLocalAgendamento: primeiro.NomeCidadeLocalAgendamento,
+        UF: primeiro.UF ?? "",
+        Endereco: primeiro.Endereco,
+        isVideo: /video/i.test(primeiro.NomeLocalAgendamento) || /videoconfer/i.test(primeiro.NomeLocalAgendamento),
+      });
+      setStep("data");
+    } else {
+      setLocalSelecionado(null);
+      setStep("data");
+    }
     setOpen(true);
   }
 
@@ -591,12 +626,10 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {garAgendamentoLocalNome && (
               <div className="flex items-start gap-2">
-                {isVideo(garAgendamentoLocalNome)
-                  ? <Video className="h-4 w-4 mt-0.5 text-green-700 shrink-0" />
-                  : <MapPin className="h-4 w-4 mt-0.5 text-green-700 shrink-0" />}
+                <Video className="h-4 w-4 mt-0.5 text-green-700 shrink-0" />
                 <div>
-                  <p className="text-xs text-green-700">Local</p>
-                  <p className="text-sm font-semibold text-green-900">{garAgendamentoLocalNome}</p>
+                  <p className="text-xs text-green-700">AR responsável</p>
+                  <p className="text-sm font-semibold text-green-900">{shortArName(garAgendamentoLocalNome)}</p>
                 </div>
               </div>
             )}
@@ -766,9 +799,9 @@ function GarSchedulingDialog({
   isVideo: (nome: string) => boolean;
 }) {
   const stepTitle: Record<string, string> = {
-    locais: "1 — Escolha o local de atendimento",
-    data: "2 — Escolha a data e horário",
-    confirm: "3 — Confirmar agendamento",
+    locais: "Local de atendimento",
+    data: "1 — Escolha a data e horário",
+    confirm: "2 — Confirmar agendamento",
   };
   const today = new Date().toISOString().split("T")[0];
 
@@ -782,16 +815,22 @@ function GarSchedulingDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Breadcrumb de passos */}
+        {/* Breadcrumb de passos — etapa de local é selecionada automaticamente */}
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          {(["locais", "data", "confirm"] as const).map((s, i) => (
+          {(["data", "confirm"] as const).map((s, i) => (
             <span key={s} className="flex items-center gap-1">
               {i > 0 && <ChevronRight className="h-3 w-3" />}
               <span className={step === s ? "text-primary font-semibold" : ""}>
-                {i + 1}. {s === "locais" ? "Local" : s === "data" ? "Data e Hora" : "Confirmar"}
+                {i + 1}. {s === "data" ? "Data e Hora" : "Confirmar"}
               </span>
             </span>
           ))}
+        </div>
+
+        {/* Aviso de videoconferência */}
+        <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-4 py-2.5 text-sm text-blue-800">
+          <Video className="h-4 w-4 shrink-0 text-blue-600" />
+          <span>Todo atendimento é realizado por <strong>videoconferência</strong>. Não é necessário comparecer presencialmente.</span>
         </div>
 
           {/* PASSO 1 — Escolher local */}
@@ -867,23 +906,22 @@ function GarSchedulingDialog({
             </div>
           )}
 
-          {/* PASSO 2 — Escolher data e horário */}
+          {/* PASSO 1 — Escolher data e horário (AR selecionada automaticamente) */}
           {step === "data" && (
             <div className="space-y-3">
+              {!localSelecionado && loadingLocais && (
+                <div className="flex items-center justify-center py-4 text-muted-foreground gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Identificando a AR responsável…</span>
+                </div>
+              )}
               {localSelecionado && (
-                <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${localSelecionado.isVideo ? "bg-blue-50 text-blue-800" : "bg-muted"}`}>
-                  {localSelecionado.isVideo
-                    ? <Video className="h-4 w-4 shrink-0" />
-                    : <MapPin className="h-4 w-4 shrink-0" />}
+                <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm bg-blue-50 text-blue-800 border border-blue-200">
+                  <Video className="h-4 w-4 shrink-0 text-blue-600" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{localSelecionado.NomeLocalAgendamento}</p>
-                    {localSelecionado.NomeCidadeLocalAgendamento && (
-                      <p className="text-xs opacity-70">{localSelecionado.NomeCidadeLocalAgendamento} — {localSelecionado.UF}</p>
-                    )}
+                    <p className="text-xs text-blue-600 font-medium">AR responsável</p>
+                    <p className="font-semibold truncate">{shortArName(localSelecionado.NomeLocalAgendamento)}</p>
                   </div>
-                  <Button variant="ghost" size="sm" className="shrink-0 text-xs" onClick={() => setStep("locais")}>
-                    Trocar
-                  </Button>
                 </div>
               )}
 
@@ -931,23 +969,15 @@ function GarSchedulingDialog({
             </div>
           )}
 
-          {/* PASSO 3 — Confirmar */}
+          {/* PASSO 2 — Confirmar */}
           {step === "confirm" && localSelecionado && dataSelecionada && horarioSelecionado && (
             <div className="space-y-4">
               <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
                 <div className="flex items-start gap-3">
-                  {localSelecionado.isVideo
-                    ? <Video className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                    : <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />}
+                  <Video className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Local</p>
-                    <p className="font-semibold">{localSelecionado.NomeLocalAgendamento}</p>
-                    {localSelecionado.NomeCidadeLocalAgendamento && (
-                      <p className="text-sm text-muted-foreground">{localSelecionado.NomeCidadeLocalAgendamento} — {localSelecionado.UF}</p>
-                    )}
-                    {localSelecionado.Endereco && !localSelecionado.isVideo && (
-                      <p className="text-sm text-muted-foreground">{localSelecionado.Endereco}</p>
-                    )}
+                    <p className="text-xs text-muted-foreground">AR responsável</p>
+                    <p className="font-semibold">{shortArName(localSelecionado.NomeLocalAgendamento)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -962,20 +992,17 @@ function GarSchedulingDialog({
                   </div>
                 </div>
               </div>
-              <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-                <strong>Importante:</strong> apresente documento de identificação original (RG ou CNH). Compareça com 10 minutos de antecedência.
+              <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+                <strong>Videoconferência:</strong> após confirmar, você receberá o link de acesso por e-mail e WhatsApp.
               </div>
-              <p className="text-sm text-muted-foreground">
-                Após confirmar, um atendente entrará em contato pelo número cadastrado no sistema para iniciar o atendimento.
-              </p>
             </div>
           )}
 
         <DialogFooter className="gap-2">
-          {step !== "locais" && (
+          {step === "confirm" && (
             <Button
               variant="outline"
-              onClick={() => setStep(step === "confirm" ? "data" : "locais")}
+              onClick={() => setStep("data")}
               disabled={isPending}
             >
               Voltar

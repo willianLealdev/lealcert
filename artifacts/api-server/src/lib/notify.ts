@@ -168,6 +168,13 @@ export async function notifyOrderStatus(opts: {
   }
 }
 
+function shortArName(nome: string): string {
+  const parts = nome.split(" - ");
+  const base = (parts.length > 1 ? parts[parts.length - 1] : parts[0]).trim();
+  const firstWord = base.split(/\s+/)[0] ?? base;
+  return `AR ${firstWord.charAt(0).toUpperCase()}${firstWord.slice(1).toLowerCase()}`;
+}
+
 export async function notifyScheduling(opts: {
   to?: string | null;
   phone?: string | null;
@@ -199,9 +206,9 @@ export async function notifyScheduling(opts: {
       `Seu atendimento foi agendado com sucesso!\n\n` +
       `🔢 Pedido: *#${opts.orderNumber}*\n` +
       `🔑 Protocolo: *${opts.protocolo}*\n` +
-      `📍 Local: ${opts.localNome}\n` +
+      `🏢 AR responsável: *${shortArName(opts.localNome)}*\n` +
       `⏰ Data e Hora: *${opts.dataHora}*\n\n` +
-      `⚠️ Importante: apresente um documento de identificação original (RG ou CNH) no momento do atendimento. Compareça com 10 minutos de antecedência.\n\n` +
+      `📹 *Atendimento por videoconferência.* O link de acesso será enviado por e-mail e WhatsApp antes do horário agendado.\n\n` +
       `Qualquer dúvida, estamos à disposição. 😊`;
     sendWhatsApp(evo, opts.phone, msg).catch((err: unknown) =>
       logger.error({ err }, "Erro ao enviar WhatsApp de agendamento"),
@@ -212,7 +219,7 @@ export async function notifyScheduling(opts: {
     const responsibleMsg =
       `*LealCert — Agendamento confirmado* 📅\n\n` +
       `O atendimento de *${opts.customerName}* (Pedido #${opts.orderNumber}) foi agendado.\n\n` +
-      `📍 Local: ${opts.localNome}\n` +
+      `🏢 AR responsável: *${shortArName(opts.localNome)}*\n` +
       `⏰ Data e Hora: *${opts.dataHora}*\n\n` +
       `Acesse o painel para mais detalhes.`;
     sendWhatsApp(evo, opts.responsiblePhone, responsibleMsg).catch((err: unknown) =>

@@ -14,6 +14,15 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "22/08/2026",
+    version: "1.65",
+    changes: [
+      { type: "melhoria", text: "Agendamento: etapa de seleção de local removida — a AR é selecionada automaticamente pelo sistema." },
+      { type: "melhoria", text: "Modal e card de agendamento exibem aviso explícito de videoconferência e removem mensagem de presença física." },
+      { type: "melhoria", text: "Label 'Local' substituído por 'AR responsável' com nome resumido (ex: AR Juntos) em todos os pontos: modal, card pós-agendamento, e-mail e WhatsApp." },
+    ],
+  },
+  {
     date: "21/08/2026",
     version: "1.64",
     changes: [

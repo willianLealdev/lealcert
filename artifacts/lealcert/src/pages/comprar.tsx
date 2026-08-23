@@ -19,6 +19,12 @@ import {
 } from "lucide-react";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
+function shortArName(nome: string): string {
+  const parts = nome.split(" - ");
+  const base = (parts.length > 1 ? parts[parts.length - 1] : parts[0]).trim();
+  const firstWord = base.split(/\s+/)[0] ?? base;
+  return `AR ${firstWord.charAt(0).toUpperCase()}${firstWord.slice(1).toLowerCase()}`;
+}
 function maskCpf(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 3) return d;
@@ -1089,7 +1095,12 @@ export default function ComprarPage() {
     setAgendaInnerStep("locais");
     setSelLocal(null); setAgendaDate(""); setHorarios([]); setSelHorario(null);
     fetch(`/api/public/checkout/slots/${pay.orderId}`, { credentials: "include" })
-      .then(r => r.json()).then(d => setLocais(d.locais ?? []))
+      .then(r => r.json()).then(d => {
+        const ls: typeof locais = d.locais ?? [];
+        setLocais(ls);
+        // Auto-select first location and skip the local-selection step
+        if (ls.length > 0) { setSelLocal(ls[0]); setAgendaInnerStep("data"); }
+      })
       .catch(() => setLocais([])).finally(() => setLocaisLoading(false));
   }, [step, pay.orderId]);
 
@@ -2427,13 +2438,13 @@ export default function ComprarPage() {
                               <Calendar className="h-5 w-5 text-primary" />
                               Agendar Atendimento
                             </CardTitle>
-                            {/* breadcrumb */}
+                            {/* breadcrumb — etapa de local é selecionada automaticamente */}
                             <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1">
-                              {(["locais", "data", "confirm"] as const).map((s, i) => (
+                              {(["data", "confirm"] as const).map((s, i) => (
                                 <span key={s} className="flex items-center gap-1">
                                   {i > 0 && <ChevronRight className="h-3 w-3" />}
                                   <span className={agendaInnerStep === s ? "text-primary font-semibold" : ""}>
-                                    {i + 1}. {s === "locais" ? "Local" : s === "data" ? "Data e Hora" : "Confirmar"}
+                                    {i + 1}. {s === "data" ? "Data e Hora" : "Confirmar"}
                                   </span>
                                 </span>
                               ))}
@@ -2441,73 +2452,28 @@ export default function ComprarPage() {
                           </CardHeader>
                           <CardContent className="space-y-4">
 
-                            {/* PASSO 1 — Locais */}
+                            {/* Aviso de videoconferência */}
+                            <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-4 py-2.5 text-sm text-blue-800">
+                              <Video className="h-4 w-4 shrink-0 text-blue-600" />
+                              <span>Todo atendimento é realizado por <strong>videoconferência</strong>. Não é necessário comparecer presencialmente.</span>
+                            </div>
+
+                            {/* PASSO 1 — Locais (etapa oculta, auto-selecionada) */}
                             {agendaInnerStep === "locais" && (
-                              locaisLoading ? (
-                                <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
-                                  <Loader2 className="h-5 w-5 animate-spin" />Buscando locais disponíveis...
-                                </div>
-                              ) : (
-                                <div className="space-y-3">
-                                  <div className="flex gap-2 flex-wrap">
-                                    <Select value={ufFiltro || "__all__"} onValueChange={v => setUfFiltro(v === "__all__" ? "" : v)}>
-                                      <SelectTrigger className="w-28"><SelectValue placeholder="UF" /></SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="__all__">Todos</SelectItem>
-                                        {ufsDisponiveis.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
-                                      </SelectContent>
-                                    </Select>
-                                    <Input placeholder="Filtrar por cidade..." value={municipioFiltro} onChange={e => setMunicipioFiltro(e.target.value)} className="flex-1 min-w-40" />
-                                  </div>
-                                  {locaisFiltrados.length === 0 ? (
-                                    <div className="text-center py-10 text-muted-foreground text-sm">
-                                      Nenhum local encontrado com esse filtro.
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                                      {locaisFiltrados.map(local => {
-                                        const video = isVideoLocal(local.NomeLocalAgendamento);
-                                        return (
-                                          <button key={local.HashLocal} type="button"
-                                            className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary ${video ? "border-blue-200 bg-blue-50 hover:bg-blue-100" : "bg-background hover:bg-muted"}`}
-                                            onClick={() => { setSelLocal(local); setAgendaDate(""); setHorarios([]); setSelHorario(null); setAgendaInnerStep("data"); }}>
-                                            <div className="flex items-start gap-3">
-                                              <div className={`mt-0.5 rounded-full p-1.5 ${video ? "bg-blue-100 text-blue-700" : "bg-muted text-muted-foreground"}`}>
-                                                {video ? <Video className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
-                                              </div>
-                                              <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                  <p className="text-sm font-semibold">{local.NomeLocalAgendamento}</p>
-                                                  {video && <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">Videoconferência</Badge>}
-                                                </div>
-                                                {(local.NomeCidadeLocalAgendamento || local.UF) && (
-                                                  <p className="text-xs text-muted-foreground mt-0.5">{[local.NomeCidadeLocalAgendamento, local.UF].filter(Boolean).join(" — ")}</p>
-                                                )}
-                                                {local.Endereco && !video && (
-                                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{local.Endereco}</p>
-                                                )}
-                                              </div>
-                                              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                                            </div>
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              )
+                              <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
+                                <Loader2 className="h-5 w-5 animate-spin" />Identificando a AR responsável…
+                              </div>
                             )}
 
-                            {/* PASSO 2 — Data e Horário */}
+                            {/* PASSO 1 — Data e Horário */}
                             {agendaInnerStep === "data" && selLocal && (
                               <div className="space-y-3">
-                                <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${isVideoLocal(selLocal.NomeLocalAgendamento) ? "bg-blue-50 text-blue-800" : "bg-muted"}`}>
-                                  {isVideoLocal(selLocal.NomeLocalAgendamento) ? <Video className="h-4 w-4 shrink-0" /> : <MapPin className="h-4 w-4 shrink-0" />}
+                                <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm bg-blue-50 text-blue-800 border border-blue-200">
+                                  <Video className="h-4 w-4 shrink-0 text-blue-600" />
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-semibold truncate">{selLocal.NomeLocalAgendamento}</p>
-                                    {selLocal.NomeCidadeLocalAgendamento && <p className="text-xs opacity-70">{selLocal.NomeCidadeLocalAgendamento} — {selLocal.UF}</p>}
+                                    <p className="text-xs text-blue-600 font-medium">AR responsável</p>
+                                    <p className="font-semibold truncate">{shortArName(selLocal.NomeLocalAgendamento)}</p>
                                   </div>
-                                  <Button variant="ghost" size="sm" className="shrink-0 text-xs" onClick={() => setAgendaInnerStep("locais")}>Trocar</Button>
                                 </div>
                                 <div className="flex items-center gap-3">
                                   <Label className="text-sm shrink-0 font-medium">Data</Label>
@@ -2538,17 +2504,15 @@ export default function ComprarPage() {
                               </div>
                             )}
 
-                            {/* PASSO 3 — Confirmar */}
+                            {/* PASSO 2 — Confirmar */}
                             {agendaInnerStep === "confirm" && selLocal && agendaDate && selHorario && (
                               <div className="space-y-4">
                                 <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
                                   <div className="flex items-start gap-3">
-                                    {isVideoLocal(selLocal.NomeLocalAgendamento) ? <Video className="h-5 w-5 text-primary mt-0.5 shrink-0" /> : <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />}
+                                    <Video className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                                     <div>
-                                      <p className="text-xs text-muted-foreground">Local</p>
-                                      <p className="font-semibold">{selLocal.NomeLocalAgendamento}</p>
-                                      {selLocal.NomeCidadeLocalAgendamento && <p className="text-sm text-muted-foreground">{selLocal.NomeCidadeLocalAgendamento} — {selLocal.UF}</p>}
-                                      {selLocal.Endereco && !isVideoLocal(selLocal.NomeLocalAgendamento) && <p className="text-sm text-muted-foreground">{selLocal.Endereco}</p>}
+                                      <p className="text-xs text-muted-foreground">AR responsável</p>
+                                      <p className="font-semibold">{shortArName(selLocal.NomeLocalAgendamento)}</p>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-3">
@@ -2562,8 +2526,8 @@ export default function ComprarPage() {
                                     </div>
                                   </div>
                                 </div>
-                                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-                                  <strong>Importante:</strong> apresente documento de identificação original (RG ou CNH). Compareça com 10 minutos de antecedência.
+                                <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+                                  <strong>Videoconferência:</strong> após confirmar, você receberá o link de acesso por e-mail e WhatsApp.
                                 </div>
                               </div>
                             )}
@@ -2572,8 +2536,8 @@ export default function ComprarPage() {
 
                         {/* Botões de ação */}
                         <div className="flex gap-2">
-                          {agendaInnerStep !== "locais" && (
-                            <Button variant="outline" className="flex-1" onClick={() => setAgendaInnerStep(agendaInnerStep === "confirm" ? "data" : "locais")}>
+                          {agendaInnerStep === "confirm" && (
+                            <Button variant="outline" className="flex-1" onClick={() => setAgendaInnerStep("data")}>
                               Voltar
                             </Button>
                           )}

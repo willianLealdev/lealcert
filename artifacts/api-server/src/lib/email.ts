@@ -204,6 +204,13 @@ export async function sendOrderStatusEmail(opts: {
   logger.info({ to: opts.to, orderNumber: opts.orderNumber, status: opts.status }, "Order status email sent");
 }
 
+function shortArName(nome: string): string {
+  const parts = nome.split(" - ");
+  const base = (parts.length > 1 ? parts[parts.length - 1] : parts[0]).trim();
+  const firstWord = base.split(/\s+/)[0] ?? base;
+  return `AR ${firstWord.charAt(0).toUpperCase()}${firstWord.slice(1).toLowerCase()}`;
+}
+
 export async function sendSchedulingEmail(opts: {
   to: string;
   customerName: string;
@@ -224,12 +231,12 @@ export async function sendSchedulingEmail(opts: {
         <table style="width:100%;border-collapse:collapse;font-size:14px;">
           <tr><td style="padding:6px 0;color:#64748b;width:40%;">Pedido</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">#${esc(opts.orderNumber)}</td></tr>
           <tr><td style="padding:6px 0;color:#64748b;">Protocolo</td><td style="padding:6px 0;font-weight:700;color:#2563eb;">${esc(opts.protocolo)}</td></tr>
-          <tr><td style="padding:6px 0;color:#64748b;">Local</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">${esc(opts.localNome)}</td></tr>
+          <tr><td style="padding:6px 0;color:#64748b;">AR responsável</td><td style="padding:6px 0;font-weight:600;color:#0f172a;">${esc(shortArName(opts.localNome))}</td></tr>
           <tr><td style="padding:6px 0;color:#64748b;">Data e hora</td><td style="padding:6px 0;font-weight:700;color:#0f172a;">${esc(opts.dataHora)}</td></tr>
         </table>
       </div>
-      <div style="padding:14px;background:#fef3c7;border-radius:8px;font-size:13px;color:#92400e;margin-bottom:16px;">
-        ⚠️ <strong>Importante:</strong> apresente seu documento de identificação original (RG ou CNH) no momento do atendimento. Compareça com 10 minutos de antecedência.
+      <div style="padding:14px;background:#eff6ff;border-radius:8px;font-size:13px;color:#1e40af;margin-bottom:16px;">
+        📹 <strong>Atendimento por videoconferência:</strong> o link de acesso será enviado por e-mail e WhatsApp antes do horário agendado.
       </div>
       <p style="font-size:13px;color:#475569;margin:0;">
         Para reagendar ou verificar seu pedido, acesse
@@ -237,7 +244,7 @@ export async function sendSchedulingEmail(opts: {
       </p>
     </div>
   `, cfg.appName, cfg.logoUrl);
-  const text = `Agendamento confirmado!\n\nOlá, ${opts.customerName}!\n\nPedido: #${opts.orderNumber}\nProtocolo: ${opts.protocolo}\nLocal: ${opts.localNome}\nData e hora: ${opts.dataHora}\n\nApresente documento de identificação original.\n\n${cfg.appName} — Certificados Digitais`;
+  const text = `Agendamento confirmado!\n\nOlá, ${opts.customerName}!\n\nPedido: #${opts.orderNumber}\nProtocolo: ${opts.protocolo}\nAR responsável: ${shortArName(opts.localNome)}\nData e hora: ${opts.dataHora}\n\nAtendimento por videoconferência. O link de acesso será enviado antes do horário agendado.\n\n${cfg.appName} — Certificados Digitais`;
 
   const transporter = await createTransporter(cfg);
   if (!transporter) {
