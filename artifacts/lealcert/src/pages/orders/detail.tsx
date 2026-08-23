@@ -2373,7 +2373,7 @@ export default function OrderDetail() {
           )}
 
           {/* ── Card de emissão Fast GAR ─────────────────────────────────── */}
-          {isGarFast && (statusOk || order.status === "aguardando_validacao") && order.status !== "cancelled" && (
+          {isGarFast && !!garProtocolo && (statusOk || order.status === "aguardando_validacao") && order.status !== "cancelled" && (
             <Card className="border-emerald-200 bg-emerald-50/50">
               <CardContent className="pt-5 pb-4 space-y-4">
                 <div className="flex items-center gap-3">
@@ -2398,19 +2398,12 @@ export default function OrderDetail() {
                   </div>
                 </div>
 
-                {garHopeUploadUrl ? (
-                  <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer" className="block">
-                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
-                      <ExternalLink className="h-4 w-4" />
-                      Emitir Certificado
-                    </Button>
-                  </a>
-                ) : (
-                  <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
-                    <Loader2 className="h-4 w-4 text-blue-600 animate-spin shrink-0" />
-                    <p className="text-sm text-blue-800">Aguardando link de emissão — será gerado automaticamente após confirmação do pagamento.</p>
-                  </div>
-                )}
+                <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer" className="block">
+                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    Emitir Certificado
+                  </Button>
+                </a>
               </CardContent>
             </Card>
           )}
