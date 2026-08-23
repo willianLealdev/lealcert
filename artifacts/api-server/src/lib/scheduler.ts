@@ -1,4 +1,4 @@
-import { eq, lte, and, isNotNull, notInArray, gte, lt } from "drizzle-orm";
+import { eq, lte, and, isNotNull, notInArray, gte, lt, inArray, ne, isNull, or } from "drizzle-orm";
 import { db, marketingCampaignsTable, ordersTable, settingsTable, certificatesTable, usersTable, certificateRenewalsTable, type InsertOrder } from "@workspace/db";
 import { logger } from "./logger";
 import { dispatchCampaign } from "../routes/marketing";
@@ -415,12 +415,15 @@ async function sendDailySalesReportJob() {
     const dayStart = new Date(Date.UTC(yesterday.getUTCFullYear(), yesterday.getUTCMonth(), yesterday.getUTCDate(), 3, 0, 0)); // 00:00 BRT = 03:00 UTC
     const dayEnd   = new Date(Date.UTC(yesterday.getUTCFullYear(), yesterday.getUTCMonth(), yesterday.getUTCDate() + 1, 3, 0, 0));
 
+    const PAID_STATUSES = ["paid", "protocol_assigned", "aguardando_validacao", "emitido", "completed"] as const;
     const rows = await db
       .select({ total: ordersTable.total, certName: certificatesTable.name })
       .from(ordersTable)
       .leftJoin(certificatesTable, eq(ordersTable.certificateId, certificatesTable.id))
       .where(and(
-        eq(ordersTable.status, "paid"),
+        inArray(ordersTable.status, [...PAID_STATUSES]),
+        // Excluir crédito de indicação (resgate de saldo, não receita financeira)
+        or(isNull(ordersTable.paymentMethod), ne(ordersTable.paymentMethod, "credito_indicacao")),
         gte(ordersTable.createdAt, dayStart),
         lt(ordersTable.createdAt, dayEnd),
       ));
