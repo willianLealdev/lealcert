@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "22/08/2026",
+    version: "1.66",
+    changes: [
+      { type: "melhoria", text: "Link Hope bruto substituído por botão 'Reenviar documentos' no painel admin e no card de agendamento do cliente." },
+    ],
+  },
+  {
+    date: "22/08/2026",
     version: "1.65",
     changes: [
       { type: "melhoria", text: "Agendamento: etapa de seleção de local removida — a AR é selecionada automaticamente pelo sistema." },

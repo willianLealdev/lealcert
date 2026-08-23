@@ -644,6 +644,14 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
           <p className="text-xs text-green-700">
             Um e-mail de confirmação foi enviado com os detalhes do atendimento.
           </p>
+          {garHopeUploadUrl && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground gap-1.5 -mt-1 mb-1" asChild>
+              <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer">
+                <FileText className="h-3.5 w-3.5" />
+                Reenviar documentos
+              </a>
+            </Button>
+          )}
           {!orderCompleted && <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm" className="border-green-400 text-green-800 hover:bg-green-100" onClick={handleOpenModal}>
               <Calendar className="h-4 w-4 mr-2" />
@@ -716,16 +724,22 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-blue-800">
-          Seu protocolo foi emitido! Agora é só escolher o local e horário mais convenientes para você.
+          Seu protocolo foi emitido! Escolha a data e horário para o seu atendimento por videoconferência.
         </p>
-        <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-100 px-3 py-2 rounded-md">
-          <Calendar className="h-4 w-4 shrink-0" />
-          <span>Escolha o local e horário de atendimento mais conveniente para você.</span>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleOpenModal} className="sm:w-auto">
+            <Calendar className="h-4 w-4 mr-2" />
+            Escolher data e horário
+          </Button>
+          {garHopeUploadUrl && (
+            <Button variant="outline" size="default" className="border-blue-400 text-blue-800 hover:bg-blue-100 gap-2" asChild>
+              <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer">
+                <FileText className="h-4 w-4" />
+                Reenviar documentos
+              </a>
+            </Button>
+          )}
         </div>
-        <Button onClick={handleOpenModal} className="w-full sm:w-auto">
-          <Calendar className="h-4 w-4 mr-2" />
-          Escolher data e horário
-        </Button>
       </CardContent>
 
       <GarSchedulingDialog
@@ -2323,11 +2337,17 @@ export default function OrderDetail() {
             </Card>
           )}
 
-          {/* Admin: mostrar URL Hope gerada com opção de regenerar */}
+          {/* Admin: mostrar botão de reenvio Hope + regenerar */}
           {isAdmin && garProtocolo && garHopeUploadUrl && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-md">
-              <FileText className="h-3.5 w-3.5 shrink-0" />
-              <span className="flex-1 truncate">URL Hope: <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer" className="underline text-blue-600">{garHopeUploadUrl}</a></span>
+            <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-md">
+              <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground flex-1">Documentos Hope</span>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" asChild>
+                <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3 w-3" />
+                  Reenviar documentos
+                </a>
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"
