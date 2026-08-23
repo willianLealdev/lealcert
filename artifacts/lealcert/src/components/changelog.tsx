@@ -15,15 +15,16 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "23/08/2026",
-    version: "1.70",
+    version: "1.72",
     changes: [
-      { type: "novo", text: "Exportar CSV no Relatório Financeiro: botão 'Exportar CSV' na aba Relatório gera planilha com vendas por método de pagamento, custo de certificados, custos adicionais rateados e lucro líquido. Arquivo nomeado relatorio-financeiro-MM-YYYY.csv com BOM UTF-8 (compatível com Excel)." },
+      { type: "fix", text: "Checkout pelo contador: sistema não cria mais usuário automático para o titular do certificado — os dados do cliente ficam apenas no pedido. Cadastro próprio segue pela página de registro." },
     ],
   },
   {
     date: "23/08/2026",
-    version: "1.70",
+    version: "1.71",
     changes: [
+      { type: "novo", text: "Exportar CSV no Relatório Financeiro: botão 'Exportar CSV' na aba Relatório gera planilha com vendas por método de pagamento, custo de certificados, custos adicionais rateados e lucro líquido. Arquivo nomeado relatorio-financeiro-MM-YYYY.csv com BOM UTF-8 (compatível com Excel)." },
       { type: "fix", text: "Menu lateral: seção 'Benefícios' oculta para clientes e vendedores — visível apenas para contadores e operadores." },
     ],
   },
