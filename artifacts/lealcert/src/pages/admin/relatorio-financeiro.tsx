@@ -230,14 +230,18 @@ export default function AdminRelatorioFinanceiro() {
   }, [from, to, toast]);
 
   const fetchConfig = useCallback(async () => {
-    const [t, f, e] = await Promise.all([
-      fetch("/api/admin/relatorio/cert-tiers", { credentials: "include" }).then((r) => r.json()),
-      fetch("/api/admin/relatorio/payment-fees", { credentials: "include" }).then((r) => r.json()),
-      fetch("/api/admin/relatorio/extra-costs", { credentials: "include" }).then((r) => r.json()),
-    ]);
-    setCertTiers(t);
-    setPaymentFees(f);
-    setExtraCosts(e);
+    try {
+      const [t, f, e] = await Promise.all([
+        fetch("/api/admin/relatorio/cert-tiers", { credentials: "include" }).then((r) => r.json()),
+        fetch("/api/admin/relatorio/payment-fees", { credentials: "include" }).then((r) => r.json()),
+        fetch("/api/admin/relatorio/extra-costs", { credentials: "include" }).then((r) => r.json()),
+      ]);
+      setCertTiers(Array.isArray(t) ? t : []);
+      setPaymentFees(Array.isArray(f) ? f : []);
+      setExtraCosts(Array.isArray(e) ? e : []);
+    } catch {
+      // silencia erros de rede — tabelas podem não existir ainda na produção
+    }
   }, []);
 
   useEffect(() => {

@@ -159,106 +159,97 @@ router.get("/admin/relatorio/resumo", requireAdmin, async (req, res) => {
 // ─── Tabela de Faixas de Certificado ────────────────────────────────────────
 
 router.get("/admin/relatorio/cert-tiers", requireAdmin, async (_req, res) => {
-  const rows = await db.select().from(reportCertTiersTable).orderBy(asc(reportCertTiersTable.minQty));
-  res.json(rows);
+  try {
+    const rows = await db.select().from(reportCertTiersTable).orderBy(asc(reportCertTiersTable.minQty));
+    res.json(rows);
+  } catch (err) { console.error("[cert-tiers GET]", err); res.status(500).json({ error: "Erro ao buscar faixas." }); }
 });
 
 router.post("/admin/relatorio/cert-tiers", requireAdmin, async (req, res) => {
-  const { minQty, maxQty, pricePerCert } = req.body;
-  if (minQty == null || pricePerCert == null) {
-    res.status(400).json({ error: "minQty e pricePerCert são obrigatórios." });
-    return;
-  }
-  const [row] = await db
-    .insert(reportCertTiersTable)
-    .values({ minQty: Number(minQty), maxQty: maxQty != null ? Number(maxQty) : null, pricePerCert: String(pricePerCert) })
-    .returning();
-  res.json(row);
+  try {
+    const { minQty, maxQty, pricePerCert } = req.body;
+    if (minQty == null || pricePerCert == null) { res.status(400).json({ error: "minQty e pricePerCert são obrigatórios." }); return; }
+    const [row] = await db.insert(reportCertTiersTable).values({ minQty: Number(minQty), maxQty: maxQty != null ? Number(maxQty) : null, pricePerCert: String(pricePerCert) }).returning();
+    res.json(row);
+  } catch (err) { console.error("[cert-tiers POST]", err); res.status(500).json({ error: "Erro ao criar faixa." }); }
 });
 
 router.put("/admin/relatorio/cert-tiers/:id", requireAdmin, async (req, res) => {
-  const id = Number(req.params.id);
-  const { minQty, maxQty, pricePerCert } = req.body;
-  const [row] = await db
-    .update(reportCertTiersTable)
-    .set({ minQty: Number(minQty), maxQty: maxQty != null ? Number(maxQty) : null, pricePerCert: String(pricePerCert) })
-    .where(eq(reportCertTiersTable.id, id))
-    .returning();
-  if (!row) { res.status(404).json({ error: "Faixa não encontrada." }); return; }
-  res.json(row);
+  try {
+    const id = Number(req.params.id);
+    const { minQty, maxQty, pricePerCert } = req.body;
+    const [row] = await db.update(reportCertTiersTable).set({ minQty: Number(minQty), maxQty: maxQty != null ? Number(maxQty) : null, pricePerCert: String(pricePerCert) }).where(eq(reportCertTiersTable.id, id)).returning();
+    if (!row) { res.status(404).json({ error: "Faixa não encontrada." }); return; }
+    res.json(row);
+  } catch (err) { console.error("[cert-tiers PUT]", err); res.status(500).json({ error: "Erro ao atualizar faixa." }); }
 });
 
 router.delete("/admin/relatorio/cert-tiers/:id", requireAdmin, async (req, res) => {
-  const id = Number(req.params.id);
-  await db.delete(reportCertTiersTable).where(eq(reportCertTiersTable.id, id));
-  res.json({ ok: true });
+  try {
+    const id = Number(req.params.id);
+    await db.delete(reportCertTiersTable).where(eq(reportCertTiersTable.id, id));
+    res.json({ ok: true });
+  } catch (err) { console.error("[cert-tiers DELETE]", err); res.status(500).json({ error: "Erro ao excluir faixa." }); }
 });
 
 // ─── Taxas de Pagamento ──────────────────────────────────────────────────────
 
 router.get("/admin/relatorio/payment-fees", requireAdmin, async (_req, res) => {
-  const rows = await db.select().from(reportPaymentFeesTable);
-  res.json(rows);
+  try {
+    const rows = await db.select().from(reportPaymentFeesTable);
+    res.json(rows);
+  } catch (err) { console.error("[payment-fees GET]", err); res.status(500).json({ error: "Erro ao buscar taxas." }); }
 });
 
-// Upsert por método
 router.put("/admin/relatorio/payment-fees/:method", requireAdmin, async (req, res) => {
-  const method = String(req.params.method);
-  const { fixedFee, percentFee } = req.body;
-
-  const existing = await db.select().from(reportPaymentFeesTable).where(eq(reportPaymentFeesTable.method, method));
-  if (existing.length > 0) {
-    const [row] = await db
-      .update(reportPaymentFeesTable)
-      .set({ fixedFee: String(fixedFee ?? "0"), percentFee: String(percentFee ?? "0") })
-      .where(eq(reportPaymentFeesTable.method, method))
-      .returning();
-    res.json(row);
-  } else {
-    const [row] = await db
-      .insert(reportPaymentFeesTable)
-      .values({ method, fixedFee: String(fixedFee ?? "0"), percentFee: String(percentFee ?? "0") })
-      .returning();
-    res.json(row);
-  }
+  try {
+    const method = String(req.params.method);
+    const { fixedFee, percentFee } = req.body;
+    const existing = await db.select().from(reportPaymentFeesTable).where(eq(reportPaymentFeesTable.method, method));
+    if (existing.length > 0) {
+      const [row] = await db.update(reportPaymentFeesTable).set({ fixedFee: String(fixedFee ?? "0"), percentFee: String(percentFee ?? "0") }).where(eq(reportPaymentFeesTable.method, method)).returning();
+      res.json(row);
+    } else {
+      const [row] = await db.insert(reportPaymentFeesTable).values({ method, fixedFee: String(fixedFee ?? "0"), percentFee: String(percentFee ?? "0") }).returning();
+      res.json(row);
+    }
+  } catch (err) { console.error("[payment-fees PUT]", err); res.status(500).json({ error: "Erro ao salvar taxa." }); }
 });
 
 // ─── Custos Adicionais ───────────────────────────────────────────────────────
 
 router.get("/admin/relatorio/extra-costs", requireAdmin, async (_req, res) => {
-  const rows = await db.select().from(reportExtraCostsTable).orderBy(asc(reportExtraCostsTable.createdAt));
-  res.json(rows);
+  try {
+    const rows = await db.select().from(reportExtraCostsTable).orderBy(asc(reportExtraCostsTable.createdAt));
+    res.json(rows);
+  } catch (err) { console.error("[extra-costs GET]", err); res.status(500).json({ error: "Erro ao buscar custos." }); }
 });
 
 router.post("/admin/relatorio/extra-costs", requireAdmin, async (req, res) => {
-  const { name, amount, period, active } = req.body;
-  if (!name || amount == null || !period) {
-    res.status(400).json({ error: "name, amount e period são obrigatórios." });
-    return;
-  }
-  const [row] = await db
-    .insert(reportExtraCostsTable)
-    .values({ name, amount: String(amount), period, active: active !== false })
-    .returning();
-  res.json(row);
+  try {
+    const { name, amount, period, active } = req.body;
+    if (!name || amount == null || !period) { res.status(400).json({ error: "name, amount e period são obrigatórios." }); return; }
+    const [row] = await db.insert(reportExtraCostsTable).values({ name, amount: String(amount), period, active: active !== false }).returning();
+    res.json(row);
+  } catch (err) { console.error("[extra-costs POST]", err); res.status(500).json({ error: "Erro ao criar custo." }); }
 });
 
 router.put("/admin/relatorio/extra-costs/:id", requireAdmin, async (req, res) => {
-  const id = Number(req.params.id);
-  const { name, amount, period, active } = req.body;
-  const [row] = await db
-    .update(reportExtraCostsTable)
-    .set({ name, amount: String(amount), period, active: !!active })
-    .where(eq(reportExtraCostsTable.id, id))
-    .returning();
-  if (!row) { res.status(404).json({ error: "Custo não encontrado." }); return; }
-  res.json(row);
+  try {
+    const id = Number(req.params.id);
+    const { name, amount, period, active } = req.body;
+    const [row] = await db.update(reportExtraCostsTable).set({ name, amount: String(amount), period, active: !!active }).where(eq(reportExtraCostsTable.id, id)).returning();
+    if (!row) { res.status(404).json({ error: "Custo não encontrado." }); return; }
+    res.json(row);
+  } catch (err) { console.error("[extra-costs PUT]", err); res.status(500).json({ error: "Erro ao atualizar custo." }); }
 });
 
 router.delete("/admin/relatorio/extra-costs/:id", requireAdmin, async (req, res) => {
-  const id = Number(req.params.id);
-  await db.delete(reportExtraCostsTable).where(eq(reportExtraCostsTable.id, id));
-  res.json({ ok: true });
+  try {
+    const id = Number(req.params.id);
+    await db.delete(reportExtraCostsTable).where(eq(reportExtraCostsTable.id, id));
+    res.json({ ok: true });
+  } catch (err) { console.error("[extra-costs DELETE]", err); res.status(500).json({ error: "Erro ao excluir custo." }); }
 });
 
 // ─── Exportar CSV ────────────────────────────────────────────────────────────
