@@ -1467,6 +1467,7 @@ export default function OrderDetail() {
   const protocolLoadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [safewebAgendarOpen, setSafewebAgendarOpen] = useState(false);
   const [representanteOpen, setRepresentanteOpen] = useState(false);
+  const [hopeReenvioOpen, setHopeReenvioOpen] = useState(false);
 
   const prevStatusRef = useRef<string | undefined>(undefined);
   const processingParamHandled = useRef(false);
@@ -1766,7 +1767,6 @@ export default function OrderDetail() {
   if (!order) return <div className="text-center py-20 text-muted-foreground">Pedido não encontrado.</div>;
 
   const isAdmin = user?.role === "admin";
-  const [hopeReenvioOpen, setHopeReenvioOpen] = useState(false);
   const isPayable = order.status === "pending_payment" || order.status === "created";
   const orderTotal = parseFloat(String(order.total ?? 0));
   const allowedPayMethods: PayMethod[] = orderTotal >= 150 ? ["pix", "boleto", "cartao"] : orderTotal >= 90 ? ["pix", "boleto"] : ["pix"];
