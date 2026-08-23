@@ -44,7 +44,7 @@ import {
   ArrowLeft, QrCode, Loader2, FileText, Download, RefreshCw,
   ShoppingBag, CheckCircle2, Calendar, MapPin, Video, Clock, ChevronRight, Check,
   Activity, QrCode as PayIcon, Package, Shield, AlertCircle, Tag, Copy, Ban, ExternalLink,
-  AlertTriangle, CreditCard, Receipt, XCircle,
+  AlertTriangle, CreditCard, Receipt, XCircle, Zap,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -1788,6 +1788,7 @@ export default function OrderDetail() {
     safewebAgendamentoId?: string | null;
     safewebAgendamentoDataHora?: string | null;
     safewebAgendamentoLocalNome?: string | null;
+    certIssuanceType?: string | null;
   };
   const hasGar = !!orderExt.garPedido;
   const garPedido = orderExt.garPedido ?? undefined;
@@ -1808,10 +1809,13 @@ export default function OrderDetail() {
   const safewebAgendamentoDataHora = orderExt.safewebAgendamentoDataHora ?? undefined;
   const safewebAgendamentoLocalNome = orderExt.safewebAgendamentoLocalNome ?? undefined;
 
+  const certIssuanceType = orderExt.certIssuanceType ?? null;
+  const isGarFast = hasGar && certIssuanceType === "Fast";
+
   const statusOk = order.status === "protocol_assigned" || order.status === "paid" || order.status === "completed";
-  // Card de agendamento GAR: precisa de protocolo GAR
+  // Card de agendamento GAR: precisa de protocolo GAR; Fast não agenda — tem card próprio
   // Card de agendamento GAR: aguardando_validacao é o status pós-agendamento, também deve permitir reagendar/cancelar
-  const canScheduleGar = !!garProtocolo && (statusOk || order.status === "aguardando_validacao") && order.status !== "cancelled";
+  const canScheduleGar = !!garProtocolo && !isGarFast && (statusOk || order.status === "aguardando_validacao") && order.status !== "cancelled";
   // Card de agendamento Safeweb: precisa de solicitacaoId; aguardando_validacao é o status pós-agendamento, também deve permitir reagendar
   const canScheduleSafeweb = !!safewebSolicitacaoId && (statusOk || order.status === "aguardando_validacao") && order.status !== "cancelled";
 
@@ -2366,6 +2370,49 @@ export default function OrderDetail() {
                 </div>
               </DialogContent>
             </Dialog>
+          )}
+
+          {/* ── Card de emissão Fast GAR ─────────────────────────────────── */}
+          {isGarFast && (statusOk || order.status === "aguardando_validacao") && order.status !== "cancelled" && (
+            <Card className="border-emerald-200 bg-emerald-50/50">
+              <CardContent className="pt-5 pb-4 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-emerald-100 p-2.5 shrink-0">
+                    <Zap className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-emerald-900">Emissão Online — Certificado Fast</p>
+                    <p className="text-xs text-emerald-700">Emita seu certificado digital diretamente pelo portal da autoridade certificadora.</p>
+                  </div>
+                </div>
+
+                {/* Alerta de requisitos */}
+                <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-800 space-y-1">
+                    <p className="font-semibold">Antes de clicar em Emitir, certifique-se:</p>
+                    <ul className="list-disc list-inside space-y-0.5 text-xs leading-relaxed">
+                      <li>O certificado atual está <strong>conectado (plugado) no computador</strong> onde será feita a emissão</li>
+                      <li>O certificado atual ainda está <strong>dentro do prazo de validade</strong></li>
+                    </ul>
+                  </div>
+                </div>
+
+                {garHopeUploadUrl ? (
+                  <a href={garHopeUploadUrl} target="_blank" rel="noopener noreferrer" className="block">
+                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      Emitir Certificado
+                    </Button>
+                  </a>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                    <Loader2 className="h-4 w-4 text-blue-600 animate-spin shrink-0" />
+                    <p className="text-sm text-blue-800">Aguardando link de emissão — será gerado automaticamente após confirmação do pagamento.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* Card de agendamento GAR */}

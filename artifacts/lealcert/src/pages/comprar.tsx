@@ -89,6 +89,7 @@ type PayMethod = "pix" | "boleto" | "cartao" | "cortesia" | "credito_indicacao";
 interface Certificate {
   id: number; name: string; product?: string | null; model?: string | null;
   validityMonths: number; price: number; priceContador?: number | null;
+  issuanceType?: string | null;
 }
 interface LookupResult {
   found: boolean; name?: string; authenticated?: boolean; userId?: number;
@@ -299,6 +300,7 @@ export default function ComprarPage() {
   const [step, setStep] = useState<Step>("lookup");
   const [showTerms, setShowTerms] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [fastAlertOpen, setFastAlertOpen] = useState(false);
 
   // Sessão ativa — pula o lookup se já autenticado
   const { data: meData, isLoading: meLoading } = useGetMe();
@@ -1317,7 +1319,7 @@ export default function ComprarPage() {
                           <ShieldCheck className="h-4 w-4 mr-2" />Aceitar Termos
                         </Button>
                       ) : (
-                        <Button className="flex-1 h-11" onClick={handleBioSubmit} disabled={bio.loading}>
+                        <Button className="flex-1 h-11" onClick={cert?.issuanceType === "Fast" ? () => setFastAlertOpen(true) : handleBioSubmit} disabled={bio.loading}>
                           {bio.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-2" />}
                           {bio.loading ? "Validando..." : "Validar e Continuar"}
                         </Button>
@@ -1590,7 +1592,7 @@ export default function ComprarPage() {
                             <ShieldCheck className="h-4 w-4 mr-2" />Aceitar Termos
                           </Button>
                         ) : (
-                          <Button className="flex-1 h-11" onClick={handleBioSubmit} disabled={bio.loading}>
+                          <Button className="flex-1 h-11" onClick={cert?.issuanceType === "Fast" ? () => setFastAlertOpen(true) : handleBioSubmit} disabled={bio.loading}>
                             {bio.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-2" />}
                             {bio.loading ? "Validando..." : "Validar e Continuar"}
                           </Button>
@@ -2698,6 +2700,40 @@ export default function ComprarPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Modal alerta — Certificado Fast */}
+      <Dialog open={fastAlertOpen} onOpenChange={setFastAlertOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Atenção — Certificado Fast
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">Para emitir um certificado Fast, é necessário que:</p>
+            <ul className="space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 h-4 w-4 rounded-full bg-amber-100 text-amber-700 text-[10px] flex items-center justify-center font-bold shrink-0">1</span>
+                <span>O <strong>certificado digital atual</strong> esteja <strong>conectado (plugado) no computador</strong> onde a emissão será realizada.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 h-4 w-4 rounded-full bg-amber-100 text-amber-700 text-[10px] flex items-center justify-center font-bold shrink-0">2</span>
+                <span>O certificado atual ainda esteja <strong>dentro do prazo de validade</strong>.</span>
+              </li>
+            </ul>
+            <p className="text-xs text-muted-foreground bg-muted/60 rounded-lg px-3 py-2">
+              Caso o certificado esteja vencido ou não esteja plugado, a emissão não poderá ser concluída.
+            </p>
+          </div>
+          <div className="flex gap-3 pt-1">
+            <Button variant="outline" className="flex-1" onClick={() => setFastAlertOpen(false)}>Voltar</Button>
+            <Button className="flex-1" onClick={() => { setFastAlertOpen(false); handleBioSubmit(); }}>
+              <CheckCircle className="h-4 w-4 mr-2" />Entendi, prosseguir
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Termos */}
       <Dialog open={showTerms} onOpenChange={setShowTerms}>

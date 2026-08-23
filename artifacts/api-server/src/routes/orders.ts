@@ -64,6 +64,7 @@ function orderRow(
   userName?: string | null,
   certName?: string | null,
   operatorName?: string | null,
+  certIssuanceType?: string | null,
 ) {
   return {
     id: o.id,
@@ -142,6 +143,7 @@ function orderRow(
     safewebAgendamentoLocalNome: o.safewebAgendamentoLocalNome,
     paymentMethod: o.paymentMethod ?? null,
     referralCreditUsed: parseFloat(o.referralCreditUsed ?? "0"),
+    certIssuanceType: certIssuanceType ?? null,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
   };
@@ -309,6 +311,7 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
       order: ordersTable,
       userName: usersTable.name,
       certName: certificatesTable.name,
+      certIssuanceType: certificatesTable.issuanceType,
       operatorName: operatorUser.name,
     })
     .from(ordersTable)
@@ -340,7 +343,7 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
     );
   }
 
-  res.json(filtered.map(r => orderRow(r.order, r.userName, r.certName, r.operatorName)));
+  res.json(filtered.map(r => orderRow(r.order, r.userName, r.certName, r.operatorName, r.certIssuanceType)));
 });
 
 router.post("/orders", requireAuth, async (req, res): Promise<void> => {
@@ -485,7 +488,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     }).catch((err: unknown) => logger.error({ err }, "Erro ao notificar criação de pedido"));
   }
 
-  res.status(201).json(orderRow(order, accountOwner.name, cert.name, operatorId ? buyer.name : null));
+  res.status(201).json(orderRow(order, accountOwner.name, cert.name, operatorId ? buyer.name : null, cert.issuanceType));
 });
 
 router.get("/orders/pre-fill", requireAuth, async (req, res): Promise<void> => {
@@ -578,7 +581,7 @@ router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
 
   const operatorUser = alias(usersTable, "operator_user_detail");
   const [row] = await db
-    .select({ order: ordersTable, userName: usersTable.name, certName: certificatesTable.name, operatorName: operatorUser.name })
+    .select({ order: ordersTable, userName: usersTable.name, certName: certificatesTable.name, certIssuanceType: certificatesTable.issuanceType, operatorName: operatorUser.name })
     .from(ordersTable)
     .leftJoin(usersTable, eq(ordersTable.userId, usersTable.id))
     .leftJoin(operatorUser, eq(ordersTable.operatorId, operatorUser.id))
@@ -594,7 +597,7 @@ router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(403).json({ error: "Acesso negado." });
     return;
   }
-  res.json(orderRow(row.order, row.userName, row.certName, row.operatorName));
+  res.json(orderRow(row.order, row.userName, row.certName, row.operatorName, row.certIssuanceType));
 });
 
 // ── DELETE /orders/:id — exclui pedido aguardando pagamento ──────────────────

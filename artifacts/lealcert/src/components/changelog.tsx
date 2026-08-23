@@ -14,6 +14,15 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "23/08/2026",
+    version: "1.67",
+    changes: [
+      { type: "novo", text: "Certificado Fast GAR: card de emissão online exibido automaticamente ao cliente após pagamento, com botão 'Emitir Certificado' abrindo o portal da certificadora." },
+      { type: "novo", text: "Alerta obrigatório ao selecionar produto Fast no checkout: cliente é informado sobre a necessidade do certificado atual estar plugado e dentro do prazo de validade." },
+      { type: "melhoria", text: "Pedidos Fast GAR não exibem card de agendamento — fluxo adaptado para emissão online sem videoconferência." },
+    ],
+  },
+  {
     date: "22/08/2026",
     version: "1.66",
     changes: [
