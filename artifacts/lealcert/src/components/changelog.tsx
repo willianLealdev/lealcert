@@ -15,6 +15,16 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "23/08/2026",
+    version: "1.68",
+    changes: [
+      { type: "novo", text: "Relatório Financeiro admin: balanço completo com receita bruta, custo de certificados por faixa progressiva, taxas de pagamento por método (PIX/boleto/cartão) e custos adicionais rateados por período." },
+      { type: "novo", text: "Configuração de faixas de custo de certificado: tabela progressiva editável com preço flat por faixa atingida no período." },
+      { type: "novo", text: "Configuração de taxas de pagamento: valor fixo (R$) + percentual (%) por método, editáveis." },
+      { type: "novo", text: "Configuração de custos adicionais: cadastro com recorrência diária, mensal ou anual, com ativação/desativação e rateio automático pelo período do relatório." },
+    ],
+  },
+  {
+    date: "23/08/2026",
     version: "1.67",
     changes: [
       { type: "novo", text: "Certificado Fast GAR: card de emissão online exibido automaticamente ao cliente após pagamento, com botão 'Emitir Certificado' abrindo o portal da certificadora." },

@@ -35,6 +35,7 @@ import siteVisitsRouter from "./site-visits";
 import meetingsRouter from "./meetings";
 import operatorsRouter from "./operators";
 import referralsRouter from "./referrals";
+import relatorioFinanceiroRouter from "./relatorio-financeiro";
 
 const router: IRouter = Router();
 
@@ -74,5 +75,6 @@ router.use(siteVisitsRouter);
 router.use(meetingsRouter);
 router.use(operatorsRouter);
 router.use(referralsRouter);
+router.use(relatorioFinanceiroRouter);
 
 export default router;

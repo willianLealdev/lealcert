@@ -20,6 +20,7 @@ export * from "./nfse-invoices";
 export * from "./loyalty-cartelas";
 export * from "./loyalty-slot-events";
 export * from "./referrals";
+export * from "./relatorio-financeiro";
 export * from "./vendedores";
 export * from "./discagem";
 export * from "./site-visits";
