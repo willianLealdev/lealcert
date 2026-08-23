@@ -185,9 +185,14 @@ router.get("/dashboard/admin-stats", requireAuth, async (req, res): Promise<void
   const allCerts = await db.select({ id: certificatesTable.id, name: certificatesTable.name }).from(certificatesTable);
   const certMap = new Map(allCerts.map(c => [c.id, c.name]));
 
-  // Filtra por userType para não confundir clientes com contadores
-  const contadores = allUsers.filter(u => u.userType === "contador");
-  const clientes   = allUsers.filter(u => u.userType === "cliente");
+  // Mesma lógica do painel de usuários: role tem precedência sobre userType.
+  // admin/operador/vendedor não entram em nenhuma das duas contagens.
+  const tipoUser = (u: { role: string; userType: string | null }) => {
+    if (u.role === "admin" || u.role === "operador" || u.role === "vendedor") return u.role;
+    return u.userType === "contador" ? "contador" : "cliente";
+  };
+  const contadores = allUsers.filter(u => tipoUser(u) === "contador");
+  const clientes   = allUsers.filter(u => tipoUser(u) === "cliente");
 
   // Period filter helpers
   const inPeriod = (d: Date | string) => { const dt = new Date(d); return dt >= start && dt <= end; };
