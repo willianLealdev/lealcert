@@ -24,7 +24,7 @@ const CHANGELOG: ChangelogEntry[] = [
     date: "23/08/2026",
     version: "1.70",
     changes: [
-      { type: "correcao", text: "Menu lateral: seção 'Benefícios' removida da visão de operadores — agora exibida somente para contadores." },
+      { type: "fix", text: "Menu lateral: seção 'Benefícios' oculta para clientes e vendedores — visível apenas para contadores e operadores." },
     ],
   },
   {
