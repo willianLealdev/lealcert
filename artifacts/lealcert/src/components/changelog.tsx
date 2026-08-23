@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "23/08/2026",
+    version: "1.74",
+    changes: [
+      { type: "fix", text: "Dashboard admin: contagem de Contadores e Clientes agora usa a mesma lógica do painel de usuários — operadores e vendedores não são mais incluídos na contagem de clientes." },
+    ],
+  },
+  {
+    date: "23/08/2026",
     version: "1.73",
     changes: [
       { type: "fix", text: "Pedidos via painel do contador: método de pagamento (PIX, Boleto, Cartão) agora é gravado no pedido ao iniciar o pagamento — sem isso o Relatório Financeiro mostrava 'Sem método' e não aplicava as taxas configuradas." },
