@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, isNotNull } from "drizzle-orm";
 import { db, settingsTable, ordersTable, usersTable, orderEventsTable, certificateRenewalsTable, certificatesTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
@@ -28,6 +28,7 @@ import {
   garAgendar,
   garDisponibilidadeAgenda,
   garParceiroVendas,
+  enrichGarParceiroVendasWithLocalOrders,
 } from "../lib/gestaoar";
 
 const router = Router();
@@ -788,8 +789,12 @@ router.get("/gestaoar/parceiro-vendas", requireAdmin, async (req, res): Promise<
   try {
     const allItems = await garParceiroVendas(s.garApiKey, s.garHashVendedor, dataInicial, dataFinal);
 
-    // Filtra apenas pedidos reais (Id > 0)
-    const realItems = allItems.filter(i => (i.Id ?? 0) > 0);
+    // Filtra apenas pedidos reais (Id > 0). O Id é o número do pedido GAR
+    // retornado pelo parceiroVendas; Protocolo e hashes têm outro propósito.
+    const realItems = allItems.filter(i => {
+      const id = String(i.Id ?? "").trim();
+      return /^\d+$/.test(id) && Number(id) > 0;
+    });
 
     // Filtro de parceiro: prioridade ao garHashParceiro (HashVendedor no pedido),
     // depois ao garDocumento (CNPJ da AR como CNPJCPFVendedor).
@@ -802,17 +807,15 @@ router.get("/gestaoar/parceiro-vendas", requireAdmin, async (req, res): Promise<
         ? realItems.filter(i => (i.CNPJCPFVendedor ?? "").replace(/\D/g, "") === filterCnpj)
         : realItems;
 
-    const pedidoNums = filtered.map(i => i.Protocolo).filter((v): v is string => Boolean(v));
-    const localOrders = pedidoNums.length > 0
+    // garPedido é texto no banco e pode ter espaços/zeros à esquerda.
+    // Buscamos somente linhas preenchidas e normalizamos em memória para que
+    // "46234", " 46234 " e "00046234" representem o mesmo pedido.
+    const localOrders = filtered.length > 0
       ? await db.select({ id: ordersTable.id, garPedido: ordersTable.garPedido })
           .from(ordersTable)
-          .where(inArray(ordersTable.garPedido, pedidoNums))
+          .where(isNotNull(ordersTable.garPedido))
       : [];
-    const localMap = new Map(localOrders.map(o => [o.garPedido, o.id]));
-    const enriched = filtered.map(item => ({
-      ...item,
-      localOrderId: item.Protocolo ? (localMap.get(item.Protocolo) ?? null) : null,
-    }));
+    const enriched = enrichGarParceiroVendasWithLocalOrders(filtered, localOrders);
     res.json(enriched);
   } catch (err) {
     logger.error({ err }, "GAR parceiroVendas error");

@@ -14,6 +14,13 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "25/08/2026",
+    version: "1.77",
+    changes: [
+      { type: "fix", text: "Relatório GAR: vendas agora são cruzadas pelo ID real do pedido GAR, com normalização de espaços e zeros à esquerda, em vez de usar o protocolo." },
+    ],
+  },
+  {
     date: "24/08/2026",
     version: "1.76",
     changes: [

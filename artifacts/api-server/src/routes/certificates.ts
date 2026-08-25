@@ -247,7 +247,7 @@ router.post("/certificates/import-gar", requireAdmin, async (req, res): Promise<
   }
 
   // Filtrar itens válidos com período de observação
-  const realItems = vendas.filter(v => (v.Id ?? 0) > 0 && v.HashProduto && !v.Observacao);
+  const realItems = vendas.filter(v => Number(String(v.Id ?? "").trim()) > 0 && v.HashProduto && !v.Observacao);
 
   // Extrair produtos únicos por HashProduto (ignorar produtos internos)
   const SKIP_NOMES = ["VENDA EM LOTE", "ACORDO OPERACIONAL", "VISITA VIP", "SSL INTERNACIONAL"];

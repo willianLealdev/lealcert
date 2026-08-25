@@ -1188,7 +1188,7 @@ export interface GarMunicipio {
 }
 
 export interface GarParceiroVendasItem {
-  Id?: number;
+  Id?: number | string;
   HashLancamento?: string;
   HashVendedor?: string;
   HashProduto?: string;

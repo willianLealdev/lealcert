@@ -18,9 +18,9 @@ The route `/orders/:id/agendar` was calling garAgendar with wrong parameter orde
 
 ## Calling without an order
 
-`ObterDisponibilidadeAgenda` can be called without HashVenda — only needs apiKey, dates, HashLocal (optional HashSlot). Only the final `Agendamento` call needs HashVenda (the garPedido).
+`ObterDisponibilidadeAgenda` can be called without HashVenda — only needs apiKey, dates, HashLocal (optional HashSlot). Only the final `Agendamento` call needs the GAR sale identifier stored in `garPedido`.
 
-**Why:** garPedido is the GAR HashVenda and is only created when garComprar is called (payment confirmed).
+**Why:** `garAutoComprar` stores `Produtos[0].Pedido` from `garComprar` in `garPedido`. This is the GAR order number (the `Id` returned by `parceiroVendas`); it is distinct from the issuance protocol and sale hashes.
 
 ## Return type
 

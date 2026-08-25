@@ -2013,7 +2013,7 @@ export const GetGarParceiroVendasQueryParams = zod.object({
 })
 
 export const GetGarParceiroVendasResponseItem = zod.object({
-  "Id": zod.number().optional(),
+  "Id": zod.union([zod.number(),zod.string()]).optional(),
   "HashLancamento": zod.string().optional(),
   "HashVendedor": zod.string().optional(),
   "HashProduto": zod.string().optional(),

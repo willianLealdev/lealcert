@@ -199,7 +199,7 @@ export default function AdminRelatoriosGar() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID GAR</TableHead>
+                    <TableHead title="Número do pedido GAR usado no cruzamento local">ID GAR (pedido)</TableHead>
                     <TableHead>Produto</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Pagamento</TableHead>

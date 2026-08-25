@@ -5647,7 +5647,10 @@ components:
     GarParceiroVendasItem:
       type: object
       properties:
-        Id:               { type: integer }
+        Id:
+          oneOf:
+            - { type: integer }
+            - { type: string }
         HashLancamento:   { type: string }
         HashVendedor:     { type: string }
         HashProduto:      { type: string }

@@ -518,7 +518,7 @@ export async function garExcluirAgendamento(
 const GAR_JUNTOS_BASE = "https://apiar.safeweb.com.br/Juntosapi/api/GarAPIs";
 
 export interface GarParceiroVendasItem {
-  Id?: number;
+  Id?: number | string;
   NomeAR?: string;
   HashPessoa?: string;
   HashVendedor?: string;
@@ -551,6 +551,63 @@ export interface GarParceiroVendasItem {
   NomeVendedor?: string;
   Observacao?: string;
   Status?: number;
+}
+
+/**
+ * Normaliza o número do pedido GAR para permitir a comparação entre o Id
+ * numérico retornado pelo parceiroVendas e o garPedido textual armazenado
+ * localmente. Protocolo e hashes não são identificadores de pedido e nunca
+ * entram neste cruzamento.
+ */
+export function normalizeGarPedidoIdentifier(value: unknown): string | null {
+  if (value == null) return null;
+
+  const normalized = String(value).trim();
+  if (!/^\d+$/.test(normalized)) return null;
+
+  return normalized.replace(/^0+(?=\d)/, "");
+}
+
+export function getGarParceiroVendasPedidoIdentifier(item: GarParceiroVendasItem): string | null {
+  return normalizeGarPedidoIdentifier(item.Id);
+}
+
+type LocalGarOrder = {
+  id: number;
+  garPedido: string | null;
+};
+
+/**
+ * Enriquece as vendas com o pedido local correspondente, usando somente o
+ * número do pedido GAR (parceiroVendas.Id ↔ orders.garPedido).
+ *
+ * Quando mais de um pedido local resulta no mesmo identificador normalizado,
+ * a chave é considerada ambígua e não é associada a nenhum pedido.
+ */
+export function enrichGarParceiroVendasWithLocalOrders(
+  items: GarParceiroVendasItem[],
+  localOrders: LocalGarOrder[],
+): Array<GarParceiroVendasItem & { localOrderId: number | null }> {
+  const localMap = new Map<string, number | null>();
+
+  for (const order of localOrders) {
+    const identifier = normalizeGarPedidoIdentifier(order.garPedido);
+    if (identifier == null) continue;
+
+    if (localMap.has(identifier)) {
+      localMap.set(identifier, null);
+    } else {
+      localMap.set(identifier, order.id);
+    }
+  }
+
+  return items.map(item => {
+    const identifier = getGarParceiroVendasPedidoIdentifier(item);
+    return {
+      ...item,
+      localOrderId: identifier == null ? null : (localMap.get(identifier) ?? null),
+    };
+  });
 }
 
 export async function garParceiroVendas(
