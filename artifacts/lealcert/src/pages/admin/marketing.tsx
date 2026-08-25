@@ -50,7 +50,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Megaphone, Users, Mail, MailOpen, MailX, Send, Upload, Plus, Trash2, Pencil,
   RefreshCw, Calendar, CheckCircle2, XCircle, Clock, AlertCircle,
-  ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy, MousePointerClick,
+   ChevronLeft, ChevronRight, Eye, Reply, Search, BarChart3, MessageSquare, ShieldCheck, Copy, MousePointerClick,
   AlertTriangle, RotateCcw, Sparkles, Download, PauseCircle, PlayCircle, Filter,
 } from "lucide-react";
 
@@ -135,23 +135,23 @@ export default function AdminMarketing() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="min-w-0 p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Megaphone className="h-6 w-6 text-primary" /> Marketing
           </h1>
           <p className="text-muted-foreground text-sm mt-0.5">Gestão completa de e-mail marketing</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-lg">
+        <div className="flex max-w-full items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-lg">
           <Mail className="h-3.5 w-3.5" />
-          mkt@lealcert.com.br
+          <span className="truncate">mkt@lealcert.com.br</span>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-muted p-1 rounded-xl w-fit">
+      <div className="grid grid-cols-2 gap-1 bg-muted p-1 rounded-xl w-full sm:flex sm:w-fit">
         {([
           { id: "overview", label: "Visão Geral", icon: BarChart3 },
           { id: "campanhas", label: "Campanhas", icon: Send },
@@ -163,12 +163,12 @@ export default function AdminMarketing() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`flex min-w-0 items-center justify-start gap-2 px-3 py-2.5 text-left rounded-lg text-sm font-medium transition-all sm:justify-center sm:px-4 sm:py-2 ${
               tab === t.id ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <t.icon className={`h-4 w-4 ${t.id === "bounces" && (stats?.bounced ?? 0) > 0 ? "text-orange-500" : ""}`} />
-            {t.label}
+            <span className="truncate">{t.label}</span>
             {t.id === "respostas" && (stats?.unreadReplies ?? 0) > 0 && (
               <span className="bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center ml-1">
                 {stats?.unreadReplies}
@@ -2458,7 +2458,9 @@ function RespostasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-4 min-h-[400px] lg:h-[600px]">
           {/* List */}
-          <div className="border rounded-xl overflow-y-auto bg-card">
+          <div className={`border rounded-xl overflow-y-auto bg-card max-h-[calc(100dvh-19rem)] min-h-[360px] lg:max-h-none lg:min-h-0 ${
+            selectedReply ? "hidden lg:block" : "block"
+          }`}>
             {replies.map(r => (
               <button
                 key={r.id}
@@ -2486,7 +2488,9 @@ function RespostasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
           </div>
 
           {/* Detail */}
-          <div className="border rounded-xl bg-card flex flex-col">
+          <div className={`min-w-0 border rounded-xl bg-card flex flex-col min-h-[calc(100dvh-19rem)] lg:min-h-0 ${
+            selectedReply ? "flex" : "hidden lg:flex"
+          }`}>
             {!selectedReply ? (
               <div className="flex-1 flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
@@ -2498,12 +2502,21 @@ function RespostasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
               <>
                 <div className="p-5 border-b">
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="min-w-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mb-3 -ml-2 h-8 gap-1 px-2 lg:hidden"
+                        onClick={() => setSelected(null)}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Voltar para mensagens
+                      </Button>
                       <p className="font-semibold">{selectedReply.fromName ?? selectedReply.fromEmail}</p>
-                      <p className="text-sm text-muted-foreground">{selectedReply.fromEmail}</p>
+                      <p className="text-sm text-muted-foreground truncate">{selectedReply.fromEmail}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{new Date(selectedReply.createdAt).toLocaleString("pt-BR")}</span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="hidden text-xs text-muted-foreground sm:inline">{new Date(selectedReply.createdAt).toLocaleString("pt-BR")}</span>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -2516,12 +2529,15 @@ function RespostasTab({ invalidate, toast }: { invalidate: () => void; toast: Re
                       </Button>
                     </div>
                   </div>
-                  <p className="font-medium mt-2">{selectedReply.subject ?? "(sem assunto)"}</p>
+                  <p className="font-medium mt-2 break-words">{selectedReply.subject ?? "(sem assunto)"}</p>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-5">
                   {selectedReply.bodyHtml ? (
-                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedReply.bodyHtml) }} />
+                    <div
+                      className="prose prose-sm max-w-none break-words [overflow-wrap:anywhere] [&_img]:h-auto [&_img]:max-w-full [&_table]:max-w-full"
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedReply.bodyHtml) }}
+                    />
                   ) : (
                     <pre className="text-sm whitespace-pre-wrap font-sans">{selectedReply.bodyText ?? "(sem conteúdo)"}</pre>
                   )}

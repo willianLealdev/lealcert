@@ -14,6 +14,13 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "24/08/2026",
+    version: "1.76",
+    changes: [
+      { type: "fix", text: "Marketing no celular: abas agora se organizam sem corte lateral e, ao abrir um e-mail recebido, a mensagem é exibida imediatamente com botão para voltar à lista." },
+    ],
+  },
+  {
     date: "23/08/2026",
     version: "1.75",
     changes: [
