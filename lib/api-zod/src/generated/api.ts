@@ -2044,7 +2044,8 @@ export const GetGarParceiroVendasResponseItem = zod.object({
   "TabelaVenda": zod.string().optional(),
   "Observacao": zod.string().optional(),
   "NomeAR": zod.string().optional(),
-  "localOrderId": zod.number().nullish()
+  "localOrderId": zod.number().nullish(),
+  "localOrderNumber": zod.string().nullish().describe('Número do pedido LealCert; o ID interno é usado somente para abrir o detalhe.')
 })
 export const GetGarParceiroVendasResponse = zod.array(GetGarParceiroVendasResponseItem)
 

@@ -15,6 +15,13 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "25/08/2026",
+    version: "1.78",
+    changes: [
+      { type: "fix", text: "Relatório GAR: a coluna do pedido encontrado agora mostra o número gerado no LealCert (ex.: 20260821-3570), e não mais o ID interno do banco." },
+    ],
+  },
+  {
+    date: "25/08/2026",
     version: "1.77",
     changes: [
       { type: "fix", text: "Relatório GAR: vendas agora são cruzadas pelo ID real do pedido GAR, com normalização de espaços e zeros à esquerda, em vez de usar o protocolo." },

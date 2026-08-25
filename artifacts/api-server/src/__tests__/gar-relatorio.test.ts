@@ -33,18 +33,20 @@ describe("Relatório GAR — cruzamento de pedidos", () => {
         { Id: 77777 },
       ],
       [
-        { id: 101, garPedido: " 00046234 " },
+        { id: 101, orderNumber: "20260821-3570", garPedido: " 00046234 " },
       ],
     );
 
     expect(matched.localOrderId).toBe(101);
+    expect(matched.localOrderNumber).toBe("20260821-3570");
     expect(notFound.localOrderId).toBeNull();
+    expect(notFound.localOrderNumber).toBeNull();
   });
 
   it("não associa venda sem Id usando protocolo ou hash", () => {
     const [result] = enrichGarParceiroVendasWithLocalOrders(
       [{ Protocolo: "46234", HashLancamento: "hash-46234" }],
-      [{ id: 101, garPedido: "46234" }],
+      [{ id: 101, orderNumber: "20260821-3570", garPedido: "46234" }],
     );
 
     expect(result.localOrderId).toBeNull();
@@ -54,8 +56,8 @@ describe("Relatório GAR — cruzamento de pedidos", () => {
     const [result] = enrichGarParceiroVendasWithLocalOrders(
       [{ Id: "46234" }],
       [
-        { id: 101, garPedido: "46234" },
-        { id: 202, garPedido: "00046234" },
+        { id: 101, orderNumber: "20260821-3570", garPedido: "46234" },
+        { id: 202, orderNumber: "20260822-9999", garPedido: "00046234" },
       ],
     );
 

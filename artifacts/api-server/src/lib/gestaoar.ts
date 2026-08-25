@@ -574,6 +574,7 @@ export function getGarParceiroVendasPedidoIdentifier(item: GarParceiroVendasItem
 
 type LocalGarOrder = {
   id: number;
+  orderNumber: string;
   garPedido: string | null;
 };
 
@@ -587,8 +588,8 @@ type LocalGarOrder = {
 export function enrichGarParceiroVendasWithLocalOrders(
   items: GarParceiroVendasItem[],
   localOrders: LocalGarOrder[],
-): Array<GarParceiroVendasItem & { localOrderId: number | null }> {
-  const localMap = new Map<string, number | null>();
+): Array<GarParceiroVendasItem & { localOrderId: number | null; localOrderNumber: string | null }> {
+  const localMap = new Map<string, LocalGarOrder | null>();
 
   for (const order of localOrders) {
     const identifier = normalizeGarPedidoIdentifier(order.garPedido);
@@ -597,15 +598,17 @@ export function enrichGarParceiroVendasWithLocalOrders(
     if (localMap.has(identifier)) {
       localMap.set(identifier, null);
     } else {
-      localMap.set(identifier, order.id);
+      localMap.set(identifier, order);
     }
   }
 
   return items.map(item => {
     const identifier = getGarParceiroVendasPedidoIdentifier(item);
+    const localOrder = identifier == null ? null : (localMap.get(identifier) ?? null);
     return {
       ...item,
-      localOrderId: identifier == null ? null : (localMap.get(identifier) ?? null),
+      localOrderId: localOrder?.id ?? null,
+      localOrderNumber: localOrder?.orderNumber ?? null,
     };
   });
 }

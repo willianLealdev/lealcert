@@ -811,7 +811,11 @@ router.get("/gestaoar/parceiro-vendas", requireAdmin, async (req, res): Promise<
     // Buscamos somente linhas preenchidas e normalizamos em memória para que
     // "46234", " 46234 " e "00046234" representem o mesmo pedido.
     const localOrders = filtered.length > 0
-      ? await db.select({ id: ordersTable.id, garPedido: ordersTable.garPedido })
+      ? await db.select({
+          id: ordersTable.id,
+          orderNumber: ordersTable.orderNumber,
+          garPedido: ordersTable.garPedido,
+        })
           .from(ordersTable)
           .where(isNotNull(ordersTable.garPedido))
       : [];

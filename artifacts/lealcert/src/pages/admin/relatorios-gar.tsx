@@ -207,7 +207,7 @@ export default function AdminRelatoriosGar() {
                     <TableHead className="text-right">Valor</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Data</TableHead>
-                    <TableHead>Pedido local</TableHead>
+                    <TableHead>Nº pedido LealCert</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -237,9 +237,9 @@ export default function AdminRelatoriosGar() {
                       <TableCell>
                         {item.localOrderId != null ? (
                           <Link href={`/orders/${item.localOrderId}`}>
-                            <Badge variant="outline" className="gap-1 cursor-pointer border-green-500 text-green-700 hover:bg-green-50">
+                            <Badge variant="outline" className="gap-1 cursor-pointer border-green-500 text-green-700 hover:bg-green-50 font-mono whitespace-nowrap">
                               <ExternalLink className="h-3 w-3" />
-                              #{item.localOrderId}
+                              {item.localOrderNumber ?? "Pedido encontrado"}
                             </Badge>
                           </Link>
                         ) : (

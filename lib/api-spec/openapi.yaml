@@ -5682,6 +5682,7 @@ components:
         Observacao:       { type: string }
         NomeAR:           { type: string }
         localOrderId:     { type: integer, nullable: true }
+        localOrderNumber: { type: string, nullable: true, description: "Número do pedido LealCert; o ID interno é usado somente para abrir o detalhe." }
 
     GarStatusPedido:
       type: object

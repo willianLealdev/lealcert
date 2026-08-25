@@ -39,4 +39,6 @@ export interface GarParceiroVendasItem {
   Observacao?: string;
   NomeAR?: string;
   localOrderId?: number | null;
+  /** Número do pedido LealCert; o ID interno é usado somente para abrir o detalhe. */
+  localOrderNumber?: string | null;
 }
