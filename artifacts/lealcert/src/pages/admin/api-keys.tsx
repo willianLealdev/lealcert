@@ -1,0 +1,255 @@
+import { useEffect, useState } from "react";
+import {
+  KeyRound, Plus, Copy, RotateCw, Ban, ShieldCheck, Clock, Activity, Loader2, Check,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+type AccessLevel = "read" | "write" | "full";
+type ApiKey = {
+  id: number;
+  name: string;
+  tokenPrefix: string;
+  accessLevel: AccessLevel;
+  scopes: string[];
+  allowedIps: string[];
+  rateLimitPerMinute: number;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+};
+
+const SCOPE_LABELS: Record<string, string> = {
+  users: "Clientes e contadores", orders: "Pedidos", certificates: "Certificados",
+  slots: "Agenda", support: "Suporte", dashboard: "Dashboard",
+  marketing: "Marketing por e-mail", whatsapp: "Marketing por WhatsApp",
+  discagem: "Ligações e discagem IA", renewals: "Renovações", coupons: "Cupons",
+  agents: "Agentes", nfse: "Notas fiscais", loyalty: "Fidelidade",
+  vendors: "Vendedores", meetings: "Reuniões", operators: "Operadores",
+  referrals: "Indicações", finance: "Relatório financeiro",
+};
+const ALL_SCOPES = Object.keys(SCOPE_LABELS);
+const LEVEL_LABELS: Record<AccessLevel, string> = {
+  read: "Leitura", write: "Escrita", full: "Total",
+};
+
+async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    credentials: "include",
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Não foi possível concluir a operação.");
+  return data;
+}
+
+function fmt(value: string | null): string {
+  return value ? new Date(value).toLocaleString("pt-BR") : "Nunca";
+}
+
+export default function AdminApiKeys() {
+  const { toast } = useToast();
+  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [formOpen, setFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [revealedToken, setRevealedToken] = useState("");
+  const [tokenTitle, setTokenTitle] = useState("");
+  const [name, setName] = useState("");
+  const [level, setLevel] = useState<AccessLevel>("full");
+  const [scopes, setScopes] = useState<string[]>(ALL_SCOPES);
+  const [expires, setExpires] = useState("");
+  const [allowedIps, setAllowedIps] = useState("");
+  const [rateLimit, setRateLimit] = useState("60");
+
+  const load = async () => {
+    try {
+      setKeys(await apiRequest<ApiKey[]>("/api/admin/api-keys"));
+    } catch (error) {
+      toast({ title: "Erro ao carregar chaves", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { void load(); }, []);
+
+  const resetForm = () => {
+    setName(""); setLevel("full"); setScopes(ALL_SCOPES); setExpires("");
+    setAllowedIps(""); setRateLimit("60");
+  };
+
+  const createKey = async () => {
+    setSaving(true);
+    try {
+      const created = await apiRequest<ApiKey & { token: string }>("/api/admin/api-keys", {
+        method: "POST",
+        body: JSON.stringify({
+          name, accessLevel: level, scopes,
+          expiresAt: expires ? new Date(expires).toISOString() : null,
+          allowedIps: allowedIps.split(/[\n,]/).map(v => v.trim()).filter(Boolean),
+          rateLimitPerMinute: Number(rateLimit),
+        }),
+      });
+      setFormOpen(false);
+      setRevealedToken(created.token);
+      setTokenTitle(`Chave criada: ${created.name}`);
+      resetForm();
+      await load();
+    } catch (error) {
+      toast({ title: "Erro ao criar chave", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const revoke = async (key: ApiKey) => {
+    if (!window.confirm(`Revogar a chave "${key.name}"? O acesso será interrompido imediatamente.`)) return;
+    try {
+      await apiRequest(`/api/admin/api-keys/${key.id}/revoke`, { method: "POST" });
+      toast({ title: "Chave revogada" });
+      await load();
+    } catch (error) {
+      toast({ title: "Erro ao revogar", description: (error as Error).message, variant: "destructive" });
+    }
+  };
+
+  const rotate = async (key: ApiKey) => {
+    if (!window.confirm(`Rotacionar a chave "${key.name}"? O token atual deixará de funcionar imediatamente.`)) return;
+    try {
+      const updated = await apiRequest<ApiKey & { token: string }>(`/api/admin/api-keys/${key.id}/rotate`, { method: "POST" });
+      setRevealedToken(updated.token);
+      setTokenTitle(`Nova chave: ${key.name}`);
+      await load();
+    } catch (error) {
+      toast({ title: "Erro ao rotacionar", description: (error as Error).message, variant: "destructive" });
+    }
+  };
+
+  const copy = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    toast({ title: "Copiado para a área de transferência" });
+  };
+
+  return (
+    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <KeyRound className="h-6 w-6 text-blue-600" /> Chaves de API REST
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">
+            Acesso controlado para o Hermes e outras integrações servidor a servidor.
+          </p>
+        </div>
+        <Button onClick={() => setFormOpen(true)}><Plus className="h-4 w-4 mr-2" />Nova chave</Button>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <Card><CardContent className="pt-5 flex gap-3"><ShieldCheck className="text-emerald-600" /><div><p className="font-semibold">Token protegido</p><p className="text-sm text-slate-500">O segredo é exibido uma única vez e salvo somente como hash.</p></div></CardContent></Card>
+        <Card><CardContent className="pt-5 flex gap-3"><Activity className="text-blue-600" /><div><p className="font-semibold">Acesso auditado</p><p className="text-sm text-slate-500">Método, endpoint, status, duração e IP são registrados.</p></div></CardContent></Card>
+        <Card><CardContent className="pt-5 flex gap-3"><Clock className="text-amber-600" /><div><p className="font-semibold">Controle imediato</p><p className="text-sm text-slate-500">Expiração, revogação, rotação e limite por minuto.</p></div></CardContent></Card>
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-lg">Chaves cadastradas</CardTitle></CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
+          ) : keys.length === 0 ? (
+            <div className="py-12 text-center text-slate-500">Nenhuma chave criada.</div>
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Nome / prefixo</TableHead><TableHead>Nível</TableHead>
+                <TableHead>Módulos</TableHead><TableHead>Expiração</TableHead>
+                <TableHead>Último uso</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>{keys.map(key => {
+                const expired = !!key.expiresAt && new Date(key.expiresAt) <= new Date();
+                const active = key.isActive && !key.revokedAt && !expired;
+                return <TableRow key={key.id}>
+                  <TableCell><p className="font-medium">{key.name}</p><code className="text-xs text-slate-500">{key.tokenPrefix}...</code></TableCell>
+                  <TableCell><Badge variant="outline">{LEVEL_LABELS[key.accessLevel]}</Badge></TableCell>
+                  <TableCell><span className="text-sm">{key.scopes.length} de {ALL_SCOPES.length}</span></TableCell>
+                  <TableCell className="text-xs">{fmt(key.expiresAt)}</TableCell>
+                  <TableCell className="text-xs">{key.lastUsedAt ? fmt(key.lastUsedAt) : "Ainda não usada"}</TableCell>
+                  <TableCell><Badge variant={active ? "default" : "secondary"}>{active ? "Ativa" : expired ? "Expirada" : "Revogada"}</Badge></TableCell>
+                  <TableCell className="text-right space-x-1">
+                    {active && <>
+                      <Button size="sm" variant="outline" onClick={() => rotate(key)} title="Rotacionar"><RotateCw className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="destructive" onClick={() => revoke(key)} title="Revogar"><Ban className="h-4 w-4" /></Button>
+                    </>}
+                  </TableCell>
+                </TableRow>;
+              })}</TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-lg">Como usar</CardTitle></CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p>Base da API: <code className="bg-slate-100 px-2 py-1 rounded">/api/external/v1</code></p>
+          <pre className="bg-slate-950 text-slate-100 rounded-lg p-4 overflow-x-auto text-xs">{`curl -H "Authorization: Bearer SUA_CHAVE" \\
+  https://seu-dominio.com/api/external/v1/users`}</pre>
+          <p className="text-slate-500">Os caminhos depois de <code>/v1</code> são os mesmos endpoints REST do módulo autorizado. SQL direto, autenticação, webhooks e gerenciamento de chaves não são expostos.</p>
+        </CardContent>
+      </Card>
+
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Nova chave de API</DialogTitle><DialogDescription>Todos os módulos começam selecionados. Ajuste somente se quiser restringir a integração.</DialogDescription></DialogHeader>
+          <div className="space-y-5">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Nome da integração</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Hermes produção" /></div>
+              <div className="space-y-2"><Label>Nível de acesso</Label>
+                <Select value={level} onValueChange={v => setLevel(v as AccessLevel)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                  <SelectItem value="read">Leitura — GET e HEAD</SelectItem>
+                  <SelectItem value="write">Escrita — leitura + POST, PUT e PATCH</SelectItem>
+                  <SelectItem value="full">Total — inclui DELETE</SelectItem>
+                </SelectContent></Select>
+              </div>
+              <div className="space-y-2"><Label>Expira em (opcional)</Label><Input type="datetime-local" value={expires} onChange={e => setExpires(e.target.value)} /><p className="text-xs text-slate-500">Em branco: duração indeterminada.</p></div>
+              <div className="space-y-2"><Label>Limite por minuto</Label><Input type="number" min={1} max={10000} value={rateLimit} onChange={e => setRateLimit(e.target.value)} /></div>
+            </div>
+            <div className="space-y-2"><Label>IPs permitidos (opcional)</Label><Input value={allowedIps} onChange={e => setAllowedIps(e.target.value)} placeholder="203.0.113.10, 203.0.113.11" /><p className="text-xs text-slate-500">Separe por vírgula. Em branco permite qualquer IP.</p></div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between"><Label>Módulos permitidos</Label><Button type="button" variant="ghost" size="sm" onClick={() => setScopes(scopes.length === ALL_SCOPES.length ? [] : ALL_SCOPES)}>{scopes.length === ALL_SCOPES.length ? "Desmarcar todos" : "Marcar todos"}</Button></div>
+              <div className="grid sm:grid-cols-2 gap-2 border rounded-lg p-3">
+                {ALL_SCOPES.map(scope => <label key={scope} className="flex items-center gap-2 text-sm py-1 cursor-pointer"><Checkbox checked={scopes.includes(scope)} onCheckedChange={checked => setScopes(checked ? [...scopes, scope] : scopes.filter(v => v !== scope))} />{SCOPE_LABELS[scope]}</label>)}
+              </div>
+            </div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button><Button onClick={createKey} disabled={saving || !name.trim() || scopes.length === 0}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Gerar chave</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!revealedToken} onOpenChange={open => { if (!open) setRevealedToken(""); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{tokenTitle}</DialogTitle><DialogDescription>Copie agora. Por segurança, o token completo não poderá ser consultado novamente.</DialogDescription></DialogHeader>
+          <Alert><Check className="h-4 w-4" /><AlertTitle>Chave pronta para uso</AlertTitle><AlertDescription><code className="block mt-2 p-3 bg-slate-100 rounded break-all select-all">{revealedToken}</code></AlertDescription></Alert>
+          <DialogFooter><Button onClick={() => copy(revealedToken)}><Copy className="h-4 w-4 mr-2" />Copiar chave</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

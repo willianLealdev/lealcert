@@ -50,6 +50,7 @@ import {
   DollarSign,
   Bot,
   Monitor,
+  KeyRound,
 } from "lucide-react";
 import { usePush } from "@/lib/use-push";
 import { ReviewPrompt } from "@/components/review-prompt";
@@ -93,6 +94,7 @@ const adminNav = [
   { name: "WhatsApp", href: "/admin/whatsapp", icon: Phone },
   { name: "Discagem IA", href: "/admin/discagem", icon: Bot },
   { name: "Segurança de IP", href: "/admin/ip-security", icon: ShieldCheck },
+  { name: "Chaves de API", href: "/admin/api-keys", icon: KeyRound },
   { name: "Relatórios GAR", href: "/admin/relatorios-gar", icon: BarChart2 },
   { name: "Relatório Financeiro", href: "/admin/relatorio-financeiro", icon: DollarSign },
   { name: "Notas Fiscais", href: "/admin/nfse", icon: Receipt },

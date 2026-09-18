@@ -5,9 +5,9 @@ description: Nunca alterar, remover ou refatorar nada sem autorização explíci
 
 ## Regra
 
-**Nunca** modificar, remover ou refatorar código existente sem pedido explícito do usuário.
-Permitido apenas **acrescentar** o que for solicitado.
+**Nunca** modificar, remover, substituir ou refatorar código, telas, rotas, regras ou fluxos existentes sem pedido explícito do usuário.
+Novas funcionalidades devem ser **aditivas, isoladas e registradas ao lado do que já existe**, preservando integralmente o comportamento atual.
 
-**Why:** Instrução direta do usuário em 22/08/2026 — o sistema já está em produção e qualquer alteração não autorizada pode quebrar fluxos existentes.
+**Why:** Instrução direta do usuário, reforçada em 25/08/2026 — o sistema já está em produção e qualquer alteração não autorizada pode quebrar fluxos existentes.
 
-**How to apply:** Antes de qualquer edição, verificar: "o usuário pediu explicitamente para alterar isso?" Se não, apenas adicionar ao lado. Remover ou alterar só com autorização clara ("pode remover X", "muda Y para Z").
+**How to apply:** Antes de qualquer edição, verificar: "o usuário pediu explicitamente para alterar isso?" Se não, criar arquivos/módulos separados e fazer somente os registros mínimos necessários. Remover ou mudar comportamento existente só com autorização clara.

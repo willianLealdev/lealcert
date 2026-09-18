@@ -36,9 +36,13 @@ import meetingsRouter from "./meetings";
 import operatorsRouter from "./operators";
 import referralsRouter from "./referrals";
 import relatorioFinanceiroRouter from "./relatorio-financeiro";
+import apiKeysRouter from "./api-keys";
+import externalApiRouter from "./external-api";
 
 const router: IRouter = Router();
 
+router.use("/external/v1", externalApiRouter);
+router.use(apiKeysRouter);
 router.use(brandingRouter);
 router.use(pushRouter);
 router.use(healthRouter);

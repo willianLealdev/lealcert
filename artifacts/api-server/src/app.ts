@@ -77,7 +77,7 @@ const BOT_WHITELIST_PATHS = new Set([
   "/api/marketing/wa/webhook/sair",       // Evolution API usa axios internamente — liberar
 ]);
 // Prefixes whitelisted: tracking pixel fetched by email proxies (GoogleImageProxy etc.)
-const BOT_WHITELIST_PREFIXES = ["/api/marketing/track/", "/api/marketing/click/"];
+const BOT_WHITELIST_PREFIXES = ["/api/marketing/track/", "/api/marketing/click/", "/api/external/v1/"];
 
 // Patterns that match known scrapers, bots and automation tools.
 // Case-insensitive. New entries go at the end.

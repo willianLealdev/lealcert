@@ -14,6 +14,14 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "18/09/2026",
+    version: "1.79",
+    changes: [
+      { type: "novo", text: "Admin: novo painel de Chaves de API REST para integrações como o Hermes, com níveis de acesso, módulos permitidos, expiração, restrição por IP, limite por minuto, revogação, rotação e auditoria." },
+      { type: "segurança", text: "API externa: tokens são exibidos uma única vez e armazenados somente por hash; acesso ocorre por endpoints REST controlados, sem SQL arbitrário." },
+    ],
+  },
+  {
     date: "25/08/2026",
     version: "1.78",
     changes: [

@@ -73,6 +73,7 @@ import AdminVendedores from "@/pages/admin/vendedores";
 import AdminDiscagem from "@/pages/admin/discagem";
 import AdminSiteVisits from "@/pages/admin/site-visits";
 import AdminIndicacoes from "@/pages/admin/indicacoes";
+import AdminApiKeys from "@/pages/admin/api-keys";
 import FidelidadePage from "@/pages/fidelidade";
 import IndicacoesPage from "@/pages/indicacoes";
 import AgenteConsultar from "@/pages/agente/consultar";
@@ -185,6 +186,7 @@ function Router() {
       <Route path="/admin/nfse" component={() => <ProtectedRoute component={AdminNfse} adminOnly />} />
       <Route path="/admin/fidelidade" component={() => <ProtectedRoute component={AdminFidelidade} adminOnly />} />
       <Route path="/admin/indicacoes" component={() => <ProtectedRoute component={AdminIndicacoes} adminOnly />} />
+      <Route path="/admin/api-keys" component={() => <ProtectedRoute component={AdminApiKeys} adminOnly />} />
       <Route path="/fidelidade" component={() => <ProtectedRoute component={FidelidadePage} />} />
       <Route path="/indicacoes" component={() => <ProtectedRoute component={IndicacoesPage} renewalsOnly />} />
        <Route path="/reunioes" component={() => <ProtectedRoute component={Meetings} vendedorOnly />} />
