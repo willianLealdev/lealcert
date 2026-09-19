@@ -281,6 +281,8 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
       transcript: JSON.stringify(payload.history),
       systemPromptUsed: payload.promptUsed,
       aiSource: payload.aiSource,
+      ...(payload.interestStatus ? { interestStatus: payload.interestStatus } : {}),
+      ...(payload.endReason !== undefined ? { endReason: payload.endReason } : {}),
     }).where(eq(discagemCallsTable.id, callId)).catch(() => {});
   }
 
@@ -306,6 +308,8 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
       outcome,
       systemPromptUsed: payload.promptUsed,
       aiSource: payload.aiSource,
+      ...(payload.interestStatus ? { interestStatus: payload.interestStatus } : {}),
+      ...(payload.endReason !== undefined ? { endReason: payload.endReason } : {}),
       ...(capturedEmail ? { contactEmail: capturedEmail, wantsFollowupEmail: true } : {}),
     }).where(eq(discagemCallsTable.id, callId));
 

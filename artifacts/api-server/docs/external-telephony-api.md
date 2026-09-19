@@ -55,9 +55,29 @@ Para cada turno do cliente, o LealCert envia:
     "callId": 123,
     "campaignId": 10
   },
+  "callId": "123",
+  "lead": {
+    "id": 456,
+    "nome": "João",
+    "empresa": "ABC Contabilidade",
+    "cidade": "São Paulo",
+    "estado": "SP",
+    "tipo": "contador",
+    "telefone": "+5511999999999"
+  },
   "conversation": [
-    { "role": "user", "text": "Pode me explicar?", "ts": "..." }
+    { "speaker": "client", "role": "user", "text": "Pode me explicar?", "ts": "..." }
   ],
+  "stage": "pitch",
+  "lastUserText": "Pode me explicar?",
+  "businessContext": {
+    "objetivo": "fechar parceria com contador",
+    "precoParceiro": "R$ 90,00",
+    "cadastroUrl": "https://lealcert.com.br/contadores",
+    "cupomAtivo": true,
+    "cupom": "PARCEIRO",
+    "primeiroCertificadoComCupom": "R$ 70,00"
+  },
   "systemPrompt": "..."
 }
 ```
@@ -78,10 +98,22 @@ Verificação da assinatura:
 O webhook deve responder em até 4,5 segundos:
 
 ```json
-{ "text": "A próxima fala curta do agente." }
+{
+  "fala": "A próxima fala curta do agente.",
+  "stage": "tratando_objeção",
+  "strategyUsed": "segunda_opcao",
+  "statusSuggested": "em_conversa",
+  "shouldContinue": true,
+  "shouldEnd": false,
+  "command": null
+}
 ```
 
-Comandos já reconhecidos dentro de `text`:
+Por compatibilidade, o LealCert também aceita `{ "text": "..." }`. Se `shouldEnd` for `true`,
+`shouldContinue` for `false` ou `command` contiver `[ENCERRAR]`, a fala é reproduzida e a
+ligação é encerrada em seguida.
+
+Comandos reconhecidos no campo `command` ou dentro de `fala`/`text`:
 
 - `[ENCERRAR]`
 - `[OPTOUT]`

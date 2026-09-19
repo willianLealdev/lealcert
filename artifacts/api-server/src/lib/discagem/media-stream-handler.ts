@@ -155,6 +155,8 @@ export function setupMediaStreamWebSocket(server: Server): void {
         transcript: result.history.length > 0 ? JSON.stringify(result.history) : undefined,
         systemPromptUsed: result.promptUsed,
         aiSource: result.aiSource,
+        ...(result.interestStatus ? { interestStatus: result.interestStatus } : {}),
+        ...(result.endReason !== undefined ? { endReason: result.endReason } : {}),
         ...(capturedEmail ? { contactEmail: capturedEmail, wantsFollowupEmail: true } : {}),
       }).where(eq(discagemCallsTable.id, callId)).catch(() => {});
 
@@ -233,6 +235,8 @@ export function setupMediaStreamWebSocket(server: Server): void {
           transcript: JSON.stringify(result.history),
           systemPromptUsed: result.promptUsed,
           aiSource: result.aiSource,
+          ...(result.interestStatus ? { interestStatus: result.interestStatus } : {}),
+          ...(result.endReason !== undefined ? { endReason: result.endReason } : {}),
         }).where(eq(discagemCallsTable.id, callId)).catch(() => {});
       }
 

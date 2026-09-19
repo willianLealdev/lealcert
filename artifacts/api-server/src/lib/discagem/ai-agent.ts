@@ -55,6 +55,8 @@ export interface AgentResponse {
   modelUsed: AiModel | "external";
   capturedEmail?: string | null;  // e-mail capturado via [REGISTRAR_EMAIL:xxx]
   promptUsed?: string;
+  interestStatus?: "unknown" | "interested" | "not_interested";
+  endReason?: string | null;
 }
 
 export interface ExternalBrainContext {
@@ -63,6 +65,27 @@ export interface ExternalBrainContext {
   contactId?: number | null;
   phoneNumber?: string;
   contactName?: string | null;
+  companyName?: string | null;
+  city?: string | null;
+  state?: string | null;
+  contactType?: string | null;
+}
+
+type HermesStage = "opening" | "qualification" | "pitch" | "objection" | "closing" | "follow_up";
+
+function inferHermesStage(turns: ConversationTurn[]): HermesStage {
+  const lastUserText = turns.at(-1)?.text.toLowerCase() ?? "";
+  const fullConversation = turns.map(turn => turn.text.toLowerCase()).join(" ");
+  if (turns.length <= 1 || lastUserText.includes("[início da ligação]")) return "opening";
+  if (/(já tenho|não tenho interesse|afiliad|dá trabalho|vou pensar|sem tempo|não tenho tempo|mande.*e-?mail|fornecedor)/i.test(lastUserText)) {
+    return "objection";
+  }
+  if (/(cadastro|cadastrar|começar|cupom|preço|valor|quanto custa|primeiro certificado)/i.test(lastUserText)) {
+    return "closing";
+  }
+  if (/(retorn|outro horário|depois|amanhã|semana que vem)/i.test(lastUserText)) return "follow_up";
+  if (/(volume|quantos certificados|certificadora|como trabalha)/i.test(fullConversation)) return "qualification";
+  return "pitch";
 }
 
 // ── Detecção de opt-out ──────────────────────────────────────────
@@ -181,17 +204,45 @@ async function callExternalBrain(
   turns: ConversationTurn[],
   prompt: string,
   context: ExternalBrainContext,
+  cupomAtivo: boolean,
 ): Promise<AgentResponse | null> {
   const keys = await db.select().from(apiKeysTable).where(eq(apiKeysTable.isActive, true));
   const key = selectExternalBrainKey(keys);
   if (!key?.aiWebhookUrl) return null;
 
   const timestamp = String(Date.now());
+  const lastUserText = turns.at(-1)?.text ?? "";
+  const stage = inferHermesStage(turns);
   const body = JSON.stringify({
     event: "telephony.turn.requested",
     timestamp,
     context,
-    conversation: turns,
+    callId: context.callId != null ? String(context.callId) : undefined,
+    lead: {
+      id: context.contactId ?? null,
+      nome: context.contactName ?? null,
+      empresa: context.companyName ?? null,
+      cidade: context.city ?? null,
+      estado: context.state ?? null,
+      tipo: context.contactType ?? "contador",
+      telefone: context.phoneNumber ?? null,
+    },
+    conversation: turns.map(turn => ({
+      speaker: turn.role === "assistant" ? "agent" : "client",
+      role: turn.role,
+      text: turn.text,
+      ts: turn.ts,
+    })),
+    stage,
+    lastUserText,
+    businessContext: {
+      objetivo: "fechar parceria com contador",
+      precoParceiro: "R$ 90,00",
+      cadastroUrl: "https://lealcert.com.br/contadores",
+      cupomAtivo,
+      cupom: cupomAtivo ? "PARCEIRO" : null,
+      primeiroCertificadoComCupom: cupomAtivo ? "R$ 70,00" : null,
+    },
     systemPrompt: prompt,
   });
   const signature = createHmac("sha256", key.tokenHash)
@@ -212,11 +263,37 @@ async function callExternalBrain(
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json() as { text?: unknown };
-    if (typeof data.text !== "string" || !data.text.trim() || data.text.length > 2_000) {
+    const data = await response.json() as {
+      text?: unknown;
+      fala?: unknown;
+      command?: unknown;
+      shouldEnd?: unknown;
+      shouldContinue?: unknown;
+      statusSuggested?: unknown;
+      endReason?: unknown;
+    };
+    const speech = typeof data.fala === "string" ? data.fala : data.text;
+    if (typeof speech !== "string" || !speech.trim() || speech.length > 2_000) {
       throw new Error("Resposta sem texto válido");
     }
-    return parseAgentText(data.text, turns.at(-1)?.text ?? "", "external", prompt);
+    const command = typeof data.command === "string" ? data.command.trim() : "";
+    const shouldEnd = data.shouldEnd === true || data.shouldContinue === false;
+    const commandSuffix = command || (shouldEnd ? "[ENCERRAR]" : "");
+    const result = parseAgentText(`${speech.trim()} ${commandSuffix}`.trim(), lastUserText, "external", prompt);
+    const statusSuggested = typeof data.statusSuggested === "string"
+      ? data.statusSuggested.trim().toLowerCase()
+      : "";
+    result.interestStatus = /^(interessado|interested|com_interesse)$/.test(statusSuggested)
+      ? "interested"
+      : /^(sem_interesse|not_interested|desinteressado)$/.test(statusSuggested)
+        ? "not_interested"
+        : "unknown";
+    result.endReason = typeof data.endReason === "string" && data.endReason.trim()
+      ? data.endReason.trim().slice(0, 1_000)
+      : shouldEnd && statusSuggested
+        ? statusSuggested.slice(0, 1_000)
+        : null;
+    return result;
   } catch (error) {
     logger.warn({ error, keyId: key.id, callId: context.callId }, "Hermes indisponível; usando IA interna como fallback");
     return null;
@@ -272,7 +349,7 @@ export async function runAgentTurn(
   }
 
   if (allowExternal && externalContext) {
-    const externalResponse = await callExternalBrain(turns, prompt, externalContext);
+    const externalResponse = await callExternalBrain(turns, prompt, externalContext, cupomAtivo);
     if (externalResponse) return externalResponse;
   }
 

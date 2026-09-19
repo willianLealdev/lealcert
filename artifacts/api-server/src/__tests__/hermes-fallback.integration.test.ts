@@ -97,7 +97,18 @@ type WebhookRequest = {
   event: string;
   timestamp: string;
   context: Record<string, unknown>;
-  conversation: Array<{ role: string; text: string; ts: string }>;
+  callId: string;
+  lead: { id: number; nome: string; tipo: string; telefone: string };
+  conversation: Array<{ speaker: string; role: string; text: string; ts: string }>;
+  stage: string;
+  lastUserText: string;
+  businessContext: {
+    objetivo: string;
+    precoParceiro: string;
+    cadastroUrl: string;
+    cupomAtivo: boolean;
+    cupom: string | null;
+  };
   systemPrompt: string;
 };
 
@@ -125,9 +136,25 @@ function validateHermesRequest(input: string | URL | Request, init?: RequestInit
     phoneNumber: "+5511999999999",
     contactName: "Cliente Teste",
   });
+  expect(payload.callId).toMatch(/^\d+$/);
+  expect(payload.lead).toMatchObject({
+    id: 34,
+    nome: "Cliente Teste",
+    tipo: "contador",
+    telefone: "+5511999999999",
+  });
   expect(payload.conversation).toEqual([
-    expect.objectContaining({ role: "user", text: "Quero saber mais." }),
+    expect.objectContaining({ speaker: "client", role: "user", text: "Quero saber mais." }),
   ]);
+  expect(payload.stage).toBe("opening");
+  expect(payload.lastUserText).toBe("Quero saber mais.");
+  expect(payload.businessContext).toMatchObject({
+    objetivo: "fechar parceria com contador",
+    precoParceiro: "R$ 90,00",
+    cadastroUrl: "https://lealcert.com.br/contadores",
+    cupomAtivo: false,
+    cupom: null,
+  });
   expect(payload.systemPrompt).toContain("Prompt de integração");
   return payload;
 }
@@ -188,6 +215,32 @@ describe("Hermes integrado ao pipeline de ligação", () => {
       "elevenlabs",
       "voice-1",
     );
+  });
+
+  it("aceita o contrato síncrono do Hermes com fala, estágio e comando de encerramento", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      validateHermesRequest(input, init);
+      return new Response(JSON.stringify({
+        fala: "Sem problema, agradeço sua atenção. Tenha um ótimo dia.",
+        stage: "encerramento",
+        statusSuggested: "sem_interesse",
+        shouldContinue: false,
+        shouldEnd: true,
+        command: "[ENCERRAR]",
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const result = await runPipeline(104);
+
+    expect(result.err).toBeUndefined();
+    expect(result.shouldEndCall).toBe(true);
+    expect(result.aiSource).toBe("external");
+    expect(result.interestStatus).toBe("not_interested");
+    expect(result.endReason).toBe("sem_interesse");
+    expect(result.history.at(-1)?.text).toBe("Sem problema, agradeço sua atenção. Tenha um ótimo dia.");
   });
 
   it.each([

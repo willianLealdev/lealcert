@@ -18,6 +18,8 @@ export interface PendingPayload {
   capturedEmail?: string | null;
   promptUsed?: string;
   aiSource?: string;
+  interestStatus?: "unknown" | "interested" | "not_interested";
+  endReason?: string | null;
   history: ConvTurn[];
   err?: unknown;
 }
@@ -89,6 +91,8 @@ export function processSpeechTurn(
       capturedEmail: aiResp.capturedEmail ?? null,
       promptUsed: aiResp.promptUsed,
       aiSource: aiResp.modelUsed,
+      interestStatus: aiResp.interestStatus,
+      endReason: aiResp.endReason,
       history,
     };
   })().catch(err => ({

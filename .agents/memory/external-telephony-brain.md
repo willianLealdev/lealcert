@@ -5,6 +5,8 @@ description: Reliability and authentication rules for using Hermes or another ex
 
 An external telephony brain must be explicitly enabled on an active API key with the telephony brain capability and an HTTPS webhook. Every turn request is signed with HMAC-SHA256 using the API-token hash as the signing key. The receiver can derive the same signing key by hashing its full API token, so LealCert does not need to retain another recoverable secret.
 
+The synchronous Hermes contract uses `fala` for speech plus `shouldEnd`, `shouldContinue`, `command`, and `statusSuggested`. Keep accepting legacy `text` responses. Send the current commercial stage, last customer utterance, lead data, business context, full conversation, and system prompt.
+
 **Why:** Live calls cannot stop when an external AI is slow or unavailable, and the outbound webhook needs verifiable authentication without storing a second plaintext credential.
 
-**How to apply:** Keep the webhook timeout short enough for a natural voice conversation, validate response text strictly, and fall back to the configured internal AI on timeout, HTTP failure, invalid payload, revoked/expired key, or missing authorization.
+**How to apply:** Do not use Hermes' asynchronous native webhook for live calls. Use a dedicated synchronous HTTPS endpoint, keep the timeout short, validate response fields strictly, and fall back to the configured internal AI on timeout, HTTP failure, invalid payload, revoked/expired key, or missing authorization.
