@@ -440,7 +440,13 @@ export default function AdminApiKeys() {
                 <Label>Webhook Key do Hermes</Label>
                 <Input value={aiWebhookKey} onChange={e => setAiWebhookKey(e.target.value)} placeholder="Valor de LEALCERT_WEBHOOK_KEY no Hermes" autoComplete="off" />
                 <Label>Webhook Secret do Hermes</Label>
-                <Input type="password" value={aiWebhookSecret} onChange={e => setAiWebhookSecret(e.target.value)} placeholder={editingKey?.hasAiWebhookSecret ? "Deixe vazio para manter o secret atual" : "Valor de LEALCERT_WEBHOOK_SECRET no Hermes"} autoComplete="new-password" />
+                <Input type="password" value={aiWebhookSecret} onChange={e => setAiWebhookSecret(e.target.value)} placeholder={editingKey?.hasAiWebhookSecret ? "Secret já salvo — digite somente para substituir" : "Valor de LEALCERT_WEBHOOK_SECRET no Hermes"} autoComplete="new-password" />
+                {editingKey?.hasAiWebhookSecret && !aiWebhookSecret && (
+                  <p className="text-xs font-medium text-emerald-700 flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5" />
+                    Secret salvo e protegido no banco. O valor não é exibido por segurança.
+                  </p>
+                )}
                 <p className="text-xs text-slate-500">Timeout de 4,5 segundos. Se o webhook falhar, a IA configurada no LealCert responde automaticamente.</p>
               </div>}
             </div>}
