@@ -30,6 +30,8 @@ type ApiKey = {
   scopes: string[];
   telephonyCapabilities: string[];
   aiWebhookUrl: string | null;
+  aiWebhookKey: string | null;
+  hasAiWebhookSecret: boolean;
   allowedIps: string[];
   rateLimitPerMinute: number;
   expiresAt: string | null;
@@ -115,6 +117,8 @@ export default function AdminApiKeys() {
   const [rateLimit, setRateLimit] = useState("60");
   const [telephonyCapabilities, setTelephonyCapabilities] = useState<string[]>([]);
   const [aiWebhookUrl, setAiWebhookUrl] = useState("");
+  const [aiWebhookKey, setAiWebhookKey] = useState("");
+  const [aiWebhookSecret, setAiWebhookSecret] = useState("");
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
   const [testingKeyId, setTestingKeyId] = useState<number | null>(null);
   const [logKey, setLogKey] = useState<ApiKey | null>(null);
@@ -135,7 +139,7 @@ export default function AdminApiKeys() {
   const resetForm = () => {
     setName(""); setLevel("full"); setScopes(ALL_SCOPES); setExpires("");
     setAllowedIps(""); setRateLimit("60"); setEditingKey(null);
-    setTelephonyCapabilities([]); setAiWebhookUrl("");
+    setTelephonyCapabilities([]); setAiWebhookUrl(""); setAiWebhookKey(""); setAiWebhookSecret("");
   };
 
   const openCreate = () => {
@@ -153,6 +157,8 @@ export default function AdminApiKeys() {
     setRateLimit(String(key.rateLimitPerMinute));
     setTelephonyCapabilities([...(key.telephonyCapabilities ?? [])]);
     setAiWebhookUrl(key.aiWebhookUrl ?? "");
+    setAiWebhookKey(key.aiWebhookKey ?? "");
+    setAiWebhookSecret("");
     setFormOpen(true);
   };
 
@@ -163,6 +169,8 @@ export default function AdminApiKeys() {
         name, accessLevel: level, scopes,
         telephonyCapabilities: scopes.includes("discagem") ? telephonyCapabilities : [],
         aiWebhookUrl: telephonyCapabilities.includes("brain") ? aiWebhookUrl.trim() : null,
+        aiWebhookKey: telephonyCapabilities.includes("brain") ? aiWebhookKey.trim() : null,
+        aiWebhookSecret: telephonyCapabilities.includes("brain") && aiWebhookSecret ? aiWebhookSecret : undefined,
         expiresAt: expires ? new Date(expires).toISOString() : null,
         allowedIps: allowedIps.split(/[\n,]/).map(v => v.trim()).filter(Boolean),
         rateLimitPerMinute: Number(rateLimit),
@@ -429,11 +437,15 @@ export default function AdminApiKeys() {
               {telephonyCapabilities.includes("brain") && <div className="space-y-2">
                 <Label>Webhook HTTPS do Hermes</Label>
                 <Input type="url" value={aiWebhookUrl} onChange={e => setAiWebhookUrl(e.target.value)} placeholder="https://hermes.exemplo.com/lealcert/turn" />
+                <Label>Webhook Key do Hermes</Label>
+                <Input value={aiWebhookKey} onChange={e => setAiWebhookKey(e.target.value)} placeholder="Valor de LEALCERT_WEBHOOK_KEY no Hermes" autoComplete="off" />
+                <Label>Webhook Secret do Hermes</Label>
+                <Input type="password" value={aiWebhookSecret} onChange={e => setAiWebhookSecret(e.target.value)} placeholder={editingKey?.hasAiWebhookSecret ? "Deixe vazio para manter o secret atual" : "Valor de LEALCERT_WEBHOOK_SECRET no Hermes"} autoComplete="new-password" />
                 <p className="text-xs text-slate-500">Timeout de 4,5 segundos. Se o webhook falhar, a IA configurada no LealCert responde automaticamente.</p>
               </div>}
             </div>}
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button><Button onClick={saveKey} disabled={saving || !name.trim() || scopes.length === 0 || (telephonyCapabilities.includes("brain") && !aiWebhookUrl.trim())}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}{editingKey ? "Salvar alterações" : "Gerar chave"}</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button><Button onClick={saveKey} disabled={saving || !name.trim() || scopes.length === 0 || (telephonyCapabilities.includes("brain") && (!aiWebhookUrl.trim() || !aiWebhookKey.trim() || (!aiWebhookSecret && !editingKey?.hasAiWebhookSecret)))}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}{editingKey ? "Salvar alterações" : "Gerar chave"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

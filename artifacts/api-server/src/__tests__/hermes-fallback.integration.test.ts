@@ -19,6 +19,8 @@ const hermesKey = {
   aiWebhookUrl: "https://hermes.test/turn",
   tokenHash: "hermes-signing-secret",
   tokenPrefix: "lc_live_hermes",
+  aiWebhookKey: "hermes-webhook-key",
+  aiWebhookSecretEncrypted: null as string | null,
   createdAt: new Date("2026-09-10T00:00:00.000Z"),
 };
 
@@ -96,6 +98,7 @@ import {
   processSpeechTurn,
 } from "../lib/discagem/conversation-state";
 import { runAgentTurn } from "../lib/discagem/ai-agent";
+import { encryptHermesWebhookSecret } from "../lib/api-keys";
 
 type WebhookRequest = {
   event: string;
@@ -123,12 +126,13 @@ function validateHermesRequest(input: string | URL | Request, init?: RequestInit
   const headers = new Headers(init?.headers);
   const body = String(init?.body);
   const timestamp = headers.get("X-LealCert-Timestamp");
-  const expectedSignature = createHmac("sha256", hermesKey.tokenHash)
+  const expectedSignature = createHmac("sha256", "hermes-webhook-secret")
     .update(`${timestamp}.${body}`, "utf8")
     .digest("hex");
 
-  expect(headers.get("X-LealCert-Key")).toBe(hermesKey.tokenPrefix);
-  expect(headers.get("X-LealCert-Signature")).toBe(`sha256=${expectedSignature}`);
+  expect(headers.get("User-Agent")).toBe("LealCert/1.0");
+  expect(headers.get("X-LealCert-Key")).toBe(hermesKey.aiWebhookKey);
+  expect(headers.get("X-LealCert-Signature")).toBe(expectedSignature);
 
   const payload = JSON.parse(body) as WebhookRequest;
   expect(payload.event).toBe("telephony.turn.requested");
@@ -191,6 +195,8 @@ describe("Hermes integrado ao pipeline de ligação", () => {
     mocks.synthesize.mockClear();
     mocks.audioUrl.mockClear();
     mocks.internalError = false;
+    process.env.SESSION_SECRET = "test-session-secret-with-at-least-32-characters";
+    hermesKey.aiWebhookSecretEncrypted = encryptHermesWebhookSecret("hermes-webhook-secret");
   });
 
   afterEach(() => {

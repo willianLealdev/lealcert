@@ -29,6 +29,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "fix", text: "Diagnóstico Hermes: erros internos, respostas sem JSON e registros antigos de chave agora exibem o motivo real no painel em vez de uma mensagem genérica." },
       { type: "novo", text: "Hermes: cada teste de conexão agora gera um log persistente no servidor com data, sucesso ou erro, status HTTP, latência e mensagem detalhada, consultável ao lado da chave." },
       { type: "melhoria", text: "Logs Hermes: aberturas e turnos de ligações reais agora também registram callId, etapa, status, latência e erro, inclusive quando nenhuma chave elegível é encontrada." },
+      { type: "segurança", text: "Hermes: a autenticação do webhook agora usa Key e Secret próprios, separados do token da API externa; o secret fica criptografado no banco e nunca é devolvido ao painel." },
       { type: "segurança", text: "Hermes: quando existem várias chaves, somente a chave ativa, não expirada e não revogada mais recente com escopo de discagem e capacidade de cérebro recebe a conversa." },
       { type: "segurança", text: "API externa: tokens são exibidos uma única vez e armazenados somente por hash; acesso ocorre por endpoints REST controlados, sem SQL arbitrário." },
     ],

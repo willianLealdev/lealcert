@@ -1,4 +1,4 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Request } from "express";
 
 export const API_KEY_LEVELS = ["read", "write", "full"] as const;
@@ -13,6 +13,50 @@ export type ApiKeyScope = typeof API_KEY_SCOPES[number];
 
 export const TELEPHONY_CAPABILITIES = ["analyze", "brain", "command"] as const;
 export type TelephonyCapability = typeof TELEPHONY_CAPABILITIES[number];
+
+function hermesEncryptionKey(): Buffer {
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) throw new Error("SESSION_SECRET ausente; não é possível proteger o segredo do Hermes.");
+  return createHash("sha256").update(sessionSecret, "utf8").digest();
+}
+
+export function encryptHermesWebhookSecret(secret: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", hermesEncryptionKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(secret, "utf8"), cipher.final()]);
+  return `v1.${iv.toString("base64url")}.${cipher.getAuthTag().toString("base64url")}.${ciphertext.toString("base64url")}`;
+}
+
+export function decryptHermesWebhookSecret(encrypted: string): string {
+  const [version, ivText, tagText, ciphertextText] = encrypted.split(".");
+  if (version !== "v1" || !ivText || !tagText || !ciphertextText) throw new Error("Segredo Hermes armazenado em formato inválido.");
+  const decipher = createDecipheriv("aes-256-gcm", hermesEncryptionKey(), Buffer.from(ivText, "base64url"));
+  decipher.setAuthTag(Buffer.from(tagText, "base64url"));
+  return Buffer.concat([
+    decipher.update(Buffer.from(ciphertextText, "base64url")),
+    decipher.final(),
+  ]).toString("utf8");
+}
+
+export function createHermesWebhookAuth(
+  rawBody: string,
+  webhookKey: string | null | undefined,
+  encryptedSecret: string | null | undefined,
+  timestamp = String(Date.now()),
+): {
+  key: string;
+  timestamp: string;
+  signature: string;
+} | null {
+  const key = webhookKey?.trim();
+  if (!key || !encryptedSecret) return null;
+  const secret = decryptHermesWebhookSecret(encryptedSecret);
+  return {
+    key,
+    timestamp,
+    signature: createHmac("sha256", secret).update(`${timestamp}.${rawBody}`, "utf8").digest("hex"),
+  };
+}
 
 export interface ExternalBrainKeyCandidate {
   id: number;

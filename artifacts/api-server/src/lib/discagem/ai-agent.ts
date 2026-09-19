@@ -9,11 +9,10 @@ import OpenAI from "openai";
 import { getDiscagemSettings } from "./settings-reader";
 import { AGENT_SYSTEM_PROMPT, type AgentName } from "./config";
 import { getSiteCacheBlock, refreshSiteCache } from "./site-cache";
-import { createHmac } from "node:crypto";
 import { db, couponsTable, apiKeysTable, apiKeyAuditLogsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../logger";
-import { selectExternalBrainKey } from "../api-keys";
+import { createHermesWebhookAuth, selectExternalBrainKey } from "../api-keys";
 
 // Inicia o cache do site em background (sem bloquear)
 refreshSiteCache().catch(() => {});
@@ -266,9 +265,31 @@ async function callExternalBrain(
       primeiroCertificadoComCupom: cupomAtivo ? "R$ 70,00" : null,
     },
   });
-  const signature = createHmac("sha256", key.tokenHash)
-    .update(`${timestamp}.${body}`, "utf8")
-    .digest("hex");
+  let auth: ReturnType<typeof createHermesWebhookAuth>;
+  try {
+    auth = createHermesWebhookAuth(body, key.aiWebhookKey, key.aiWebhookSecretEncrypted, timestamp);
+  } catch (error) {
+    logger.error({ error, keyId: key.id, callId: context.callId }, "Falha ao descriptografar credencial do Hermes");
+    auth = null;
+  }
+  if (!auth) {
+    try {
+      await db.insert(apiKeyAuditLogsTable).values({
+        apiKeyId: key.id,
+        tokenPrefix: key.tokenPrefix,
+        method: "POST",
+        path: key.aiWebhookUrl,
+        scope: `hermes-call:${context.callId ?? "sem-callId"}:${stage}:Webhook Key ou Webhook Secret do Hermes ausente ou inválido na chave.`,
+        statusCode: 503,
+        durationMs: 0,
+        sourceIp: "internal",
+      });
+    } catch (auditError) {
+      logger.error({ auditError, keyId: key.id, callId: context.callId }, "Falha ao registrar credenciais ausentes do Hermes");
+    }
+    logger.warn({ keyId: key.id, callId: context.callId }, "Hermes não acionado: credenciais HMAC do webhook ausentes ou inválidas");
+    return null;
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4_500);
   const startedAt = Date.now();
@@ -295,9 +316,10 @@ async function callExternalBrain(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-LealCert-Key": key.tokenPrefix,
-        "X-LealCert-Timestamp": timestamp,
-        "X-LealCert-Signature": `sha256=${signature}`,
+        "User-Agent": "LealCert/1.0",
+        "X-LealCert-Key": auth.key,
+        "X-LealCert-Timestamp": auth.timestamp,
+        "X-LealCert-Signature": auth.signature,
       },
       body,
       signal: controller.signal,

@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { createHmac } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { db, apiKeysTable, apiKeyAuditLogsTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
-import { API_KEY_LEVELS, API_KEY_SCOPES, TELEPHONY_CAPABILITIES, generateApiToken } from "../lib/api-keys";
+import { API_KEY_LEVELS, API_KEY_SCOPES, TELEPHONY_CAPABILITIES, createHermesWebhookAuth, encryptHermesWebhookSecret, generateApiToken } from "../lib/api-keys";
 
 const router = Router();
 
@@ -11,6 +10,7 @@ function publicKey(row: typeof apiKeysTable.$inferSelect) {
   return {
     id: row.id, name: row.name, tokenPrefix: row.tokenPrefix, accessLevel: row.accessLevel,
     scopes: row.scopes, telephonyCapabilities: row.telephonyCapabilities, aiWebhookUrl: row.aiWebhookUrl,
+    aiWebhookKey: row.aiWebhookKey, hasAiWebhookSecret: !!row.aiWebhookSecretEncrypted,
     allowedIps: row.allowedIps, rateLimitPerMinute: row.rateLimitPerMinute,
     createdByUserId: row.createdByUserId, expiresAt: row.expiresAt, lastUsedAt: row.lastUsedAt,
     revokedAt: row.revokedAt, isActive: row.isActive, createdAt: row.createdAt, updatedAt: row.updatedAt,
@@ -27,7 +27,7 @@ router.get("/admin/api-keys", requireAdmin, async (_req, res): Promise<void> => 
 });
 
 router.post("/admin/api-keys", requireAdmin, async (req, res): Promise<void> => {
-  const { name, accessLevel, scopes, telephonyCapabilities, aiWebhookUrl, allowedIps, rateLimitPerMinute, expiresAt } = req.body ?? {};
+  const { name, accessLevel, scopes, telephonyCapabilities, aiWebhookUrl, aiWebhookKey, aiWebhookSecret, allowedIps, rateLimitPerMinute, expiresAt } = req.body ?? {};
   const cleanName = typeof name === "string" ? name.trim() : "";
   const cleanScopes = Array.isArray(scopes) ? [...new Set(scopes.filter((v): v is string => API_KEY_SCOPES.includes(v)))] : [];
   const cleanIps = Array.isArray(allowedIps) ? [...new Set(allowedIps.map(String).map(v => v.trim()).filter(Boolean))] : [];
@@ -35,6 +35,8 @@ router.post("/admin/api-keys", requireAdmin, async (req, res): Promise<void> => 
     ? [...new Set(telephonyCapabilities.filter((v): v is string => TELEPHONY_CAPABILITIES.includes(v)))]
     : [];
   const cleanWebhookUrl = typeof aiWebhookUrl === "string" && aiWebhookUrl.trim() ? aiWebhookUrl.trim() : null;
+  const cleanWebhookKey = typeof aiWebhookKey === "string" && aiWebhookKey.trim() ? aiWebhookKey.trim() : null;
+  const cleanWebhookSecret = typeof aiWebhookSecret === "string" && aiWebhookSecret ? aiWebhookSecret : null;
   const rate = Number(rateLimitPerMinute);
   const expiry = expiresAt ? new Date(expiresAt) : null;
   if (!cleanName || !API_KEY_LEVELS.includes(accessLevel) || cleanScopes.length === 0) {
@@ -46,8 +48,8 @@ router.post("/admin/api-keys", requireAdmin, async (req, res): Promise<void> => 
   if (expiry && (Number.isNaN(expiry.getTime()) || expiry <= new Date())) {
     res.status(400).json({ error: "A expiração deve estar no futuro." }); return;
   }
-  if (cleanCapabilities.includes("brain") && !cleanWebhookUrl) {
-    res.status(400).json({ error: "Informe a URL do webhook do Hermes para habilitar o nível 2." }); return;
+  if (cleanCapabilities.includes("brain") && (!cleanWebhookUrl || !cleanWebhookKey || !cleanWebhookSecret)) {
+    res.status(400).json({ error: "Informe URL, Webhook Key e Webhook Secret do Hermes para habilitar o nível 2." }); return;
   }
   if (cleanWebhookUrl && !/^https:\/\//i.test(cleanWebhookUrl)) {
     res.status(400).json({ error: "A URL do webhook deve usar HTTPS." }); return;
@@ -60,7 +62,9 @@ router.post("/admin/api-keys", requireAdmin, async (req, res): Promise<void> => 
   const [created] = await db.insert(apiKeysTable).values({
     name: cleanName, tokenPrefix: generated.prefix, tokenHash: generated.hash,
     accessLevel, scopes: cleanScopes, telephonyCapabilities: cleanCapabilities,
-    aiWebhookUrl: cleanWebhookUrl, allowedIps: cleanIps, rateLimitPerMinute: rate,
+    aiWebhookUrl: cleanWebhookUrl, aiWebhookKey: cleanWebhookKey,
+    aiWebhookSecretEncrypted: cleanWebhookSecret ? encryptHermesWebhookSecret(cleanWebhookSecret) : null,
+    allowedIps: cleanIps, rateLimitPerMinute: rate,
     expiresAt: expiry, createdByUserId: adminUserId,
   }).returning();
   res.status(201).json({ ...publicKey(created), token: generated.token });
@@ -69,7 +73,7 @@ router.post("/admin/api-keys", requireAdmin, async (req, res): Promise<void> => 
 router.patch("/admin/api-keys/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "ID inválido." }); return; }
-  const { name, accessLevel, scopes, telephonyCapabilities, aiWebhookUrl, allowedIps, rateLimitPerMinute, expiresAt } = req.body ?? {};
+  const { name, accessLevel, scopes, telephonyCapabilities, aiWebhookUrl, aiWebhookKey, aiWebhookSecret, allowedIps, rateLimitPerMinute, expiresAt } = req.body ?? {};
   const cleanName = typeof name === "string" ? name.trim() : "";
   const cleanScopes = Array.isArray(scopes) ? [...new Set(scopes.filter((v): v is string => API_KEY_SCOPES.includes(v)))] : [];
   const cleanIps = Array.isArray(allowedIps) ? [...new Set(allowedIps.map(String).map(v => v.trim()).filter(Boolean))] : [];
@@ -77,6 +81,8 @@ router.patch("/admin/api-keys/:id", requireAdmin, async (req, res): Promise<void
     ? [...new Set(telephonyCapabilities.filter((v): v is string => TELEPHONY_CAPABILITIES.includes(v)))]
     : [];
   const cleanWebhookUrl = typeof aiWebhookUrl === "string" && aiWebhookUrl.trim() ? aiWebhookUrl.trim() : null;
+  const cleanWebhookKey = typeof aiWebhookKey === "string" && aiWebhookKey.trim() ? aiWebhookKey.trim() : null;
+  const cleanWebhookSecret = typeof aiWebhookSecret === "string" && aiWebhookSecret ? aiWebhookSecret : null;
   const rate = Number(rateLimitPerMinute);
   const expiry = expiresAt ? new Date(expiresAt) : null;
   if (!cleanName || !API_KEY_LEVELS.includes(accessLevel) || cleanScopes.length === 0) {
@@ -88,8 +94,10 @@ router.patch("/admin/api-keys/:id", requireAdmin, async (req, res): Promise<void
   if (expiry && Number.isNaN(expiry.getTime())) {
     res.status(400).json({ error: "Data de expiração inválida." }); return;
   }
-  if (cleanCapabilities.includes("brain") && !cleanWebhookUrl) {
-    res.status(400).json({ error: "Informe a URL do webhook do Hermes para habilitar o nível 2." }); return;
+  const [existing] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id)).limit(1);
+  if (!existing) { res.status(404).json({ error: "Chave não encontrada." }); return; }
+  if (cleanCapabilities.includes("brain") && (!cleanWebhookUrl || !cleanWebhookKey || (!cleanWebhookSecret && !existing.aiWebhookSecretEncrypted))) {
+    res.status(400).json({ error: "Informe URL, Webhook Key e Webhook Secret do Hermes para habilitar o nível 2." }); return;
   }
   if (cleanWebhookUrl && !/^https:\/\//i.test(cleanWebhookUrl)) {
     res.status(400).json({ error: "A URL do webhook deve usar HTTPS." }); return;
@@ -100,6 +108,10 @@ router.patch("/admin/api-keys/:id", requireAdmin, async (req, res): Promise<void
     scopes: cleanScopes,
     telephonyCapabilities: cleanCapabilities,
     aiWebhookUrl: cleanWebhookUrl,
+    aiWebhookKey: cleanWebhookKey,
+    aiWebhookSecretEncrypted: cleanWebhookSecret
+      ? encryptHermesWebhookSecret(cleanWebhookSecret)
+      : existing.aiWebhookSecretEncrypted,
     allowedIps: cleanIps,
     rateLimitPerMinute: rate,
     expiresAt: expiry,
@@ -179,9 +191,27 @@ router.post("/admin/api-keys/:id/test-hermes", requireAdmin, async (req, res): P
       primeiroCertificadoComCupom: null,
     },
     });
-    const signature = createHmac("sha256", key.tokenHash)
-      .update(`${timestamp}.${body}`, "utf8")
-      .digest("hex");
+    let auth: ReturnType<typeof createHermesWebhookAuth>;
+    try {
+      auth = createHermesWebhookAuth(body, key.aiWebhookKey, key.aiWebhookSecretEncrypted, timestamp);
+    } catch {
+      auth = null;
+    }
+    if (!auth) {
+      const message = "Configure Webhook Key e Webhook Secret do Hermes nesta chave.";
+      await db.insert(apiKeyAuditLogsTable).values({
+        apiKeyId: key.id,
+        tokenPrefix: key.tokenPrefix,
+        method: "POST",
+        path: key.aiWebhookUrl,
+        scope: `hermes-diagnostic:${message}`,
+        statusCode: 503,
+        durationMs: 0,
+        sourceIp: req.ip || null,
+      }).catch(error => req.log.error({ error, apiKeyId: key.id }, "Falha ao salvar credenciais ausentes do Hermes"));
+      res.status(503).json({ error: message });
+      return;
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4_500);
     const startedAt = Date.now();
@@ -202,9 +232,10 @@ router.post("/admin/api-keys/:id/test-hermes", requireAdmin, async (req, res): P
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-LealCert-Key": key.tokenPrefix,
-        "X-LealCert-Timestamp": timestamp,
-        "X-LealCert-Signature": `sha256=${signature}`,
+        "User-Agent": "LealCert/1.0",
+        "X-LealCert-Key": auth.key,
+        "X-LealCert-Timestamp": auth.timestamp,
+        "X-LealCert-Signature": auth.signature,
       },
       body,
       signal: controller.signal,
