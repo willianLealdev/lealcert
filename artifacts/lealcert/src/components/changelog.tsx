@@ -18,6 +18,7 @@ const CHANGELOG: ChangelogEntry[] = [
     version: "1.79",
     changes: [
       { type: "novo", text: "Admin: novo painel de Chaves de API REST para integrações como o Hermes, com níveis de acesso, módulos permitidos, expiração, restrição por IP, limite por minuto, revogação, rotação e auditoria." },
+      { type: "melhoria", text: "Chaves de API: agora é possível editar nome, nível, validade, módulos, IPs e limite de requisições sem alterar o token, além de excluir chaves definitivamente pelo painel." },
       { type: "segurança", text: "API externa: tokens são exibidos uma única vez e armazenados somente por hash; acesso ocorre por endpoints REST controlados, sem SQL arbitrário." },
     ],
   },

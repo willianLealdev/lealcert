@@ -53,6 +53,44 @@ router.post("/admin/api-keys", requireAdmin, async (req, res): Promise<void> => 
   res.status(201).json({ ...publicKey(created), token: generated.token });
 });
 
+router.patch("/admin/api-keys/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json({ error: "ID inválido." }); return; }
+  const { name, accessLevel, scopes, allowedIps, rateLimitPerMinute, expiresAt } = req.body ?? {};
+  const cleanName = typeof name === "string" ? name.trim() : "";
+  const cleanScopes = Array.isArray(scopes) ? [...new Set(scopes.filter((v): v is string => API_KEY_SCOPES.includes(v)))] : [];
+  const cleanIps = Array.isArray(allowedIps) ? [...new Set(allowedIps.map(String).map(v => v.trim()).filter(Boolean))] : [];
+  const rate = Number(rateLimitPerMinute);
+  const expiry = expiresAt ? new Date(expiresAt) : null;
+  if (!cleanName || !API_KEY_LEVELS.includes(accessLevel) || cleanScopes.length === 0) {
+    res.status(400).json({ error: "Informe nome, nível e ao menos um módulo." }); return;
+  }
+  if (!Number.isInteger(rate) || rate < 1 || rate > 10000) {
+    res.status(400).json({ error: "O limite deve ficar entre 1 e 10.000 requisições por minuto." }); return;
+  }
+  if (expiry && Number.isNaN(expiry.getTime())) {
+    res.status(400).json({ error: "Data de expiração inválida." }); return;
+  }
+  const [row] = await db.update(apiKeysTable).set({
+    name: cleanName,
+    accessLevel,
+    scopes: cleanScopes,
+    allowedIps: cleanIps,
+    rateLimitPerMinute: rate,
+    expiresAt: expiry,
+  }).where(eq(apiKeysTable.id, id)).returning();
+  if (!row) { res.status(404).json({ error: "Chave não encontrada." }); return; }
+  res.json(publicKey(row));
+});
+
+router.delete("/admin/api-keys/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json({ error: "ID inválido." }); return; }
+  const [row] = await db.delete(apiKeysTable).where(eq(apiKeysTable.id, id)).returning({ id: apiKeysTable.id });
+  if (!row) { res.status(404).json({ error: "Chave não encontrada." }); return; }
+  res.status(204).end();
+});
+
 router.post("/admin/api-keys/:id/revoke", requireAdmin, async (req, res): Promise<void> => {
   const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "ID inválido." }); return; }

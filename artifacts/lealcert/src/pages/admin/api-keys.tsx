@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   KeyRound, Plus, Copy, RotateCw, Ban, ShieldCheck, Clock, Activity, Loader2, Check,
+  Pencil, Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,13 @@ function fmt(value: string | null): string {
   return value ? new Date(value).toLocaleString("pt-BR") : "Nunca";
 }
 
+function toDatetimeLocal(value: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
 export default function AdminApiKeys() {
   const { toast } = useToast();
   const [keys, setKeys] = useState<ApiKey[]>([]);
@@ -79,6 +87,7 @@ export default function AdminApiKeys() {
   const [expires, setExpires] = useState("");
   const [allowedIps, setAllowedIps] = useState("");
   const [rateLimit, setRateLimit] = useState("60");
+  const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
 
   const load = async () => {
     try {
@@ -93,30 +102,72 @@ export default function AdminApiKeys() {
 
   const resetForm = () => {
     setName(""); setLevel("full"); setScopes(ALL_SCOPES); setExpires("");
-    setAllowedIps(""); setRateLimit("60");
+    setAllowedIps(""); setRateLimit("60"); setEditingKey(null);
   };
 
-  const createKey = async () => {
+  const openCreate = () => {
+    resetForm();
+    setFormOpen(true);
+  };
+
+  const openEdit = (key: ApiKey) => {
+    setEditingKey(key);
+    setName(key.name);
+    setLevel(key.accessLevel);
+    setScopes([...key.scopes]);
+    setExpires(toDatetimeLocal(key.expiresAt));
+    setAllowedIps(key.allowedIps.join(", "));
+    setRateLimit(String(key.rateLimitPerMinute));
+    setFormOpen(true);
+  };
+
+  const saveKey = async () => {
     setSaving(true);
     try {
-      const created = await apiRequest<ApiKey & { token: string }>("/api/admin/api-keys", {
-        method: "POST",
-        body: JSON.stringify({
-          name, accessLevel: level, scopes,
-          expiresAt: expires ? new Date(expires).toISOString() : null,
-          allowedIps: allowedIps.split(/[\n,]/).map(v => v.trim()).filter(Boolean),
-          rateLimitPerMinute: Number(rateLimit),
-        }),
-      });
-      setFormOpen(false);
-      setRevealedToken(created.token);
-      setTokenTitle(`Chave criada: ${created.name}`);
+      const payload = {
+        name, accessLevel: level, scopes,
+        expiresAt: expires ? new Date(expires).toISOString() : null,
+        allowedIps: allowedIps.split(/[\n,]/).map(v => v.trim()).filter(Boolean),
+        rateLimitPerMinute: Number(rateLimit),
+      };
+      if (editingKey) {
+        await apiRequest<ApiKey>(`/api/admin/api-keys/${editingKey.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+        setFormOpen(false);
+        toast({ title: "Chave atualizada", description: "O token existente não foi alterado." });
+      } else {
+        const created = await apiRequest<ApiKey & { token: string }>("/api/admin/api-keys", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        setFormOpen(false);
+        setRevealedToken(created.token);
+        setTokenTitle(`Chave criada: ${created.name}`);
+      }
       resetForm();
       await load();
     } catch (error) {
-      toast({ title: "Erro ao criar chave", description: (error as Error).message, variant: "destructive" });
+      toast({ title: editingKey ? "Erro ao editar chave" : "Erro ao criar chave", description: (error as Error).message, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deleteKey = async (key: ApiKey) => {
+    if (!window.confirm(`Excluir definitivamente a chave "${key.name}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await apiRequest(`/api/admin/api-keys/${key.id}`, {
+        method: "DELETE",
+        body: JSON.stringify({
+          confirmation: true,
+        }),
+      });
+      toast({ title: "Chave excluída", description: "O token não pode mais ser utilizado." });
+      await load();
+    } catch (error) {
+      toast({ title: "Erro ao excluir chave", description: (error as Error).message, variant: "destructive" });
     }
   };
 
@@ -159,7 +210,7 @@ export default function AdminApiKeys() {
             Acesso controlado para o Hermes e outras integrações servidor a servidor.
           </p>
         </div>
-        <Button onClick={() => setFormOpen(true)}><Plus className="h-4 w-4 mr-2" />Nova chave</Button>
+        <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Nova chave</Button>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
@@ -193,10 +244,12 @@ export default function AdminApiKeys() {
                   <TableCell className="text-xs">{key.lastUsedAt ? fmt(key.lastUsedAt) : "Ainda não usada"}</TableCell>
                   <TableCell><Badge variant={active ? "default" : "secondary"}>{active ? "Ativa" : expired ? "Expirada" : "Revogada"}</Badge></TableCell>
                   <TableCell className="text-right space-x-1">
+                    <Button size="sm" variant="outline" onClick={() => openEdit(key)} title="Editar"><Pencil className="h-4 w-4" /></Button>
                     {active && <>
                       <Button size="sm" variant="outline" onClick={() => rotate(key)} title="Rotacionar"><RotateCw className="h-4 w-4" /></Button>
                       <Button size="sm" variant="destructive" onClick={() => revoke(key)} title="Revogar"><Ban className="h-4 w-4" /></Button>
                     </>}
+                    <Button size="sm" variant="destructive" onClick={() => deleteKey(key)} title="Excluir"><Trash2 className="h-4 w-4" /></Button>
                   </TableCell>
                 </TableRow>;
               })}</TableBody>
@@ -215,9 +268,12 @@ export default function AdminApiKeys() {
         </CardContent>
       </Card>
 
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+      <Dialog open={formOpen} onOpenChange={open => { setFormOpen(open); if (!open) resetForm(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Nova chave de API</DialogTitle><DialogDescription>Todos os módulos começam selecionados. Ajuste somente se quiser restringir a integração.</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editingKey ? "Editar chave de API" : "Nova chave de API"}</DialogTitle>
+            <DialogDescription>{editingKey ? `Altere as permissões e configurações de ${editingKey.name}. O token não será modificado.` : "Todos os módulos começam selecionados. Ajuste somente se quiser restringir a integração."}</DialogDescription>
+          </DialogHeader>
           <div className="space-y-5">
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Nome da integração</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Hermes produção" /></div>
@@ -239,7 +295,7 @@ export default function AdminApiKeys() {
               </div>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button><Button onClick={createKey} disabled={saving || !name.trim() || scopes.length === 0}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Gerar chave</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button><Button onClick={saveKey} disabled={saving || !name.trim() || scopes.length === 0}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}{editingKey ? "Salvar alterações" : "Gerar chave"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
