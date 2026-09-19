@@ -10,7 +10,7 @@ import { getDiscagemSettings } from "./settings-reader";
 import { AGENT_SYSTEM_PROMPT, type AgentName } from "./config";
 import { getSiteCacheBlock, refreshSiteCache } from "./site-cache";
 import { createHmac } from "node:crypto";
-import { db, couponsTable, apiKeysTable } from "@workspace/db";
+import { db, couponsTable, apiKeysTable, apiKeyAuditLogsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../logger";
 import { selectExternalBrainKey } from "../api-keys";
@@ -209,6 +209,25 @@ async function callExternalBrain(
   const keys = await db.select().from(apiKeysTable).where(eq(apiKeysTable.isActive, true));
   const key = selectExternalBrainKey(keys);
   if (!key?.aiWebhookUrl) {
+    const candidate = [...keys]
+      .filter(row => !!row.aiWebhookUrl)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id)[0];
+    if (candidate) {
+      try {
+        await db.insert(apiKeyAuditLogsTable).values({
+          apiKeyId: candidate.id,
+          tokenPrefix: candidate.tokenPrefix,
+          method: "POST",
+          path: candidate.aiWebhookUrl!,
+          scope: `hermes-call:${context.callId ?? "sem-callId"}:nenhuma chave elegível com discagem + brain + webhook`,
+          statusCode: 422,
+          durationMs: 0,
+          sourceIp: "internal",
+        });
+      } catch (auditError) {
+        logger.error({ auditError, callId: context.callId }, "Falha ao registrar roteamento não elegível do Hermes");
+      }
+    }
     logger.warn({ callId: context.callId }, "Hermes não acionado: nenhuma chave elegível com discagem + brain + webhook");
     return null;
   }
@@ -252,6 +271,25 @@ async function callExternalBrain(
     .digest("hex");
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4_500);
+  const startedAt = Date.now();
+  let attemptLogged = false;
+  const logAttempt = async (statusCode: number, message: string): Promise<void> => {
+    attemptLogged = true;
+    try {
+      await db.insert(apiKeyAuditLogsTable).values({
+        apiKeyId: key.id,
+        tokenPrefix: key.tokenPrefix,
+        method: "POST",
+        path: key.aiWebhookUrl!,
+        scope: `hermes-call:${context.callId ?? "sem-callId"}:${stage}:${message.slice(0, 800)}`,
+        statusCode,
+        durationMs: Date.now() - startedAt,
+        sourceIp: "internal",
+      });
+    } catch (auditError) {
+      logger.error({ auditError, keyId: key.id, callId: context.callId }, "Falha ao salvar log de turno do Hermes");
+    }
+  };
   try {
     const response = await fetch(key.aiWebhookUrl, {
       method: "POST",
@@ -266,7 +304,9 @@ async function callExternalBrain(
     });
     if (!response.ok) {
       const responseBody = (await response.text()).slice(0, 500);
-      throw new Error(`HTTP ${response.status}${responseBody ? `: ${responseBody}` : ""}`);
+      const message = `HTTP ${response.status}${responseBody ? `: ${responseBody}` : ""}`;
+      await logAttempt(response.status, message);
+      throw new Error(message);
     }
     const data = await response.json() as {
       text?: unknown;
@@ -298,9 +338,16 @@ async function callExternalBrain(
       : shouldEnd && statusSuggested
         ? statusSuggested.slice(0, 1_000)
         : null;
+    await logAttempt(response.status, "Turno autenticado e respondido pelo Hermes.");
     logger.info({ keyId: key.id, callId: context.callId, stage }, "Hermes respondeu ao turno da ligação");
     return result;
   } catch (error) {
+    if (!attemptLogged) {
+      const message = error instanceof Error && error.name === "AbortError"
+        ? "Timeout após 4,5 segundos."
+        : error instanceof Error ? error.message : String(error);
+      await logAttempt(502, message);
+    }
     logger.warn({ error, keyId: key.id, callId: context.callId }, "Hermes indisponível; usando IA interna como fallback");
     return null;
   } finally {

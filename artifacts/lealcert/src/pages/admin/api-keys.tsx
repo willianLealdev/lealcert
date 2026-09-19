@@ -249,7 +249,7 @@ export default function AdminApiKeys() {
     setLoadingLogs(true);
     try {
       const rows = await apiRequest<ApiKeyAuditLog[]>(`/api/admin/api-keys/${key.id}/audit`);
-      setHermesLogs(rows.filter(row => row.scope?.startsWith("hermes-diagnostic:")));
+      setHermesLogs(rows.filter(row => row.scope?.startsWith("hermes-diagnostic:") || row.scope?.startsWith("hermes-call:")));
     } catch (error) {
       toast({ title: "Erro ao carregar logs do Hermes", description: (error as Error).message, variant: "destructive" });
     } finally {
@@ -335,7 +335,7 @@ export default function AdminApiKeys() {
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Logs de conexão — {logKey?.name}</DialogTitle>
-            <DialogDescription>Histórico persistente dos testes executados por este servidor. Nenhum token ou assinatura é armazenado.</DialogDescription>
+            <DialogDescription>Histórico persistente dos testes manuais e das ligações reais executadas por este servidor. Nenhum token ou assinatura é armazenado.</DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto border rounded-lg">
             {loadingLogs ? (
@@ -346,12 +346,20 @@ export default function AdminApiKeys() {
               <div className="divide-y">
                 {hermesLogs.map(log => {
                   const success = log.statusCode >= 200 && log.statusCode < 300;
-                  const message = log.scope?.replace(/^hermes-diagnostic:/, "") || "Sem detalhes.";
+                  const isCall = log.scope?.startsWith("hermes-call:");
+                  const callMatch = isCall ? log.scope?.match(/^hermes-call:([^:]+):(?:(opening|qualification|pitch|objection|closing|follow_up):)?(.*)$/) : null;
+                  const callId = callMatch?.[1];
+                  const stage = callMatch?.[2];
+                  const message = isCall
+                    ? callMatch?.[3] || "Sem detalhes."
+                    : log.scope?.replace(/^hermes-diagnostic:/, "") || "Sem detalhes.";
                   return (
                     <div key={log.id} className="p-4 space-y-2">
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-2">
                           <Badge variant={success ? "default" : "destructive"}>{success ? "Conectado" : "Erro"}</Badge>
+                          <Badge variant="outline">{isCall ? `Ligação #${callId}` : "Teste manual"}</Badge>
+                          {stage && <Badge variant="secondary">{stage}</Badge>}
                           <span className="text-sm font-medium">HTTP {log.statusCode}</span>
                           <span className="text-xs text-slate-500">{log.durationMs} ms</span>
                         </div>
