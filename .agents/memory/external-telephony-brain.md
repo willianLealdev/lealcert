@@ -9,6 +9,8 @@ The synchronous Hermes contract uses `fala` for speech plus `shouldEnd`, `should
 
 Hermes is the primary brain for every live-call turn, including the opening generated before dialing. The campaign's DeepSeek/Claude/GPT setting is fallback only; TTS and voice settings still convert Hermes' speech to audio.
 
+Never send the legacy LealCert system prompt to Hermes. Hermes owns its sales reasoning and receives only conversation, lead, stage, and business context; the legacy prompt is reserved for internal fallback.
+
 **Why:** Live calls cannot stop when an external AI is slow or unavailable, and the outbound webhook needs verifiable authentication without storing a second plaintext credential.
 
 **How to apply:** Pass external call context during opening pre-generation and on-demand opening as well as later customer turns. Do not use Hermes' asynchronous native webhook for live calls. Use a dedicated synchronous HTTPS endpoint, keep the timeout short, validate response fields strictly, and fall back to the configured internal AI on timeout, HTTP failure, invalid payload, revoked/expired key, or missing authorization.

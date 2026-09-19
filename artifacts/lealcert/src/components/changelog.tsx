@@ -23,6 +23,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "segurança", text: "Cérebro externo: cada turno enviado ao Hermes é assinado com HMAC, possui timeout de 4,5 segundos e usa automaticamente a IA atual como fallback se o webhook falhar." },
       { type: "melhoria", text: "Hermes: o webhook síncrono agora recebe lead, etapa comercial, última fala e contexto do negócio, e pode responder usando fala, shouldEnd e command." },
       { type: "melhoria", text: "Discagem com Hermes: o cérebro externo agora cria também a abertura da ligação e conduz todos os turnos; DeepSeek, Claude ou GPT são usados somente como fallback se o Hermes falhar." },
+      { type: "fix", text: "Hermes: o roteiro da IA antiga não é mais enviado ao cérebro externo; o Hermes conduz a conversa com seu próprio raciocínio e o script interno fica restrito ao fallback." },
       { type: "segurança", text: "Hermes: quando existem várias chaves, somente a chave ativa, não expirada e não revogada mais recente com escopo de discagem e capacidade de cérebro recebe a conversa." },
       { type: "segurança", text: "API externa: tokens são exibidos uma única vez e armazenados somente por hash; acesso ocorre por endpoints REST controlados, sem SQL arbitrário." },
     ],

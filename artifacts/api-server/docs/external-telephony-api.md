@@ -77,10 +77,12 @@ Para cada turno do cliente, o LealCert envia:
     "cupomAtivo": true,
     "cupom": "PARCEIRO",
     "primeiroCertificadoComCupom": "R$ 70,00"
-  },
-  "systemPrompt": "..."
+  }
 }
 ```
+
+O script interno do LealCert não é enviado ao Hermes. O Hermes conduz a conversa usando
+o contexto comercial recebido; o prompt antigo fica restrito à IA interna de fallback.
 
 Cabeçalhos:
 

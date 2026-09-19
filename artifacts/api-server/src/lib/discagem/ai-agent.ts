@@ -208,7 +208,10 @@ async function callExternalBrain(
 ): Promise<AgentResponse | null> {
   const keys = await db.select().from(apiKeysTable).where(eq(apiKeysTable.isActive, true));
   const key = selectExternalBrainKey(keys);
-  if (!key?.aiWebhookUrl) return null;
+  if (!key?.aiWebhookUrl) {
+    logger.warn({ callId: context.callId }, "Hermes não acionado: nenhuma chave elegível com discagem + brain + webhook");
+    return null;
+  }
 
   const timestamp = String(Date.now());
   const lastUserText = turns.at(-1)?.text ?? "";
@@ -243,7 +246,6 @@ async function callExternalBrain(
       cupom: cupomAtivo ? "PARCEIRO" : null,
       primeiroCertificadoComCupom: cupomAtivo ? "R$ 70,00" : null,
     },
-    systemPrompt: prompt,
   });
   const signature = createHmac("sha256", key.tokenHash)
     .update(`${timestamp}.${body}`, "utf8")
@@ -262,7 +264,10 @@ async function callExternalBrain(
       body,
       signal: controller.signal,
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      const responseBody = (await response.text()).slice(0, 500);
+      throw new Error(`HTTP ${response.status}${responseBody ? `: ${responseBody}` : ""}`);
+    }
     const data = await response.json() as {
       text?: unknown;
       fala?: unknown;
@@ -293,6 +298,7 @@ async function callExternalBrain(
       : shouldEnd && statusSuggested
         ? statusSuggested.slice(0, 1_000)
         : null;
+    logger.info({ keyId: key.id, callId: context.callId, stage }, "Hermes respondeu ao turno da ligação");
     return result;
   } catch (error) {
     logger.warn({ error, keyId: key.id, callId: context.callId }, "Hermes indisponível; usando IA interna como fallback");

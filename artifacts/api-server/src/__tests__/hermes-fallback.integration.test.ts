@@ -110,7 +110,7 @@ type WebhookRequest = {
     cupomAtivo: boolean;
     cupom: string | null;
   };
-  systemPrompt: string;
+  systemPrompt?: string;
 };
 
 function validateHermesRequest(input: string | URL | Request, init?: RequestInit): WebhookRequest {
@@ -154,7 +154,7 @@ function validateHermesRequest(input: string | URL | Request, init?: RequestInit
     cupomAtivo: false,
     cupom: null,
   });
-  expect(payload.systemPrompt).toContain("Prompt de integração");
+  expect(payload.systemPrompt).toBeUndefined();
   return payload;
 }
 
@@ -193,7 +193,7 @@ describe("Hermes integrado ao pipeline de ligação", () => {
     vi.useRealTimers();
   });
 
-  it("usa a resposta válida do Hermes e envia contexto, histórico, prompt e assinatura HMAC", async () => {
+  it("usa a resposta válida do Hermes e envia contexto, histórico e assinatura HMAC sem o prompt antigo", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const payload = validateHermesRequest(input, init);
       expect(payload.stage).toBe("opening");
