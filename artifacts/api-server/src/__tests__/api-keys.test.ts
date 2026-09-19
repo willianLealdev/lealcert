@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractTokenPrefix, generateApiToken, hashApiToken, levelAllowsMethod,
-  safelyMatchesHash, scopeForPath, telephonyCapabilityForRequest,
+  safelyMatchesHash, scopeForPath, selectExternalBrainKey, telephonyCapabilityForRequest,
 } from "../lib/api-keys";
 
 describe("API keys", () => {
@@ -37,5 +37,54 @@ describe("API keys", () => {
     expect(telephonyCapabilityForRequest("/telephony/calls/start", "POST")).toBe("command");
     expect(telephonyCapabilityForRequest("/admin/discagem/campaigns/1/pause", "POST")).toBe("command");
     expect(telephonyCapabilityForRequest("/orders", "GET")).toBeNull();
+  });
+
+  it("seleciona deterministicamente o Hermes autorizado mais recente", () => {
+    const now = new Date("2026-09-19T12:00:00.000Z");
+    const candidate = (overrides: Record<string, unknown> = {}) => ({
+      id: 1,
+      isActive: true,
+      revokedAt: null,
+      expiresAt: null,
+      scopes: ["discagem"],
+      telephonyCapabilities: ["brain"],
+      aiWebhookUrl: "https://hermes.test/authorized",
+      createdAt: new Date("2026-09-01T00:00:00.000Z"),
+      ...overrides,
+    });
+    const older = candidate({ id: 10 });
+    const newest = candidate({
+      id: 20,
+      aiWebhookUrl: "https://hermes.test/newest",
+      createdAt: new Date("2026-09-10T00:00:00.000Z"),
+    });
+    const forbidden = [
+      candidate({ id: 30, isActive: false, createdAt: new Date("2026-09-18T00:00:00.000Z") }),
+      candidate({ id: 31, revokedAt: new Date("2026-09-18T00:00:00.000Z") }),
+      candidate({ id: 32, expiresAt: new Date("2026-09-18T00:00:00.000Z") }),
+      candidate({ id: 33, scopes: ["orders"] }),
+      candidate({ id: 34, telephonyCapabilities: ["analyze"] }),
+      candidate({ id: 35, aiWebhookUrl: null }),
+    ];
+
+    expect(selectExternalBrainKey([...forbidden, older, newest], now)).toBe(newest);
+    expect(selectExternalBrainKey([newest, older, ...forbidden.reverse()], now)).toBe(newest);
+  });
+
+  it("desempata chaves criadas no mesmo instante pelo maior id", () => {
+    const base = {
+      isActive: true,
+      revokedAt: null,
+      expiresAt: null,
+      scopes: ["discagem"],
+      telephonyCapabilities: ["brain"],
+      aiWebhookUrl: "https://hermes.test/turn",
+      createdAt: new Date("2026-09-10T00:00:00.000Z"),
+    };
+
+    expect(selectExternalBrainKey([
+      { ...base, id: 7 },
+      { ...base, id: 9 },
+    ])?.id).toBe(9);
   });
 });

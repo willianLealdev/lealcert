@@ -21,6 +21,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "melhoria", text: "Chaves de API: agora é possível editar nome, nível, validade, módulos, IPs e limite de requisições sem alterar o token, além de excluir chaves definitivamente pelo painel." },
       { type: "novo", text: "Telefonia por API: três permissões independentes permitem analisar ligações, usar o Hermes como cérebro comercial em tempo real e comandar ligações, retornos, WhatsApp, resumos e tarefas humanas." },
       { type: "segurança", text: "Cérebro externo: cada turno enviado ao Hermes é assinado com HMAC, possui timeout de 4,5 segundos e usa automaticamente a IA atual como fallback se o webhook falhar." },
+      { type: "segurança", text: "Hermes: quando existem várias chaves, somente a chave ativa, não expirada e não revogada mais recente com escopo de discagem e capacidade de cérebro recebe a conversa." },
       { type: "segurança", text: "API externa: tokens são exibidos uma única vez e armazenados somente por hash; acesso ocorre por endpoints REST controlados, sem SQL arbitrário." },
     ],
   },

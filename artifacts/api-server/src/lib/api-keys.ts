@@ -14,6 +14,38 @@ export type ApiKeyScope = typeof API_KEY_SCOPES[number];
 export const TELEPHONY_CAPABILITIES = ["analyze", "brain", "command"] as const;
 export type TelephonyCapability = typeof TELEPHONY_CAPABILITIES[number];
 
+export interface ExternalBrainKeyCandidate {
+  id: number;
+  isActive: boolean;
+  revokedAt: Date | null;
+  expiresAt: Date | null;
+  scopes: readonly string[];
+  telephonyCapabilities: readonly string[];
+  aiWebhookUrl: string | null;
+  createdAt: Date;
+}
+
+export function selectExternalBrainKey<T extends ExternalBrainKeyCandidate>(
+  keys: readonly T[],
+  now = new Date(),
+): T | null {
+  const eligible = keys.filter((key) =>
+    key.isActive
+    && !key.revokedAt
+    && (!key.expiresAt || key.expiresAt > now)
+    && key.scopes.includes("discagem")
+    && key.telephonyCapabilities.includes("brain")
+    && !!key.aiWebhookUrl,
+  );
+
+  eligible.sort((a, b) =>
+    b.createdAt.getTime() - a.createdAt.getTime()
+    || b.id - a.id,
+  );
+
+  return eligible[0] ?? null;
+}
+
 export const TELEPHONY_CAPABILITY_LABELS: Record<TelephonyCapability, string> = {
   analyze: "Nível 1 — Analisar ligações",
   brain: "Nível 2 — Cérebro comercial em tempo real",

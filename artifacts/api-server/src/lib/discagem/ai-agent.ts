@@ -13,6 +13,7 @@ import { createHmac } from "node:crypto";
 import { db, couponsTable, apiKeysTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../logger";
+import { selectExternalBrainKey } from "../api-keys";
 
 // Inicia o cache do site em background (sem bloquear)
 refreshSiteCache().catch(() => {});
@@ -182,14 +183,7 @@ async function callExternalBrain(
   context: ExternalBrainContext,
 ): Promise<AgentResponse | null> {
   const keys = await db.select().from(apiKeysTable).where(eq(apiKeysTable.isActive, true));
-  const now = new Date();
-  const key = keys.find(row =>
-    !row.revokedAt
-    && (!row.expiresAt || row.expiresAt > now)
-    && row.scopes.includes("discagem")
-    && row.telephonyCapabilities.includes("brain")
-    && !!row.aiWebhookUrl,
-  );
+  const key = selectExternalBrainKey(keys);
   if (!key?.aiWebhookUrl) return null;
 
   const timestamp = String(Date.now());

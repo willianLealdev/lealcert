@@ -18,6 +18,7 @@ const hermesKey = {
   aiWebhookUrl: "https://hermes.test/turn",
   tokenHash: "hermes-signing-secret",
   tokenPrefix: "lc_live_hermes",
+  createdAt: new Date("2026-09-10T00:00:00.000Z"),
 };
 
 vi.mock("@workspace/db", () => {
