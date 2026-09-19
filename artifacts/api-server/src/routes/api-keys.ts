@@ -48,8 +48,8 @@ router.post("/admin/api-keys", requireAdmin, async (req, res): Promise<void> => 
   if (expiry && (Number.isNaN(expiry.getTime()) || expiry <= new Date())) {
     res.status(400).json({ error: "A expiração deve estar no futuro." }); return;
   }
-  if (cleanCapabilities.includes("brain") && (!cleanWebhookUrl || !cleanWebhookKey || !cleanWebhookSecret)) {
-    res.status(400).json({ error: "Informe URL, Webhook Key e Webhook Secret do Hermes para habilitar o nível 2." }); return;
+  if (cleanCapabilities.includes("brain") && !cleanWebhookUrl) {
+    res.status(400).json({ error: "Informe a URL do webhook do Hermes para habilitar o nível 2." }); return;
   }
   if (cleanWebhookUrl && !/^https:\/\//i.test(cleanWebhookUrl)) {
     res.status(400).json({ error: "A URL do webhook deve usar HTTPS." }); return;
