@@ -16,6 +16,8 @@ export interface PendingPayload {
   transferToHuman?: boolean;
   callbackRequested?: boolean;
   capturedEmail?: string | null;
+  promptUsed?: string;
+  aiSource?: string;
   history: ConvTurn[];
   err?: unknown;
 }
@@ -66,6 +68,13 @@ export function processSpeechTurn(
       campaign.aiModel as any,
       agentName,
       campaign.systemPrompt ?? undefined,
+      {
+        callId,
+        campaignId: "id" in campaign ? (campaign as { id?: number }).id ?? null : null,
+        contactId: "contactId" in campaign ? (campaign as { contactId?: number }).contactId ?? null : null,
+        phoneNumber: "phoneNumber" in campaign ? (campaign as { phoneNumber?: string }).phoneNumber : undefined,
+        contactName: "contactName" in campaign ? (campaign as { contactName?: string | null }).contactName : undefined,
+      },
     );
     history.push({ role: "assistant", text: aiResp.text, ts: new Date().toISOString() });
     const voiceId = await resolveVoiceId(campaign.ttsVoiceId, agentName, provider);
@@ -78,6 +87,8 @@ export function processSpeechTurn(
       transferToHuman: aiResp.transferToHuman,
       callbackRequested: aiResp.callbackRequested,
       capturedEmail: aiResp.capturedEmail ?? null,
+      promptUsed: aiResp.promptUsed,
+      aiSource: aiResp.modelUsed,
       history,
     };
   })().catch(err => ({

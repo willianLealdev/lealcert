@@ -11,6 +11,15 @@ export const API_KEY_SCOPES = [
 ] as const;
 export type ApiKeyScope = typeof API_KEY_SCOPES[number];
 
+export const TELEPHONY_CAPABILITIES = ["analyze", "brain", "command"] as const;
+export type TelephonyCapability = typeof TELEPHONY_CAPABILITIES[number];
+
+export const TELEPHONY_CAPABILITY_LABELS: Record<TelephonyCapability, string> = {
+  analyze: "Nível 1 — Analisar ligações",
+  brain: "Nível 2 — Cérebro comercial em tempo real",
+  command: "Nível 3 — Comandar ações",
+};
+
 export const API_KEY_SCOPE_LABELS: Record<ApiKeyScope, string> = {
   users: "Clientes e contadores",
   orders: "Pedidos",
@@ -62,6 +71,7 @@ export function requestIp(req: Request): string {
 }
 
 export function scopeForPath(path: string): ApiKeyScope | null {
+  if (path.startsWith("/telephony")) return "discagem";
   if (path.startsWith("/admin/discagem") || path.startsWith("/discagem")) return "discagem";
   if (path.startsWith("/admin/relatorio")) return "finance";
   if (path.startsWith("/admin/vendedores")) return "vendors";
@@ -75,6 +85,15 @@ export function scopeForPath(path: string): ApiKeyScope | null {
     meetings: "meetings", operators: "operators", referrals: "referrals",
   };
   return first ? map[first] ?? null : null;
+}
+
+export function telephonyCapabilityForRequest(path: string, method: string): TelephonyCapability | null {
+  const isTelephony = path.startsWith("/telephony")
+    || path.startsWith("/admin/discagem")
+    || path.startsWith("/discagem");
+  if (!isTelephony) return null;
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return "analyze";
+  return "command";
 }
 
 export function levelAllowsMethod(level: ApiKeyLevel, method: string): boolean {

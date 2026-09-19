@@ -68,6 +68,14 @@ export const discagemCallsTable = pgTable("discagem_calls", {
   transcript: text("transcript"),  // JSON array de turns [{role, text, ts}]
   recordingUrl: text("recording_url"),
   durationSeconds: integer("duration_seconds"),
+  systemPromptUsed: text("system_prompt_used"),
+  aiSource: text("ai_source"),
+  interestStatus: text("interest_status").notNull().default("unknown"),
+  endReason: text("end_reason"),
+  aiSummary: text("ai_summary"),
+  whatsappSentAt: timestamp("whatsapp_sent_at", { withTimezone: true }),
+  callbackAt: timestamp("callback_at", { withTimezone: true }),
+  humanTask: text("human_task"),
 
   // E-mail de follow-up
   contactEmail: text("contact_email"),            // e-mail capturado durante a ligação

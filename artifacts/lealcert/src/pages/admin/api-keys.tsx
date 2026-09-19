@@ -28,6 +28,8 @@ type ApiKey = {
   tokenPrefix: string;
   accessLevel: AccessLevel;
   scopes: string[];
+  telephonyCapabilities: string[];
+  aiWebhookUrl: string | null;
   allowedIps: string[];
   rateLimitPerMinute: number;
   expiresAt: string | null;
@@ -47,6 +49,11 @@ const SCOPE_LABELS: Record<string, string> = {
   referrals: "Indicações", finance: "Relatório financeiro",
 };
 const ALL_SCOPES = Object.keys(SCOPE_LABELS);
+const TELEPHONY_OPTIONS = [
+  { value: "analyze", label: "Nível 1 — Analisar ligações", description: "Lê chamadas, transcrições, resultados, prompts e ações registradas." },
+  { value: "brain", label: "Nível 2 — Cérebro comercial", description: "Recebe cada turno por webhook e devolve a próxima fala. A IA atual assume em caso de falha." },
+  { value: "command", label: "Nível 3 — Comandar ações", description: "Inicia e pausa ligações, atualiza interesse, agenda retorno, envia WhatsApp, cria resumo e tarefa humana." },
+];
 const LEVEL_LABELS: Record<AccessLevel, string> = {
   read: "Leitura", write: "Escrita", full: "Total",
 };
@@ -87,6 +94,8 @@ export default function AdminApiKeys() {
   const [expires, setExpires] = useState("");
   const [allowedIps, setAllowedIps] = useState("");
   const [rateLimit, setRateLimit] = useState("60");
+  const [telephonyCapabilities, setTelephonyCapabilities] = useState<string[]>([]);
+  const [aiWebhookUrl, setAiWebhookUrl] = useState("");
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
 
   const load = async () => {
@@ -103,6 +112,7 @@ export default function AdminApiKeys() {
   const resetForm = () => {
     setName(""); setLevel("full"); setScopes(ALL_SCOPES); setExpires("");
     setAllowedIps(""); setRateLimit("60"); setEditingKey(null);
+    setTelephonyCapabilities([]); setAiWebhookUrl("");
   };
 
   const openCreate = () => {
@@ -118,6 +128,8 @@ export default function AdminApiKeys() {
     setExpires(toDatetimeLocal(key.expiresAt));
     setAllowedIps(key.allowedIps.join(", "));
     setRateLimit(String(key.rateLimitPerMinute));
+    setTelephonyCapabilities([...(key.telephonyCapabilities ?? [])]);
+    setAiWebhookUrl(key.aiWebhookUrl ?? "");
     setFormOpen(true);
   };
 
@@ -126,6 +138,8 @@ export default function AdminApiKeys() {
     try {
       const payload = {
         name, accessLevel: level, scopes,
+        telephonyCapabilities: scopes.includes("discagem") ? telephonyCapabilities : [],
+        aiWebhookUrl: telephonyCapabilities.includes("brain") ? aiWebhookUrl.trim() : null,
         expiresAt: expires ? new Date(expires).toISOString() : null,
         allowedIps: allowedIps.split(/[\n,]/).map(v => v.trim()).filter(Boolean),
         rateLimitPerMinute: Number(rateLimit),
@@ -230,7 +244,7 @@ export default function AdminApiKeys() {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Nome / prefixo</TableHead><TableHead>Nível</TableHead>
-                <TableHead>Módulos</TableHead><TableHead>Expiração</TableHead>
+                <TableHead>Módulos / telefonia</TableHead><TableHead>Expiração</TableHead>
                 <TableHead>Último uso</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead>
               </TableRow></TableHeader>
               <TableBody>{keys.map(key => {
@@ -239,7 +253,7 @@ export default function AdminApiKeys() {
                 return <TableRow key={key.id}>
                   <TableCell><p className="font-medium">{key.name}</p><code className="text-xs text-slate-500">{key.tokenPrefix}...</code></TableCell>
                   <TableCell><Badge variant="outline">{LEVEL_LABELS[key.accessLevel]}</Badge></TableCell>
-                  <TableCell><span className="text-sm">{key.scopes.length} de {ALL_SCOPES.length}</span></TableCell>
+                  <TableCell><span className="text-sm">{key.scopes.length} módulos</span>{key.telephonyCapabilities?.length > 0 && <p className="text-xs text-blue-600">{key.telephonyCapabilities.length} níveis de telefonia</p>}</TableCell>
                   <TableCell className="text-xs">{fmt(key.expiresAt)}</TableCell>
                   <TableCell className="text-xs">{key.lastUsedAt ? fmt(key.lastUsedAt) : "Ainda não usada"}</TableCell>
                   <TableCell><Badge variant={active ? "default" : "secondary"}>{active ? "Ativa" : expired ? "Expirada" : "Revogada"}</Badge></TableCell>
@@ -294,8 +308,25 @@ export default function AdminApiKeys() {
                 {ALL_SCOPES.map(scope => <label key={scope} className="flex items-center gap-2 text-sm py-1 cursor-pointer"><Checkbox checked={scopes.includes(scope)} onCheckedChange={checked => setScopes(checked ? [...scopes, scope] : scopes.filter(v => v !== scope))} />{SCOPE_LABELS[scope]}</label>)}
               </div>
             </div>
+            {scopes.includes("discagem") && <div className="space-y-3">
+              <div>
+                <Label>Permissões de telefonia</Label>
+                <p className="text-xs text-slate-500 mt-1">Independentes do nível HTTP geral da chave.</p>
+              </div>
+              <div className="space-y-2 border rounded-lg p-3">
+                {TELEPHONY_OPTIONS.map(option => <label key={option.value} className="flex items-start gap-3 text-sm py-1 cursor-pointer">
+                  <Checkbox className="mt-0.5" checked={telephonyCapabilities.includes(option.value)} onCheckedChange={checked => setTelephonyCapabilities(checked ? [...telephonyCapabilities, option.value] : telephonyCapabilities.filter(v => v !== option.value))} />
+                  <span><span className="font-medium block">{option.label}</span><span className="text-xs text-slate-500">{option.description}</span></span>
+                </label>)}
+              </div>
+              {telephonyCapabilities.includes("brain") && <div className="space-y-2">
+                <Label>Webhook HTTPS do Hermes</Label>
+                <Input type="url" value={aiWebhookUrl} onChange={e => setAiWebhookUrl(e.target.value)} placeholder="https://hermes.exemplo.com/lealcert/turn" />
+                <p className="text-xs text-slate-500">Timeout de 4,5 segundos. Se o webhook falhar, a IA configurada no LealCert responde automaticamente.</p>
+              </div>}
+            </div>}
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button><Button onClick={saveKey} disabled={saving || !name.trim() || scopes.length === 0}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}{editingKey ? "Salvar alterações" : "Gerar chave"}</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button><Button onClick={saveKey} disabled={saving || !name.trim() || scopes.length === 0 || (telephonyCapabilities.includes("brain") && !aiWebhookUrl.trim())}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}{editingKey ? "Salvar alterações" : "Gerar chave"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

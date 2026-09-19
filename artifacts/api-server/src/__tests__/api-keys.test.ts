@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractTokenPrefix, generateApiToken, hashApiToken, levelAllowsMethod,
-  safelyMatchesHash, scopeForPath,
+  safelyMatchesHash, scopeForPath, telephonyCapabilityForRequest,
 } from "../lib/api-keys";
 
 describe("API keys", () => {
@@ -30,5 +30,12 @@ describe("API keys", () => {
     expect(scopeForPath("/admin/discagem/campaigns")).toBe("discagem");
     expect(scopeForPath("/admin/relatorio/resumo")).toBe("finance");
     expect(scopeForPath("/auth/login")).toBeNull();
+  });
+
+  it("exige permissão específica para leitura e comando de telefonia", () => {
+    expect(telephonyCapabilityForRequest("/telephony/calls", "GET")).toBe("analyze");
+    expect(telephonyCapabilityForRequest("/telephony/calls/start", "POST")).toBe("command");
+    expect(telephonyCapabilityForRequest("/admin/discagem/campaigns/1/pause", "POST")).toBe("command");
+    expect(telephonyCapabilityForRequest("/orders", "GET")).toBeNull();
   });
 });

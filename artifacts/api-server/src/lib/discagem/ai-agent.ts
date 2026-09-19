@@ -9,8 +9,10 @@ import OpenAI from "openai";
 import { getDiscagemSettings } from "./settings-reader";
 import { AGENT_SYSTEM_PROMPT, type AgentName } from "./config";
 import { getSiteCacheBlock, refreshSiteCache } from "./site-cache";
-import { db, couponsTable } from "@workspace/db";
+import { createHmac } from "node:crypto";
+import { db, couponsTable, apiKeysTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { logger } from "../logger";
 
 // Inicia o cache do site em background (sem bloquear)
 refreshSiteCache().catch(() => {});
@@ -49,8 +51,17 @@ export interface AgentResponse {
   isOptOut: boolean;
   transferToHuman: boolean;       // [TRANSFERIR_HUMANO]
   callbackRequested: boolean;     // [SOLICITAR_CALLBACK_HUMANO]
-  modelUsed: AiModel;
+  modelUsed: AiModel | "external";
   capturedEmail?: string | null;  // e-mail capturado via [REGISTRAR_EMAIL:xxx]
+  promptUsed?: string;
+}
+
+export interface ExternalBrainContext {
+  callId?: number;
+  campaignId?: number | null;
+  contactId?: number | null;
+  phoneNumber?: string;
+  contactName?: string | null;
 }
 
 // ── Detecção de opt-out ──────────────────────────────────────────
@@ -136,12 +147,98 @@ function stripOpeningFiller(text: string): string {
   return stripped.length > 0 ? stripped : text.trim();
 }
 
+function parseAgentText(
+  text: string,
+  lastUserText: string,
+  modelUsed: AiModel | "external",
+  promptUsed: string,
+): AgentResponse {
+  const isOptOut = detectOptOut(lastUserText);
+  const transferToHuman = /\[TRANSFERIR_HUMANO\]/i.test(text);
+  const callbackRequested = /\[SOLICITAR_CALLBACK_HUMANO\]/i.test(text);
+  const shouldEndCall = isOptOut || transferToHuman || callbackRequested
+    || /\[(ENCERRAR|FIM|OPTOUT)\]/i.test(text);
+  const emailMatch = text.match(/\[REGISTRAR_EMAIL:([^\]]+)\]/i);
+  const capturedEmail = emailMatch ? emailMatch[1].trim() : null;
+  const strippedCommands = text
+    .replace(/\[(ENCERRAR|FIM|OPTOUT|TRANSFERIR_HUMANO|SOLICITAR_CALLBACK_HUMANO)\]/gi, "")
+    .replace(/\[REGISTRAR_EMAIL:[^\]]+\]/gi, "")
+    .trim();
+  return {
+    text: stripOpeningFiller(strippedCommands),
+    shouldEndCall,
+    isOptOut,
+    transferToHuman,
+    callbackRequested,
+    modelUsed,
+    capturedEmail,
+    promptUsed,
+  };
+}
+
+async function callExternalBrain(
+  turns: ConversationTurn[],
+  prompt: string,
+  context: ExternalBrainContext,
+): Promise<AgentResponse | null> {
+  const keys = await db.select().from(apiKeysTable).where(eq(apiKeysTable.isActive, true));
+  const now = new Date();
+  const key = keys.find(row =>
+    !row.revokedAt
+    && (!row.expiresAt || row.expiresAt > now)
+    && row.scopes.includes("discagem")
+    && row.telephonyCapabilities.includes("brain")
+    && !!row.aiWebhookUrl,
+  );
+  if (!key?.aiWebhookUrl) return null;
+
+  const timestamp = String(Date.now());
+  const body = JSON.stringify({
+    event: "telephony.turn.requested",
+    timestamp,
+    context,
+    conversation: turns,
+    systemPrompt: prompt,
+  });
+  const signature = createHmac("sha256", key.tokenHash)
+    .update(`${timestamp}.${body}`, "utf8")
+    .digest("hex");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4_500);
+  try {
+    const response = await fetch(key.aiWebhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-LealCert-Key": key.tokenPrefix,
+        "X-LealCert-Timestamp": timestamp,
+        "X-LealCert-Signature": `sha256=${signature}`,
+      },
+      body,
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json() as { text?: unknown };
+    if (typeof data.text !== "string" || !data.text.trim() || data.text.length > 2_000) {
+      throw new Error("Resposta sem texto válido");
+    }
+    return parseAgentText(data.text, turns.at(-1)?.text ?? "", "external", prompt);
+  } catch (error) {
+    logger.warn({ error, keyId: key.id, callId: context.callId }, "Hermes indisponível; usando IA interna como fallback");
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── Entrada principal com fallback ───────────────────────────────
 export async function runAgentTurn(
   turns: ConversationTurn[],
   preferredModel: AiModel = "deepseek",
   agentName: string = "Willian",
   customSystemPrompt?: string,
+  externalContext?: ExternalBrainContext,
+  allowExternal = true,
 ): Promise<AgentResponse> {
   const cfg = await getDiscagemSettings();
 
@@ -176,7 +273,13 @@ export async function runAgentTurn(
       transferToHuman: false,
       callbackRequested: false,
       modelUsed: preferredModel,
+      promptUsed: prompt,
     };
+  }
+
+  if (allowExternal && externalContext) {
+    const externalResponse = await callExternalBrain(turns, prompt, externalContext);
+    if (externalResponse) return externalResponse;
   }
 
   // Ordena a lista de fallback: coloca o preferredModel primeiro
@@ -202,26 +305,7 @@ export async function runAgentTurn(
         continue;
       }
 
-      const isOptOut = detectOptOut(lastUserText);
-      const transferToHuman   = /\[TRANSFERIR_HUMANO\]/i.test(text);
-      const callbackRequested = /\[SOLICITAR_CALLBACK_HUMANO\]/i.test(text);
-      const shouldEndCall = isOptOut || transferToHuman || callbackRequested
-        || /\[(ENCERRAR|FIM|OPTOUT)\]/i.test(text);
-
-      // Extrai e-mail capturado via [REGISTRAR_EMAIL:xxx]
-      const emailMatch = text.match(/\[REGISTRAR_EMAIL:([^\]]+)\]/i);
-      const capturedEmail = emailMatch ? emailMatch[1].trim() : null;
-
-      // Remove todos os comandos internos do texto falado
-      const strippedCommands = text
-        .replace(/\[(ENCERRAR|FIM|OPTOUT|TRANSFERIR_HUMANO|SOLICITAR_CALLBACK_HUMANO)\]/gi, "")
-        .replace(/\[REGISTRAR_EMAIL:[^\]]+\]/gi, "")
-        .trim();
-
-      // Remove fillers robóticos do início da resposta (o modelo às vezes ignora a regra do prompt)
-      const cleanText = stripOpeningFiller(strippedCommands);
-
-      return { text: cleanText, shouldEndCall, isOptOut, transferToHuman, callbackRequested, modelUsed: model, capturedEmail };
+      return parseAgentText(text, lastUserText, model, prompt);
 
     } catch (err: unknown) {
       lastError = err;

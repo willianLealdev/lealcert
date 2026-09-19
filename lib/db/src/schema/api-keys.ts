@@ -10,6 +10,8 @@ export const apiKeysTable = pgTable("api_keys", {
   tokenHash: text("token_hash").notNull(),
   accessLevel: text("access_level").notNull(),
   scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+  telephonyCapabilities: jsonb("telephony_capabilities").$type<string[]>().notNull().default([]),
+  aiWebhookUrl: text("ai_webhook_url"),
   allowedIps: jsonb("allowed_ips").$type<string[]>().notNull().default([]),
   rateLimitPerMinute: integer("rate_limit_per_minute").notNull().default(60),
   createdByUserId: integer("created_by_user_id").notNull().references(() => usersTable.id, { onDelete: "restrict" }),

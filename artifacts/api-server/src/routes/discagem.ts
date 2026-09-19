@@ -279,6 +279,8 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
   if (payload.history.length > 0) {
     await db.update(discagemCallsTable).set({
       transcript: JSON.stringify(payload.history),
+      systemPromptUsed: payload.promptUsed,
+      aiSource: payload.aiSource,
     }).where(eq(discagemCallsTable.id, callId)).catch(() => {});
   }
 
@@ -302,6 +304,8 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
       transcript: JSON.stringify(payload.history),
       status: payload.isOptOut ? "optout" : "answered",
       outcome,
+      systemPromptUsed: payload.promptUsed,
+      aiSource: payload.aiSource,
       ...(capturedEmail ? { contactEmail: capturedEmail, wantsFollowupEmail: true } : {}),
     }).where(eq(discagemCallsTable.id, callId));
 

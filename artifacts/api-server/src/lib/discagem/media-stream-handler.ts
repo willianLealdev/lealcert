@@ -153,6 +153,8 @@ export function setupMediaStreamWebSocket(server: Server): void {
         status: result.isOptOut ? "optout" : "answered",
         outcome,
         transcript: result.history.length > 0 ? JSON.stringify(result.history) : undefined,
+        systemPromptUsed: result.promptUsed,
+        aiSource: result.aiSource,
         ...(capturedEmail ? { contactEmail: capturedEmail, wantsFollowupEmail: true } : {}),
       }).where(eq(discagemCallsTable.id, callId)).catch(() => {});
 
@@ -229,6 +231,8 @@ export function setupMediaStreamWebSocket(server: Server): void {
       if (result.history.length > 0) {
         await db.update(discagemCallsTable).set({
           transcript: JSON.stringify(result.history),
+          systemPromptUsed: result.promptUsed,
+          aiSource: result.aiSource,
         }).where(eq(discagemCallsTable.id, callId)).catch(() => {});
       }
 

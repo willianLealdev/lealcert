@@ -1,7 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { eq } from "drizzle-orm";
 import { db, apiKeysTable, apiKeyAuditLogsTable } from "@workspace/db";
-import { extractTokenPrefix, levelAllowsMethod, requestIp, safelyMatchesHash, scopeForPath, type ApiKeyLevel } from "../lib/api-keys";
+import { extractTokenPrefix, levelAllowsMethod, requestIp, safelyMatchesHash, scopeForPath, telephonyCapabilityForRequest, type ApiKeyLevel } from "../lib/api-keys";
 import usersRouter from "./users";
 import ordersRouter from "./orders";
 import certificatesRouter from "./certificates";
@@ -21,6 +21,7 @@ import meetingsRouter from "./meetings";
 import operatorsRouter from "./operators";
 import referralsRouter from "./referrals";
 import relatorioFinanceiroRouter from "./relatorio-financeiro";
+import externalTelephonyRouter from "./external-telephony";
 
 const router = Router();
 const usage = new Map<number, { minute: number; count: number }>();
@@ -55,6 +56,10 @@ router.use(async (req: Request, res: Response, next: NextFunction): Promise<void
   const scope = scopeForPath(req.path);
   if (!scope || !key.scopes.includes(scope)) {
     res.status(403).json({ error: "Módulo não autorizado para esta chave." }); return;
+  }
+  const telephonyCapability = telephonyCapabilityForRequest(req.path, req.method);
+  if (telephonyCapability && !key.telephonyCapabilities.includes(telephonyCapability)) {
+    res.status(403).json({ error: `A chave não possui a permissão de telefonia: ${telephonyCapability}.` }); return;
   }
   if (!levelAllowsMethod(key.accessLevel as ApiKeyLevel, req.method)) {
     res.status(403).json({ error: "O nível da chave não permite este método HTTP." }); return;
@@ -93,6 +98,7 @@ router.use(async (req: Request, res: Response, next: NextFunction): Promise<void
   next();
 });
 
+router.use(externalTelephonyRouter);
 router.use(usersRouter);
 router.use(ordersRouter);
 router.use(certificatesRouter);
