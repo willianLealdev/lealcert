@@ -144,7 +144,8 @@ router.post("/discagem/voice/:callId", async (req, res): Promise<void> => {
       streamModeCalls.add(callId);
       const wsUrl = base.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
       const streamUrl = `${wsUrl}/api/discagem/media-stream/${callId}`;
-      res.type("text/xml").send(twimlOpeningStream(url, streamUrl));
+      const fallbackUrl = `${base}/api/discagem/voice/${callId}/speech-gather-fallback`;
+      res.type("text/xml").send(twimlOpeningStream(url, streamUrl, fallbackUrl));
     } else {
       // ── Modo Gather (Twilio STT fallback) ─────────────────────────
       const gatherAction = `${base}/api/discagem/voice/${callId}/speech`;
@@ -180,12 +181,6 @@ router.post("/discagem/voice/:callId/speech-gather-fallback", async (req, res): 
 router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> => {
   const callId = parseInt(Array.isArray(req.params.callId) ? req.params.callId[0] : req.params.callId, 10);
   const speechResult: string = req.body?.SpeechResult ?? "";
-  const hangupParam = req.query.hangup === "1";
-
-  if (hangupParam || !speechResult) {
-    res.type("text/xml").send(twimlHangup());
-    return;
-  }
 
   // ── 1. Busca dados necessários ──────────────────────────────────
   const [call] = await db.select().from(discagemCallsTable).where(eq(discagemCallsTable.id, callId));
@@ -196,14 +191,18 @@ router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> =>
 
   const { publicHostname } = await import("../lib/discagem/settings-reader").then(m => m.getDiscagemSettings());
   const base = publicHostname || process.env.PUBLIC_HOSTNAME || "";
+  const normalizedSpeech = speechResult.trim() || "[SEM_VOZ]";
+  if (!speechResult.trim()) {
+    console.info(`[discagem-voice] Silêncio no Gather callId=${callId} — mantendo ligação e consultando IA`);
+  }
 
   // ── 2. Dispara IA + TTS em background via conversation-state ─────
-  processSpeechTurn(callId, campaign as any, speechResult);
+  processSpeechTurn(callId, campaign as any, normalizedSpeech);
 
   // ── 3. Responde IMEDIATAMENTE com filler + redirect ──────────────
   // O Twilio toca o filler (~0.8s) enquanto a IA processa em paralelo.
   // Quando o Twilio chamar /reply, o resultado já deve estar pronto.
-  const fillerGroup = speechResult.length > 40 ? "thinking" : "ack";
+  const fillerGroup = !speechResult.trim() || speechResult.length > 40 ? "thinking" : "ack";
   const fUrl = await getFillerUrl(fillerGroup);
   const replyUrl = `${base}/api/discagem/voice/${callId}/reply?attempt=1`;
 
@@ -339,7 +338,8 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
     // ── Modo Media Streams: reconecta o stream após tocar o áudio ───
     const wsUrl = base.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
     const streamUrl = `${wsUrl}/api/discagem/media-stream/${callId}`;
-    res.type("text/xml").send(twimlReplyStream(payload.audioUrl, streamUrl));
+    const fallbackUrl = `${base}/api/discagem/voice/${callId}/speech-gather-fallback`;
+    res.type("text/xml").send(twimlReplyStream(payload.audioUrl, streamUrl, fallbackUrl));
   } else {
     // ── Modo Gather: retorna ao fluxo normal de speech ───────────────
     const gatherAction = `${base}/api/discagem/voice/${callId}/speech`;

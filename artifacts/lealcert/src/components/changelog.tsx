@@ -32,6 +32,8 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "segurança", text: "Hermes: a autenticação do webhook agora usa Key e Secret próprios, separados do token da API externa; o secret fica criptografado no banco e nunca é devolvido ao painel." },
       { type: "fix", text: "Chaves Hermes: versões antigas do painel não bloqueiam mais a criação por não enviarem os novos campos; Key e Secret podem ser configurados depois ao editar a integração." },
       { type: "melhoria", text: "Chaves Hermes: o formulário agora confirma explicitamente quando o Webhook Secret já está salvo e protegido no banco, sem revelar o valor criptografado." },
+      { type: "fix", text: "Discagem: a ligação não encerra mais logo após a abertura quando o WebSocket de áudio falha ou fecha; o sistema continua automaticamente pelo reconhecimento de voz alternativo." },
+      { type: "fix", text: "Discagem: o primeiro silêncio após a abertura agora é tratado como um turno sem voz, permitindo nova tentativa da IA em vez de desligar imediatamente." },
       { type: "segurança", text: "Hermes: quando existem várias chaves, somente a chave ativa, não expirada e não revogada mais recente com escopo de discagem e capacidade de cérebro recebe a conversa." },
       { type: "segurança", text: "API externa: tokens são exibidos uma única vez e armazenados somente por hash; acesso ocorre por endpoints REST controlados, sem SQL arbitrário." },
     ],
