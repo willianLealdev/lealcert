@@ -34,6 +34,7 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "melhoria", text: "Chaves Hermes: o formulário agora confirma explicitamente quando o Webhook Secret já está salvo e protegido no banco, sem revelar o valor criptografado." },
       { type: "fix", text: "Discagem: a ligação não encerra mais logo após a abertura quando o WebSocket de áudio falha ou fecha; o sistema continua automaticamente pelo reconhecimento de voz alternativo." },
       { type: "fix", text: "Discagem: o primeiro silêncio após a abertura agora é tratado como um turno sem voz, permitindo nova tentativa da IA em vez de desligar imediatamente." },
+      { type: "novo", text: "Hermes: a chave de integração agora permite ativar ou desativar o fallback interno; com ele desligado, somente o Hermes responde e as frases antigas de espera não são tocadas." },
       { type: "segurança", text: "Hermes: quando existem várias chaves, somente a chave ativa, não expirada e não revogada mais recente com escopo de discagem e capacidade de cérebro recebe a conversa." },
       { type: "segurança", text: "API externa: tokens são exibidos uma única vez e armazenados somente por hash; acesso ocorre por endpoints REST controlados, sem SQL arbitrário." },
     ],

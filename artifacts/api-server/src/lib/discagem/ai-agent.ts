@@ -70,6 +70,12 @@ export interface ExternalBrainContext {
   contactType?: string | null;
 }
 
+export async function isHermesFallbackEnabled(): Promise<boolean> {
+  const keys = await db.select().from(apiKeysTable).where(eq(apiKeysTable.isActive, true));
+  const key = selectExternalBrainKey(keys);
+  return key?.aiFallbackEnabled !== false;
+}
+
 type HermesStage = "opening" | "qualification" | "pitch" | "objection" | "closing" | "follow_up";
 
 function inferHermesStage(turns: ConversationTurn[]): HermesStage {
@@ -424,8 +430,14 @@ export async function runAgentTurn(
   }
 
   if (allowExternal && externalContext) {
+    const fallbackEnabled = await isHermesFallbackEnabled();
     const externalResponse = await callExternalBrain(turns, prompt, externalContext, cupomAtivo);
     if (externalResponse) return externalResponse;
+    if (!fallbackEnabled) {
+      const error = new Error("Hermes indisponível e fallback interno desativado.");
+      (error as Error & { hermesOnly?: boolean }).hermesOnly = true;
+      throw error;
+    }
   }
 
   // Ordena a lista de fallback: coloca o preferredModel primeiro

@@ -21,6 +21,7 @@ const hermesKey = {
   tokenPrefix: "lc_live_hermes",
   aiWebhookKey: "hermes-webhook-key",
   aiWebhookSecretEncrypted: null as string | null,
+  aiFallbackEnabled: true,
   createdAt: new Date("2026-09-10T00:00:00.000Z"),
 };
 
@@ -195,6 +196,7 @@ describe("Hermes integrado ao pipeline de ligação", () => {
     mocks.synthesize.mockClear();
     mocks.audioUrl.mockClear();
     mocks.internalError = false;
+    hermesKey.aiFallbackEnabled = true;
     process.env.SESSION_SECRET = "test-session-secret-with-at-least-32-characters";
     hermesKey.aiWebhookSecretEncrypted = encryptHermesWebhookSecret("hermes-webhook-secret");
   });
@@ -358,5 +360,21 @@ describe("Hermes integrado ao pipeline de ligação", () => {
     expect(result.aiSource).toBe("emergency");
     expect(result.audioUrl).toBe("https://audio.test/tts-1.mp3");
     expect(result.history.at(-1)?.text).toBe("Desculpe, tive uma instabilidade. Pode repetir, por favor?");
+  });
+
+  it("não chama a IA interna quando o fallback do Hermes está desativado", async () => {
+    hermesKey.aiFallbackEnabled = false;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      validateHermesRequest(input, init);
+      return new Response("erro", { status: 500 });
+    }));
+
+    const result = await runPipeline(107);
+
+    expect(result.err).toBeUndefined();
+    expect(result.shouldEndCall).toBe(false);
+    expect(result.aiSource).toBe("emergency");
+    expect(result.history.at(-1)?.text).toBe("Desculpe, tive uma instabilidade. Pode repetir, por favor?");
+    expect(result.history.at(-1)?.text).not.toBe(mocks.internalText);
   });
 });

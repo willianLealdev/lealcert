@@ -33,7 +33,7 @@ import {
   marketingContactsTable,
 } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
-import { runAgentTurn, detectCreditError } from "../lib/discagem/ai-agent";
+import { runAgentTurn, detectCreditError, isHermesFallbackEnabled } from "../lib/discagem/ai-agent";
 import { synthesize, audioUrl, TMP_AUDIO_DIR } from "../lib/discagem/tts";
 import { resolveVoiceId, consumePreGeneratedOpening, preGenerateOpening } from "../lib/discagem/opening-pregenerate";
 import {
@@ -203,7 +203,8 @@ router.post("/discagem/voice/:callId/speech", async (req, res): Promise<void> =>
   // O Twilio toca o filler (~0.8s) enquanto a IA processa em paralelo.
   // Quando o Twilio chamar /reply, o resultado já deve estar pronto.
   const fillerGroup = !speechResult.trim() || speechResult.length > 40 ? "thinking" : "ack";
-  const fUrl = await getFillerUrl(fillerGroup);
+  const allowLegacyFiller = await isHermesFallbackEnabled().catch(() => true);
+  const fUrl = allowLegacyFiller ? await getFillerUrl(fillerGroup) : null;
   const replyUrl = `${base}/api/discagem/voice/${callId}/reply?attempt=1`;
 
   if (fUrl) {
@@ -249,7 +250,8 @@ router.post("/discagem/voice/:callId/reply", async (req, res): Promise<void> => 
   } catch (err: unknown) {
     // Ainda processando ou erro → toca mais um filler e tenta novamente (máx 3 tentativas)
     if (attempt < 3) {
-      const fUrl = await getFillerUrl("thinking");
+      const allowLegacyFiller = await isHermesFallbackEnabled().catch(() => true);
+      const fUrl = allowLegacyFiller ? await getFillerUrl("thinking") : null;
       const nextUrl = `${base}/api/discagem/voice/${callId}/reply?attempt=${attempt + 1}`;
       if (fUrl) {
         res.type("text/xml").send(

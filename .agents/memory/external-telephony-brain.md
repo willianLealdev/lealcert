@@ -3,7 +3,7 @@ name: External telephony brain
 description: Reliability and authentication rules for using Hermes or another external AI during live calls.
 ---
 
-An external telephony brain must be explicitly enabled on an active API key with the telephony brain capability and an HTTPS webhook. Incoming external-API access and outgoing Hermes webhook authentication are separate. Store the Hermes Webhook Key plus an encrypted Webhook Secret on the integration record; sign every outbound turn as HMAC-SHA256(secret, timestamp + "." + rawBody).
+An external telephony brain must be explicitly enabled on an active API key with the telephony brain capability and an HTTPS webhook. Incoming external-API access and outgoing Hermes webhook authentication are separate. Store the Hermes Webhook Key plus an encrypted Webhook Secret on the integration record; sign every outbound turn as HMAC-SHA256(secret, timestamp + "." + rawBody). Internal-AI fallback is controlled per integration key.
 
 The synchronous Hermes contract uses `fala` for speech plus `shouldEnd`, `shouldContinue`, `command`, and `statusSuggested`. Keep accepting legacy `text` responses. Send the current commercial stage, last customer utterance, lead data, business context, full conversation, and system prompt.
 
@@ -11,6 +11,6 @@ Hermes is the primary brain for every live-call turn, including the opening gene
 
 Never send the legacy LealCert system prompt to Hermes. Hermes owns its sales reasoning and receives only conversation, lead, stage, and business context; the legacy prompt is reserved for internal fallback.
 
-**Why:** Live calls cannot stop when an external AI is slow or unavailable. Hermes requires its own HMAC credentials; reusing the external API token hash produces invalid authentication and conflates opposite trust directions.
+**Why:** Normal production calls can remain resilient when an external AI is slow, but isolated Hermes testing must not silently mix legacy fillers or another AI's response into the conversation. Hermes also requires its own HMAC credentials; reusing the external API token hash produces invalid authentication and conflates opposite trust directions.
 
-**How to apply:** Pass external call context during opening pre-generation and on-demand opening as well as later customer turns. Send `User-Agent: LealCert/1.0`, the configured webhook key, Unix timestamp, and raw hex HMAC. Never expose the stored secret in API responses. Keep the timeout short and fall back internally on any failure.
+**How to apply:** Pass external call context during opening pre-generation and on-demand opening as well as later customer turns. Send `User-Agent: LealCert/1.0`, the configured webhook key, Unix timestamp, and raw hex HMAC. Never expose the stored secret in API responses. Keep the timeout short. When fallback is disabled on the selected integration key, do not call internal AI and do not play legacy waiting fillers; when enabled, retain the internal fallback.

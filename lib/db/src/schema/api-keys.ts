@@ -14,6 +14,7 @@ export const apiKeysTable = pgTable("api_keys", {
   aiWebhookUrl: text("ai_webhook_url"),
   aiWebhookKey: text("ai_webhook_key"),
   aiWebhookSecretEncrypted: text("ai_webhook_secret_encrypted"),
+  aiFallbackEnabled: boolean("ai_fallback_enabled").notNull().default(true),
   allowedIps: jsonb("allowed_ips").$type<string[]>().notNull().default([]),
   rateLimitPerMinute: integer("rate_limit_per_minute").notNull().default(60),
   createdByUserId: integer("created_by_user_id").notNull().references(() => usersTable.id, { onDelete: "restrict" }),

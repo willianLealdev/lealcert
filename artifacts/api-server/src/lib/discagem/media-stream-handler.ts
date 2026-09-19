@@ -30,6 +30,7 @@ import { getFillerMulawBuffer } from "./filler-audio";
 import { mp3FileToMulaw, TMP_AUDIO_DIR } from "./tts";
 import { pauseCampaignForCredit } from "./scheduler";
 import { hangupCall } from "./twilio-client";
+import { isHermesFallbackEnabled } from "./ai-agent";
 
 // ── Envia frames mulaw via WebSocket outbound (Twilio track="both_tracks") ──
 function sendMulawOutbound(ws: WebSocket, streamSid: string, buffer: Buffer): void {
@@ -212,11 +213,14 @@ export function setupMediaStreamWebSocket(server: Server): void {
       }
 
       // Toca filler enquanto IA processa (sem bloquear o await abaixo)
-      const fillerProm = getFillerMulawBuffer("thinking").then(async (filler) => {
-        if (filler && streamSid && ws.readyState === WebSocket.OPEN && isTtsPlaying === false) {
-          await playMulaw(filler, "filler");
-        }
-      }).catch(() => {});
+      const allowLegacyFiller = await isHermesFallbackEnabled().catch(() => true);
+      const fillerProm = allowLegacyFiller
+        ? getFillerMulawBuffer("thinking").then(async (filler) => {
+            if (filler && streamSid && ws.readyState === WebSocket.OPEN && isTtsPlaying === false) {
+              await playMulaw(filler, "filler");
+            }
+          }).catch(() => {})
+        : Promise.resolve();
 
       const result = await pending.promise;
       pendingResults.delete(callId);

@@ -11,6 +11,7 @@ function publicKey(row: typeof apiKeysTable.$inferSelect) {
     id: row.id, name: row.name, tokenPrefix: row.tokenPrefix, accessLevel: row.accessLevel,
     scopes: row.scopes, telephonyCapabilities: row.telephonyCapabilities, aiWebhookUrl: row.aiWebhookUrl,
     aiWebhookKey: row.aiWebhookKey, hasAiWebhookSecret: !!row.aiWebhookSecretEncrypted,
+    aiFallbackEnabled: row.aiFallbackEnabled,
     allowedIps: row.allowedIps, rateLimitPerMinute: row.rateLimitPerMinute,
     createdByUserId: row.createdByUserId, expiresAt: row.expiresAt, lastUsedAt: row.lastUsedAt,
     revokedAt: row.revokedAt, isActive: row.isActive, createdAt: row.createdAt, updatedAt: row.updatedAt,
@@ -27,7 +28,7 @@ router.get("/admin/api-keys", requireAdmin, async (_req, res): Promise<void> => 
 });
 
 router.post("/admin/api-keys", requireAdmin, async (req, res): Promise<void> => {
-  const { name, accessLevel, scopes, telephonyCapabilities, aiWebhookUrl, aiWebhookKey, aiWebhookSecret, allowedIps, rateLimitPerMinute, expiresAt } = req.body ?? {};
+  const { name, accessLevel, scopes, telephonyCapabilities, aiWebhookUrl, aiWebhookKey, aiWebhookSecret, aiFallbackEnabled, allowedIps, rateLimitPerMinute, expiresAt } = req.body ?? {};
   const cleanName = typeof name === "string" ? name.trim() : "";
   const cleanScopes = Array.isArray(scopes) ? [...new Set(scopes.filter((v): v is string => API_KEY_SCOPES.includes(v)))] : [];
   const cleanIps = Array.isArray(allowedIps) ? [...new Set(allowedIps.map(String).map(v => v.trim()).filter(Boolean))] : [];
@@ -64,6 +65,7 @@ router.post("/admin/api-keys", requireAdmin, async (req, res): Promise<void> => 
     accessLevel, scopes: cleanScopes, telephonyCapabilities: cleanCapabilities,
     aiWebhookUrl: cleanWebhookUrl, aiWebhookKey: cleanWebhookKey,
     aiWebhookSecretEncrypted: cleanWebhookSecret ? encryptHermesWebhookSecret(cleanWebhookSecret) : null,
+    aiFallbackEnabled: aiFallbackEnabled !== false,
     allowedIps: cleanIps, rateLimitPerMinute: rate,
     expiresAt: expiry, createdByUserId: adminUserId,
   }).returning();
@@ -73,7 +75,7 @@ router.post("/admin/api-keys", requireAdmin, async (req, res): Promise<void> => 
 router.patch("/admin/api-keys/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "ID inválido." }); return; }
-  const { name, accessLevel, scopes, telephonyCapabilities, aiWebhookUrl, aiWebhookKey, aiWebhookSecret, allowedIps, rateLimitPerMinute, expiresAt } = req.body ?? {};
+  const { name, accessLevel, scopes, telephonyCapabilities, aiWebhookUrl, aiWebhookKey, aiWebhookSecret, aiFallbackEnabled, allowedIps, rateLimitPerMinute, expiresAt } = req.body ?? {};
   const cleanName = typeof name === "string" ? name.trim() : "";
   const cleanScopes = Array.isArray(scopes) ? [...new Set(scopes.filter((v): v is string => API_KEY_SCOPES.includes(v)))] : [];
   const cleanIps = Array.isArray(allowedIps) ? [...new Set(allowedIps.map(String).map(v => v.trim()).filter(Boolean))] : [];
@@ -112,6 +114,7 @@ router.patch("/admin/api-keys/:id", requireAdmin, async (req, res): Promise<void
     aiWebhookSecretEncrypted: cleanWebhookSecret
       ? encryptHermesWebhookSecret(cleanWebhookSecret)
       : existing.aiWebhookSecretEncrypted,
+    aiFallbackEnabled: aiFallbackEnabled !== false,
     allowedIps: cleanIps,
     rateLimitPerMinute: rate,
     expiresAt: expiry,

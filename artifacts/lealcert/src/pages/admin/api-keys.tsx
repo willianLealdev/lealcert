@@ -32,6 +32,7 @@ type ApiKey = {
   aiWebhookUrl: string | null;
   aiWebhookKey: string | null;
   hasAiWebhookSecret: boolean;
+  aiFallbackEnabled: boolean;
   allowedIps: string[];
   rateLimitPerMinute: number;
   expiresAt: string | null;
@@ -119,6 +120,7 @@ export default function AdminApiKeys() {
   const [aiWebhookUrl, setAiWebhookUrl] = useState("");
   const [aiWebhookKey, setAiWebhookKey] = useState("");
   const [aiWebhookSecret, setAiWebhookSecret] = useState("");
+  const [aiFallbackEnabled, setAiFallbackEnabled] = useState(true);
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
   const [testingKeyId, setTestingKeyId] = useState<number | null>(null);
   const [logKey, setLogKey] = useState<ApiKey | null>(null);
@@ -139,7 +141,7 @@ export default function AdminApiKeys() {
   const resetForm = () => {
     setName(""); setLevel("full"); setScopes(ALL_SCOPES); setExpires("");
     setAllowedIps(""); setRateLimit("60"); setEditingKey(null);
-    setTelephonyCapabilities([]); setAiWebhookUrl(""); setAiWebhookKey(""); setAiWebhookSecret("");
+    setTelephonyCapabilities([]); setAiWebhookUrl(""); setAiWebhookKey(""); setAiWebhookSecret(""); setAiFallbackEnabled(true);
   };
 
   const openCreate = () => {
@@ -159,6 +161,7 @@ export default function AdminApiKeys() {
     setAiWebhookUrl(key.aiWebhookUrl ?? "");
     setAiWebhookKey(key.aiWebhookKey ?? "");
     setAiWebhookSecret("");
+    setAiFallbackEnabled(key.aiFallbackEnabled !== false);
     setFormOpen(true);
   };
 
@@ -171,6 +174,7 @@ export default function AdminApiKeys() {
         aiWebhookUrl: telephonyCapabilities.includes("brain") ? aiWebhookUrl.trim() : null,
         aiWebhookKey: telephonyCapabilities.includes("brain") ? aiWebhookKey.trim() : null,
         aiWebhookSecret: telephonyCapabilities.includes("brain") && aiWebhookSecret ? aiWebhookSecret : undefined,
+        aiFallbackEnabled,
         expiresAt: expires ? new Date(expires).toISOString() : null,
         allowedIps: allowedIps.split(/[\n,]/).map(v => v.trim()).filter(Boolean),
         rateLimitPerMinute: Number(rateLimit),
@@ -447,7 +451,16 @@ export default function AdminApiKeys() {
                     Secret salvo e protegido no banco. O valor não é exibido por segurança.
                   </p>
                 )}
-                <p className="text-xs text-slate-500">Timeout de 4,5 segundos. Se o webhook falhar, a IA configurada no LealCert responde automaticamente.</p>
+                <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
+                  <Checkbox className="mt-0.5" checked={aiFallbackEnabled} onCheckedChange={checked => setAiFallbackEnabled(checked === true)} />
+                  <span>
+                    <span className="font-medium block">Ativar fallback interno</span>
+                    <span className="text-xs text-slate-500">
+                      Ativado: DeepSeek, Claude ou GPT assumem se o Hermes falhar. Desativado: somente o Hermes fala, sem frases de espera do roteiro antigo.
+                    </span>
+                  </span>
+                </label>
+                <p className="text-xs text-slate-500">Timeout do Hermes: 4,5 segundos.</p>
               </div>}
             </div>}
           </div>
