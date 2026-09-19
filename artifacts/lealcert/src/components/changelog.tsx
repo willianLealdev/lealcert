@@ -24,6 +24,8 @@ const CHANGELOG: ChangelogEntry[] = [
       { type: "melhoria", text: "Hermes: o webhook síncrono agora recebe lead, etapa comercial, última fala e contexto do negócio, e pode responder usando fala, shouldEnd e command." },
       { type: "melhoria", text: "Discagem com Hermes: o cérebro externo agora cria também a abertura da ligação e conduz todos os turnos; DeepSeek, Claude ou GPT são usados somente como fallback se o Hermes falhar." },
       { type: "fix", text: "Hermes: o roteiro da IA antiga não é mais enviado ao cérebro externo; o Hermes conduz a conversa com seu próprio raciocínio e o script interno fica restrito ao fallback." },
+      { type: "novo", text: "Chaves de API: botão de diagnóstico testa a autenticação e o tempo de resposta do Hermes usando exatamente a mesma assinatura HMAC das ligações." },
+      { type: "fix", text: "Discagem: se Hermes e a IA de fallback falharem durante um turno, a ligação não cai silenciosamente; o agente informa uma instabilidade e pede para a pessoa repetir." },
       { type: "segurança", text: "Hermes: quando existem várias chaves, somente a chave ativa, não expirada e não revogada mais recente com escopo de discagem e capacidade de cérebro recebe a conversa." },
       { type: "segurança", text: "API externa: tokens são exibidos uma única vez e armazenados somente por hash; acesso ocorre por endpoints REST controlados, sem SQL arbitrário." },
     ],

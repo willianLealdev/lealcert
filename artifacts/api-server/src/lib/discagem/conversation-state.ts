@@ -95,16 +95,37 @@ export function processSpeechTurn(
       endReason: aiResp.endReason,
       history,
     };
-  })().catch(err => ({
-    audioUrl: "",
-    shouldEndCall: true,
-    isOptOut: false,
-    transferToHuman: false,
-    callbackRequested: false,
-    capturedEmail: null,
-    history,
-    err,
-  }));
+  })().catch(async err => {
+    const emergencyText = "Desculpe, tive uma instabilidade. Pode repetir, por favor?";
+    try {
+      const voiceId = await resolveVoiceId(campaign.ttsVoiceId, agentName, provider);
+      const { id: ttsId } = await synthesize(emergencyText, provider, voiceId);
+      const url = await audioUrl(ttsId);
+      history.push({ role: "assistant", text: emergencyText, ts: new Date().toISOString() });
+      return {
+        audioUrl: url,
+        shouldEndCall: false,
+        isOptOut: false,
+        transferToHuman: false,
+        callbackRequested: false,
+        capturedEmail: null,
+        aiSource: "emergency",
+        endReason: null,
+        history,
+      };
+    } catch {
+      return {
+        audioUrl: "",
+        shouldEndCall: true,
+        isOptOut: false,
+        transferToHuman: false,
+        callbackRequested: false,
+        capturedEmail: null,
+        history,
+        err,
+      };
+    }
+  });
 
   pendingResults.set(callId, { promise, startedAt: Date.now() });
 }

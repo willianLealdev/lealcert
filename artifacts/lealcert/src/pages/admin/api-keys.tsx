@@ -97,6 +97,7 @@ export default function AdminApiKeys() {
   const [telephonyCapabilities, setTelephonyCapabilities] = useState<string[]>([]);
   const [aiWebhookUrl, setAiWebhookUrl] = useState("");
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
+  const [testingKeyId, setTestingKeyId] = useState<number | null>(null);
 
   const load = async () => {
     try {
@@ -208,6 +209,18 @@ export default function AdminApiKeys() {
     }
   };
 
+  const testHermes = async (key: ApiKey) => {
+    setTestingKeyId(key.id);
+    try {
+      const result = await apiRequest<{ ok: boolean; latencyMs: number; message: string }>(`/api/admin/api-keys/${key.id}/test-hermes`, { method: "POST" });
+      toast({ title: "Hermes conectado", description: `${result.message} Tempo: ${result.latencyMs} ms.` });
+    } catch (error) {
+      toast({ title: "Falha na conexão com o Hermes", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setTestingKeyId(null);
+    }
+  };
+
   const copy = async (text: string) => {
     await navigator.clipboard.writeText(text);
     toast({ title: "Copiado para a área de transferência" });
@@ -258,6 +271,11 @@ export default function AdminApiKeys() {
                   <TableCell className="text-xs">{key.lastUsedAt ? fmt(key.lastUsedAt) : "Ainda não usada"}</TableCell>
                   <TableCell><Badge variant={active ? "default" : "secondary"}>{active ? "Ativa" : expired ? "Expirada" : "Revogada"}</Badge></TableCell>
                   <TableCell className="text-right space-x-1">
+                    {active && key.scopes.includes("discagem") && key.telephonyCapabilities?.includes("brain") && key.aiWebhookUrl && (
+                      <Button size="sm" variant="outline" onClick={() => testHermes(key)} disabled={testingKeyId === key.id} title="Testar conexão com o Hermes">
+                        {testingKeyId === key.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => openEdit(key)} title="Editar"><Pencil className="h-4 w-4" /></Button>
                     {active && <>
                       <Button size="sm" variant="outline" onClick={() => rotate(key)} title="Rotacionar"><RotateCw className="h-4 w-4" /></Button>

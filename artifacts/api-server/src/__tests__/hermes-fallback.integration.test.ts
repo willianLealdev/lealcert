@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   internalText: "Resposta segura da IA interna.",
+  internalError: false,
   loggerWarn: vi.fn(),
   synthesize: vi.fn(async () => ({ id: "tts-1" })),
   audioUrl: vi.fn(async () => "https://audio.test/tts-1.mp3"),
@@ -71,7 +72,9 @@ vi.mock("openai", () => ({
     chat = {
       completions: {
         create: vi.fn(async () => ({
-          choices: [{ message: { content: mocks.internalText } }],
+          choices: mocks.internalError
+            ? (() => { throw new Error("IA interna indisponível"); })()
+            : [{ message: { content: mocks.internalText } }],
         })),
       },
     };
@@ -187,6 +190,7 @@ describe("Hermes integrado ao pipeline de ligação", () => {
     mocks.loggerWarn.mockClear();
     mocks.synthesize.mockClear();
     mocks.audioUrl.mockClear();
+    mocks.internalError = false;
   });
 
   afterEach(() => {
@@ -332,5 +336,21 @@ describe("Hermes integrado ao pipeline de ligação", () => {
     expect(result.audioUrl).toBe("https://audio.test/tts-1.mp3");
     expect(result.history.at(-1)?.text).toBe(mocks.internalText);
     expect(mocks.loggerWarn).toHaveBeenCalledOnce();
+  });
+
+  it("mantém a ligação ativa com mensagem de emergência se Hermes e IA interna falharem", async () => {
+    mocks.internalError = true;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      validateHermesRequest(input, init);
+      return new Response("erro", { status: 500 });
+    }));
+
+    const result = await runPipeline(106);
+
+    expect(result.err).toBeUndefined();
+    expect(result.shouldEndCall).toBe(false);
+    expect(result.aiSource).toBe("emergency");
+    expect(result.audioUrl).toBe("https://audio.test/tts-1.mp3");
+    expect(result.history.at(-1)?.text).toBe("Desculpe, tive uma instabilidade. Pode repetir, por favor?");
   });
 });

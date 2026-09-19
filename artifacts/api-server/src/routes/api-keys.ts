@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { createHmac } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { db, apiKeysTable, apiKeyAuditLogsTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/auth";
@@ -142,6 +143,86 @@ router.get("/admin/api-keys/:id/audit", requireAdmin, async (req, res): Promise<
     .where(eq(apiKeyAuditLogsTable.apiKeyId, id))
     .orderBy(desc(apiKeyAuditLogsTable.createdAt)).limit(100);
   res.json(rows);
+});
+
+router.post("/admin/api-keys/:id/test-hermes", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json({ error: "ID inválido." }); return; }
+  const [key] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id)).limit(1);
+  if (!key) { res.status(404).json({ error: "Chave não encontrada." }); return; }
+  if (!key.isActive || key.revokedAt || (key.expiresAt && key.expiresAt <= new Date())) {
+    res.status(400).json({ error: "A chave não está ativa ou está expirada." }); return;
+  }
+  if (!key.scopes.includes("discagem") || !key.telephonyCapabilities.includes("brain") || !key.aiWebhookUrl) {
+    res.status(400).json({ error: "A chave precisa ter o módulo Discagem, o nível Cérebro comercial e um webhook HTTPS." }); return;
+  }
+
+  const timestamp = String(Date.now());
+  const body = JSON.stringify({
+    event: "telephony.turn.requested",
+    timestamp,
+    context: { diagnostic: true },
+    callId: `diagnostic-${timestamp}`,
+    lead: { id: null, nome: "Teste de conexão", empresa: null, cidade: null, estado: null, tipo: "contador", telefone: null },
+    conversation: [{ speaker: "client", role: "user", text: "[INÍCIO DA LIGAÇÃO]", ts: new Date().toISOString() }],
+    stage: "opening",
+    lastUserText: "[INÍCIO DA LIGAÇÃO]",
+    businessContext: {
+      objetivo: "validar conexão síncrona com o Hermes",
+      precoParceiro: "R$ 90,00",
+      cadastroUrl: "https://lealcert.com.br/contadores",
+      cupomAtivo: false,
+      cupom: null,
+      primeiroCertificadoComCupom: null,
+    },
+  });
+  const signature = createHmac("sha256", key.tokenHash)
+    .update(`${timestamp}.${body}`, "utf8")
+    .digest("hex");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4_500);
+  const startedAt = Date.now();
+  try {
+    const response = await fetch(key.aiWebhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-LealCert-Key": key.tokenPrefix,
+        "X-LealCert-Timestamp": timestamp,
+        "X-LealCert-Signature": `sha256=${signature}`,
+      },
+      body,
+      signal: controller.signal,
+    });
+    const responseBody = (await response.text()).slice(0, 1_000);
+    const latencyMs = Date.now() - startedAt;
+    if (!response.ok) {
+      res.status(502).json({
+        error: `Hermes recusou a chave: HTTP ${response.status}${responseBody ? ` — ${responseBody}` : ""}`,
+        status: response.status,
+        latencyMs,
+      });
+      return;
+    }
+    let payload: { fala?: unknown; text?: unknown };
+    try {
+      payload = JSON.parse(responseBody) as { fala?: unknown; text?: unknown };
+    } catch {
+      res.status(502).json({ error: "Hermes respondeu com JSON inválido.", latencyMs }); return;
+    }
+    const speech = typeof payload.fala === "string" ? payload.fala : payload.text;
+    if (typeof speech !== "string" || !speech.trim()) {
+      res.status(502).json({ error: "Hermes respondeu sem uma fala válida.", latencyMs }); return;
+    }
+    res.json({ ok: true, latencyMs, message: "Hermes autenticou a chave e respondeu corretamente." });
+  } catch (error) {
+    const message = error instanceof Error && error.name === "AbortError"
+      ? "Hermes excedeu o limite de 4,5 segundos."
+      : `Não foi possível acessar o Hermes: ${error instanceof Error ? error.message : String(error)}`;
+    res.status(502).json({ error: message, latencyMs: Date.now() - startedAt });
+  } finally {
+    clearTimeout(timer);
+  }
 });
 
 export default router;
