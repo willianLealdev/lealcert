@@ -964,7 +964,14 @@ export default function AdminDiscagem() {
             )}
 
             <Separator />
-            <p className="text-xs font-semibold text-primary uppercase tracking-wider">Agente e motor de IA</p>
+            <p className="text-xs font-semibold text-primary uppercase tracking-wider">Hermes e voz da ligação</p>
+
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <p className="text-sm font-semibold text-primary">Hermes é o cérebro principal</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                O Hermes cria a abertura e conduz todos os turnos. A IA escolhida abaixo só responde se o Hermes estiver indisponível ou exceder 4,5 segundos.
+              </p>
+            </div>
 
             {/* Seletor de agente */}
             <div className="space-y-1.5">
@@ -990,11 +997,11 @@ export default function AdminDiscagem() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Modelo de IA</Label>
+                <Label>IA de fallback</Label>
                 <Select value={form.aiModel} onValueChange={v => setForm(f => ({ ...f, aiModel: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="deepseek">DeepSeek — econômico</SelectItem>
+                    <SelectItem value="deepseek">DeepSeek — fallback</SelectItem>
                     <SelectItem value="claude">Claude (Anthropic)</SelectItem>
                     <SelectItem value="openai">GPT (OpenAI)</SelectItem>
                   </SelectContent>

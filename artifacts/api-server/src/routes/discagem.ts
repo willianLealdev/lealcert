@@ -115,7 +115,19 @@ router.post("/discagem/voice/:callId", async (req, res): Promise<void> => {
     } else {
       console.info(`[discagem-voice] Gerando opening on-demand callId=${callId}`);
       const openingHistory = [{ role: "user" as const, text: "[INÍCIO DA LIGAÇÃO]", ts: new Date().toISOString() }];
-      const aiResp = await runAgentTurn(openingHistory, campaign.aiModel as any, (campaign as any).agentName ?? "Willian", undefined);
+      const aiResp = await runAgentTurn(
+        openingHistory,
+        campaign.aiModel as any,
+        (campaign as any).agentName ?? "Willian",
+        undefined,
+        {
+          callId,
+          campaignId: campaign.id,
+          contactId: call.contactId,
+          phoneNumber: call.phoneNumber,
+          contactName: call.contactName,
+        },
+      );
       agentText = aiResp.text;
       const resolvedVoiceId = await resolveVoiceId(campaign.ttsVoiceId, (campaign as any).agentName ?? "Willian", campaign.ttsProvider as any);
       const { id: ttsId } = await synthesize(agentText, campaign.ttsProvider as any, resolvedVoiceId);
@@ -842,7 +854,10 @@ router.post("/admin/discagem/test-call", requireAdmin, async (req, res): Promise
   try {
     const { publicHostname } = await getDiscagemSettings();
     // Pré-gera áudio de abertura antes de ligar (elimina silêncio quando a pessoa atender)
-    await preGenerateOpening(call.id, camp);
+    await preGenerateOpening(call.id, camp, {
+      phoneNumber,
+      contactName: "Teste manual",
+    });
     const twilioSid = await initiateCall({
       to: phoneNumber,
       callbackBaseUrl: `${publicHostname || process.env.PUBLIC_HOSTNAME || ""}/api/discagem`,

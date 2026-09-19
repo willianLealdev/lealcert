@@ -92,6 +92,7 @@ import {
   pendingResults,
   processSpeechTurn,
 } from "../lib/discagem/conversation-state";
+import { runAgentTurn } from "../lib/discagem/ai-agent";
 
 type WebhookRequest = {
   event: string;
@@ -144,10 +145,8 @@ function validateHermesRequest(input: string | URL | Request, init?: RequestInit
     telefone: "+5511999999999",
   });
   expect(payload.conversation).toEqual([
-    expect.objectContaining({ speaker: "client", role: "user", text: "Quero saber mais." }),
+    expect.objectContaining({ speaker: "client", role: "user" }),
   ]);
-  expect(payload.stage).toBe("opening");
-  expect(payload.lastUserText).toBe("Quero saber mais.");
   expect(payload.businessContext).toMatchObject({
     objetivo: "fechar parceria com contador",
     precoParceiro: "R$ 90,00",
@@ -196,7 +195,10 @@ describe("Hermes integrado ao pipeline de ligação", () => {
 
   it("usa a resposta válida do Hermes e envia contexto, histórico, prompt e assinatura HMAC", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      validateHermesRequest(input, init);
+      const payload = validateHermesRequest(input, init);
+      expect(payload.stage).toBe("opening");
+      expect(payload.lastUserText).toBe("Quero saber mais.");
+      expect(payload.conversation[0]?.text).toBe("Quero saber mais.");
       return new Response(JSON.stringify({ text: "Próxima fala criada pelo Hermes." }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -241,6 +243,46 @@ describe("Hermes integrado ao pipeline de ligação", () => {
     expect(result.interestStatus).toBe("not_interested");
     expect(result.endReason).toBe("sem_interesse");
     expect(result.history.at(-1)?.text).toBe("Sem problema, agradeço sua atenção. Tenha um ótimo dia.");
+  });
+
+  it("usa o Hermes também para criar a abertura inicial da ligação", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const payload = validateHermesRequest(input, init);
+      expect(payload.stage).toBe("opening");
+      expect(payload.lastUserText).toBe("[INÍCIO DA LIGAÇÃO]");
+      expect(payload.conversation).toEqual([
+        expect.objectContaining({
+          speaker: "client",
+          role: "user",
+          text: "[INÍCIO DA LIGAÇÃO]",
+        }),
+      ]);
+      return new Response(JSON.stringify({
+        fala: "Bom dia, aqui é o Willian da Leal Cert. Com quem eu falo?",
+        shouldContinue: true,
+        shouldEnd: false,
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const result = await runAgentTurn(
+      [{ role: "user", text: "[INÍCIO DA LIGAÇÃO]", ts: new Date().toISOString() }],
+      "deepseek",
+      "Willian",
+      "Prompt de integração para {AGENT_NAME}.",
+      {
+        callId: 105,
+        campaignId: 12,
+        contactId: 34,
+        phoneNumber: "+5511999999999",
+        contactName: "Cliente Teste",
+      },
+    );
+
+    expect(result.modelUsed).toBe("external");
+    expect(result.text).toBe("Bom dia, aqui é o Willian da Leal Cert. Com quem eu falo?");
   });
 
   it.each([

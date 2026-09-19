@@ -114,7 +114,11 @@ async function fireCall(
     markCallActive(callRecord.callId);
 
     // Pré-gera áudio de abertura antes de ligar (elimina silêncio quando a pessoa atender)
-    await preGenerateOpening(callRecord.callId, campaign);
+    await preGenerateOpening(callRecord.callId, campaign, {
+      contactId: callRecord.contactId,
+      phoneNumber: callRecord.phone,
+      contactName: callRecord.name,
+    });
 
     const twilioSid = await initiateCall({
       to: callRecord.phone,

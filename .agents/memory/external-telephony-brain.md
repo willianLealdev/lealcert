@@ -7,6 +7,8 @@ An external telephony brain must be explicitly enabled on an active API key with
 
 The synchronous Hermes contract uses `fala` for speech plus `shouldEnd`, `shouldContinue`, `command`, and `statusSuggested`. Keep accepting legacy `text` responses. Send the current commercial stage, last customer utterance, lead data, business context, full conversation, and system prompt.
 
+Hermes is the primary brain for every live-call turn, including the opening generated before dialing. The campaign's DeepSeek/Claude/GPT setting is fallback only; TTS and voice settings still convert Hermes' speech to audio.
+
 **Why:** Live calls cannot stop when an external AI is slow or unavailable, and the outbound webhook needs verifiable authentication without storing a second plaintext credential.
 
-**How to apply:** Do not use Hermes' asynchronous native webhook for live calls. Use a dedicated synchronous HTTPS endpoint, keep the timeout short, validate response fields strictly, and fall back to the configured internal AI on timeout, HTTP failure, invalid payload, revoked/expired key, or missing authorization.
+**How to apply:** Pass external call context during opening pre-generation and on-demand opening as well as later customer turns. Do not use Hermes' asynchronous native webhook for live calls. Use a dedicated synchronous HTTPS endpoint, keep the timeout short, validate response fields strictly, and fall back to the configured internal AI on timeout, HTTP failure, invalid payload, revoked/expired key, or missing authorization.

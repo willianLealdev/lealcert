@@ -6,7 +6,7 @@
  * já esteja pronto — sem silêncio de 3-5s no início da ligação.
  */
 
-import { runAgentTurn, type ConversationTurn } from "./ai-agent";
+import { runAgentTurn, type ConversationTurn, type ExternalBrainContext } from "./ai-agent";
 import { synthesize, audioUrl } from "./tts";
 import { getDiscagemSettings } from "./settings-reader";
 
@@ -57,12 +57,14 @@ export async function resolveVoiceId(
 export async function preGenerateOpening(
   callId: number,
   campaign: {
+    id?: number;
     aiModel?: string | null;
     agentName?: string | null;
     ttsProvider?: string | null;
     ttsVoiceId?: string | null;
     systemPrompt?: string | null;
   },
+  externalContext: Omit<ExternalBrainContext, "callId" | "campaignId"> = {},
 ): Promise<void> {
   try {
     const agentName = (campaign.agentName ?? "Willian") as string;
@@ -77,6 +79,11 @@ export async function preGenerateOpening(
       campaign.aiModel as any,
       agentName,
       campaign.systemPrompt ?? undefined,
+      {
+        ...externalContext,
+        callId,
+        campaignId: campaign.id ?? null,
+      },
     );
 
     const voiceId = await resolveVoiceId(campaign.ttsVoiceId, agentName, provider);
