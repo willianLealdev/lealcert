@@ -146,19 +146,22 @@ router.get("/admin/api-keys/:id/audit", requireAdmin, async (req, res): Promise<
 });
 
 router.post("/admin/api-keys/:id/test-hermes", requireAdmin, async (req, res): Promise<void> => {
-  const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
-  if (!Number.isInteger(id)) { res.status(400).json({ error: "ID inválido." }); return; }
-  const [key] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id)).limit(1);
-  if (!key) { res.status(404).json({ error: "Chave não encontrada." }); return; }
-  if (!key.isActive || key.revokedAt || (key.expiresAt && key.expiresAt <= new Date())) {
-    res.status(400).json({ error: "A chave não está ativa ou está expirada." }); return;
-  }
-  if (!key.scopes.includes("discagem") || !key.telephonyCapabilities.includes("brain") || !key.aiWebhookUrl) {
-    res.status(400).json({ error: "A chave precisa ter o módulo Discagem, o nível Cérebro comercial e um webhook HTTPS." }); return;
-  }
+  try {
+    const id = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
+    if (!Number.isInteger(id)) { res.status(400).json({ error: "ID inválido." }); return; }
+    const [key] = await db.select().from(apiKeysTable).where(eq(apiKeysTable.id, id)).limit(1);
+    if (!key) { res.status(404).json({ error: "Chave não encontrada." }); return; }
+    if (!key.isActive || key.revokedAt || (key.expiresAt && key.expiresAt <= new Date())) {
+      res.status(400).json({ error: "A chave não está ativa ou está expirada." }); return;
+    }
+    const scopes = Array.isArray(key.scopes) ? key.scopes : [];
+    const capabilities = Array.isArray(key.telephonyCapabilities) ? key.telephonyCapabilities : [];
+    if (!scopes.includes("discagem") || !capabilities.includes("brain") || !key.aiWebhookUrl) {
+      res.status(400).json({ error: "A chave precisa ter o módulo Discagem, o nível Cérebro comercial e um webhook HTTPS." }); return;
+    }
 
-  const timestamp = String(Date.now());
-  const body = JSON.stringify({
+    const timestamp = String(Date.now());
+    const body = JSON.stringify({
     event: "telephony.turn.requested",
     timestamp,
     context: { diagnostic: true },
@@ -175,15 +178,27 @@ router.post("/admin/api-keys/:id/test-hermes", requireAdmin, async (req, res): P
       cupom: null,
       primeiroCertificadoComCupom: null,
     },
-  });
-  const signature = createHmac("sha256", key.tokenHash)
-    .update(`${timestamp}.${body}`, "utf8")
-    .digest("hex");
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 4_500);
-  const startedAt = Date.now();
-  try {
-    const response = await fetch(key.aiWebhookUrl, {
+    });
+    const signature = createHmac("sha256", key.tokenHash)
+      .update(`${timestamp}.${body}`, "utf8")
+      .digest("hex");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4_500);
+    const startedAt = Date.now();
+    const recordDiagnostic = async (statusCode: number, durationMs: number, message: string): Promise<void> => {
+      await db.insert(apiKeyAuditLogsTable).values({
+        apiKeyId: key.id,
+        tokenPrefix: key.tokenPrefix,
+        method: "POST",
+        path: key.aiWebhookUrl!,
+        scope: `hermes-diagnostic:${message.slice(0, 900)}`,
+        statusCode,
+        durationMs,
+        sourceIp: req.ip || null,
+      }).catch(error => req.log.error({ error, apiKeyId: key.id }, "Falha ao salvar diagnóstico do Hermes"));
+    };
+    try {
+      const response = await fetch(key.aiWebhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -193,35 +208,47 @@ router.post("/admin/api-keys/:id/test-hermes", requireAdmin, async (req, res): P
       },
       body,
       signal: controller.signal,
-    });
-    const responseBody = (await response.text()).slice(0, 1_000);
-    const latencyMs = Date.now() - startedAt;
-    if (!response.ok) {
-      res.status(502).json({
-        error: `Hermes recusou a chave: HTTP ${response.status}${responseBody ? ` — ${responseBody}` : ""}`,
-        status: response.status,
-        latencyMs,
       });
-      return;
+      const responseBody = (await response.text()).slice(0, 1_000);
+      const latencyMs = Date.now() - startedAt;
+      if (!response.ok) {
+        const message = `Hermes recusou a chave: HTTP ${response.status}${responseBody ? ` — ${responseBody}` : ""}`;
+        await recordDiagnostic(response.status, latencyMs, message);
+        res.status(502).json({
+          error: message,
+          status: response.status,
+          latencyMs,
+        });
+        return;
+      }
+      let payload: { fala?: unknown; text?: unknown };
+      try {
+        payload = JSON.parse(responseBody) as { fala?: unknown; text?: unknown };
+      } catch {
+        await recordDiagnostic(502, latencyMs, "Hermes respondeu com JSON inválido.");
+        res.status(502).json({ error: "Hermes respondeu com JSON inválido.", latencyMs }); return;
+      }
+      const speech = typeof payload.fala === "string" ? payload.fala : payload.text;
+      if (typeof speech !== "string" || !speech.trim()) {
+        await recordDiagnostic(502, latencyMs, "Hermes respondeu sem uma fala válida.");
+        res.status(502).json({ error: "Hermes respondeu sem uma fala válida.", latencyMs }); return;
+      }
+      await recordDiagnostic(response.status, latencyMs, "Conexão autenticada e resposta válida.");
+      res.json({ ok: true, latencyMs, message: "Hermes autenticou a chave e respondeu corretamente." });
+    } catch (error) {
+      const message = error instanceof Error && error.name === "AbortError"
+        ? "Hermes excedeu o limite de 4,5 segundos."
+        : `Não foi possível acessar o Hermes: ${error instanceof Error ? error.message : String(error)}`;
+      const latencyMs = Date.now() - startedAt;
+      await recordDiagnostic(502, latencyMs, message);
+      res.status(502).json({ error: message, latencyMs });
+    } finally {
+      clearTimeout(timer);
     }
-    let payload: { fala?: unknown; text?: unknown };
-    try {
-      payload = JSON.parse(responseBody) as { fala?: unknown; text?: unknown };
-    } catch {
-      res.status(502).json({ error: "Hermes respondeu com JSON inválido.", latencyMs }); return;
-    }
-    const speech = typeof payload.fala === "string" ? payload.fala : payload.text;
-    if (typeof speech !== "string" || !speech.trim()) {
-      res.status(502).json({ error: "Hermes respondeu sem uma fala válida.", latencyMs }); return;
-    }
-    res.json({ ok: true, latencyMs, message: "Hermes autenticou a chave e respondeu corretamente." });
   } catch (error) {
-    const message = error instanceof Error && error.name === "AbortError"
-      ? "Hermes excedeu o limite de 4,5 segundos."
-      : `Não foi possível acessar o Hermes: ${error instanceof Error ? error.message : String(error)}`;
-    res.status(502).json({ error: message, latencyMs: Date.now() - startedAt });
-  } finally {
-    clearTimeout(timer);
+    res.status(500).json({
+      error: `Falha interna ao preparar o diagnóstico: ${error instanceof Error ? error.message : String(error)}`,
+    });
   }
 });
 

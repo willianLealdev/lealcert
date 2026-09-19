@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   KeyRound, Plus, Copy, RotateCw, Ban, ShieldCheck, Clock, Activity, Loader2, Check,
-  Pencil, Trash2,
+  Pencil, Trash2, ScrollText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,16 @@ type ApiKey = {
   createdAt: string;
 };
 
+type ApiKeyAuditLog = {
+  id: number;
+  method: string;
+  path: string;
+  scope: string | null;
+  statusCode: number;
+  durationMs: number;
+  createdAt: string;
+};
+
 const SCOPE_LABELS: Record<string, string> = {
   users: "Clientes e contadores", orders: "Pedidos", certificates: "Certificados",
   slots: "Agenda", support: "Suporte", dashboard: "Dashboard",
@@ -64,9 +74,18 @@ async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Não foi possível concluir a operação.");
-  return data;
+  const responseText = await response.text();
+  let data: Record<string, any> = {};
+  try {
+    data = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    data = {};
+  }
+  if (!response.ok) {
+    const detail = data.error || responseText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
+    throw new Error(detail || `O servidor respondeu HTTP ${response.status} sem detalhes.`);
+  }
+  return data as T;
 }
 
 function fmt(value: string | null): string {
@@ -98,6 +117,9 @@ export default function AdminApiKeys() {
   const [aiWebhookUrl, setAiWebhookUrl] = useState("");
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
   const [testingKeyId, setTestingKeyId] = useState<number | null>(null);
+  const [logKey, setLogKey] = useState<ApiKey | null>(null);
+  const [hermesLogs, setHermesLogs] = useState<ApiKeyAuditLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   const load = async () => {
     try {
@@ -218,6 +240,20 @@ export default function AdminApiKeys() {
       toast({ title: "Falha na conexão com o Hermes", description: (error as Error).message, variant: "destructive" });
     } finally {
       setTestingKeyId(null);
+      if (logKey?.id === key.id) void openHermesLogs(key);
+    }
+  };
+
+  const openHermesLogs = async (key: ApiKey) => {
+    setLogKey(key);
+    setLoadingLogs(true);
+    try {
+      const rows = await apiRequest<ApiKeyAuditLog[]>(`/api/admin/api-keys/${key.id}/audit`);
+      setHermesLogs(rows.filter(row => row.scope?.startsWith("hermes-diagnostic:")));
+    } catch (error) {
+      toast({ title: "Erro ao carregar logs do Hermes", description: (error as Error).message, variant: "destructive" });
+    } finally {
+      setLoadingLogs(false);
     }
   };
 
@@ -272,9 +308,14 @@ export default function AdminApiKeys() {
                   <TableCell><Badge variant={active ? "default" : "secondary"}>{active ? "Ativa" : expired ? "Expirada" : "Revogada"}</Badge></TableCell>
                   <TableCell className="text-right space-x-1">
                     {active && key.scopes.includes("discagem") && key.telephonyCapabilities?.includes("brain") && key.aiWebhookUrl && (
-                      <Button size="sm" variant="outline" onClick={() => testHermes(key)} disabled={testingKeyId === key.id} title="Testar conexão com o Hermes">
-                        {testingKeyId === key.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
-                      </Button>
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => testHermes(key)} disabled={testingKeyId === key.id} title="Testar conexão com o Hermes">
+                          {testingKeyId === key.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => openHermesLogs(key)} title="Ver logs de conexão do Hermes">
+                          <ScrollText className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
                     <Button size="sm" variant="outline" onClick={() => openEdit(key)} title="Editar"><Pencil className="h-4 w-4" /></Button>
                     {active && <>
@@ -289,6 +330,46 @@ export default function AdminApiKeys() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!logKey} onOpenChange={open => { if (!open) { setLogKey(null); setHermesLogs([]); } }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Logs de conexão — {logKey?.name}</DialogTitle>
+            <DialogDescription>Histórico persistente dos testes executados por este servidor. Nenhum token ou assinatura é armazenado.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto border rounded-lg">
+            {loadingLogs ? (
+              <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
+            ) : hermesLogs.length === 0 ? (
+              <div className="py-12 text-center text-sm text-slate-500">Nenhum teste registrado. Clique no botão de atividade para testar a conexão.</div>
+            ) : (
+              <div className="divide-y">
+                {hermesLogs.map(log => {
+                  const success = log.statusCode >= 200 && log.statusCode < 300;
+                  const message = log.scope?.replace(/^hermes-diagnostic:/, "") || "Sem detalhes.";
+                  return (
+                    <div key={log.id} className="p-4 space-y-2">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={success ? "default" : "destructive"}>{success ? "Conectado" : "Erro"}</Badge>
+                          <span className="text-sm font-medium">HTTP {log.statusCode}</span>
+                          <span className="text-xs text-slate-500">{log.durationMs} ms</span>
+                        </div>
+                        <span className="text-xs text-slate-500">{fmt(log.createdAt)}</span>
+                      </div>
+                      <p className="text-sm break-words">{message}</p>
+                      <p className="text-xs text-slate-400 break-all">{log.path}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            {logKey && <Button variant="outline" onClick={() => openHermesLogs(logKey)} disabled={loadingLogs}>Atualizar</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader><CardTitle className="text-lg">Como usar</CardTitle></CardHeader>
