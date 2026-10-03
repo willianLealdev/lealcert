@@ -122,6 +122,8 @@ import type {
   IpBlock,
   IpLogsResponse,
   IpWhitelistEntry,
+  LealPlusPricing,
+  LealPlusPricingInput,
   ListCampaignSendsParams,
   ListCertificatesParams,
   ListIpBlocksParams,
@@ -232,6 +234,142 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
+
+export const getGetLealPlusPricingUrl = () => {
+
+
+
+
+  return `/api/catalog/lealplus`
+}
+
+export const getLealPlusPricing = async ( options?: RequestInit): Promise<LealPlusPricing> => {
+
+  return customFetch<LealPlusPricing>(getGetLealPlusPricingUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLealPlusPricingQueryKey = () => {
+    return [
+    `/api/catalog/lealplus`
+    ] as const;
+    }
+
+
+export const getGetLealPlusPricingQueryOptions = <TData = Awaited<ReturnType<typeof getLealPlusPricing>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLealPlusPricing>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLealPlusPricingQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLealPlusPricing>>> = ({ signal }) => getLealPlusPricing({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLealPlusPricing>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLealPlusPricingQueryResult = NonNullable<Awaited<ReturnType<typeof getLealPlusPricing>>>
+export type GetLealPlusPricingQueryError = ErrorType<unknown>
+
+
+
+export function useGetLealPlusPricing<TData = Awaited<ReturnType<typeof getLealPlusPricing>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLealPlusPricing>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLealPlusPricingQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateLealPlusPricingUrl = () => {
+
+
+
+
+  return `/api/catalog/lealplus`
+}
+
+export const updateLealPlusPricing = async (lealPlusPricingInput: LealPlusPricingInput, options?: RequestInit): Promise<LealPlusPricing> => {
+
+  return customFetch<LealPlusPricing>(getUpdateLealPlusPricingUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lealPlusPricingInput,)
+  }
+);}
+
+
+
+
+export const getUpdateLealPlusPricingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLealPlusPricing>>, TError,{data: BodyType<LealPlusPricingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLealPlusPricing>>, TError,{data: BodyType<LealPlusPricingInput>}, TContext> => {
+
+const mutationKey = ['updateLealPlusPricing'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLealPlusPricing>>, {data: BodyType<LealPlusPricingInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateLealPlusPricing(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLealPlusPricingMutationResult = NonNullable<Awaited<ReturnType<typeof updateLealPlusPricing>>>
+    export type UpdateLealPlusPricingMutationBody = BodyType<LealPlusPricingInput>
+    export type UpdateLealPlusPricingMutationError = ErrorType<unknown>
+
+    export const useUpdateLealPlusPricing = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLealPlusPricing>>, TError,{data: BodyType<LealPlusPricingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateLealPlusPricing>>,
+        TError,
+        {data: BodyType<LealPlusPricingInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateLealPlusPricingMutationOptions(options));
+    }
 
 export const getListCouponsUrl = () => {
 

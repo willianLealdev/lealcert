@@ -5,6 +5,15 @@
  * LealCert - Sistema de Venda de Certificados Digitais
  * OpenAPI spec version: 0.1.0
  */
+export interface LealPlusPricing {
+  price: number;
+}
+
+export interface LealPlusPricingInput {
+  /** @minimum 0 */
+  price: number;
+}
+
 export type OrderEventMeta = { [key: string]: unknown } | null;
 
 export interface OrderEvent {
@@ -443,6 +452,8 @@ export interface Order {
   scheduledAt?: string | null;
   protocolNumber?: string | null;
   extendedWarranty?: boolean;
+  /** @nullable */
+  lealPlusPrice?: number | null;
   addressZipcode?: string | null;
   addressStreet?: string | null;
   addressNumber?: string | null;

@@ -133,6 +133,22 @@ describe("checkout partner price ownership", () => {
     expect(insertedTotal()).toBe(90);
   });
 
+  it.each(["19.90", "29.90"])("calcula Leal Plus usando %s do banco e ignora preço enviado pelo navegador", async price => {
+    resultQueue.push(
+      [certificate], [contadorHolder], [{ userType: "contador" }],
+      [{ price }], [{ activeProvider: "gestaoar" }], [], [createdOrder],
+    );
+    const { default: checkoutRouter } = await import("../routes/checkout");
+    const app = appForSession(10);
+    app.use("/api", checkoutRouter);
+    const response = await request(app).post("/api/public/checkout/submit").send({
+      ...checkoutPayload, extendedWarranty: true, lealPlusPrice: 0, total: 1,
+    });
+    expect(response.status).toBe(200);
+    expect(insertedTotal()).toBe((9000 + Math.round(Number(price) * 100)) / 100);
+    expect(insertedValues[0]).toMatchObject({ lealPlusPrice: price, extendedWarranty: true });
+  });
+
   it("refuses cortesia when an authenticated client buys for a contador document", async () => {
     queueCheckout("cliente");
     const { default: checkoutRouter } = await import("../routes/checkout");

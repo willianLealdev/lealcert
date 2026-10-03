@@ -40,6 +40,33 @@ tags:
     description: NFS-e (Nota Fiscal de Serviço Eletrônica) — BrasilNFe integration
 
 paths:
+  /catalog/lealplus:
+    get:
+      operationId: getLealPlusPricing
+      tags: [certificates]
+      responses:
+        "200":
+          description: Preço atual do Leal Plus definido no backend
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LealPlusPricing"
+    patch:
+      operationId: updateLealPlusPricing
+      tags: [certificates]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LealPlusPricingInput"
+      responses:
+        "200":
+          description: Preço atualizado pelo administrador
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LealPlusPricing"
   /coupons:
     get:
       operationId: listCoupons
@@ -3660,6 +3687,19 @@ paths:
 
 components:
   schemas:
+    LealPlusPricing:
+      type: object
+      required: [price]
+      properties:
+        price:
+          type: number
+    LealPlusPricingInput:
+      type: object
+      required: [price]
+      properties:
+        price:
+          type: number
+          minimum: 0
     OrderEvent:
       type: object
       required: [id, orderId, type, message, createdAt]
@@ -4383,6 +4423,8 @@ components:
           nullable: true
         extendedWarranty:
           type: boolean
+        lealPlusPrice:
+          type: [number, "null"]
         addressZipcode:
           type: string
           nullable: true

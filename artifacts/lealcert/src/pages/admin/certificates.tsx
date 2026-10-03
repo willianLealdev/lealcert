@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, Link2, AlertCircle, Users, User, Download, Video, MapPin, RefreshCw, ShieldCheck, Filter, CheckSquare, Square } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getApiError } from "@/lib/api-error";
+import { LealPlusCatalogPrice } from "@/components/lealplus-catalog-price";
 
 const PRODUCT_OPTIONS = ["e-CPF", "e-CNPJ", "e-PF", "e-PJ"];
 const ISSUANCE_OPTIONS = ["Presencial", "Videoconferência", "Fast", "Renovação"];
@@ -224,6 +225,7 @@ export default function AdminCertificates() {
         </div>
       </div>
 
+      <LealPlusCatalogPrice />
       {/* Disponibilidade por Produto */}
       {!isLoading && (certs?.length ?? 0) > 0 && (
         <div className="border rounded-xl overflow-hidden">

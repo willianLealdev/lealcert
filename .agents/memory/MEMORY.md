@@ -35,3 +35,4 @@
 - [Referral credit accounting](referral-credit-accounting.md) — credit-funded certificates are redemptions, not cash revenue or seller commission.
 - [API key gateway sessions](api-key-gateway-sessions.md) — Bearer requests may reuse session-based handlers only if session persistence and Set-Cookie are explicitly disabled.
 - [External telephony brain](external-telephony-brain.md) — Hermes is opt-in per API key; sign each turn, enforce a short timeout, and make internal fallback explicitly configurable.
+- [Preço do Leal Plus](lealplus-pricing-policy.md) — catálogo no banco, cobrança definida no backend; preservar preço cobrado e não reconstruir históricos por suposição.

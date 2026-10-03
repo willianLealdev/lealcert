@@ -46,6 +46,7 @@ export const ordersTable = pgTable("orders", {
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   protocolNumber: text("protocol_number"),
   extendedWarranty: boolean("extended_warranty").notNull().default(false),
+  lealPlusPrice: text("leal_plus_price"),
   addressZipcode: text("address_zipcode"),
   addressStreet: text("address_street"),
   addressNumber: text("address_number"),

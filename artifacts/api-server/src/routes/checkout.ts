@@ -7,6 +7,7 @@ import { eq, and, desc, isNotNull, count } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, ordersTable, usersTable, certificatesTable, settingsTable, couponsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { getLealPlusPrice, calculateOrderTotal } from "../lib/lealplus-pricing";
 import {
   swBiometriaPSBioGlobal,
   swHasPsbio,
@@ -461,8 +462,6 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     termsAccepted,
   } = req.body ?? {};
 
-  const LEALPLUS_PRICE = 19.90;
-
   if (!certificateId || !customerName || !customerEmail || !cpf || !termsAccepted) {
     res.status(400).json({ error: "Campos obrigatórios faltando." });
     return;
@@ -552,8 +551,8 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
       : Math.min(parseFloat(String(coupon.value)), basePrice);
   }
 
-  const lealplusPrice = extendedWarranty ? LEALPLUS_PRICE : 0;
-  const total = Math.max(0, basePrice + lealplusPrice - discount);
+  const lealplusPrice = extendedWarranty ? await getLealPlusPrice() : 0;
+  const total = calculateOrderTotal(basePrice, lealplusPrice, discount);
 
   // Enforce payment method rules
   if (paymentMethod === "cartao" && total < 150) {
@@ -698,6 +697,7 @@ router.post("/public/checkout/submit", async (req, res): Promise<void> => {
     certProductSnapshot: cert.product || null,
     termsAcceptedAt: termsAccepted ? new Date() : null,
     extendedWarranty: extendedWarranty ? true : false,
+    lealPlusPrice: lealplusPrice.toFixed(2),
   }).returning();
 
   // Registrar evento de criação no histórico

@@ -8,6 +8,24 @@
 import * as zod from 'zod';
 
 
+export const GetLealPlusPricingResponse = zod.object({
+  "price": zod.number()
+})
+
+
+export const updateLealPlusPricingBodyPriceMin = 0;
+
+
+
+export const UpdateLealPlusPricingBody = zod.object({
+  "price": zod.number().min(updateLealPlusPricingBodyPriceMin)
+})
+
+export const UpdateLealPlusPricingResponse = zod.object({
+  "price": zod.number()
+})
+
+
 /**
  * @summary List all coupons (admin)
  */
@@ -686,6 +704,7 @@ export const ListOrdersResponseItem = zod.object({
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),
   "extendedWarranty": zod.boolean().optional(),
+  "lealPlusPrice": zod.number().nullish(),
   "addressZipcode": zod.string().nullish(),
   "addressStreet": zod.string().nullish(),
   "addressNumber": zod.string().nullish(),
@@ -1026,6 +1045,7 @@ export const GetOrderResponse = zod.object({
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),
   "extendedWarranty": zod.boolean().optional(),
+  "lealPlusPrice": zod.number().nullish(),
   "addressZipcode": zod.string().nullish(),
   "addressStreet": zod.string().nullish(),
   "addressNumber": zod.string().nullish(),
@@ -1120,6 +1140,7 @@ export const UpdateOrderResponse = zod.object({
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),
   "extendedWarranty": zod.boolean().optional(),
+  "lealPlusPrice": zod.number().nullish(),
   "addressZipcode": zod.string().nullish(),
   "addressStreet": zod.string().nullish(),
   "addressNumber": zod.string().nullish(),
@@ -2953,6 +2974,7 @@ export const GetRecentOrdersResponseItem = zod.object({
   "scheduledAt": zod.string().nullish(),
   "protocolNumber": zod.string().nullish(),
   "extendedWarranty": zod.boolean().optional(),
+  "lealPlusPrice": zod.number().nullish(),
   "addressZipcode": zod.string().nullish(),
   "addressStreet": zod.string().nullish(),
   "addressNumber": zod.string().nullish(),

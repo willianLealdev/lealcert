@@ -14,6 +14,15 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "03/10/2026",
+    version: "1.80",
+    changes: [
+      { type: "fix", text: "Leal Plus: corrigida a cobrança antiga de R$ 15,00 no painel e no chat. Todos os novos pedidos usam o preço definido no catálogo pelo backend." },
+      { type: "novo", text: "Catálogo: administradores podem alterar o preço do Leal Plus, armazenado no banco. Cada pedido preserva o preço aplicado na compra, sem modificar pedidos anteriores." },
+      { type: "fix", text: "Pedidos antigos: removida a subtração de preço fixo do Leal Plus que exibia valores incorretos para o certificado." },
+    ],
+  },
+  {
     date: "18/09/2026",
     version: "1.79",
     changes: [

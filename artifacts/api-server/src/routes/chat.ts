@@ -4,6 +4,7 @@ import { db, conversations, chatMessages, certificatesTable, usersTable, ordersT
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../lib/logger";
+import { getLealPlusPrice, calculateOrderTotal } from "../lib/lealplus-pricing";
 import { sendOrderStatusEmail, sendTempPasswordEmail } from "../lib/email";
 import { swBiometriaPSBioGlobal, swConsultaCPF, swConsultaCNPJ, type SafewebSettings } from "../lib/safeweb";
 import { garPsBio } from "../lib/gestaoar";
@@ -289,7 +290,7 @@ Se [BIO_INDISPONIVEL]:
      Aguarde a escolha antes de continuar.
 
   5. Confirme o certificado escolhido e pergunte IMEDIATAMENTE:
-     **"Deseja adicionar a Garantia Estendida por +R$15,00? Ela garante suporte completo por 12 meses em caso de qualquer problema com o certificado."**
+     **"Deseja adicionar o Leal Plus por +{LEALPLUS_PRICE}? Ele garante suporte completo por 12 meses em caso de qualquer problema com o certificado."**
      • Registre a resposta (extendedWarranty: true/false) antes de avançar.
 
 ▶ PASSO 5.5 — VALIDAÇÃO DO REPRESENTANTE (SOMENTE e-CNPJ)
@@ -433,7 +434,7 @@ Exiba TODOS os dados em formato de resumo claro:
 • Telefone: ...
 • Endereço: ...
 • Nota Fiscal: [CPF/CNPJ da NF] — [Nome/Razão Social] — [Endereço de cobrança]
-• Garantia estendida: Sim (+R$15,00) / Não
+• Leal Plus: Sim (+{LEALPLUS_PRICE}) / Não
 • **Total: R$ X,XX**
 
 Pergunta: "Os dados acima estão corretos? Confirme para gerar o QR Code PIX de pagamento."
@@ -760,7 +761,9 @@ router.post("/chat", async (req, res): Promise<void> => {
   // ── 5. Carregar configurações de IA ───────────────────────────────────────
   const aName = "Will";
   const aArticle = "o";
-  const systemPrompt = buildSystemPrompt(aName, aArticle);
+  const currentLealPlusPrice = await getLealPlusPrice();
+  const systemPrompt = buildSystemPrompt(aName, aArticle)
+    .replaceAll("{LEALPLUS_PRICE}", currentLealPlusPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
 
   const [aiSettings] = await db.select({
     aiProvider: settingsTable.aiProvider,
@@ -1160,7 +1163,8 @@ router.post("/chat", async (req, res): Promise<void> => {
         if (!cert) throw new Error("Certificado não encontrado");
 
         const basePrice = parseFloat(cert.price);
-        const total = basePrice + (orderData.extendedWarranty ? 15.0 : 0.0);
+        const lealPlusPrice = orderData.extendedWarranty ? await getLealPlusPrice() : 0;
+        const total = calculateOrderTotal(basePrice, lealPlusPrice);
 
         let userId = 1;
         const [existingUser] = await db.select({ id: usersTable.id })
@@ -1242,6 +1246,7 @@ router.post("/chat", async (req, res): Promise<void> => {
           addressCity: addrCity || null,
           addressState: addrState || null,
           extendedWarranty: orderData.extendedWarranty,
+          lealPlusPrice: lealPlusPrice.toFixed(2),
           chatDocuments,
           customerCei: orderData.customerCei || null,
           customerNis: orderData.customerNis || null,

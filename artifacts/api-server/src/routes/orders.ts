@@ -5,6 +5,7 @@ import { db, ordersTable, usersTable, certificatesTable, settingsTable } from "@
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { notifyOrderStatus, notifyScheduling, sendWaText } from "../lib/notify";
 import { logger } from "../lib/logger";
+import { getLealPlusPrice, calculateOrderTotal } from "../lib/lealplus-pricing";
 import { swConsultaCPF, swConsultaCNPJ, swBiometriaPSBioGlobal, swHasPsbio, swHopeSolicitation, type SafewebSettings } from "../lib/safeweb";
 import { garPsBio } from "../lib/gestaoar";
 
@@ -98,6 +99,7 @@ function orderRow(
     scheduledAt: o.scheduledAt,
     protocolNumber: o.protocolNumber,
     extendedWarranty: o.extendedWarranty,
+    lealPlusPrice: o.lealPlusPrice == null ? null : Number(o.lealPlusPrice),
     addressZipcode: o.addressZipcode,
     addressStreet: o.addressStreet,
     addressNumber: o.addressNumber,
@@ -402,7 +404,8 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     operatorId = buyer.id;
   }
   const basePrice = certificatePriceForUser(cert, accountOwner.userType);
-  const total = basePrice + (extendedWarranty ? 15.0 : 0.0);
+  const lealPlusPrice = extendedWarranty ? await getLealPlusPrice() : 0;
+  const total = calculateOrderTotal(basePrice, lealPlusPrice);
 
   // generate unique order number
   let orderNumber: string;
@@ -430,6 +433,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     companyName: companyName || null,
     inssNumber: inssNumber || null,
     extendedWarranty: !!extendedWarranty,
+    lealPlusPrice: lealPlusPrice.toFixed(2),
     addressZipcode: addressZipcode || null,
     addressStreet: addressStreet || null,
     addressNumber: addressNumber || null,

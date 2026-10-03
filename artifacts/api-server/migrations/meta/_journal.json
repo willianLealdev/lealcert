@@ -85,6 +85,13 @@
       "when": 1787291979000,
       "tag": "0010_safeweb_webhook_secret",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791057600000,
+      "tag": "0015_lealplus_pricing",
+      "breakpoints": true
     }
   ]
 }

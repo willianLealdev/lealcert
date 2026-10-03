@@ -5,8 +5,33 @@ import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { swListarProdutos, type SafewebSettings } from "../lib/safeweb";
 import { garTabelaPrecos, garParceiroVendas, garTiposProduto, garTiposEmissao, type GarProduto } from "../lib/gestaoar";
 import { logger } from "../lib/logger";
+import { getLealPlusPrice, moneyCents } from "../lib/lealplus-pricing";
 
 const router = Router();
+
+router.get("/catalog/lealplus", async (_req, res): Promise<void> => {
+  res.set("Cache-Control", "no-store");
+  res.json({ price: await getLealPlusPrice() });
+});
+
+router.patch("/catalog/lealplus", requireAdmin, async (req, res): Promise<void> => {
+  let cents: number;
+  try {
+    cents = moneyCents(req.body?.price);
+  } catch {
+    res.status(400).json({ error: "Informe um preço válido com até duas casas decimais." });
+    return;
+  }
+  const [settings] = await db.select({ id: settingsTable.id }).from(settingsTable).limit(1);
+  if (!settings) {
+    res.status(409).json({ error: "Configurações do sistema não encontradas." });
+    return;
+  }
+  await db.update(settingsTable).set({ lealPlusPrice: (cents / 100).toFixed(2) })
+    .where(eq(settingsTable.id, settings.id));
+  req.log.info({ price: cents / 100, adminId: req.session.userId }, "Preço do Leal Plus atualizado");
+  res.json({ price: cents / 100 });
+});
 
 function certRowPublic(c: typeof certificatesTable.$inferSelect) {
   return {

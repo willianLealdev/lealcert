@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useLealPlusPrice } from "@/hooks/use-lealplus-price";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getGetMeQueryKey, useGetMe, confirmDocs } from "@workspace/api-client-react";
@@ -75,6 +76,7 @@ function formatBrFromIso(v: string | null | undefined) {
   return y && m && d ? `${d}/${m}/${y}` : v;
 }
 function formatBRL(v: number) {
+  if (!Number.isFinite(v)) return "Preço indisponível";
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 function digits(v: string) { return (v || "").replace(/\D/g, ""); }
@@ -135,8 +137,6 @@ function LealCertLogo({ small }: { small?: boolean }) {
 }
 
 /* ── Resumo lateral fixo ────────────────────────────────────────────────── */
-const LEALPLUS_SIDEBAR_PRICE = 19.90;
-
 function ResumeLateral({
   cert, certPrice, extendedWarranty, couponDiscount, couponCode, couponValid,
   couponLoading, onCouponChange, onCouponApply, setCouponCode, setCouponDiscount, setCouponValid,
@@ -147,7 +147,8 @@ function ResumeLateral({
   onCouponApply: () => void; setCouponCode: (v: string) => void;
   setCouponDiscount: (v: number) => void; setCouponValid: (v: boolean | null) => void;
 }) {
-  const subtotal = certPrice + (extendedWarranty ? LEALPLUS_SIDEBAR_PRICE : 0);
+  const { price: lealPlusPrice } = useLealPlusPrice();
+  const subtotal = certPrice + (extendedWarranty ? lealPlusPrice : 0);
   const total = Math.max(0, subtotal - couponDiscount);
 
   return (
@@ -169,7 +170,7 @@ function ResumeLateral({
               <span className="text-muted-foreground flex items-center gap-1">
                 <Lock className="h-3 w-3 text-[#0d7c6b]" />Leal Plus
               </span>
-              <span className="font-medium text-[#0d7c6b]">+{formatBRL(LEALPLUS_SIDEBAR_PRICE)}</span>
+              <span className="font-medium text-[#0d7c6b]">+{formatBRL(lealPlusPrice)}</span>
             </div>
           )}
           {couponDiscount > 0 && (
@@ -292,6 +293,7 @@ function StepBar({ current }: { current: Step }) {
    COMPONENTE PRINCIPAL
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function ComprarPage() {
+  const { price: lealPlusPrice } = useLealPlusPrice();
   const { certId } = useParams<{ certId: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -690,7 +692,7 @@ export default function ComprarPage() {
   };
 
   /* Leal Plus — salvo como extendedWarranty no banco */
-  const LEALPLUS_PRICE = 19.90;
+  const LEALPLUS_PRICE = lealPlusPrice;
 
   /* ══════════════════════════════════════════════════════════════════════
      ETAPA 4 — Pagamento (seleciona método e preenche dados, depois submete)
@@ -719,6 +721,10 @@ export default function ComprarPage() {
   }, [step, isContador]);
 
   const submitBenefit = async (method: "cortesia" | "credito_indicacao") => {
+    if (dados.extendedWarranty && !Number.isFinite(lealPlusPrice)) {
+      toast({ title: "Preço do Leal Plus indisponível", description: "Não foi possível carregar o preço do servidor.", variant: "destructive" });
+      return;
+    }
     setPay(p => ({ ...p, loading: true, error: null, method }));
 
     const holderNome = isCnpjCert ? dados.repNome : dados.nome;
@@ -849,6 +855,10 @@ export default function ComprarPage() {
   };
 
   const submitOrder = async () => {
+    if (dados.extendedWarranty && !Number.isFinite(lealPlusPrice)) {
+      toast({ title: "Preço do Leal Plus indisponível", description: "Não foi possível carregar o preço do servidor.", variant: "destructive" });
+      return;
+    }
     if (!selectedMethod) { toast({ title: "Selecione a forma de pagamento", variant: "destructive" }); return; }
     if (selectedMethod === "cartao") {
       if (digits(cardNumber).length < 16) { toast({ title: "Número do cartão inválido", variant: "destructive" }); return; }

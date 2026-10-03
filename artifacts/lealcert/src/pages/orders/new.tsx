@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
+import { useLealPlusPrice } from "@/hooks/use-lealplus-price";
 import { useLocation } from "wouter";
 import { useListCertificates, useCreateOrder, useCreatePayment, useConsultaPrevia, getCnpjLookupQueryOptions, useValidateCoupon } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
@@ -77,6 +78,7 @@ function maskExpiry(v: string) {
 }
 
 function formatBRL(v: number) {
+  if (!Number.isFinite(v)) return "Preço indisponível";
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 }
 
@@ -192,6 +194,7 @@ function UploadWidget({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function NewOrder() {
+  const { price: lealPlusPrice } = useLealPlusPrice();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -534,7 +537,7 @@ export default function NewOrder() {
     ? (selectedCert.product === "e-CNPJ" || selectedCert.product === "e-PJ" || /cnpj/i.test(selectedCert.name))
     : false;
 
-  const subtotal = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? 19.90 : 0);
+  const subtotal = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? lealPlusPrice : 0);
   const discount = appliedCoupon
     ? appliedCoupon.type === "percent"
       ? Math.round(subtotal * appliedCoupon.value) / 100
@@ -795,6 +798,10 @@ export default function NewOrder() {
   // Cria o pedido com todos os dados do formulário (igual ao submit normal),
   // depois chama pay-with-cortesia para usar a cortesia como pagamento.
   async function handleBenefitSubmit(method: "cortesia" | "credito_indicacao") {
+    if (form.extendedWarranty && !Number.isFinite(lealPlusPrice)) {
+      toast({ title: "Preço do Leal Plus indisponível", description: "Não foi possível carregar o preço do servidor.", variant: "destructive" });
+      return;
+    }
     const hasPsbioValue = gateHasPsbioRef.current;
     const nfDigits = nfForm.nfCpfCnpj.replace(/\D/g, "");
     try {
@@ -884,6 +891,10 @@ export default function NewOrder() {
 
   // ── Submit ──
   async function handleSubmit() {
+    if (form.extendedWarranty && !Number.isFinite(lealPlusPrice)) {
+      toast({ title: "Preço do Leal Plus indisponível", description: "Não foi possível carregar o preço do servidor.", variant: "destructive" });
+      return;
+    }
     const hasPsbioValue = gateHasPsbioRef.current;
     const nfDigits = nfForm.nfCpfCnpj.replace(/\D/g, "");
 
@@ -1417,7 +1428,7 @@ export default function NewOrder() {
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">Suporte completo por 12 meses em caso de problemas</p>
                     </div>
-                    <p className="font-bold text-amber-600 text-sm">+ {formatBRL(19.90)}</p>
+                    <p className="font-bold text-amber-600 text-sm">+ {formatBRL(lealPlusPrice)}</p>
                     <div className={["h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
                       form.extendedWarranty ? "border-amber-500 bg-amber-500" : "border-muted-foreground/30"].join(" ")}>
                       {form.extendedWarranty && <div className="h-2 w-2 rounded-full bg-white" />}
@@ -2011,7 +2022,7 @@ export default function NewOrder() {
                   {form.extendedWarranty && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">LealPlus</span>
-                      <span className="font-medium">{formatBRL(19.90)}</span>
+                      <span className="font-medium">{formatBRL(lealPlusPrice)}</span>
                     </div>
                   )}
                   {appliedCoupon && (
@@ -2240,7 +2251,7 @@ export default function NewOrder() {
               <li>Suporte prioritário via WhatsApp e e-mail</li>
               <li>Re-emissão sem custo adicional em caso de falha técnica comprovada</li>
             </ul>
-            <p className="text-xs">Valor: R$ 19,90 (único, pago junto com o certificado).</p>
+            <p className="text-xs">Valor: {formatBRL(lealPlusPrice)} (único, pago junto com o certificado).</p>
           </div>
         </DialogContent>
       </Dialog>

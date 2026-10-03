@@ -38,6 +38,8 @@ export interface Order {
   scheduledAt?: string | null;
   protocolNumber?: string | null;
   extendedWarranty?: boolean;
+  /** @nullable */
+  lealPlusPrice?: number | null;
   addressZipcode?: string | null;
   addressStreet?: string | null;
   addressNumber?: string | null;

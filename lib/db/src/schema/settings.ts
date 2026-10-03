@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 export const settingsTable = pgTable("settings", {
   id: serial("id").primaryKey(),
   appName: text("app_name").notNull().default("LealCert"),
+  lealPlusPrice: text("leal_plus_price").notNull().default("19.90"),
   mpAccessToken: text("mp_access_token"),
   mpPublicKey: text("mp_public_key"),
   webhookSecret: text("webhook_secret"),

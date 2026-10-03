@@ -127,6 +127,8 @@ export * from './ipLog';
 export * from './ipLogsResponse';
 export * from './ipWhitelistEntry';
 export * from './labelSeries';
+export * from './lealPlusPricing';
+export * from './lealPlusPricingInput';
 export * from './listCertificatesParams';
 export * from './listIpBlocksParams';
 export * from './listIpLogsParams';
