@@ -15,6 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "03/10/2026",
+    version: "1.81",
+    changes: [
+      { type: "fix", text: "Segurança de IP: país verificado antes do bloqueio. IPs confirmados do Brasil, IPv4 ou IPv6, são liberados imediatamente e não recebem novos bloqueios por falhas de login." },
+      { type: "fix", text: "Geolocalização: normalização de IPv6, consulta alternativa HTTPS e nova tentativa após falhas. País desconhecido não é mais registrado como estrangeiro." },
+    ],
+  },
+  {
+    date: "03/10/2026",
     version: "1.80",
     changes: [
       { type: "fix", text: "Leal Plus: corrigida a cobrança antiga de R$ 15,00 no painel e no chat. Todos os novos pedidos usam o preço definido no catálogo pelo backend." },

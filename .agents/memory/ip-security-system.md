@@ -1,31 +1,10 @@
 ---
-name: IP Security system
-description: How the IP-based login protection system works and what files implement it.
+name: Regra de acesso por país do IP
+description: Brasil confirmado deve ter prioridade sobre bloqueios de IP, incluindo IPv6.
 ---
 
-## Design
+Primeiro verificar se o IP que tenta acessar é do Brasil; se confirmado, liberar imediatamente. A regra vale para IPv4 e IPv6, tem prioridade sobre bloqueios anteriores e impede novos bloqueios por falhas de login para IPs brasileiros.
 
-- 3 failed login attempts → IP blocked
-- Brazil IPs: auto-unblock after 4h (stored in `ip_blocks.unblock_at`)
-- Foreign IPs: blocked until admin manually unblocks
-- Admin can also permanently ban any IP
-- First login from a new IP → send 6-digit code to user's email → user must verify → IP added to `users.trusted_ips`
+**Why:** O usuário determinou: “o ip que esta tentando acessar e do Brasil.. se sim.. libera imediatamente”, após relatar bloqueios indevidos de IPv6 brasileiros. A regra anterior de espera de quatro horas para Brasil foi substituída.
 
-## DB tables (applied via 0001_ip_security.sql migration)
-- `ip_logs` — all login/register events per IP
-- `ip_blocks` — currently blocked/banned IPs
-- `ip_verifications` — pending IP verification codes (15min TTL)
-- `users.registration_ip` + `users.trusted_ips` (jsonb array, max 10)
-
-## Key files
-- `artifacts/api-server/src/lib/ip-security.ts` — all IP logic (check status, record attempts, handle failures, trusted IPs, auto-unblock)
-- `artifacts/api-server/src/routes/auth.ts` — login integrates IP checks; also `POST /auth/verify-ip`
-- `artifacts/api-server/src/routes/ip-security.ts` — admin routes for logs/blocks/ban/unblock
-- `artifacts/api-server/src/lib/scheduler.ts` — calls `autoUnblockExpiredIps()` every 10min
-- `artifacts/lealcert/src/pages/login.tsx` — two-step login (credentials → ip-verify) with ban/block banners
-- `artifacts/lealcert/src/pages/admin/ip-security.tsx` — admin dashboard
-
-## HTTP codes used
-- 403 + `code: "ip_banned"` — permanently banned IP
-- 423 + `code: "ip_blocked"` — temporarily blocked IP
-- 202 + `{ requiresIpVerification: true }` — credentials OK but IP needs verification
+**How to apply:** Não inferir país apenas pelo formato ou prefixo do IP. Confirmar o país por geolocalização antes de aplicar bloqueios. País desconhecido não significa estrangeiro. Preservar autenticação por senha, verificação de e-mail e proteção por CPF; liberar o IP não autentica o usuário.

@@ -6,9 +6,9 @@
 import { eq, desc, and, gte, lte, isNull, or } from "drizzle-orm";
 import { db, ipLogsTable, ipBlocksTable, ipWhitelistTable, usersTable } from "@workspace/db";
 import { logger } from "./logger";
+import { isIP } from "node:net";
 
 const MAX_ATTEMPTS = 3;
-const BLOCK_HOURS_BRAZIL = 4;
 
 // IPs permanentemente liberados — nunca bloqueados
 const IP_WHITELIST = new Set(["24.253.2.159"]);
@@ -27,11 +27,21 @@ const geoCache = new Map<string, { result: GeoInfo; expiresAt: number }>();
 const GEO_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora
 
 /** Remove prefixo IPv4-mapeado-em-IPv6 (::ffff:1.2.3.4 → 1.2.3.4) */
-function normalizeIp(ip: string): string {
-  if (ip.startsWith("::ffff:")) return ip.slice(7);
-  // Formato raro: [::ffff:1.2.3.4]
-  const m = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
-  return m ? m[1] : ip;
+export function normalizeIp(ip: string): string {
+  const unwrapped = ip.trim().replace(/^\[([^\]]+)\](?::\d+)?$/, "$1");
+  const mapped = unwrapped.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (mapped && isIP(mapped[1]) === 4) return mapped[1];
+  if (isIP(unwrapped) === 6) {
+    const canonical = new URL(`http://[${unwrapped}]/`).hostname.slice(1, -1);
+    const hexMapped = canonical.match(/^::ffff:([a-f\d]+):([a-f\d]+)$/i);
+    if (hexMapped) {
+      const high = parseInt(hexMapped[1], 16);
+      const low = parseInt(hexMapped[2], 16);
+      return `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
+    }
+    return canonical;
+  }
+  return unwrapped;
 }
 
 /** Fallback via ip-api.com — suporta IPv6 completo, grátis, sem chave */
@@ -40,12 +50,30 @@ async function geolocateRemote(ip: string): Promise<GeoInfo> {
   if (cached && cached.expiresAt > Date.now()) return cached.result;
 
   try {
+    // HTTPS e suporte a IPv6: evita depender de uma única consulta HTTP.
+    const secureResp = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}?fields=success,country,country_code,city`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!secureResp.ok) throw new Error(`ipwho HTTP ${secureResp.status}`);
+    const data = await secureResp.json() as { success?: boolean; country?: string; country_code?: string; city?: string };
+    if (!data.success || !data.country_code) throw new Error("ipwho: país indisponível");
+    const result: GeoInfo = {
+      country: data.country_code === "BR" ? "Brasil" : (data.country ?? "Desconhecido"),
+      countryCode: data.country_code,
+      city: data.city ?? "",
+      isBrazil: data.country_code === "BR",
+    };
+    geoCache.set(ip, { result, expiresAt: Date.now() + GEO_CACHE_TTL_MS });
+    return result;
+  } catch { /* tenta o provedor alternativo abaixo */ }
+
+  try {
     const resp = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,city`, {
       signal: AbortSignal.timeout(3000),
     });
     if (!resp.ok) throw new Error(`ip-api HTTP ${resp.status}`);
     const data = await resp.json() as { status: string; country?: string; countryCode?: string; city?: string };
-    if (data.status !== "success") throw new Error("ip-api: status=" + data.status);
+    if (data.status !== "success" || !data.countryCode) throw new Error("ip-api: país indisponível");
     const result: GeoInfo = {
       country: data.countryCode === "BR" ? "Brasil" : (data.country ?? "Desconhecido"),
       countryCode: data.countryCode ?? "",
@@ -56,8 +84,7 @@ async function geolocateRemote(ip: string): Promise<GeoInfo> {
     return result;
   } catch {
     const fallback: GeoInfo = { country: "Desconhecido", countryCode: "", city: "", isBrazil: false };
-    // Cache por menos tempo em caso de erro (5 min) para tentar de novo depois
-    geoCache.set(ip, { result: fallback, expiresAt: Date.now() + 5 * 60 * 1000 });
+    // Não memorizar falhas como origem estrangeira: a próxima tentativa consulta novamente.
     return fallback;
   }
 }
@@ -69,7 +96,7 @@ export async function geolocate(ip: string): Promise<GeoInfo> {
   try {
     const geoip = await import("geoip-lite");
     const geo = geoip.default.lookup(normalizedIp);
-    if (geo) {
+    if (geo?.country) {
       return {
         country: geo.country === "BR" ? "Brasil" : (geo.country ?? "Desconhecido"),
         countryCode: geo.country ?? "",
@@ -88,10 +115,10 @@ export async function geolocate(ip: string): Promise<GeoInfo> {
 export function getClientIp(req: { ip?: string; headers: Record<string, string | string[] | undefined> }): string {
   const forwarded = req.headers["x-forwarded-for"];
   if (forwarded) {
-    const first = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
-    return first.trim();
+    const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0];
+    if (first?.trim()) return normalizeIp(first);
   }
-  return req.ip ?? "unknown";
+  return normalizeIp(req.ip ?? "unknown");
 }
 
 // ── Verificar se IP está bloqueado ou banido ──────────────────────────────────
@@ -108,6 +135,12 @@ export async function isIpWhitelisted(ip: string): Promise<boolean> {
 }
 
 export async function checkIpStatus(ip: string): Promise<IpStatus> {
+  // O país confirmado tem prioridade sobre qualquer bloqueio antigo, inclusive IPv6.
+  const geo = await geolocate(ip);
+  if (geo.isBrazil) {
+    await db.delete(ipBlocksTable).where(eq(ipBlocksTable.ip, ip));
+    return { status: "ok" };
+  }
   if (await isIpWhitelisted(ip)) return { status: "ok" };
   const [block] = await db
     .select()
@@ -117,6 +150,7 @@ export async function checkIpStatus(ip: string): Promise<IpStatus> {
 
   if (!block) return { status: "ok" };
   if (block.isBanned) return { status: "banned" };
+  if (block.attempts < MAX_ATTEMPTS) return { status: "ok" };
 
   // Temporariamente bloqueado — verifica se já expirou
   if (block.unblockAt && new Date() >= block.unblockAt) {
@@ -177,8 +211,12 @@ export async function recordRegisterIp(ip: string, userId: number, cpfCnpj: stri
 // ── Processar falha de login — incrementa contagem e bloqueia se necessário ──
 
 export async function handleFailedLogin(ip: string, cpfCnpj?: string): Promise<boolean> {
-  if (await isIpWhitelisted(ip)) return false;
   const geo = await geolocate(ip);
+  if (geo.isBrazil) {
+    await db.delete(ipBlocksTable).where(eq(ipBlocksTable.ip, ip));
+    return false;
+  }
+  if (await isIpWhitelisted(ip)) return false;
 
   const [existing] = await db
     .select()
@@ -192,14 +230,12 @@ export async function handleFailedLogin(ip: string, cpfCnpj?: string): Promise<b
   const shouldBlock = attempts >= MAX_ATTEMPTS;
 
   if (shouldBlock) {
-    const unblockAt = geo.isBrazil
-      ? new Date(Date.now() + BLOCK_HOURS_BRAZIL * 60 * 60 * 1000)
-      : null; // IPs estrangeiros ficam bloqueados indefinidamente até admin desbloquear
+    const unblockAt = null; // Brasil não chega aqui; demais IPs seguem a regra de bloqueio.
 
     if (existing) {
       await db.update(ipBlocksTable).set({
         attempts,
-        isForeign: !geo.isBrazil,
+        isForeign: !!geo.countryCode && !geo.isBrazil,
         blockedAt: new Date(),
         unblockAt,
         unblockedAt: null,
@@ -211,7 +247,7 @@ export async function handleFailedLogin(ip: string, cpfCnpj?: string): Promise<b
       await db.insert(ipBlocksTable).values({
         ip,
         attempts,
-        isForeign: !geo.isBrazil,
+        isForeign: !!geo.countryCode && !geo.isBrazil,
         blockedAt: new Date(),
         unblockAt,
         country: geo.country,
@@ -232,7 +268,7 @@ export async function handleFailedLogin(ip: string, cpfCnpj?: string): Promise<b
     await db.insert(ipBlocksTable).values({
       ip,
       attempts,
-      isForeign: !geo.isBrazil,
+      isForeign: !!geo.countryCode && !geo.isBrazil,
       blockedAt: new Date(),
       unblockAt: null,
       country: geo.country,
