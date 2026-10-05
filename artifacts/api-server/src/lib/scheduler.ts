@@ -225,7 +225,7 @@ export async function syncGarProtocols() {
       for (const order of withProtocol) {
         if (!order.garPedido) continue;
         try {
-          const statusResult = await garConsultarStatus(settings.garApiKey!, order.garPedido);
+          const statusResult = await garConsultarStatus(settings.garApiKey!, order.garPedido, order.garProtocolo ?? undefined);
           const newGarStatus = statusResult.StatusPedido ?? null;
           const newProtocolo = statusResult.Protocolo ?? order.garProtocolo;
 

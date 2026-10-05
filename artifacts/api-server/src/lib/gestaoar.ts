@@ -54,11 +54,18 @@ export interface GarStatusPedido {
 }
 
 export async function garConsultarStatus(apiKey: string, pedido: string, protocolo?: string): Promise<GarStatusPedido> {
-  return garPost<GarStatusPedido>("ConsultaPedidoProtocolo", {
+  const protocol = protocolo?.trim() ?? "";
+  // A consulta documentada aceita Pedido OU Protocolo, nunca ambos.
+  // Com protocolo conhecido, acompanhar essa solicitação em vez da venda inicial.
+  const result = await garPost<GarStatusPedido>("ConsultaPedidoProtocolo", {
     apiKey,
-    Pedido: pedido,
-    Protocolo: protocolo ?? "",
+    Pedido: protocol ? "" : pedido,
+    Protocolo: protocol,
   });
+  if (!result || result.Status === 9 || result.Erros?.length) {
+    throw new Error("Gestão AR não confirmou a consulta de status do pedido/protocolo.");
+  }
+  return result;
 }
 
 export interface GarProduto {

@@ -101,6 +101,8 @@ describe("certificate completion referral integrations", () => {
 
     await syncGarProtocols();
 
+    const { garConsultarStatus } = await import("../lib/gestaoar");
+    expect(garConsultarStatus).toHaveBeenCalledWith("homologation-key", "PED-900", "GAR-900");
     expect(updates).toContainEqual(expect.objectContaining({ status: "completed", garProtocolo: "GAR-900" }));
     expect(creditReferralForCompletedOrder).toHaveBeenCalledTimes(1);
     expect(creditReferralForCompletedOrder).toHaveBeenCalledWith(900);

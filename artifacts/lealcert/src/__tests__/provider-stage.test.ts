@@ -4,6 +4,20 @@ const order = { status: "aguardando_validacao", garStatus: null, safewebStatus: 
 
 describe("Etapa real do provedor sem alterar o estado operacional", () => {
   it.each([
+    "Protocolo Gerado", "PROTOCOLO_GERADO", "Protocolo Atribuído", "Protocolo emitido", "Solicitação criada",
+  ])("não regride um pedido em validação para %s", raw => {
+    for (const provider of ["garStatus", "safewebStatus"]) {
+      const existing = { ...order, [provider]: raw };
+      expect(providerStageLabel(existing)).toBe("Aguardando validação");
+      expect(existing.status).toBe("aguardando_validacao");
+      expect(existing[provider]).toBe(raw);
+    }
+  });
+  it("mantém protocolo gerado quando o pedido realmente ainda está nessa etapa", () => {
+    expect(providerStageLabel({ ...order, status: "protocol_assigned", garStatus: "Protocolo Gerado" }))
+      .toBe("Protocolo Gerado");
+  });
+  it.each([
     ["Aguardando validação", "Aguardando validação"],
     ["Atendimento realizado", "Atendimento realizado"],
     ["Validada", "Validação concluída"],

@@ -14,6 +14,12 @@ export function providerStageLabel(order: Pick<Order,
     : safeweb || gar;
   if (!raw) return null;
   const key = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[_-]/g, " ").trim();
+  // Uma descrição comercial inicial não pode rebaixar um pedido já em validação.
+  if (order.status === "aguardando_validacao" && [
+    "protocolo gerado", "protocolo atribuido", "protocolo emitido", "solicitacao criada",
+  ].includes(key)) {
+    return "Aguardando validação";
+  }
   const labels: Record<string, string> = {
     "aguardando validacao": "Aguardando validação",
     "em validacao": "Em validação",

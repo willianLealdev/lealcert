@@ -25,6 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending_payment: "Aguardando Pagamento",
   paid: "Pago",
   protocol_assigned: "Protocolo Atribuído",
+  aguardando_validacao: "Aguardando validação",
   completed: "Concluído",
   cancelled: "Cancelado",
 };
@@ -33,6 +34,7 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
   pending_payment: "outline",
   paid: "default",
   protocol_assigned: "default",
+  aguardando_validacao: "default",
   completed: "default",
   cancelled: "destructive",
 };
