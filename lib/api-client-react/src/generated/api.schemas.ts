@@ -433,6 +433,7 @@ export interface Order {
   certificateName?: string | null;
   status: OrderStatus;
   total: number;
+  couponId?: number | null;
   customerName: string;
   customerCpfCnpj: string;
   customerEmail?: string | null;
@@ -525,6 +526,8 @@ export const OrderInputRepresentanteDocTipo = {
 } as const;
 
 export interface OrderInput {
+  /** Código do cupom; validado e aplicado pelo backend na criação do pedido. */
+  couponCode?: string;
   certificateId: number;
   clientType: OrderInputClientType;
   customerName: string;

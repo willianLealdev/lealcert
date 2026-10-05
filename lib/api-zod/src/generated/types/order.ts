@@ -19,6 +19,7 @@ export interface Order {
   certificateName?: string | null;
   status: OrderStatus;
   total: number;
+  couponId?: number | null;
   customerName: string;
   customerCpfCnpj: string;
   customerEmail?: string | null;

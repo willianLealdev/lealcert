@@ -540,8 +540,8 @@ export default function NewOrder() {
   const subtotal = (selectedCert ? certPrice(selectedCert) : 0) + (form.extendedWarranty ? lealPlusPrice : 0);
   const discount = appliedCoupon
     ? appliedCoupon.type === "percent"
-      ? Math.round(subtotal * appliedCoupon.value) / 100
-      : Math.min(appliedCoupon.value, subtotal)
+      ? Math.min(selectedCert ? certPrice(selectedCert) : 0, Math.round((selectedCert ? certPrice(selectedCert) : 0) * appliedCoupon.value) / 100)
+      : Math.min(appliedCoupon.value, selectedCert ? certPrice(selectedCert) : 0)
     : 0;
   const total = Math.max(0, subtotal - discount);
   const allowedMethods: PayMethod[] = total >= 150 ? ["pix", "boleto", "cartao"] : total >= 90 ? ["pix", "boleto"] : ["pix"];
@@ -819,6 +819,7 @@ export default function NewOrder() {
           companyName: form.companyName || undefined,
           inssNumber: form.inssNumber || undefined,
           extendedWarranty: form.extendedWarranty,
+          couponCode: appliedCoupon?.code,
           addressZipcode: form.representanteAddressZipcode || form.addressZipcode || undefined,
           addressStreet: form.representanteAddressStreet || form.addressStreet || undefined,
           addressNumber: form.representanteAddressNumber || form.addressNumber || undefined,
@@ -919,6 +920,7 @@ export default function NewOrder() {
           companyName: form.companyName || undefined,
           inssNumber: form.inssNumber || undefined,
           extendedWarranty: form.extendedWarranty,
+          couponCode: appliedCoupon?.code,
           addressZipcode: form.representanteAddressZipcode || form.addressZipcode || undefined,
           addressStreet: form.representanteAddressStreet || form.addressStreet || undefined,
           addressNumber: form.representanteAddressNumber || form.addressNumber || undefined,

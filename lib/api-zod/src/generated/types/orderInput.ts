@@ -9,6 +9,8 @@ import type { OrderInputClientType } from './orderInputClientType';
 import type { OrderInputRepresentanteDocTipo } from './orderInputRepresentanteDocTipo';
 
 export interface OrderInput {
+  /** Código do cupom; validado e aplicado pelo backend na criação do pedido. */
+  couponCode?: string;
   certificateId: number;
   clientType: OrderInputClientType;
   customerName: string;

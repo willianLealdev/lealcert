@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { eq, desc, and, count } from "drizzle-orm";
-import { db, couponsTable, ordersTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { db, couponsTable, usersTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { CouponError, resolveOrderCoupon } from "../lib/order-coupon";
 
 const router = Router();
 
@@ -78,49 +79,28 @@ router.post("/coupons/validate", requireAuth, async (req, res): Promise<void> =>
   const { code } = req.body ?? {};
   if (!code) { res.status(400).json({ error: "Informe o código do cupom." }); return; }
 
-  const [coupon] = await db.select().from(couponsTable).where(eq(couponsTable.code, String(code).toUpperCase().trim())).limit(1);
-
-  if (!coupon || !coupon.active) {
-    res.status(404).json({ error: "Cupom inválido ou inativo." });
-    return;
-  }
-  if (coupon.expiresAt && coupon.expiresAt < new Date()) {
-    res.status(410).json({ error: "Cupom expirado." });
-    return;
-  }
-  if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
-    res.status(410).json({ error: "Cupom esgotado." });
-    return;
-  }
-
-  const userId = req.session.userId;
-  const userRole = (req.session.role as string | undefined) ?? "cliente";
-  const userType = (req.session.userType as string | undefined) ?? "cliente";
-
-  // ── Target enforcement — strict ──────────────────────────────────────────
-  if (coupon.target !== "all" && userRole !== "admin") {
-    const isContador = userRole === "contador" && userType !== "cliente";
-    if (coupon.target === "cliente" && isContador) {
-      res.status(403).json({ error: "Este cupom é exclusivo para clientes." }); return;
-    }
-    if (coupon.target === "contador" && !isContador) {
-      res.status(403).json({ error: "Este cupom é exclusivo para contadores." }); return;
-    }
-  }
-
-  // ── Per-user limit check ─────────────────────────────────────────────────
-  if (coupon.perUserLimit !== null && userId) {
-    const [{ count: used }] = await db
-      .select({ count: count() })
-      .from(ordersTable)
-      .where(and(eq(ordersTable.userId, userId), eq(ordersTable.couponId, coupon.id)));
-    if (Number(used) >= coupon.perUserLimit) {
-      res.status(410).json({ error: `Você já utilizou este cupom o máximo de ${coupon.perUserLimit} vez${coupon.perUserLimit > 1 ? "es" : ""}.` });
+  let [owner] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!)).limit(1);
+  if (owner?.role === "operador" && owner.contadorId) {
+    [owner] = await db.select().from(usersTable).where(eq(usersTable.id, owner.contadorId)).limit(1);
+    if (owner?.role !== "contador" || owner.userType !== "contador") {
+      res.status(403).json({ error: "A conta do contador responsável não está disponível." });
       return;
     }
   }
-
-  res.json(couponRow(coupon));
+  if (!owner?.isActive || owner.role === "operador") {
+    res.status(403).json({ error: "Conta responsável pelo pedido indisponível." });
+    return;
+  }
+  try {
+    const coupon = await resolveOrderCoupon(db, code, owner);
+    res.json(couponRow(coupon));
+  } catch (error) {
+    if (error instanceof CouponError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
 });
 
 export default router;

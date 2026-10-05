@@ -4369,6 +4369,9 @@ components:
           enum: [created, pending_payment, paid, protocol_assigned, aguardando_validacao, emitido, revogado, completed, cancelled]
         total:
           type: number
+        couponId:
+          type: integer
+          nullable: true
         customerName:
           type: string
         customerCpfCnpj:
@@ -4571,6 +4574,9 @@ components:
       type: object
       required: [certificateId, customerName, customerCpfCnpj, clientType]
       properties:
+        couponCode:
+          type: string
+          description: Código do cupom; validado e aplicado pelo backend na criação do pedido.
         certificateId:
           type: integer
         clientType:

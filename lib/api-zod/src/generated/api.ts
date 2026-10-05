@@ -685,6 +685,7 @@ export const ListOrdersResponseItem = zod.object({
   "certificateName": zod.string().nullish(),
   "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
   "total": zod.number(),
+  "couponId": zod.number().nullish(),
   "customerName": zod.string(),
   "customerCpfCnpj": zod.string(),
   "customerEmail": zod.string().nullish(),
@@ -760,6 +761,7 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
  * @summary Create a new order
  */
 export const CreateOrderBody = zod.object({
+  "couponCode": zod.string().optional().describe('Código do cupom; validado e aplicado pelo backend na criação do pedido.'),
   "certificateId": zod.number(),
   "clientType": zod.enum(['cpf', 'cnpj']),
   "customerName": zod.string(),
@@ -1026,6 +1028,7 @@ export const GetOrderResponse = zod.object({
   "certificateName": zod.string().nullish(),
   "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
   "total": zod.number(),
+  "couponId": zod.number().nullish(),
   "customerName": zod.string(),
   "customerCpfCnpj": zod.string(),
   "customerEmail": zod.string().nullish(),
@@ -1121,6 +1124,7 @@ export const UpdateOrderResponse = zod.object({
   "certificateName": zod.string().nullish(),
   "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
   "total": zod.number(),
+  "couponId": zod.number().nullish(),
   "customerName": zod.string(),
   "customerCpfCnpj": zod.string(),
   "customerEmail": zod.string().nullish(),
@@ -2955,6 +2959,7 @@ export const GetRecentOrdersResponseItem = zod.object({
   "certificateName": zod.string().nullish(),
   "status": zod.enum(['created', 'pending_payment', 'paid', 'protocol_assigned', 'aguardando_validacao', 'emitido', 'revogado', 'completed', 'cancelled']),
   "total": zod.number(),
+  "couponId": zod.number().nullish(),
   "customerName": zod.string(),
   "customerCpfCnpj": zod.string(),
   "customerEmail": zod.string().nullish(),

@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { eq, desc, ilike, or, sql, and } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { db, ordersTable, usersTable, certificatesTable, settingsTable } from "@workspace/db";
+import { db, ordersTable, usersTable, certificatesTable, settingsTable, couponsTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { notifyOrderStatus, notifyScheduling, sendWaText } from "../lib/notify";
 import { logger } from "../lib/logger";
 import { getLealPlusPrice, calculateOrderTotal } from "../lib/lealplus-pricing";
+import { CouponError, resolveOrderCoupon, orderCouponDiscount } from "../lib/order-coupon";
 import { swConsultaCPF, swConsultaCNPJ, swBiometriaPSBioGlobal, swHasPsbio, swHopeSolicitation, type SafewebSettings } from "../lib/safeweb";
 import { garPsBio } from "../lib/gestaoar";
 
@@ -78,6 +79,7 @@ function orderRow(
     certificateName: certName ?? o.certNameSnapshot ?? null,
     status: o.status,
     total: parseFloat(o.total),
+    couponId: o.couponId ?? null,
     clientType: o.clientType,
     customerName: o.customerName,
     customerCpfCnpj: o.customerCpfCnpj,
@@ -353,7 +355,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   const userId = session.userId as number;
   const {
     certificateId, clientType, customerName, customerCpfCnpj, customerEmail,
-    customerPhone, customerBirthDate, hasPsbio, companyName, inssNumber, extendedWarranty,
+    customerPhone, customerBirthDate, hasPsbio, companyName, inssNumber, extendedWarranty, couponCode,
     addressZipcode, addressStreet, addressNumber, addressNeighborhood, addressCity, addressState, addressIbge,
     customerCei, customerNis,
     representanteCpf, representanteNascimento,
@@ -405,75 +407,96 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   }
   const basePrice = certificatePriceForUser(cert, accountOwner.userType);
   const lealPlusPrice = extendedWarranty ? await getLealPlusPrice() : 0;
-  const total = calculateOrderTotal(basePrice, lealPlusPrice);
 
-  // generate unique order number
-  let orderNumber: string;
-  do {
-    const rand = Math.floor(1000 + Math.random() * 9000);
-    orderNumber = `${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${rand}`;
-    const [existing] = await db.select({ id: ordersTable.id }).from(ordersTable).where(eq(ordersTable.orderNumber, orderNumber)).limit(1);
-    if (!existing) break;
-  } while (true);
+  let order: typeof ordersTable.$inferSelect;
+  try {
+    order = await db.transaction(async tx => {
+      const coupon = couponCode !== undefined && couponCode !== null
+        ? await resolveOrderCoupon(tx, couponCode, accountOwner, true) : null;
+      const discount = coupon ? orderCouponDiscount(basePrice, coupon) : 0;
+      const total = calculateOrderTotal(basePrice, lealPlusPrice, discount);
+      // generate unique order number
+      let orderNumber: string;
+      do {
+        const rand = Math.floor(1000 + Math.random() * 9000);
+        orderNumber = `${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${rand}`;
+        const [existing] = await tx.select({ id: ordersTable.id }).from(ordersTable).where(eq(ordersTable.orderNumber, orderNumber)).limit(1);
+        if (!existing) break;
+      } while (true);
 
-  const [order] = await db.insert(ordersTable).values({
-    orderNumber,
-    userId: accountOwner.id,
-    operatorId,
-    certificateId,
-    status: "pending_payment",
-    total: String(total),
-    clientType: clientType ?? "cpf",
-    customerName,
-    customerCpfCnpj: customerCpfCnpj.replace(/\D/g, ""),
-    customerEmail: customerEmail || null,
-    customerPhone: customerPhone || null,
-    customerBirthDate: customerBirthDate || null,
-    hasPsbio: hasPsbio !== undefined ? Boolean(hasPsbio) : null,
-    companyName: companyName || null,
-    inssNumber: inssNumber || null,
-    extendedWarranty: !!extendedWarranty,
-    lealPlusPrice: lealPlusPrice.toFixed(2),
-    addressZipcode: addressZipcode || null,
-    addressStreet: addressStreet || null,
-    addressNumber: addressNumber || null,
-    addressComplement: addressComplement || null,
-    addressNeighborhood: addressNeighborhood || null,
-    addressCity: addressCity || null,
-    addressState: addressState || null,
-    addressIbge: addressIbge || null,
-    representanteAddressZipcode: representanteAddressZipcode || null,
-    representanteAddressStreet: representanteAddressStreet || null,
-    representanteAddressNumber: representanteAddressNumber || null,
-    representanteAddressComplement: representanteAddressComplement || null,
-    representanteAddressNeighborhood: representanteAddressNeighborhood || null,
-    representanteAddressCity: representanteAddressCity || null,
-    representanteAddressState: representanteAddressState || null,
-    customerCei: customerCei || null,
-    customerNis: customerNis || null,
-    representanteCpf: representanteCpf ? representanteCpf.replace(/\D/g, "") : null,
-    representanteNascimento: representanteNascimento || null,
-    representanteDocTipo: representanteDocTipo || null,
-    representanteDocNumero: representanteDocNumero || null,
-    representanteDocEmissor: representanteDocEmissor || null,
-    cnhPath: cnhPath || null,
-    cnhVersoPath: cnhVersoPath || null,
-    cartaoCnpjPath: cartaoCnpjPath || null,
-    fichaCadastralPath: fichaCadastralPath || null,
-    outrosPath: outrosPath || null,
-    termsAcceptedAt: termsAccepted ? new Date() : null,
-    nfCnpj: nfCnpj ? String(nfCnpj).replace(/\D/g, "") || null : null,
-    nfNome: nfNome || null,
-    nfZipcode: nfZipcode ? String(nfZipcode).replace(/\D/g, "") || null : null,
-    nfStreet: nfStreet || null,
-    nfNumber: nfNumber || null,
-    nfComplement: nfComplement || null,
-    nfNeighborhood: nfNeighborhood || null,
-    nfCity: nfCity || null,
-    nfState: nfState || null,
-    certNameSnapshot: cert.name,
-    certProductSnapshot: cert.product || null,
-  }).returning();
+      const [createdOrder] = await tx.insert(ordersTable).values({
+        orderNumber,
+        userId: accountOwner.id,
+        operatorId,
+        certificateId,
+        status: "pending_payment",
+        total: String(total),
+        couponId: coupon?.id ?? null,
+        clientType: clientType ?? "cpf",
+        customerName,
+        customerCpfCnpj: customerCpfCnpj.replace(/\D/g, ""),
+        customerEmail: customerEmail || null,
+        customerPhone: customerPhone || null,
+        customerBirthDate: customerBirthDate || null,
+        hasPsbio: hasPsbio !== undefined ? Boolean(hasPsbio) : null,
+        companyName: companyName || null,
+        inssNumber: inssNumber || null,
+        extendedWarranty: !!extendedWarranty,
+        lealPlusPrice: lealPlusPrice.toFixed(2),
+        addressZipcode: addressZipcode || null,
+        addressStreet: addressStreet || null,
+        addressNumber: addressNumber || null,
+        addressComplement: addressComplement || null,
+        addressNeighborhood: addressNeighborhood || null,
+        addressCity: addressCity || null,
+        addressState: addressState || null,
+        addressIbge: addressIbge || null,
+        representanteAddressZipcode: representanteAddressZipcode || null,
+        representanteAddressStreet: representanteAddressStreet || null,
+        representanteAddressNumber: representanteAddressNumber || null,
+        representanteAddressComplement: representanteAddressComplement || null,
+        representanteAddressNeighborhood: representanteAddressNeighborhood || null,
+        representanteAddressCity: representanteAddressCity || null,
+        representanteAddressState: representanteAddressState || null,
+        customerCei: customerCei || null,
+        customerNis: customerNis || null,
+        representanteCpf: representanteCpf ? representanteCpf.replace(/\D/g, "") : null,
+        representanteNascimento: representanteNascimento || null,
+        representanteDocTipo: representanteDocTipo || null,
+        representanteDocNumero: representanteDocNumero || null,
+        representanteDocEmissor: representanteDocEmissor || null,
+        cnhPath: cnhPath || null,
+        cnhVersoPath: cnhVersoPath || null,
+        cartaoCnpjPath: cartaoCnpjPath || null,
+        fichaCadastralPath: fichaCadastralPath || null,
+        outrosPath: outrosPath || null,
+        termsAcceptedAt: termsAccepted ? new Date() : null,
+        nfCnpj: nfCnpj ? String(nfCnpj).replace(/\D/g, "") || null : null,
+        nfNome: nfNome || null,
+        nfZipcode: nfZipcode ? String(nfZipcode).replace(/\D/g, "") || null : null,
+        nfStreet: nfStreet || null,
+        nfNumber: nfNumber || null,
+        nfComplement: nfComplement || null,
+        nfNeighborhood: nfNeighborhood || null,
+        nfCity: nfCity || null,
+        nfState: nfState || null,
+        certNameSnapshot: cert.name,
+        certProductSnapshot: cert.product || null,
+      }).returning();
+      if (coupon) {
+        await tx.update(couponsTable).set({ usageCount: sql`${couponsTable.usageCount} + 1` })
+          .where(eq(couponsTable.id, coupon.id));
+      }
+      return createdOrder;
+    });
+  } catch (error) {
+    if (error instanceof CouponError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+  const total = Number(order.total);
 
   // Log order creation
   const { logEvent } = await import("../lib/order-events");
