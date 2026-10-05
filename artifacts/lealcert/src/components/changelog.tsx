@@ -15,22 +15,6 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "05/10/2026",
-    version: "1.85",
-    changes: [
-      { type: "fix", text: "Pedidos: status Aguardando validação não é mais substituído por descrições anteriores como Protocolo Gerado. Correção somente na exibição da lista e do detalhe; dados e fluxos operacionais preservados." },
-      { type: "fix", text: "Consulta de status GAR: sincronização automática e manual consultam pelo protocolo quando disponível, conforme o contrato da API. Respostas de erro não são tratadas como sincronização bem-sucedida." },
-    ],
-  },
-  {
-    date: "05/10/2026",
-    version: "1.84",
-    changes: [
-      { type: "fix", text: "Pedidos: lista e detalhe mostram a etapa real informada pela GAR/Safeweb, incluindo atendimento, validação e espera de emissão, sem alterar os fluxos operacionais existentes." },
-      { type: "fix", text: "Acompanhamento de status: detalhe atualiza durante o processo; Safeweb consulta pelo protocolo correto e registra mudanças de etapa no histórico. Intervalos dos provedores permanecem em 5 minutos." },
-    ],
-  },
-  {
-    date: "05/10/2026",
     version: "1.83",
     changes: [
       { type: "fix", text: "Agenda: agendamentos GAR e Safeweb usam horário de Brasília, independentemente do fuso da VPS. Atendimentos do dia permanecem visíveis até o horário de início." },

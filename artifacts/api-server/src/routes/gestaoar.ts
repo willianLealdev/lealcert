@@ -382,7 +382,7 @@ router.post("/gestaoar/sync-order/:orderId", requireAuth, async (req, res): Prom
   const cert = orderRow.cert;
 
   try {
-    const garStatus = await garConsultarStatus(s.garApiKey!, order.garPedido!, order.garProtocolo ?? undefined);
+    const garStatus = await garConsultarStatus(s.garApiKey!, order.garPedido!);
     const newGarStatus = garStatus.StatusPedido ?? null;
     const newProtocolo = garStatus.Protocolo ?? order.garProtocolo;
 
@@ -438,7 +438,7 @@ router.post("/gestaoar/sync-order/:orderId", requireAuth, async (req, res): Prom
       }).catch((err: unknown) => logger.error({ err }, "Erro ao notificar conclusão do pedido"));
 
       await db.update(ordersTable).set({
-        garStatus: newGarStatus ?? order.garStatus,
+        garStatus: newGarStatus,
         garProtocolo: newProtocolo,
         garSyncedAt: new Date(),
         status: "completed",

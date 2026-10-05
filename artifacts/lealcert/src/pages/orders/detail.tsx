@@ -1,9 +1,7 @@
 import { useParams } from "wouter";
-import { providerStageLabel } from "@/lib/provider-stage";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import {
   useGetOrder,
-  getGetOrderQueryKey,
   useUpdateOrder,
   useCreatePayment,
   useGarComprarOrder,
@@ -1474,16 +1472,7 @@ export default function OrderDetail() {
   const prevStatusRef = useRef<string | undefined>(undefined);
   const processingParamHandled = useRef(false);
 
-  const { data: order, isLoading, refetch } = useGetOrder(Number(id), {
-    query: {
-      queryKey: getGetOrderQueryKey(Number(id)),
-      refetchInterval: query => {
-        const status = query.state.data?.status;
-        return status && !["created", "pending_payment", "completed", "emitido", "revogado", "cancelled"].includes(status)
-          ? 15_000 : false;
-      },
-    },
-  });
+  const { data: order, isLoading, refetch } = useGetOrder(Number(id));
 
   // Abre modal de processamento automaticamente quando vindo de cortesia (?processing=1)
   useEffect(() => {
@@ -2050,7 +2039,7 @@ export default function OrderDetail() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight font-mono">{order.orderNumber}</h1>
             <Badge variant={STATUS_VARIANTS[order.status] ?? "secondary"}>
-              {providerStageLabel(order) ?? STATUS_LABELS[order.status] ?? order.status}
+              {STATUS_LABELS[order.status] ?? order.status}
             </Badge>
             {hasGar && (
               <Badge variant="outline" className="border-blue-500 text-blue-600 bg-blue-50">

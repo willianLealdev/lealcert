@@ -1,4 +1,3 @@
-import { safewebStatusLabel } from "./provider-status";
 /**
  * swAutoComprar — registro automático na Safeweb após pagamento confirmado.
  * Chamado pelo webhook MP quando activeProvider === "safeweb".
@@ -363,22 +362,34 @@ export async function swSyncStatus(orderId: number): Promise<{ ok: boolean; stat
   const currentStatus = order.safewebStatus ?? "Solicitação criada";
 
   try {
-    // O endpoint informacoes/{protocolo} recebe o protocolo da solicitação,
-    // não o idAgendamento (inclusive quando ele é sw-* ou manual-*).
-    const { swAgendaInformacoes } = await import("./safeweb");
-    const info = await swAgendaInformacoes(sw, order.safewebSolicitacaoId) as Record<string, unknown>;
-    const statusLabel = safewebStatusLabel(info);
-    if (!statusLabel) {
-      return { ok: false, status: currentStatus, error: "A Safeweb não retornou uma etapa nesta consulta. O último status foi preservado; as etapas também chegam por webhook." };
+    // Tenta GetInformation do agendamento se houver idAgendamento salvo
+    if (order.safewebAgendamentoId) {
+      const agendId = parseInt(order.safewebAgendamentoId, 10);
+      if (!isNaN(agendId)) {
+        const { swAgendaInformacoes } = await import("./safeweb");
+        try {
+          const info = await swAgendaInformacoes(sw, String(agendId)) as Record<string, unknown>;
+          const statusLabel = String(
+            info?.Status ?? info?.status ?? info?.Situacao ?? info?.situacao ?? currentStatus
+          );
+          await db.update(ordersTable).set({
+            safewebStatus: statusLabel,
+            safewebSyncedAt: new Date(),
+          }).where(eq(ordersTable.id, orderId));
+          await logEvent(orderId, "gar_status_updated", `Sync Safeweb (agendamento): ${statusLabel}`, { info });
+          return { ok: true, status: statusLabel };
+        } catch {
+          // GetInformation falhou — segue para retornar status do banco
+        }
+      }
     }
-    await db.update(ordersTable).set({
-      safewebStatus: statusLabel,
-      safewebSyncedAt: new Date(),
-    }).where(eq(ordersTable.id, orderId));
-    if (statusLabel !== order.safewebStatus) {
-      await logEvent(orderId, "gar_status_updated", `Sync Safeweb (agendamento): ${statusLabel}`, { info });
-    }
-    return { ok: true, status: statusLabel };
+
+    // Sem endpoint de status por solicitação na Safeweb — atualiza timestamp e retorna status atual do banco
+    // O status real é propagado pelos webhooks de eventos configurados no painel Safeweb.
+    await db.update(ordersTable).set({ safewebSyncedAt: new Date() }).where(eq(ordersTable.id, orderId));
+    logger.info({ orderId, safewebSolicitacaoId: order.safewebSolicitacaoId }, "swSyncStatus: status mantido (Safeweb envia atualizações por webhook)");
+
+    return { ok: true, status: currentStatus };
   } catch (err) {
     return { ok: false, error: (err as Error).message };
   }

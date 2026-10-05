@@ -1,7 +1,6 @@
-import { providerStageLabel } from "@/lib/provider-stage";
 import { useState } from "react";
 import { Link } from "wouter";
-import { useListOrders, getListOrdersQueryKey, useGetMe } from "@workspace/api-client-react";
+import { useListOrders, useGetMe } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +24,6 @@ const STATUS_LABELS: Record<string, string> = {
   pending_payment: "Aguardando Pagamento",
   paid: "Pago",
   protocol_assigned: "Protocolo Atribuído",
-  aguardando_validacao: "Aguardando validação",
   completed: "Concluído",
   cancelled: "Cancelado",
 };
@@ -34,7 +32,6 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
   pending_payment: "outline",
   paid: "default",
   protocol_assigned: "default",
-  aguardando_validacao: "default",
   completed: "default",
   cancelled: "destructive",
 };
@@ -143,12 +140,9 @@ export default function Orders() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; orderNumber: string } | null>(null);
   const queryClient = useQueryClient();
 
-  const orderParams = {
+  const { data: orders, isLoading } = useListOrders({
     status: statusFilter !== "all" ? statusFilter : undefined,
     search: search || undefined,
-  };
-  const { data: orders, isLoading } = useListOrders(orderParams, {
-    query: { queryKey: getListOrdersQueryKey(orderParams), refetchInterval: 30_000 },
   });
 
   const { data: me } = useGetMe();
@@ -240,7 +234,7 @@ export default function Orders() {
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={STATUS_VARIANTS[order.status] ?? "secondary"}>
-                          {providerStageLabel(order) ?? STATUS_LABELS[order.status] ?? order.status}
+                          {STATUS_LABELS[order.status] ?? order.status}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell font-mono text-sm text-muted-foreground">
