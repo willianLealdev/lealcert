@@ -122,12 +122,12 @@ async function swDelete<T>(settings: SafewebSettings, path: string, body?: unkno
 
 // ── Agenda HTTP helpers (usam agendaUrl, diferente do host principal) ──────────
 // Docs: GET/DELETE usam Authorization: [TOKEN]; POST agendar usa Authorization: bearer [TOKEN]
-async function swAgendaGetHttp<T>(settings: SafewebSettings, path: string): Promise<T> {
+async function swAgendaGetHttp<T>(settings: SafewebSettings, path: string, bearer = false): Promise<T> {
   const token = await swGetToken(settings);
   const base = settings.agendaUrl ?? getAgendaBaseUrl(settings.url);
   const resp = await fetch(`${base}${path}`, {
     method: "GET",
-    headers: { "Authorization": token, "Content-Type": "application/json" },
+    headers: { "Authorization": bearer ? `Bearer ${token}` : token, "Content-Type": "application/json" },
   });
   if (!resp.ok) { const text = await resp.text().catch(() => ""); throw new Error(`Safeweb Agenda GET ${path} HTTP ${resp.status}: ${stripHtml(text)}`); }
   return resp.json() as Promise<T>;
@@ -365,7 +365,8 @@ export async function swAgendaConfiguracao(settings: SafewebSettings, localAtend
   return swAgendaGetHttp<SwResult>(settings, `${AGENDA_CONFIG_PATH}/${localAtendimentoId}`);
 }
 export async function swAgendaInformacoes(settings: SafewebSettings, protocolo: string): Promise<SwResult> {
-  return swAgendaGetHttp<SwResult>(settings, `${AGENDA_INFO_PATH}/${protocolo}`);
+  // A documentação deste GET exige Bearer; outros endpoints da agenda permanecem inalterados.
+  return swAgendaGetHttp<SwResult>(settings, `${AGENDA_INFO_PATH}/${protocolo}`, true);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

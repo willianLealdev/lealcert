@@ -5,6 +5,7 @@ import { dispatchCampaign } from "../routes/marketing";
 import { sendDailySalesReport } from "./email";
 import { notifyOrderStatus } from "./notify";
 import { startImapPoller } from "./imap-poller";
+import { safewebStatusLabel } from "./provider-status";
 
 let running = false;
 
@@ -109,20 +110,15 @@ async function syncSafewebStatuses() {
       try {
         // A Safeweb não tem endpoint GET de status por solicitação — status chega via webhook.
         // O sync periódico apenas tenta GetInformation do agendamento (se disponível).
-        if (!order.safewebAgendamentoId) continue;
-
-        const agendId = parseInt(order.safewebAgendamentoId, 10);
-        if (isNaN(agendId)) continue;
-
         const { swAgendaInformacoes } = await import("./safeweb");
         let info: Record<string, unknown>;
         try {
-          info = await swAgendaInformacoes(sw, String(agendId)) as Record<string, unknown>;
+          info = await swAgendaInformacoes(sw, order.safewebSolicitacaoId) as Record<string, unknown>;
         } catch {
           continue; // endpoint falhou — aguarda próximo ciclo
         }
 
-        const statusLabel = String(info?.Status ?? info?.Situacao ?? info?.status ?? "");
+        const statusLabel = safewebStatusLabel(info);
         if (!statusLabel) continue;
 
         const newStatus = STATUS_MAP[statusLabel];
@@ -132,6 +128,8 @@ async function syncSafewebStatuses() {
         };
         if (newStatus && order.status !== newStatus) {
           updates.status = newStatus;
+        }
+        if (statusLabel !== order.safewebStatus) {
           await logEvent(order.id, "gar_status_updated", `Status Safeweb atualizado (sync): ${statusLabel}`, { safewebStatus: statusLabel });
           logger.info({ orderId: order.id, statusLabel, newStatus }, "Safeweb sync: status atualizado");
         }
@@ -307,6 +305,8 @@ export async function syncGarProtocols() {
             }).where(eq(ordersTable.id, order.id));
             await logEvent(order.id, "gar_status_updated", `Status GAR atualizado (sync automático): ${order.garStatus ?? "—"} → ${newGarStatus}`, { garStatus: newGarStatus });
             logger.info({ orderId: order.id, from: order.garStatus, to: newGarStatus }, "GAR status sync: status atualizado");
+          } else {
+            await db.update(ordersTable).set({ garSyncedAt: new Date() }).where(eq(ordersTable.id, order.id));
           }
         } catch (err) {
           logger.error({ err, orderId: order.id }, "GAR status sync: erro ao atualizar pedido com protocolo");

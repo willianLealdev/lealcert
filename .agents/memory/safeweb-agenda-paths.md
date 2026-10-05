@@ -31,6 +31,11 @@ All agenda HTTP helpers (`swAgendaGetHttp`, `swAgendaPostHttp`, `swAgendaDeleteH
 ## Auth header differences (per official docs)
 - GET horarios / GET configuracao / DELETE cancelar: `Authorization: [TOKEN]` — no prefix
 - POST agendar: `Authorization: bearer [TOKEN]` — lowercase `bearer` prefix
+- GET informacoes: `Authorization: Bearer [TOKEN]`, por exceção documentada para este endpoint.
+
+**Why:** A documentação oficial de Informações usa Bearer em seus exemplos, mesmo que os outros GETs já funcionem sem prefixo. Não generalizar essa exceção para outras consultas.
+
+**How to apply:** Informações recebe o protocolo da solicitação, nunca o ID do agendamento. Seu `statusId` é do agendamento; não inferir aprovação ou emissão sem documentação desse código.
 
 ## Field types
 - `localAtendimentoId` = Int (from `idLocalAtendimento` in GetListByCnpjAR response)

@@ -147,6 +147,23 @@ describe("certificate completion referral integrations", () => {
     expect(updates).toContainEqual(expect.objectContaining({ status: "completed" }));
   });
 
+  it("records an intermediate Safeweb phase without completing or crediting the order", async () => {
+    selectResults.push(
+      [{ safewebWebhookSecret: "safeweb-homologation-secret" }],
+      [{ order: { id: 704, status: "aguardando_validacao", safewebSolicitacaoId: "SW-704" }, certName: "e-CPF A1" }],
+    );
+    await webhook("/safeweb/eventos/validacao?secret=safeweb-homologation-secret", {
+      IdSolicitacao: "SW-704", Status: "Validada",
+    });
+    await vi.waitFor(() => expect(logEvent).toHaveBeenCalledWith(
+      704, "gar_status_updated", expect.stringContaining("Validada"), expect.anything(),
+    ));
+    expect(updates).toContainEqual(expect.objectContaining({ safewebStatus: "Validada" }));
+    expect(updates.some(update => update.status === "completed")).toBe(false);
+    expect(creditReferralForCompletedOrder).not.toHaveBeenCalled();
+    expect(notifyOrderStatus).not.toHaveBeenCalled();
+  });
+
   it("rejects an unsigned Safeweb callback before it can complete or credit an order", async () => {
     selectResults.push([{ safewebWebhookSecret: "safeweb-homologation-secret" }]);
 

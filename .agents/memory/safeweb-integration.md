@@ -17,8 +17,11 @@ description: How the Safeweb provider is wired into the order flow alongside Ges
 - If cert has no `safewebIdProduto`, logs a warning and skips (admin must register manually)
 
 ## Status sync
-- `POST /orders/:id/sync-provider` → if Safeweb active, calls `swSyncStatus(id)` (inferred endpoint: `GET /Service/Microservice/Shared/Partner/api/GetStatus/{id}`)
-- For GAR, use existing `/gestaoar/sync-order/:orderId` route
+Etapas da Safeweb chegam principalmente pelos webhooks. A consulta de informações da agenda é auxiliar; não presumir um endpoint de status da solicitação nem transformar resposta sem etapa em sincronização bem-sucedida.
+
+**Why:** A referência anterior a GetStatus era inferida, não confirmada. A documentação de Informações retorna dados de agendamento, não uma enumeração documentada de todas as fases de emissão.
+
+**How to apply:** Preservar o último status quando a consulta não informar fase. O tipo de evento “validação” sozinho não comprova aprovação nem atendimento; considerar o conteúdo recebido e mostrar fases desconhecidas sem inventá-las.
 
 ## Safeweb API URLs (confirmed working)
 - Produção: `https://pss.safewebpss.com.br`

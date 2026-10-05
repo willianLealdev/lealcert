@@ -15,6 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "05/10/2026",
+    version: "1.84",
+    changes: [
+      { type: "fix", text: "Pedidos: lista e detalhe mostram a etapa real informada pela GAR/Safeweb, incluindo atendimento, validação e espera de emissão, sem alterar os fluxos operacionais existentes." },
+      { type: "fix", text: "Acompanhamento de status: detalhe atualiza durante o processo; Safeweb consulta pelo protocolo correto e registra mudanças de etapa no histórico. Intervalos dos provedores permanecem em 5 minutos." },
+    ],
+  },
+  {
+    date: "05/10/2026",
     version: "1.83",
     changes: [
       { type: "fix", text: "Agenda: agendamentos GAR e Safeweb usam horário de Brasília, independentemente do fuso da VPS. Atendimentos do dia permanecem visíveis até o horário de início." },

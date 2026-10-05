@@ -1,3 +1,4 @@
+import { safewebStatusLabel as readSafewebStatusLabel } from "../lib/provider-status";
 import { Router } from "express";
 import { timingSafeEqual } from "crypto";
 import { db, settingsTable } from "@workspace/db";
@@ -488,9 +489,7 @@ router.post("/safeweb/eventos/:tipo", async (req, res): Promise<void> => {
       const order = row.order;
 
       // Atualiza status Safeweb raw
-      const safewebStatusLabel = String(
-        payload.Status ?? payload.status ?? payload.Situacao ?? payload.Evento ?? tipo
-      );
+      const safewebStatusLabel = readSafewebStatusLabel(payload, tipo)!;
 
       const updates: Record<string, unknown> = {
         safewebStatus: safewebStatusLabel,
@@ -566,9 +565,7 @@ router.post("/safeweb/eventos/webhook", async (req, res): Promise<void> => {
 
       if (!row) { logger.warn({ solicitacaoId }, "Safeweb webhook: pedido não encontrado"); return; }
 
-      const safewebStatusLabel = String(
-        payload.Status ?? payload.status ?? payload.Situacao ?? payload.Evento ?? tipo
-      );
+      const safewebStatusLabel = readSafewebStatusLabel(payload, tipo)!;
       const updates: Record<string, unknown> = { safewebStatus: safewebStatusLabel, safewebSyncedAt: new Date() };
       const newStatus = SW_EVENT_STATUS_MAP[tipo];
       if (newStatus && row.order.status !== newStatus) updates.status = newStatus;
