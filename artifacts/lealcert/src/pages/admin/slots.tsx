@@ -1,4 +1,5 @@
-import { useListOrders } from "@workspace/api-client-react";
+import { useEffect, useState } from "react";
+import { useListOrders, getListOrdersQueryKey } from "@workspace/api-client-react";
 import type { Order } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +22,10 @@ function formatTime(iso: string) {
 }
 
 function AppointmentRow({ order, past }: { order: Order; past?: boolean }) {
-  const dateLabel = order.garAgendamentoDataHora ?? (order.scheduledAt ? formatDate(order.scheduledAt) + " " + formatTime(order.scheduledAt) : "—");
-  const localNome = order.garAgendamentoLocalNome;
+  const dateLabel = order.scheduledAt
+    ? formatDate(order.scheduledAt) + " " + formatTime(order.scheduledAt)
+    : order.safewebAgendamentoDataHora ?? order.garAgendamentoDataHora ?? "—";
+  const localNome = order.safewebAgendamentoLocalNome ?? order.garAgendamentoLocalNome;
 
   return (
     <Card className={past ? "opacity-60" : ""}>
@@ -72,16 +75,26 @@ function AppointmentRow({ order, past }: { order: Order; past?: boolean }) {
 }
 
 export default function AdminSlots() {
-  const { data: allOrders, isLoading } = useListOrders();
+  const { data: allOrders, isLoading } = useListOrders(undefined, {
+    query: { queryKey: getListOrdersQueryKey(), refetchInterval: 30_000 },
+  });
+  const [now, setNow] = useState(() => Date.now());
 
-  const now = new Date();
+  useEffect(() => {
+    const nextStart = Math.min(...(allOrders ?? [])
+      .map(order => order.scheduledAt ? new Date(order.scheduledAt).getTime() : Number.NaN)
+      .filter(time => Number.isFinite(time) && time > now));
+    // Atualiza no instante do próximo atendimento, sem depender de navegação/reload.
+    const timeout = setTimeout(() => setNow(Date.now()), Math.min(30_000, Math.max(1, nextStart - now)));
+    return () => clearTimeout(timeout);
+  }, [allOrders, now]);
 
   // Apenas agendamentos futuros — passados somem automaticamente
   const upcoming = (allOrders ?? [])
     .filter(o => {
-      if (!o.garAgendamentoDataHora && !o.scheduledAt) return false;
+      if (!o.garAgendamentoDataHora && !o.safewebAgendamentoDataHora && !o.scheduledAt) return false;
       if (!o.scheduledAt) return true; // garAgendamentoDataHora sem scheduledAt → sempre exibir
-      return new Date(o.scheduledAt) >= now;
+      return new Date(o.scheduledAt).getTime() > now;
     })
     .sort((a, b) => {
       const aT = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;

@@ -7,6 +7,7 @@ import { notifyOrderStatus, notifyScheduling, sendWaText } from "../lib/notify";
 import { logger } from "../lib/logger";
 import { getLealPlusPrice, calculateOrderTotal } from "../lib/lealplus-pricing";
 import { CouponError, resolveOrderCoupon, orderCouponDiscount } from "../lib/order-coupon";
+import { parseAppointmentTime, orderAppointmentTime } from "../lib/appointment-time";
 import { swConsultaCPF, swConsultaCNPJ, swBiometriaPSBioGlobal, swHasPsbio, swHopeSolicitation, type SafewebSettings } from "../lib/safeweb";
 import { garPsBio } from "../lib/gestaoar";
 
@@ -98,7 +99,7 @@ function orderRow(
     outrosPath: o.outrosPath,
     termsAcceptedAt: o.termsAcceptedAt,
     chatDocuments: o.chatDocuments ?? null,
-    scheduledAt: o.scheduledAt,
+    scheduledAt: orderAppointmentTime(o),
     protocolNumber: o.protocolNumber,
     extendedWarranty: o.extendedWarranty,
     lealPlusPrice: o.lealPlusPrice == null ? null : Number(o.lealPlusPrice),
@@ -1098,6 +1099,11 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
   if (!hashLocal) { res.status(400).json({ error: "hashLocal obrigatório" }); return; }
   if (!dataInicial) { res.status(400).json({ error: "dataInicial obrigatório (formato: YYYY-MM-DD HH:mm)" }); return; }
   if (!dataFinal) { res.status(400).json({ error: "dataFinal obrigatório (formato: YYYY-MM-DD HH:mm)" }); return; }
+  const scheduledDate = parseAppointmentTime(dataInicial);
+  if (!scheduledDate || !parseAppointmentTime(dataFinal)) {
+    res.status(400).json({ error: "Data ou horário de agendamento GAR inválido." });
+    return;
+  }
 
   const [settings] = await db.select().from(settingsTable).limit(1);
   if (!settings?.garApiKey) { res.status(503).json({ error: "GAR API Key não configurada" }); return; }
@@ -1139,8 +1145,6 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
     const garResult = Array.isArray(result) ? null : result;
     const nomeLocal = localNome || garResult?.NomeLocalAgendamento || "Videoconferência";
     const dataHoraStr = garResult?.DataHoraAgendamento || dataInicial;
-    const scheduledDate = (() => { try { return new Date(dataInicial.replace(" ", "T") + ":00"); } catch { return new Date(); } })();
-
     await db.update(ordersTable).set({
       garAgendamentoLocalHash: hashLocal,
       garAgendamentoLocalNome: nomeLocal,
@@ -1538,6 +1542,11 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
 
   // Monta dataHora para salvar no pedido (ex: "2024-07-23T08:00:00")
   const dataHora = `${dataAgenda}T${horarioInicio}:00`;
+  const scheduledDate = parseAppointmentTime(dataHora);
+  if (!scheduledDate) {
+    res.status(400).json({ error: "Data ou horário de agendamento inválido." });
+    return;
+  }
 
   const isReagendar = !!order.safewebAgendamentoId;
 
@@ -1603,7 +1612,7 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
     safewebAgendamentoId: agendamentoId,
     safewebAgendamentoDataHora: dataHora,
     safewebAgendamentoLocalNome: nomeLocal,
-    scheduledAt: new Date(dataHora),
+    scheduledAt: scheduledDate,
     status: "aguardando_validacao",
   }).where(eq(ordersTable.id, id));
 

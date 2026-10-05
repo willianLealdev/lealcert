@@ -15,6 +15,14 @@ interface ChangelogEntry {
 const CHANGELOG: ChangelogEntry[] = [
   {
     date: "05/10/2026",
+    version: "1.83",
+    changes: [
+      { type: "fix", text: "Agenda: agendamentos GAR e Safeweb usam horário de Brasília, independentemente do fuso da VPS. Atendimentos do dia permanecem visíveis até o horário de início." },
+      { type: "fix", text: "Agenda se atualiza automaticamente no horário do atendimento e mostra também agendamentos Safeweb sem timestamp antigo." },
+    ],
+  },
+  {
+    date: "05/10/2026",
     version: "1.82",
     changes: [
       { type: "fix", text: "Novo Pedido: cupom validado passa a ser enviado e salvo no pedido. Backend recalcula o desconto, valida limites e salva o total reduzido utilizado no pagamento." },
