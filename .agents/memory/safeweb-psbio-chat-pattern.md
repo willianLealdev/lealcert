@@ -5,15 +5,14 @@ description: PSBio usa sempre swBiometriaPSBioGlobal, independente do provider a
 
 ## Regra
 
-PSBio é um sistema **nacional** gerenciado pela Safeweb. Independente do `activeProvider` (gestaoar ou safeweb), a consulta biométrica deve **sempre** chamar `swBiometriaPSBioGlobal` com as credenciais Safeweb de produção.
+Independente do `activeProvider` (gestaoar ou safeweb), a consulta biométrica dos fluxos principais deve usar o endpoint PSBio **global** da Safeweb com as credenciais de produção.
 
-Isso vale em dois pontos do código:
+Isso vale nos fluxos de pedido, checkout público e chat:
 1. `orders.ts` — rota `POST /orders/consulta-previa`
 2. `chat.ts` — handler `VERIFICAR_BIO`
 
-**Why:** O endpoint GAR `GarAPIs/PsBio` retorna 404 (não existe). O PSBio nacional é mantido pela Safeweb, não pelo GAR. Usar `garPsBio` para o provider GAR causava falha com HTTP 404.
+**Why:** Em verificações anteriores, o endpoint GAR `GarAPIs/PsBio` retornou 404. Selecioná-lo pelo provedor de emissão causava falha; emissão e consulta biométrica são decisões independentes.
 
 **How to apply:**
 - Nunca usar `garPsBio` para consulta PSBio, mesmo com `activeProvider === "gestaoar"`
 - Construir `SafewebSettings` com `safewebUrl` + `safewebUsername` + `safewebPassword` (produção, nunca `*Homologacao`)
-- Se credenciais Safeweb não estiverem configuradas → retornar `hasPsbio: true` (ignorar validação)

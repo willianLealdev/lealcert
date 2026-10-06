@@ -10,7 +10,7 @@
 - [Session cookie in production](session-cookie-prod.md) — custom-fetch.ts must use credentials:"include" in fetch(); without it cookies are never sent and every auth check returns 401 even after successful login.
 - [Drizzle migration when schema bootstrapped via push](drizzle-migration-push.md) — schema created by drizzle-kit push has no tracking table; seed drizzle.__drizzle_migrations before calling migrate().
 - [Acesso por país do IP](ip-security-system.md) — Brasil confirmado libera IPv4/IPv6 imediatamente, antes de bloqueios; autenticação e proteção por CPF permanecem.
-- [PSBio no chat](safeweb-psbio-chat-pattern.md) — VERIFICAR_BIO deve espelhar orders.ts: activeProvider decide; Safeweb usa safewebUrl (nunca homologação); GAR usa garPsBio.
+- [PSBio nacional](safeweb-psbio-chat-pattern.md) — consulta global da Safeweb nos fluxos de pedidos, checkout e chat, independentemente do provedor de emissão.
 - [Production database access](prod-db.md) — EasyPanel VPS; container `lealcert_cert-db-1`; banco `lealcert`; user `postgres`; padrão: `docker exec lealcert_cert-db-1 psql -U postgres -d lealcert -c "SQL"`.
 - [Global router.use without path is a footgun](global-router-use.md) — router.use(middleware) without a path in a router mounted without prefix intercepts ALL requests app-wide, not just that router's own paths.
 - [GAR Agendamento flow](gar-agendamento-flow.md) — correct flow and what each endpoint returns; garAgendar params order was wrong; API returns [] on success.
