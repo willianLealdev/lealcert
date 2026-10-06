@@ -17,6 +17,7 @@ const CHANGELOG: ChangelogEntry[] = [
     date: "05/10/2026",
     version: "1.83",
     changes: [
+      { type: "melhoria", text: "Janela de agendamento: clique no campo da data para abrir o calendário, com orientação visível e consulta automática de horários ao preencher a data. Regras do agendamento preservadas." },
       { type: "fix", text: "Agenda: agendamentos GAR e Safeweb usam horário de Brasília, independentemente do fuso da VPS. Atendimentos do dia permanecem visíveis até o horário de início." },
       { type: "fix", text: "Agenda se atualiza automaticamente no horário do atendimento e mostra também agendamentos Safeweb sem timestamp antigo." },
     ],

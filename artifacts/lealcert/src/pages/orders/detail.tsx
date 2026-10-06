@@ -929,14 +929,26 @@ function GarSchedulingDialog({
                 </div>
               )}
 
-              <div className="flex items-center gap-3">
-                <Label className="text-sm shrink-0 font-medium">Data</Label>
+              <div className="space-y-2">
+                <Label htmlFor="gar-data-atendimento" className="text-sm font-medium">Data do atendimento</Label>
+                <p id="gar-data-atendimento-ajuda" className="text-sm text-muted-foreground">
+                  Clique no campo abaixo para abrir o calendário ou digite a data. Os horários disponíveis aparecem abaixo automaticamente.
+                </p>
                 <Input
+                  id="gar-data-atendimento"
                   type="date"
+                  aria-describedby="gar-data-atendimento-ajuda"
                   value={dataSelecionada}
                   onChange={e => setDataSelecionada(e.target.value)}
+                  onClick={e => {
+                    try {
+                      e.currentTarget.showPicker?.();
+                    } catch {
+                      // Sem suporte/permissão, preservar o ícone nativo e a digitação.
+                    }
+                  }}
                   min={today}
-                  className="flex-1 max-w-xs"
+                  className="w-full sm:max-w-xs cursor-pointer"
                 />
               </div>
 
