@@ -14,6 +14,13 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "06/10/2026",
+    version: "1.84",
+    changes: [
+      { type: "segurança", text: "Rotas diretas GAR e Safeweb verificam o proprietário local antes de consultar, cancelar ou operar pedidos. Listas por CPF/CNPJ retornam apenas pedidos autorizados do escritório; acesso administrativo e consultas prévias de CPF/CNPJ e PSBio preservados." },
+    ],
+  },
+  {
     date: "05/10/2026",
     version: "1.83",
     changes: [

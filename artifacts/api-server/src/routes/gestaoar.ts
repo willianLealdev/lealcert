@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { eq, desc, isNotNull } from "drizzle-orm";
+import { eq, desc, isNotNull, and, sql } from "drizzle-orm";
 import { db, settingsTable, ordersTable, usersTable, orderEventsTable, certificateRenewalsTable, certificatesTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { canAccessOfficeOrder } from "../lib/order-office-access";
+import { isProviderAdmin, normalizeProviderOrderId, requireProviderOrderAccess } from "../lib/provider-order-access";
 import { logEvent, getOrderEvents, isGarStatusEmitido } from "../lib/order-events";
 import { notifyOrderStatus, notifyScheduling } from "../lib/notify";
 import {
@@ -221,6 +222,7 @@ router.get("/gestaoar/municipios", requireAuth, async (req, res): Promise<void> 
 
 // ── Consultar status de um pedido GAR ─────────────────────────────────────────
 router.get("/gestaoar/pedido/:garPedido/status", requireAuth, async (req, res): Promise<void> => {
+  if (!await requireProviderOrderAccess(req, res, "gar", req.params.garPedido)) return;
   const s = await getGarSettings();
   if (!requireGarKey(s?.garApiKey, res)) return;
   const garPedido = Array.isArray(req.params.garPedido) ? req.params.garPedido[0] : req.params.garPedido;
@@ -235,6 +237,7 @@ router.get("/gestaoar/pedido/:garPedido/status", requireAuth, async (req, res): 
 
 // ── Consultar pedido completo ─────────────────────────────────────────────────
 router.get("/gestaoar/pedido/:garPedido", requireAuth, async (req, res): Promise<void> => {
+  if (!await requireProviderOrderAccess(req, res, "gar", req.params.garPedido)) return;
   const s = await getGarSettings();
   if (!requireGarKey(s?.garApiKey, res)) return;
   const garPedido = Array.isArray(req.params.garPedido) ? req.params.garPedido[0] : req.params.garPedido;
@@ -249,12 +252,51 @@ router.get("/gestaoar/pedido/:garPedido", requireAuth, async (req, res): Promise
 
 // ── Pedidos de um cliente (CPF/CNPJ) ─────────────────────────────────────────
 router.get("/gestaoar/cliente/:documento/pedidos", requireAuth, async (req, res): Promise<void> => {
+  const documento = Array.isArray(req.params.documento) ? req.params.documento[0] : req.params.documento;
+  let allowedIds: Set<string> | undefined;
+  if (!isProviderAdmin(req)) {
+    const digits = documento.replace(/\D/g, "");
+    if (!digits) { res.status(400).json({ error: "Documento inválido." }); return; }
+    const localOrders = await db.select({
+      userId: ordersTable.userId,
+      garPedido: ordersTable.garPedido,
+    }).from(ordersTable).where(and(
+      sql`regexp_replace(${ordersTable.customerCpfCnpj}, '[^0-9]', '', 'g') = ${digits}`,
+      isNotNull(ordersTable.garPedido),
+    ));
+    allowedIds = new Set<string>();
+    const deniedIds = new Set<string>();
+    for (const order of localOrders) {
+      const id = normalizeProviderOrderId(order.garPedido);
+      if (!id) continue;
+      if (await canAccessOfficeOrder(req.session.userId, req.session.role, req.session.userType, order)) {
+        allowedIds.add(id);
+      } else {
+        deniedIds.add(id);
+      }
+    }
+    for (const id of deniedIds) allowedIds.delete(id);
+    if (!allowedIds.size) { res.status(403).json({ error: "Acesso negado." }); return; }
+  }
   const s = await getGarSettings();
   if (!requireGarKey(s?.garApiKey, res)) return;
-  const documento = Array.isArray(req.params.documento) ? req.params.documento[0] : req.params.documento;
   try {
     const result = await garPedidosPorCliente(s.garApiKey!, documento);
-    res.json(result);
+    if (!allowedIds) {
+      res.json(result);
+    } else {
+      const pedidos = (result.Pedidos ?? []).filter(item => {
+        const id = normalizeProviderOrderId(item.Pedido);
+        return id !== null && allowedIds.has(id);
+      });
+      // Do not pass through global provider metadata or an unfiltered envelope.
+      res.json({
+        PossuiPedidosVinculados: pedidos.length > 0,
+        ...(pedidos.length > 0 ? { NomeCliente: result.NomeCliente } : {}),
+        Pedidos: pedidos,
+        Status: result.Status,
+      });
+    }
   } catch (err) {
     logger.error({ err }, "GAR PedidosCliente error");
     res.status(502).json({ error: "Erro ao consultar pedidos do cliente." });

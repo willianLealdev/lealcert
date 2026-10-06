@@ -3,6 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { db, settingsTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
+import { requireProviderOrderAccess } from "../lib/provider-order-access";
 import {
   swTestarAutenticacao,
   swListarProdutos,
@@ -206,10 +207,11 @@ router.post("/safeweb/solicitacao/emissao-online", requireAuth, async (req, res)
 // POST /api/safeweb/solicitacao/:id/cancelar   { motivo? }
 // ═══════════════════════════════════════════════════════════════════════════════
 router.post("/safeweb/solicitacao/:id/cancelar", requireAuth, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) { res.status(400).json({ error: "ID da solicitação inválido." }); return; }
+  if (!await requireProviderOrderAccess(req, res, "safeweb", String(id))) return;
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
-  const id = Number(req.params.id);
-  if (!id) { res.status(400).json({ error: "ID da solicitação inválido." }); return; }
   try { res.json(await swCancelarSolicitacao(sw, String(id))); }
   catch (err) { handleErr(res, err, "Safeweb CancelarSolicitacao error"); }
 });
@@ -221,6 +223,7 @@ router.post("/safeweb/solicitacao/:id/cancelar", requireAuth, async (req, res): 
 // POST /api/safeweb/renovacao/:id/liberar    — Liberar renovação
 // ═══════════════════════════════════════════════════════════════════════════════
 router.get("/safeweb/renovacao/:id", requireAuth, async (req, res): Promise<void> => {
+  if (!await requireProviderOrderAccess(req, res, "safeweb", String(Number(req.params.id)))) return;
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
   try { res.json(await swRenovarComProduto(sw, Number(req.params.id))); }
@@ -235,9 +238,10 @@ router.post("/safeweb/renovacao/outra-ac", requireAuth, async (req, res): Promis
 });
 
 router.post("/safeweb/renovacao/:id/liberar", requireAuth, async (req, res): Promise<void> => {
+  if (!await requireProviderOrderAccess(req, res, "safeweb", String(Number(req.params.id)))) return;
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
-  try { res.json(await swLiberarRenovacao(sw, { idSolicitacao: Number(req.params.id), ...(req.body ?? {}) })); }
+  try { res.json(await swLiberarRenovacao(sw, { ...(req.body ?? {}), idSolicitacao: Number(req.params.id) })); }
   catch (err) { handleErr(res, err, "Safeweb LiberarRenovacao error"); }
 });
 
@@ -248,6 +252,7 @@ router.post("/safeweb/renovacao/:id/liberar", requireAuth, async (req, res): Pro
 // POST /api/safeweb/emissao/:id/liberar     — Liberar emissão
 // ═══════════════════════════════════════════════════════════════════════════════
 router.get("/safeweb/emissao/:id", requireAuth, async (req, res): Promise<void> => {
+  if (!await requireProviderOrderAccess(req, res, "safeweb", String(Number(req.params.id)))) return;
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
   try { res.json(await swEmitirComProduto(sw, Number(req.params.id))); }
@@ -262,9 +267,10 @@ router.post("/safeweb/emissao/outra-ac", requireAuth, async (req, res): Promise<
 });
 
 router.post("/safeweb/emissao/:id/liberar", requireAuth, async (req, res): Promise<void> => {
+  if (!await requireProviderOrderAccess(req, res, "safeweb", String(Number(req.params.id)))) return;
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
-  try { res.json(await swLiberarEmissao(sw, { idSolicitacao: Number(req.params.id), ...(req.body ?? {}) })); }
+  try { res.json(await swLiberarEmissao(sw, { ...(req.body ?? {}), idSolicitacao: Number(req.params.id) })); }
   catch (err) { handleErr(res, err, "Safeweb LiberarEmissao error"); }
 });
 
@@ -323,6 +329,7 @@ router.get("/safeweb/agenda/horarios", requireAuth, async (req, res): Promise<vo
 });
 
 router.post("/safeweb/agenda/agendar", requireAuth, async (req, res): Promise<void> => {
+  if (!await requireProviderOrderAccess(req, res, "safeweb", req.body?.protocolo)) return;
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
   const { localAtendimentoId, protocolo, data, catalogoProdutoId } = req.body ?? {};
@@ -332,6 +339,7 @@ router.post("/safeweb/agenda/agendar", requireAuth, async (req, res): Promise<vo
 });
 
 router.delete("/safeweb/agenda/:protocolo", requireAuth, async (req, res): Promise<void> => {
+  if (!await requireProviderOrderAccess(req, res, "safeweb", req.params.protocolo)) return;
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
   const { catalogoProdutoId } = req.query as Record<string, string>;
@@ -351,6 +359,7 @@ router.get("/safeweb/agenda/configuracao", requireAuth, async (req, res): Promis
 });
 
 router.get("/safeweb/agenda/:protocolo/informacoes", requireAuth, async (req, res): Promise<void> => {
+  if (!await requireProviderOrderAccess(req, res, "safeweb", req.params.protocolo)) return;
   const sw = await getSwSettings();
   if (!requireSw(sw, res)) return;
   try { res.json(await swAgendaInformacoes(sw, String(req.params.protocolo))); }

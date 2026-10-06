@@ -38,3 +38,4 @@
 - [Preço do Leal Plus](lealplus-pricing-policy.md) — catálogo no banco, cobrança definida no backend; preservar preço cobrado e não reconstruir históricos por suposição.
 - [Compra e cupom](purchase-coupon-rules.md) — uma compra contém um certificado; uso por cadastro deve seguir os limites configurados no cupom.
 - [Agenda em Brasília](agenda-brazil-time.md) — atendimentos de hoje permanecem até o horário exato; fuso da VPS não pode antecipar o desaparecimento.
+- [Pedidos legados no provedor](provider-legacy-order-security.md) — pedidos sem vínculo local são exclusivos do admin; CPF/CNPJ comum não comprova propriedade.
