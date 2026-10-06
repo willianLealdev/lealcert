@@ -379,8 +379,8 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
   const [dataSelecionada, setDataSelecionada] = useState("");
   const [horarioSelecionado, setHorarioSelecionado] = useState<{ HoraInicial: string; HoraFinal: string } | null>(null);
 
-  const { data: locais, isLoading: loadingLocais } = useGetOrderGarLocais(orderId);
-  const { data: disponibilidade, isLoading: loadingDisponibilidade } = useGetOrderGarDisponibilidade(
+  const { data: locais, isLoading: loadingLocais, error: locaisError } = useGetOrderGarLocais(orderId);
+  const { data: disponibilidade, isLoading: loadingDisponibilidade, error: disponibilidadeError } = useGetOrderGarDisponibilidade(
     orderId,
     {
       hashLocal: localSelecionado?.HashLocal ?? "",
@@ -684,6 +684,8 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
           setStep={setStep}
           locais={locaisFiltrados}
           loadingLocais={loadingLocais}
+          locaisError={locaisError ? (locaisError as { data?: { error?: string }; message?: string }).data?.error ?? locaisError.message : null}
+          disponibilidadeError={disponibilidadeError ? (disponibilidadeError as { data?: { error?: string }; message?: string }).data?.error ?? disponibilidadeError.message : null}
           ufsDisponiveis={ufsDisponiveis}
           ufFiltro={ufFiltro}
           setUfFiltro={setUfFiltro}
@@ -739,6 +741,8 @@ function SchedulingCard({ orderId, garProtocolo, garAgendamentoDataHora, garAgen
         setStep={setStep}
         locais={locaisFiltrados}
         loadingLocais={loadingLocais}
+        locaisError={locaisError ? (locaisError as { data?: { error?: string }; message?: string }).data?.error ?? locaisError.message : null}
+        disponibilidadeError={disponibilidadeError ? (disponibilidadeError as { data?: { error?: string }; message?: string }).data?.error ?? disponibilidadeError.message : null}
         ufsDisponiveis={ufsDisponiveis}
         ufFiltro={ufFiltro}
         setUfFiltro={setUfFiltro}
@@ -773,6 +777,7 @@ type Local = {
 function GarSchedulingDialog({
   open, onOpenChange, step, setStep,
   locais, loadingLocais, ufsDisponiveis,
+  locaisError, disponibilidadeError,
   ufFiltro, setUfFiltro, municipioFiltro, setMunicipioFiltro,
   localSelecionado,
   dataSelecionada, setDataSelecionada,
@@ -785,6 +790,8 @@ function GarSchedulingDialog({
   setStep: (s: "locais" | "data" | "confirm") => void;
   locais: Array<{ HashLocal: string; NomeLocalAgendamento: string; NomeCidadeLocalAgendamento?: string; UF?: string; Endereco?: string }>;
   loadingLocais: boolean;
+  locaisError: string | null;
+  disponibilidadeError: string | null;
   ufsDisponiveis: string[];
   ufFiltro: string;
   setUfFiltro: (v: string) => void;
@@ -913,6 +920,11 @@ function GarSchedulingDialog({
           {/* PASSO 1 — Escolher data e horário (AR selecionada automaticamente) */}
           {step === "data" && (
             <div className="space-y-3">
+              {locaisError && (
+                <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                  Não foi possível carregar os locais de atendimento: {locaisError}
+                </p>
+              )}
               {!localSelecionado && loadingLocais && (
                 <div className="flex items-center justify-center py-4 text-muted-foreground gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -952,8 +964,12 @@ function GarSchedulingDialog({
                 />
               </div>
 
-              {dataSelecionada && (
-                loadingDisponibilidade ? (
+              {dataSelecionada && !locaisError && (
+                disponibilidadeError ? (
+                  <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                    Não foi possível consultar os horários disponíveis: {disponibilidadeError}
+                  </p>
+                ) : loadingDisponibilidade ? (
                   <div className="flex items-center justify-center py-10 text-muted-foreground gap-2">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     Buscando horários disponíveis...

@@ -10,6 +10,7 @@ import { CouponError, resolveOrderCoupon, orderCouponDiscount } from "../lib/ord
 import { parseAppointmentTime, orderAppointmentTime } from "../lib/appointment-time";
 import { swConsultaCPF, swConsultaCNPJ, swBiometriaPSBioGlobal, swHasPsbio, swHopeSolicitation, type SafewebSettings } from "../lib/safeweb";
 import { garPsBio } from "../lib/gestaoar";
+import { canAccessOfficeOrder } from "../lib/order-office-access";
 
 const router = Router();
 
@@ -54,12 +55,7 @@ async function canAccessOrder(
   userType: string | undefined,
   order: { userId: number | null; operatorId: number | null },
 ): Promise<boolean> {
-  if (role === "admin" || userType === "admin") return true;
-  if (!userId) return false;
-  if (order.userId === userId || order.operatorId === userId) return true;
-
-  const contadorId = role === "operador" ? await linkedContadorId(userId) : null;
-  return contadorId !== null && order.userId === contadorId;
+  return canAccessOfficeOrder(userId, role, userType, order);
 }
 
 function orderRow(
@@ -645,7 +641,7 @@ router.delete("/orders/:id", requireAuth, async (req, res): Promise<void> => {
 
   // Usuário comum: só pode excluir o próprio pedido em pending_payment
   if (role !== "admin") {
-    if (order.userId !== userId && order.operatorId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+    if (!await canAccessOfficeOrder(userId, role, req.session.userType, order)) { res.status(403).json({ error: "Acesso negado." }); return; }
     if (order.status !== "pending_payment") {
       res.status(400).json({ error: "Apenas pedidos aguardando pagamento podem ser excluídos." });
       return;
@@ -1087,8 +1083,7 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!await canAccessOfficeOrder(req.session.userId, req.session.role, req.session.userType, order)) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   if (!order.garProtocolo) {
     res.status(400).json({ error: "Protocolo GAR não emitido. Aguarde o processamento do pagamento." });
@@ -1188,8 +1183,7 @@ router.get("/orders/:id/gar-disponibilidade", requireAuth, async (req, res): Pro
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!await canAccessOfficeOrder(req.session.userId, req.session.role, req.session.userType, order)) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const hashLocal = String(req.query.hashLocal ?? "");
   const dataInicial = String(req.query.dataInicial ?? "");
@@ -1222,8 +1216,7 @@ router.post("/orders/:id/gar-cancelar-agendamento", requireAuth, async (req, res
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!await canAccessOfficeOrder(req.session.userId, req.session.role, req.session.userType, order)) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const hashVenda = order.garHashVenda;
   if (!hashVenda) { res.status(400).json({ error: "HashVenda GAR indisponível neste pedido" }); return; }
@@ -1289,10 +1282,8 @@ router.post("/orders/:id/confirm-docs", async (req, res): Promise<void> => {
   const [order] = await db.select({ id: ordersTable.id, userId: ordersTable.userId, operatorId: ordersTable.operatorId }).from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
-  // Permite o próprio cliente ou admin confirmar
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  const isOwner = req.session.userId && (order.userId === req.session.userId || order.operatorId === req.session.userId);
-  if (!isAdmin && !isOwner) { res.status(403).json({ error: "Acesso negado" }); return; }
+  // Permite o titular, o administrador ou o operador do escritório vinculado.
+  if (!await canAccessOfficeOrder(req.session.userId, req.session.role, req.session.userType, order)) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   await db.update(ordersTable).set({ garDocsConfirmed: true }).where(eq(ordersTable.id, id));
   res.json({ ok: true });
@@ -1305,8 +1296,7 @@ router.post("/orders/:id/hope-solicitation", requireAuth, async (req, res): Prom
 
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) {
+  if (!await canAccessOfficeOrder(req.session.userId, req.session.role, req.session.userType, order)) {
     res.status(403).json({ error: "Acesso negado" }); return;
   }
   if (!order.garProtocolo) { res.status(400).json({ error: "Pedido não possui protocolo GAR" }); return; }
@@ -1524,8 +1514,7 @@ router.post("/orders/:id/safeweb-agendar", requireAuth, async (req, res): Promis
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!await canAccessOfficeOrder(req.session.userId, req.session.role, req.session.userType, order)) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   if (!order.safewebSolicitacaoId) {
     res.status(400).json({ error: "Pedido ainda não registrado na Safeweb. Aguarde o processamento do pagamento." });
@@ -1645,10 +1634,9 @@ router.get("/orders/:id/safeweb-config", requireAuth, async (req, res): Promise<
   const idLocal = parseInt(String(req.query.idLocal ?? ""), 10);
   if (isNaN(idLocal)) { res.status(400).json({ error: "idLocal obrigatório" }); return; }
 
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
-  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!await canAccessOfficeOrder(req.session.userId, req.session.role, req.session.userType, order)) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const [s] = await db.select().from(settingsTable).limit(1);
   const isHomol = s?.safewebAmbiente === "homologacao";
@@ -1679,10 +1667,9 @@ router.get("/orders/:id/safeweb-locais", requireAuth, async (req, res): Promise<
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
 
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!order) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
-  if (!isAdmin && req.session.userId !== order.userId && req.session.userId !== order.operatorId) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!await canAccessOfficeOrder(req.session.userId, req.session.role, req.session.userType, order)) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const [s] = await db.select().from(settingsTable).limit(1);
   const isHomol = s?.safewebAmbiente === "homologacao";
@@ -1753,8 +1740,7 @@ router.get("/orders/:id/safeweb-slots", requireAuth, async (req, res): Promise<v
 
   if (!row) { res.status(404).json({ error: "Pedido não encontrado" }); return; }
 
-  const isAdmin = req.session.role === "admin" || req.session.userType === "admin";
-  if (!isAdmin && req.session.userId !== row.order.userId && req.session.userId !== row.order.operatorId) {
+  if (!await canAccessOfficeOrder(req.session.userId, req.session.role, req.session.userType, row.order)) {
     res.status(403).json({ error: "Acesso negado" }); return;
   }
 

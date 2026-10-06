@@ -3,6 +3,7 @@ import { eq, desc, isNotNull } from "drizzle-orm";
 import { db, settingsTable, ordersTable, usersTable, orderEventsTable, certificateRenewalsTable, certificatesTable } from "@workspace/db";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { logger } from "../lib/logger";
+import { canAccessOfficeOrder } from "../lib/order-office-access";
 import { logEvent, getOrderEvents, isGarStatusEmitido } from "../lib/order-events";
 import { notifyOrderStatus, notifyScheduling } from "../lib/notify";
 import {
@@ -324,21 +325,7 @@ router.get("/orders/:id/events", requireAuth, async (req, res): Promise<void> =>
 
   const [row] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
   if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
-  let canViewEvents = role === "admin" || row.userId === userId || row.operatorId === userId;
-  if (!canViewEvents && role === "operador") {
-    const [operator] = await db
-      .select({ role: usersTable.role, contadorId: usersTable.contadorId, isActive: usersTable.isActive })
-      .from(usersTable)
-      .where(eq(usersTable.id, userId))
-      .limit(1);
-    canViewEvents = Boolean(
-      operator?.isActive
-      && operator.role === "operador"
-      && operator.contadorId
-      && row.userId === operator.contadorId,
-    );
-  }
-  if (!canViewEvents) { res.status(403).json({ error: "Acesso negado." }); return; }
+  if (!await canAccessOfficeOrder(userId, role, req.session.userType, row)) { res.status(403).json({ error: "Acesso negado." }); return; }
 
   const rows = await db
     .select()
@@ -375,7 +362,7 @@ router.post("/gestaoar/sync-order/:orderId", requireAuth, async (req, res): Prom
     .limit(1);
 
   if (!orderRow) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
-  if (role !== "admin" && orderRow.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+  if (!await canAccessOfficeOrder(userId, role, req.session.userType, orderRow.order)) { res.status(403).json({ error: "Acesso negado." }); return; }
   if (!orderRow.order.garPedido) { res.status(400).json({ error: "Este pedido não possui número GAR registrado." }); return; }
 
   const order = orderRow.order;
@@ -491,7 +478,7 @@ router.post("/orders/:id/gar-comprar", requireAuth, async (req, res): Promise<vo
     .limit(1);
 
   if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
-  if (role !== "admin" && row.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+  if (!await canAccessOfficeOrder(userId, role, req.session.userType, row.order)) { res.status(403).json({ error: "Acesso negado." }); return; }
 
   const order = row.order;
   if (!s.garHashVendedor || !s.garHashTabela) {
@@ -619,7 +606,7 @@ router.get("/orders/:id/gar-locais", requireAuth, async (req, res): Promise<void
     .limit(1);
 
   if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
-  if (role !== "admin" && row.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+  if (!await canAccessOfficeOrder(userId, role, req.session.userType, row.order)) { res.status(403).json({ error: "Acesso negado." }); return; }
 
   const { uf, municipio } = req.query as Record<string, string>;
 
@@ -648,7 +635,7 @@ router.get("/orders/:id/gar-slots/:hashLocal", requireAuth, async (req, res): Pr
     .limit(1);
 
   if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
-  if (role !== "admin" && row.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+  if (!await canAccessOfficeOrder(userId, role, req.session.userType, row.order)) { res.status(403).json({ error: "Acesso negado." }); return; }
 
   try {
     const slots = await garSlotsLocal(s.garApiKey!, hashLocal);
@@ -674,7 +661,7 @@ router.get("/orders/:id/gar-disponibilidade", requireAuth, async (req, res): Pro
     .limit(1);
 
   if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
-  if (role !== "admin" && row.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+  if (!await canAccessOfficeOrder(userId, role, req.session.userType, row.order)) { res.status(403).json({ error: "Acesso negado." }); return; }
 
   const { hashLocal, hashSlot, dataInicial, dataFinal } = req.query as Record<string, string>;
   if (!hashLocal || !dataInicial || !dataFinal) {
@@ -707,7 +694,7 @@ router.post("/orders/:id/agendar", requireAuth, async (req, res): Promise<void> 
     .limit(1);
 
   if (!row) { res.status(404).json({ error: "Pedido não encontrado." }); return; }
-  if (role !== "admin" && row.order.userId !== userId) { res.status(403).json({ error: "Acesso negado." }); return; }
+  if (!await canAccessOfficeOrder(userId, role, req.session.userType, row.order)) { res.status(403).json({ error: "Acesso negado." }); return; }
 
   const order = row.order;
 
