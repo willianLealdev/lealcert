@@ -1,5 +1,5 @@
 # ── Stage 1: Builder ─────────────────────────────────────────────────────────
-FROM node:24-slim AS builder
+FROM node:24.22.1-slim AS builder
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 

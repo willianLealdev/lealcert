@@ -4,7 +4,7 @@
 # ============================================================
 
 # ── Stage 1: instalar dependências + build ──────────────────
-FROM node:24-bookworm-slim AS builder
+FROM node:24.22.1-bookworm-slim AS builder
 
 RUN npm install -g pnpm@10 --silent
 
@@ -46,7 +46,7 @@ RUN pnpm --filter @workspace/lealcert run build
 
 
 # ── Stage 2: imagem de produção da API ─────────────────────
-FROM node:24-bookworm-slim AS api
+FROM node:24.22.1-bookworm-slim AS api
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends dumb-init && \

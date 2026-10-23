@@ -17,6 +17,7 @@ const CHANGELOG: ChangelogEntry[] = [
     date: "06/10/2026",
     version: "1.84",
     changes: [
+      { type: "segurança", text: "Builds de produção atualizados para Node.js 24.22.1 LTS, versão de segurança de 21/10/2026, mantendo a mesma linha Node 24 e as regras existentes do sistema." },
       { type: "segurança", text: "Rotas diretas GAR e Safeweb verificam o proprietário local antes de consultar, cancelar ou operar pedidos. Listas por CPF/CNPJ retornam apenas pedidos autorizados do escritório; acesso administrativo e consultas prévias de CPF/CNPJ e PSBio preservados." },
     ],
   },
